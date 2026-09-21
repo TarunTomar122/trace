@@ -58,6 +58,8 @@ ROOT_COLLECTIONS = [
     "v3_push_notifications",
     "v3_curated_queue",
     "newsletter_editions",
+    "email_sends",
+    "email_events",
     "unified_newsletters",
     "trending_news",
     "trending_news/*/topics",

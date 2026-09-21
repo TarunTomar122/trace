@@ -38,6 +38,10 @@ v3_push_notifications
 v3_curated_queue
 newsletter_editions
 
+# --- Outbound email (one doc per send attempt, one per open/click) ---
+email_sends
+email_events
+
 # --- Legacy collections still read by live web routes ---
 unified_newsletters
 trending_news

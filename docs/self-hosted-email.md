@@ -1,8 +1,13 @@
 # Self-hosted email (moving off Brevo)
 
-Status: **code ready, nothing installed on the VPS yet.** The transport router
-ships in `v1/tools/email_sender.py` and defaults to Brevo, so behaviour is
-unchanged until we flip a variable.
+Status: **live and ramping since 2026-09-21.** The VPS runs Postfix as a
+loopback-only null client, and `EMAIL_TRANSPORT=auto` on the box means our MTA
+carries the send with Brevo as the per-message fallback. DNS (A, PTR, SPF,
+DKIM, DMARC) is published, and a DKIM round trip against live DNS verifies.
+The warm-up schedule below is still manual: nothing in code caps daily volume.
+
+Rollback in one line: set `EMAIL_TRANSPORT=brevo` in `~/trace/.env` on the VPS
+and the next send is Brevo-only again. Nothing else changes.
 
 ## Why
 
@@ -47,21 +52,27 @@ alignment and will be filtered. Switch to `newsletter@mail.yourtrace.online`
 (already the default in `email_sender.py` via `EMAIL_SENDER_LOCAL`). Use a
 subdomain so a reputation problem never touches the root domain.
 
-## Install (run only when approved)
+## Install (done 2026-09-21)
 
 ```bash
-sudo apt install -y postfix opendkim opendkim-tools
+sudo apt install -y postfix
 # inbound: none. Postfix is a null client to the world, local delivery only.
 sudo postconf -e 'inet_interfaces = loopback-only'
 sudo postconf -e 'mynetworks = 127.0.0.0/8'
 sudo postconf -e 'default_destination_rate_delay = 1s'   # never burst at an ISP
 sudo postconf -e 'smtp_tls_security_level = may'
+sudo postconf -e 'myhostname = mail.yourtrace.online'
 sudo systemctl restart postfix
 ```
 
-Warm-up is a **schedule, not a switch**. Guard rails to keep in `main.cf`:
-per-destination concurrency limits (Gmail and Microsoft are the sensitive ones),
-`default_destination_rate_delay`, and a queue that lives on disk and is watched.
+DKIM is signed in Python (`dkimpy`, see `v1/tools/email_sender.py`) rather than
+by a milter, so OpenDKIM is not needed. The key lives at
+`~/trace/secrets/dkim-mail.yourtrace.online.private` (chmod 600) and
+`EMAIL_DKIM_KEY` in `~/trace/.env` points at it.
+
+Warm-up is a **schedule, not a switch**. Postfix carries the rate guard rails:
+`default_destination_rate_delay` today, and per-destination concurrency limits
+(Gmail and Microsoft are the sensitive ones) once volume justifies them.
 
 ## Warm-up schedule
 
@@ -85,18 +96,45 @@ message id, tracking id) by `email_sender.py`. Opens and clicks are recorded in
 links are wrapped through that endpoint when `EMAIL_TRACKING` is on (`0` turns
 it off; unsubscribe and profile links are never wrapped).
 
-That gives the dashboard: volume per day, transport split while ramping, bounce
-and failure rate, opens and clicks per bucket.
+That feeds the dashboard at **`/dev/analytics`** (signed in, dev only): sends
+per day, transport split while ramping, failures and Brevo fallbacks, DKIM
+status, unique openers and clickers overall and per bucket, the top clicked
+targets, and the last 25 sends with whether each one was opened or clicked.
+It reads the same LocalDB the pipeline writes to, so the numbers are the real
+records, not a separate tally.
+
+Opens are inflated by design: Apple Mail preloads the tracking pixel. Clicks
+are the honest engagement signal.
+
+Unsubscribes land on `frontend/app/api/unsubscribe/route.ts` and write real
+state: `free_newsletter_subscribers/{email}.active = false` for landing
+subscribers, and `dailyNewsletterEnabled`/`newsletterOptIn = false` on any
+matching profile. The flow treats an explicit opt-out as final for every
+bucket, Pro included. `GET` serves the footer link, `POST ?email=` serves the
+RFC 8058 one-click header.
 
 ## Risks
 
 1. **Cold-IP spam foldering for the first 1-2 weeks.** Engaged-first ordering and
    a slow ramp are the mitigation; Brevo can carry the at-risk segments.
 2. **Disk.** A 10k queue at ~50KB per message is 500MB, and deferred mail
-   triples it. The box is at 98% full; free space before going live.
+   triples it. The box runs at 99% full; free space before volume climbs.
 3. **No feedback loops yet.** Register Google Postmaster Tools and Microsoft
    SNDS, and hard-suppress after 1-2 bounces, or the IP poisons within weeks.
 4. **A broken click endpoint breaks every link** because links route through it.
    `EMAIL_TRACKING=0` is the instant fallback.
 5. **OVH abuse suspension** if a compromised list or a complaint spike happens.
    Rate limits, honoured unsubscribes, and monitoring are the defence.
+
+## Still to build
+
+1. **Bounce handling.** Nothing reads Postfix's DSNs yet, so a hard bounce is
+   only visible in the dashboard as a send that never opened. Needs a
+   suppression list consulted before each send.
+2. **Feedback loops.** Postmaster Tools and SNDS are not registered, so there is
+   no external view of spam rate or reputation.
+3. **Ramp enforcement.** The schedule above is a human promise. Nothing caps
+   daily volume in code, so the guard rail is watching the dashboard and turning
+   `EMAIL_TRANSPORT` down if today's numbers look wrong.
+4. **Per-ISP pacing.** `default_destination_rate_delay` is a blanket 1s. Gmail
+   and Microsoft deserve their own concurrency limits as volume grows.

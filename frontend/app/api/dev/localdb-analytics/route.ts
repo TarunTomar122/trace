@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     await adminAuth.verifyIdToken(authHeader.split('Bearer ')[1]);
     const startedAt = Date.now();
 
-    const [profiles, landing, reads, interactions, extensions, clicks, conversions, promoted, runs] =
+    const [profiles, landing, reads, interactions, extensions, clicks, conversions, promoted, runs, sends, events] =
       await Promise.all([
         queryCollection('user_profiles', [
           'email', 'onboarded', 'subscriptionStatus', 'appSubscriptionStatus',
@@ -161,6 +161,13 @@ export async function GET(request: NextRequest) {
         queryCollection('affiliate_conversions', ['createdAt']),
         queryCollection('promoted_tools', ['status']),
         queryCollection('v3_pipeline_runs', ['last_run_at', 'status'], 100),
+        // One doc per send attempt (v1/tools/email_sender.py) and one per open
+        // or click (app/api/email/track), joined on track_id.
+        queryCollection('email_sends', [
+          'to', 'bucket', 'subject', 'transport', 'status', 'track_id', 'dkim',
+          'error', 'fallback_from', 'sent_at', 'date',
+        ]),
+        queryCollection('email_events', ['track_id', 'kind', 'target', 'at', 'date']),
       ]);
 
     const now = Date.now();
@@ -300,6 +307,143 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // ---- Email (our own MTA + open/click tracking) -------------------------
+    // email_events only carries the track_id minted per send, so bucket and
+    // recipient come from the join against email_sends.
+    const trackBucket = new Map<string, string>();
+    const trackRecipient = new Map<string, string>();
+    const sendRows = sends.map(({ data }) => data);
+    sendRows.forEach((data) => {
+      const trackId = String(data.track_id || '').trim();
+      if (!trackId) return;
+      trackBucket.set(trackId, String(data.bucket || '').trim() || 'unknown');
+      trackRecipient.set(trackId, String(data.to || '').trim());
+    });
+
+    const emailSendsSeries = emptySeries(30);
+    const emailOpensSeries = emptySeries(30);
+    const emailClicksSeries = emptySeries(30);
+    const recipients = new Set<string>();
+    const sortedSends = [...sendRows].sort((a, b) =>
+      String(b.sent_at || b.date || '').localeCompare(String(a.sent_at || a.date || ''))
+    );
+    let emailSent = 0;
+    let emailFailed = 0;
+    let emailFallbacks = 0;
+    sortedSends.forEach((data) => {
+      const to = String(data.to || '').trim().toLowerCase();
+      if (to) recipients.add(to);
+      if (String(data.status || '').trim() === 'sent') emailSent += 1;
+      else emailFailed += 1;
+      if (String(data.fallback_from || '').trim()) emailFallbacks += 1;
+      const day = String(data.date || '').slice(0, 10);
+      if (day in emailSendsSeries) emailSendsSeries[day] += 1;
+    });
+
+    const openedTracks = new Set<string>();
+    const clickedTracks = new Set<string>();
+    const clickTargets: string[] = [];
+    const bucketEngagement = new Map<string, { openers: Set<string>; clickers: Set<string>; clicks: number }>();
+    const engagementFor = (bucket: string) => {
+      if (!bucketEngagement.has(bucket)) {
+        bucketEngagement.set(bucket, { openers: new Set(), clickers: new Set(), clicks: 0 });
+      }
+      return bucketEngagement.get(bucket)!;
+    };
+
+    const eventRows = events.map(({ data }) => data);
+    let openEvents = 0;
+    let clickEvents = 0;
+    eventRows.forEach((data) => {
+      const kind = String(data.kind || '').trim();
+      const trackId = String(data.track_id || '').trim();
+      const day = String(data.date || '').slice(0, 10);
+      const stats = engagementFor(trackBucket.get(trackId) || 'unknown');
+      if (kind === 'open') {
+        openEvents += 1;
+        if (day in emailOpensSeries) emailOpensSeries[day] += 1;
+        if (trackId) {
+          openedTracks.add(trackId);
+          stats.openers.add(trackId);
+        }
+      } else if (kind === 'click') {
+        clickEvents += 1;
+        if (day in emailClicksSeries) emailClicksSeries[day] += 1;
+        if (trackId) {
+          clickedTracks.add(trackId);
+          stats.clickers.add(trackId);
+        }
+        stats.clicks += 1;
+        const target = String(data.target || '').trim();
+        if (target) clickTargets.push(target);
+      }
+    });
+
+    const emailSendsTotal = sendRows.length;
+    const emailByBucket = ['pro', 'free', 'landing'].map((bucket) => {
+      const stats = bucketEngagement.get(bucket);
+      const sent = sendRows.filter((d) => String(d.bucket || '').trim() === bucket).length;
+      const openers = stats?.openers.size || 0;
+      const clickers = stats?.clickers.size || 0;
+      return {
+        bucket,
+        sent,
+        openers,
+        clickers,
+        clicks: stats?.clicks || 0,
+        openRate: sent ? Math.round((openers / sent) * 100) : 0,
+        clickRate: sent ? Math.round((clickers / sent) * 100) : 0,
+      };
+    });
+    const unknownBucketed = sendRows.filter(
+      (d) => !['pro', 'free', 'landing'].includes(String(d.bucket || '').trim())
+    ).length;
+    if (unknownBucketed > 0) {
+      notes.push(
+        `${unknownBucketed} send(s) have no pro/free/landing bucket — counted in the totals, not the per-bucket rows`
+      );
+    }
+    if (openedTracks.size > 0) {
+      notes.push(
+        'Apple Mail preloads the tracking pixel, so open counts run high; clicks are the honest signal'
+      );
+    }
+    if (emailSendsTotal > 0 && openEvents === 0) {
+      notes.push('sends recorded but no opens yet — check the tracking pixel and /api/email/track');
+    }
+    if (sends.length >= MAX_DOCS) notes.push('email_sends hit the 5000 doc cap');
+    if (events.length >= MAX_DOCS) notes.push('email_events hit the 5000 doc cap');
+
+    const recentSends = sortedSends.slice(0, 25).map((data) => {
+      const trackId = String(data.track_id || '').trim();
+      return {
+        to: String(data.to || ''),
+        bucket: String(data.bucket || ''),
+        transport: String(data.transport || ''),
+        status: String(data.status || ''),
+        dkim: String(data.dkim || ''),
+        subject: String(data.subject || ''),
+        sentAt: String(data.sent_at || ''),
+        error: String(data.error || '').slice(0, 120),
+        opened: openedTracks.has(trackId),
+        clicked: clickedTracks.has(trackId),
+      };
+    });
+
+    const recentClicks = eventRows
+      .filter((data) => String(data.kind || '').trim() === 'click')
+      .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+      .slice(0, 15)
+      .map((data) => {
+        const trackId = String(data.track_id || '').trim();
+        return {
+          at: String(data.at || ''),
+          target: String(data.target || ''),
+          bucket: trackBucket.get(trackId) || 'unknown',
+          to: trackRecipient.get(trackId) || '',
+        };
+      });
+
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       elapsedMs: Date.now() - startedAt,
@@ -313,6 +457,8 @@ export async function GET(request: NextRequest) {
         affiliateClicks: clicks.length,
         affiliateConversions: conversions.length,
         promotedTools: promoted.length,
+        emailSends: sends.length,
+        emailEvents: events.length,
       },
       audience: {
         profiles: profiles.length,
@@ -352,9 +498,36 @@ export async function GET(request: NextRequest) {
         landingSignups: landingSeries,
         clickDays: lastNDays(30),
         clicks: clickSeries,
+        emailSends: emailSendsSeries,
+        emailOpens: emailOpensSeries,
+        emailClicks: emailClicksSeries,
         activityDays: lastNDays(14),
         reads: readsSeries,
         interactions: interactionSeries,
+      },
+      email: {
+        totals: {
+          sends: emailSendsTotal,
+          recipients: recipients.size,
+          sent: emailSent,
+          failed: emailFailed,
+          fallbacks: emailFallbacks,
+          openEvents,
+          clickEvents,
+          openers: openedTracks.size,
+          clickers: clickedTracks.size,
+          openRate: emailSendsTotal ? Math.round((openedTracks.size / emailSendsTotal) * 100) : 0,
+          clickRate: emailSendsTotal ? Math.round((clickedTracks.size / emailSendsTotal) * 100) : 0,
+          lastSendAt: sortedSends.length
+            ? String(sortedSends[0].sent_at || sortedSends[0].date || '')
+            : '',
+        },
+        transport: countBy(sendRows.map((d) => String(d.transport || ''))),
+        dkim: countBy(sendRows.map((d) => String(d.dkim || ''))),
+        byBucket: emailByBucket,
+        topTargets: countBy(clickTargets).slice(0, 8),
+        recentSends,
+        recentClicks,
       },
       ops: runs
         .map(({ path, data }) => ({

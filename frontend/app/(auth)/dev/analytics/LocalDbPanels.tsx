@@ -60,9 +60,53 @@ type LocalDbAnalytics = {
     landingSignups: Series;
     clickDays: string[];
     clicks: Series;
+    emailSends: Series;
+    emailOpens: Series;
+    emailClicks: Series;
     activityDays: string[];
     reads: Series;
     interactions: Series;
+  };
+  email: {
+    totals: {
+      sends: number;
+      recipients: number;
+      sent: number;
+      failed: number;
+      fallbacks: number;
+      openEvents: number;
+      clickEvents: number;
+      openers: number;
+      clickers: number;
+      openRate: number;
+      clickRate: number;
+      lastSendAt: string;
+    };
+    transport: [string, number][];
+    dkim: [string, number][];
+    byBucket: {
+      bucket: string;
+      sent: number;
+      openers: number;
+      clickers: number;
+      clicks: number;
+      openRate: number;
+      clickRate: number;
+    }[];
+    topTargets: [string, number][];
+    recentSends: {
+      to: string;
+      bucket: string;
+      transport: string;
+      status: string;
+      dkim: string;
+      subject: string;
+      sentAt: string;
+      error: string;
+      opened: boolean;
+      clicked: boolean;
+    }[];
+    recentClicks: { at: string; target: string; bucket: string; to: string }[];
   };
   ops: { job: string; lastRunAt: string; status: string }[];
   promoted: [string, number][];
@@ -168,6 +212,18 @@ export default function LocalDbPanels() {
     [data]
   );
 
+  const emailActivity = useMemo(
+    () =>
+      data
+        ? toChart(data.series.days, {
+            Sent: data.series.emailSends,
+            Opens: data.series.emailOpens,
+            Clicks: data.series.emailClicks,
+          })
+        : [],
+    [data]
+  );
+
   if (!user) return null;
 
   return (
@@ -210,10 +266,10 @@ export default function LocalDbPanels() {
             hint="What tomorrow's send resolves to, from the same data the flow reads"
           >
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat label="Pro (gets 8)" value={data.audience.effectiveSend.pro} hint={`${data.audience.paidActive} paid · ${data.audience.trial} trial · ${data.audience.earlyAdopter} early adopter`} />
-              <Stat label="Free (gets 3)" value={data.audience.effectiveSend.free} hint={`${data.audience.freeStale} skipped as inactive >7d`} />
+              <Stat label="Pro (gets 10)" value={data.audience.effectiveSend.pro} hint={`${data.audience.paidActive} paid · ${data.audience.trial} trial · ${data.audience.earlyAdopter} early adopter`} />
+              <Stat label="Free (gets 5)" value={data.audience.effectiveSend.free} hint={`${data.audience.freeStale} skipped as inactive >7d`} />
               <Stat
-                label="Landing (gets 3)"
+                label="Landing (gets 5)"
                 value={data.audience.effectiveSend.landing}
                 hint={`${data.audience.landingActive} active · ${data.audience.landingSubscribers} total signups`}
               />
@@ -224,6 +280,191 @@ export default function LocalDbPanels() {
               />
             </div>
           </Card>
+
+          <Card
+            title="Daily email delivery"
+            icon={<Mail size={16} />}
+            hint={
+              data.email.totals.lastSendAt
+                ? `email_sends — last attempt ${new Date(data.email.totals.lastSendAt).toLocaleString()}`
+                : 'email_sends — nothing recorded yet'
+            }
+          >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat
+                label="Sent"
+                value={data.email.totals.sent}
+                hint={`${data.email.totals.recipients} unique recipients`}
+              />
+              <Stat
+                label="Failed"
+                value={data.email.totals.failed}
+                hint={`${data.email.totals.fallbacks} fell back to Brevo`}
+              />
+              <Stat
+                label="Openers"
+                value={data.email.totals.openers}
+                hint={`${data.email.totals.openRate}% of sends · ${data.email.totals.openEvents} open events`}
+              />
+              <Stat
+                label="Clickers"
+                value={data.email.totals.clickers}
+                hint={`${data.email.totals.clickRate}% of sends · ${data.email.totals.clickEvents} click events`}
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {data.email.transport.map(([name, count]) => (
+                <span
+                  key={name}
+                  className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600"
+                >
+                  via {name}: {count}
+                </span>
+              ))}
+              {data.email.dkim.map(([name, count]) => (
+                <span
+                  key={name}
+                  className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-secondary/70 dark:bg-white/10"
+                >
+                  dkim {name}: {count}
+                </span>
+              ))}
+            </div>
+          </Card>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card
+              title="Email engagement (30d)"
+              icon={<MousePointerClick size={16} />}
+              hint="Sends recorded against opens and clicks from the tracking endpoint"
+            >
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={emailActivity}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,120,120,0.15)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={4} />
+                    <YAxis tick={{ fontSize: 10 }} width={28} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 12 }} />
+                    <Line type="monotone" dataKey="Sent" stroke="#1d9bf0" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Opens" stroke="#17bf63" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Clicks" stroke="#f5a623" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card title="Per bucket" icon={<Mail size={16} />} hint="Who got it and how many of them acted on it">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1 text-xs font-semibold text-secondary/60">
+                  <span>Bucket</span>
+                  <span className="flex gap-6">
+                    <span className="w-24 text-right">Sent</span>
+                    <span className="w-32 text-right">Opened</span>
+                    <span className="w-32 text-right">Clicked</span>
+                  </span>
+                </div>
+                {data.email.byBucket.map((row) => (
+                  <div
+                    key={row.bucket}
+                    className="flex items-center justify-between rounded-xl border border-black/5 px-4 py-2 text-xs dark:border-white/5"
+                  >
+                    <span className="font-semibold capitalize">{row.bucket}</span>
+                    <span className="flex gap-6 tabular-nums">
+                      <span className="w-24 text-right">{row.sent}</span>
+                      <span className="w-32 text-right">
+                        {row.openers} <span className="text-secondary/50">({row.openRate}%)</span>
+                      </span>
+                      <span className="w-32 text-right">
+                        {row.clickers} <span className="text-secondary/50">({row.clickRate}%)</span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card title="Recent sends" icon={<Mail size={16} />} hint="Newest first, with whether that send was opened or clicked">
+              {data.email.recentSends.length === 0 ? (
+                <p className="text-sm text-secondary/50">No sends recorded yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-secondary/50">
+                        <th className="py-2 pr-3 font-medium">When</th>
+                        <th className="py-2 pr-3 font-medium">To</th>
+                        <th className="py-2 pr-3 font-medium">Bucket</th>
+                        <th className="py-2 pr-3 font-medium">Via</th>
+                        <th className="py-2 pr-3 font-medium">DKIM</th>
+                        <th className="py-2 font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.email.recentSends.map((row) => (
+                        <tr key={`${row.to}-${row.sentAt}`} className="border-t border-black/5 dark:border-white/5">
+                          <td className="py-2 pr-3 text-secondary/60">
+                            {row.sentAt ? new Date(row.sentAt).toLocaleString() : '—'}
+                          </td>
+                          <td className="max-w-[180px] truncate py-2 pr-3">{row.to}</td>
+                          <td className="py-2 pr-3 capitalize">{row.bucket || '—'}</td>
+                          <td className="py-2 pr-3">{row.transport}</td>
+                          <td className="py-2 pr-3">{row.dkim}</td>
+                          <td className="py-2">
+                            {row.status !== 'sent' ? (
+                              <span className="font-semibold text-red-500">failed</span>
+                            ) : row.clicked ? (
+                              <span className="font-semibold text-amber-500">clicked</span>
+                            ) : row.opened ? (
+                              <span className="font-semibold text-green-500">opened</span>
+                            ) : (
+                              <span className="text-secondary/40">sent</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+            <Card title="Recent clicks" icon={<MousePointerClick size={16} />} hint="Where readers actually went, and the most popular targets">
+              {data.email.topTargets.length > 0 ? (
+                <div className="mb-4">
+                  <p className="mb-1 text-xs font-semibold text-secondary/60">Top targets</p>
+                  <ul className="space-y-1">
+                    {data.email.topTargets.map(([target, count]) => (
+                      <li key={target} className="flex items-center justify-between text-xs">
+                        <span className="truncate pr-3 text-secondary/70">{target}</span>
+                        <span className="tabular-nums font-semibold">{count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {data.email.recentClicks.length === 0 ? (
+                <p className="text-sm text-secondary/50">No clicks recorded yet</p>
+              ) : (
+                <ul className="space-y-2">
+                  {data.email.recentClicks.map((row) => (
+                    <li
+                      key={`${row.at}-${row.target}`}
+                      className="flex items-center justify-between rounded-xl border border-black/5 px-3 py-2 text-xs dark:border-white/5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-secondary/70">{row.target}</span>
+                        <span className="text-secondary/40">
+                          {row.at ? new Date(row.at).toLocaleString() : '—'} · {row.bucket}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card title="Signups (30d)" icon={<Activity size={16} />} hint="Profiles created, onboarded, and landing-page emails">

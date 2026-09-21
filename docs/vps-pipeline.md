@@ -31,12 +31,21 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   DST is handled by systemd; `Persistent=true` catches up a missed run.
 - The newsletter is sent by `v3/flows/send_audience_newsletter.py`, which
   resolves three mutually exclusive buckets and sends **one email per person**:
-  **pro** (8 stories, always on) > **free** (3 stories, on by default, off only
-  after an explicit opt-out) > **landing** (3 stories for email-only homepage
-  signups). Pro/free stories come from the recipient's interests; landing gets
-  the global picks.
+  **pro** (10 stories) > **free** (5 stories) > **landing** (5 stories for
+  email-only homepage signups). Pro/free stories come from the recipient's
+  interests; landing gets the global picks. Email is on by default for every
+  bucket, and an explicit opt-out wins for all three: the footer link and the
+  one-click `List-Unsubscribe` header both write
+  `free_newsletter_subscribers/{email}.active = false` and
+  `dailyNewsletterEnabled`/`newsletterOptIn = false` on matching profiles.
 - Lane priority is AI → markets → tech → design → startups, with a 3/2/1/1/1
-  slot shape on pro (2/1 on the 3-story emails). Markets prefers macro stories.
+  slot shape on pro (2/1/1 on the 5-story emails). Markets prefers macro stories.
+- Delivery goes through our own Postfix on the VPS with Brevo as the per-message
+  fallback (`EMAIL_TRANSPORT=auto`), and every attempt lands in `email_sends`.
+  Opens and clicks land in `email_events`. `/dev/analytics` renders both: volume
+  per day, transport split, failures, DKIM status, openers and clickers per
+  bucket, top clicked targets, and the last 25 sends. See
+  `docs/self-hosted-email.md`.
 - Story links point at the app, never the publisher. Retired flows:
   `send_three_feed_newsletter.py` (shared blast) and `v1/flows/send_free_newsletter.py`
   (never scheduled).

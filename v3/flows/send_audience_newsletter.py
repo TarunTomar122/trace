@@ -496,10 +496,13 @@ def _select(
 # ---------------------------------------------------------------------------
 
 
-def _email_enabled(profile: dict, bucket: str) -> bool:
-    """Pro users are always on; everyone else needs no explicit opt-out."""
-    if bucket == "pro":
-        return True
+def _email_enabled(profile: dict) -> bool:
+    """Email is on by default for every bucket, pro included.
+
+    An explicit opt-out always wins, whatever the bucket. The unsubscribe link
+    and the List-Unsubscribe header both land in the same flags, and an
+    unhonoured unsubscribe is what gets a sending IP filtered.
+    """
     if "dailyNewsletterEnabled" in profile:
         return profile.get("dailyNewsletterEnabled") is True
     if "newsletterOptIn" in profile:
@@ -516,7 +519,7 @@ def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
         if not email or email in seen_emails:
             continue
         bucket = "pro" if is_user_subscribed(profile) else "free"
-        if not _email_enabled(profile, bucket):
+        if not _email_enabled(profile):
             continue
         interests = [
             str(i).strip().lower()
