@@ -39,12 +39,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already subscribed
-    const existing = await adminDb
+    const docRef = adminDb
       .collection('free_newsletter_subscribers')
-      .doc(trimmed)
-      .get();
+      .doc(trimmed);
+    const existing = await docRef.get();
 
     if (existing.exists) {
+      const data = (existing.data() || {}) as Record<string, unknown>;
+      // Someone who unsubscribed and came back through the form has to land on
+      // the list again: this form is the only way back, and answering
+      // "already subscribed" left them opted out forever.
+      if (data.active !== true) {
+        await docRef.set(
+          { active: true, resubscribedAt: new Date().toISOString() },
+          { merge: true }
+        );
+        return NextResponse.json({
+          ok: true,
+          message: "You're back in! First newsletter lands tomorrow.",
+        });
+      }
       return NextResponse.json({
         ok: true,
         message: "You're already subscribed!",
@@ -52,15 +66,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Save subscriber
-    await adminDb
-      .collection('free_newsletter_subscribers')
-      .doc(trimmed)
-      .set({
-        email: trimmed,
-        subscribedAt: new Date().toISOString(),
-        source: 'landing_page',
-        active: true,
-      });
+    await docRef.set({
+      email: trimmed,
+      subscribedAt: new Date().toISOString(),
+      source: 'landing_page',
+      active: true,
+    });
 
     return NextResponse.json({
       ok: true,
