@@ -7,17 +7,23 @@ whether we are on Brevo, on our own Postfix, or mid-ramp.
 
 Transports:
   * ``smtp``  — the VPS's own MTA on 127.0.0.1:25 (Postfix once installed).
-  * ``brevo`` — the Brevo API, still the default and always the fallback.
+  * ``brevo`` — the Brevo API. Now only used when asked for, never implicitly.
 
 ``EMAIL_TRANSPORT`` selects behaviour:
-  ``brevo`` (default) — Brevo only. Nothing changes until we say so.
-  ``smtp``            — local MTA only.
-  ``auto``            — try the local MTA when it is reachable, otherwise
-                        Brevo per message. This is the ramp mode: an MTA hiccup
-                        degrades to Brevo instead of dropping the send.
+  ``smtp`` (default) — local MTA only. An unconfigured run cannot reach Brevo.
+  ``brevo``          — Brevo only, and only ever because someone asked for it.
+  ``auto``           — the local MTA, Brevo per the warm-up routing rules
+                       (``EMAIL_BREVO_BUCKETS`` / ``EMAIL_BREVO_DOMAINS``), and
+                       per-message fall back to Brevo when the MTA is
+                       unreachable. This is what the VPS runs.
+
+Messages to RFC 2606 / RFC 6761 names (``example.com``, anything under
+``.test``) are dropped rather than sent anywhere: they cannot be delivered, and
+a load test aimed at them would otherwise bounce and spend real quota.
 
 Every attempt is recorded (recipient, bucket, transport, status, message id,
-tracking id) so the dashboard can report volume, transport split and failures.
+tracking id, note) so the dashboard can report volume, transport split and
+failures.
 """
 
 from __future__ import annotations
@@ -89,8 +95,41 @@ def _dkim_config() -> tuple[bool, str, str, str]:
 
 
 def transport_mode() -> str:
-    mode = (os.getenv("EMAIL_TRANSPORT", "brevo") or "brevo").strip().lower()
-    return mode if mode in {"brevo", "smtp", "auto"} else "brevo"
+    """Which transport carries a message.
+
+    Defaults to ``smtp`` rather than ``brevo``: an unconfigured run — a load
+    test on a laptop, say — must not quietly spend the production Brevo quota.
+    Reaching Brevo is now an explicit choice.
+    """
+    mode = (os.getenv("EMAIL_TRANSPORT", "smtp") or "smtp").strip().lower()
+    return mode if mode in {"brevo", "smtp", "auto"} else "smtp"
+
+
+# RFC 2606 / RFC 6761 names that can never receive mail.
+RESERVED_DOMAINS = (
+    "example",
+    "example.com",
+    "example.org",
+    "example.net",
+    "test",
+    "invalid",
+    "localhost",
+)
+
+
+def reserved_recipient(to_email: str) -> bool:
+    """True when the address cannot be delivered to by design.
+
+    A load test aimed at example.com is meant to be harmless, but it is not: on
+    2026-09-22 a stress run sent 300 messages to loadNNN@example.com through the
+    Brevo API, hard-bounced every single one, and spent the day's whole quota
+    before the newsletter could use it. Sending these anywhere real is pure
+    harm, so they are dropped before a transport is even chosen.
+    """
+    host = (to_email.rsplit("@", 1)[-1] if "@" in to_email else "").strip().lower().strip(".")
+    if not host:
+        return False
+    return any(host == domain or host.endswith("." + domain) for domain in RESERVED_DOMAINS)
 
 
 def reply_to() -> str:
@@ -372,8 +411,29 @@ def send_email(
     Returns Brevo's result shape plus a ``transport`` key so callers can report
     or assert which path carried the message.
     """
-    mode = transport_mode()
     track_id = track_id or uuid.uuid4().hex
+
+    if reserved_recipient(to_email):
+        # Nothing to deliver to, and trying would bounce and burn quota.
+        if log:
+            _record_send(
+                to_email=to_email,
+                bucket=bucket,
+                subject=subject,
+                transport="none",
+                status="skipped",
+                track_id=track_id,
+                note="reserved test domain: not sent",
+            )
+        return {
+            "success": False,
+            "error": "reserved test domain",
+            "transport": "none",
+            "track_id": track_id,
+            "skipped": True,
+        }
+
+    mode = transport_mode()
     attempted: list[str] = []
     # Warm-up routing, `auto` only (a strict `smtp` run means the local MTA,
     # full stop): a receiver we deliberately keep on Brevo never touches our

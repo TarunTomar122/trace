@@ -29,9 +29,20 @@ Transport selection lives in one place:
 
 | `EMAIL_TRANSPORT` | Behaviour |
 |---|---|
-| `brevo` (default) | Brevo only. Nothing changes. |
-| `smtp` | Local MTA only. |
-| `auto` | Use the local MTA when reachable, fall back to Brevo per message. |
+| `smtp` (default) | Local MTA only. An unconfigured run cannot reach Brevo. |
+| `brevo` | Brevo only, and only when set explicitly. |
+| `auto` | Local MTA, Brevo per the warm-up routing below, per-message fallback. |
+
+The default is deliberately not `brevo`: a load test run without any env used to
+spend the production Brevo quota, which is exactly how 300 hard bounces got
+charged to the account on 2026-09-22 and starved the newsletter. Reaching Brevo
+is now an explicit choice.
+
+Messages to RFC 2606 / RFC 6761 names (`example.com`, anything under `.test`,
+`.invalid`, `.localhost`) are dropped with `status: skipped` and
+`transport: none` instead of being sent. Nothing can deliver to them, so sending
+only bounces and burns quota — the guard exists because a stress run did exactly
+that.
 
 `auto` is the ramp mode: an MTA hiccup degrades to Brevo instead of losing the
 send. A local MTA failure in `smtp` mode is recorded as failed rather than
