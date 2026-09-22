@@ -118,6 +118,50 @@ def brevo_sender() -> tuple[str, str]:
     return email, name
 
 
+_BREVO_SENDABLE: Optional[bool] = None
+
+
+def brevo_can_send() -> bool:
+    """Whether Brevo will actually deliver anything right now.
+
+    A successful-looking Brevo response proves nothing: it answers the API with
+    a message id and fails later, so an exhausted account reports every send as
+    accepted and then logs "Email not sent: Your account has insufficient
+    credits" while the mail quietly disappears. On a free plan shared with other
+    services that is not hypothetical.
+
+    Check the balance up front and cache it for the run. An unreadable answer
+    counts as "cannot send" so mail still leaves through our own MTA instead of
+    vanishing.
+    """
+    global _BREVO_SENDABLE
+    if _BREVO_SENDABLE is not None:
+        return _BREVO_SENDABLE
+
+    _BREVO_SENDABLE = False
+    api_key = (os.getenv("BREVO_API_KEY", "") or "").strip()
+    if not api_key:
+        return False
+    try:
+        import json as _json
+        import urllib.request as _urllib
+
+        request = _urllib.Request(
+            "https://api.brevo.com/v3/account",
+            headers={"api-key": api_key, "accept": "application/json"},
+        )
+        with _urllib.urlopen(request, timeout=10) as response:
+            account = _json.load(response)
+        for plan in account.get("plan", []) or []:
+            credits = plan.get("credits")
+            if credits is None or int(credits) > 0:
+                _BREVO_SENDABLE = True
+                break
+    except Exception as exc:
+        print(f"[email-sender] Brevo balance check failed ({type(exc).__name__}: {exc}); treating Brevo as unavailable")
+    return _BREVO_SENDABLE
+
+
 def brevo_routed_domain(to_email: str) -> str:
     """Receiver domain we deliberately keep on Brevo, or "".
 
@@ -311,8 +355,16 @@ def send_email(
     # Warm-up routing, `auto` only (a strict `smtp` run means the local MTA,
     # full stop): a receiver we deliberately keep on Brevo never touches our
     # own IP, so Gmail and Microsoft stay deliverable while it builds history.
+    # Routing is skipped when Brevo cannot actually send, so a drained Brevo
+    # account costs placement rather than delivery.
     routed = brevo_routed_domain(to_email) if mode == "auto" else ""
-    note = f"brevo route: {routed}" if routed else ""
+    note = ""
+    if routed:
+        if brevo_can_send():
+            note = f"brevo route: {routed}"
+        else:
+            note = f"brevo route skipped for {routed}: Brevo cannot send"
+            routed = ""
 
     if mode in {"smtp", "auto"} and not routed and _mta_reachable():
         attempted.append("smtp")
@@ -338,12 +390,15 @@ def send_email(
                     message_id=str(result.get("message_id", "")),
                     track_id=track_id,
                     dkim=str(result.get("dkim", "")),
+                    note=note,
                 )
             return {**result, "transport": "smtp", "track_id": track_id}
         except Exception as exc:
             # Fall through to Brevo: a local MTA problem must not lose the send.
             print(f"[email-sender] local MTA failed ({type(exc).__name__}); using Brevo")
-            if mode == "smtp":
+            if mode == "smtp" or not brevo_can_send():
+                # No transport left. Say so rather than recording a Brevo send
+                # that the API would accept and then quietly drop.
                 _record_send(
                     to_email=to_email,
                     bucket=bucket,
@@ -352,6 +407,7 @@ def send_email(
                     status="failed",
                     track_id=track_id,
                     error=str(exc),
+                    note="no transport: MTA failed and Brevo cannot send",
                 )
                 return {
                     "success": False,
