@@ -170,3 +170,9 @@ RFC 8058 one-click header.
    `EMAIL_TRANSPORT` down if today's numbers look wrong.
 4. **Per-ISP pacing.** `default_destination_rate_delay` is a blanket 1s. Gmail
    and Microsoft deserve their own concurrency limits as volume grows.
+5. **Brevo is a single point of failure with a shared quota.** The account is
+   the free plan, and tikrr sends from it too, so the 300/day is contended. When
+   it runs dry Brevo answers the API with a message id and only then fails
+   ("Your account has insufficient credits"), which is why `brevo_can_send()`
+   checks the balance before routing anything there. Worth its own account, or a
+   paid plan, before the Gmail route depends on it.
