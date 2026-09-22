@@ -37,6 +37,31 @@ Transport selection lives in one place:
 send. A local MTA failure in `smtp` mode is recorded as failed rather than
 silently rerouted.
 
+### Warm-up routing
+
+`auto` also skips our IP for receivers we name explicitly:
+
+| `EMAIL_BREVO_DOMAINS` | Behaviour |
+|---|---|
+| empty | nothing is routed; `auto` uses the MTA for everything |
+| `gmail.com,outlook.com` | those receivers go to Brevo, the rest ride our MTA |
+
+Set it to `gmail.com,googlemail.com,outlook.com,hotmail.com,live.com,msn.com`
+while the IP has no reputation. On the first day of sending from
+`mail.yourtrace.online` the mail was accepted everywhere but folded into Gmail's
+spam folder; Brevo's established relay does not have that problem. Remove
+domains from the list as Postmaster Tools shows reputation recovering.
+
+Two related warm-up settings:
+
+- `EMAIL_REPLY_TO` (default `support@yourtrace.online`) is the reply path. The
+  sending host is a send-only null client — `mail.yourtrace.online` publishes no
+  MX — so without it every reply bounces, and a sender nobody can reply to reads
+  as bulk.
+- `EMAIL_TRACKING=0` drops the open pixel and the redirect-wrapped links. Both
+  are bulk-sender tells that a domain with no history cannot afford yet. The
+  dashboard's open and click columns read zero while it is off.
+
 ## DNS (do this before warming — it is the part that cannot be rushed)
 
 | Record | Value | Why |

@@ -93,6 +93,34 @@ def transport_mode() -> str:
     return mode if mode in {"brevo", "smtp", "auto"} else "brevo"
 
 
+def reply_to() -> str:
+    """Where a reader's reply goes.
+
+    Our sending host is a send-only null client: mail.yourtrace.online has no
+    MX, so a missing Reply-To means every reply bounces. The root domain does
+    accept mail, so the default points at a real mailbox there.
+    """
+    return (os.getenv("EMAIL_REPLY_TO", "support@yourtrace.online") or "").strip()
+
+
+def brevo_routed_domain(to_email: str) -> str:
+    """Receiver domain we deliberately keep on Brevo, or "".
+
+    `EMAIL_BREVO_DOMAINS` is the warm-up lever: while our own IP has no
+    reputation, the receivers that police new senders hardest (Gmail,
+    Microsoft) stay on Brevo's established relay, and everyone else rides our
+    MTA so it can build history. Empty means route nothing.
+    """
+    raw = os.getenv("EMAIL_BREVO_DOMAINS", "") or ""
+    host = (to_email.rsplit("@", 1)[-1] if "@" in to_email else "").strip().lower()
+    if not host:
+        return ""
+    for domain in (part.strip().lower() for part in raw.split(",")):
+        if domain and (host == domain or host.endswith("." + domain)):
+            return domain
+    return ""
+
+
 def _plain_text_from_html(html: str) -> str:
     import re
 
@@ -110,7 +138,7 @@ def _mta_reachable() -> bool:
         return False
 
 
-def _dkim_sign(raw: bytes) -> tuple[bytes, str]:
+def _dkim_sign(raw: bytes, include_headers: list[bytes]) -> tuple[bytes, str]:
     """Prepend a DKIM-Signature. Returns (message, status).
 
     Never raises: a signing problem must degrade to an unsigned send rather
@@ -131,15 +159,7 @@ def _dkim_sign(raw: bytes) -> tuple[bytes, str]:
             selector=selector.encode(),
             domain=domain.encode(),
             privkey=private_key,
-            include_headers=[
-                b"from",
-                b"to",
-                b"subject",
-                b"date",
-                b"message-id",
-                b"list-unsubscribe",
-                b"list-unsubscribe-post",
-            ],
+            include_headers=include_headers,
         )
         return signature + raw, "signed"
     except Exception as exc:
@@ -157,12 +177,15 @@ def _send_via_smtp(
     sender_email: str,
     sender_name: str,
     list_unsubscribe: Optional[str],
+    reply_to_email: str = "",
 ) -> dict[str, Any]:
     message = EmailMessage()
     message["From"] = formataddr((sender_name, sender_email))
     message["To"] = formataddr((to_name, to_email)) if to_name else to_email
     message["Subject"] = subject
     message["Message-ID"] = make_msgid(domain=sender_email.split("@")[-1])
+    if reply_to_email:
+        message["Reply-To"] = reply_to_email
     if list_unsubscribe:
         # Bulk-sender requirement for Gmail/Yahoo; cheap to include from day one.
         message["List-Unsubscribe"] = f"<{list_unsubscribe}>"
@@ -172,7 +195,24 @@ def _send_via_smtp(
 
     # SMTP policy gives CRLF line endings, which DKIM canonicalisation expects.
     raw = message.as_bytes(policy=email_policy.SMTP)
-    signed, dkim_status = _dkim_sign(raw)
+    # Sign only the headers this message actually carries: dkimpy expects the
+    # named headers to be present, and a send without List-Unsubscribe must not
+    # fail signing because of it.
+    signable = [
+        name
+        for name in (
+            b"from",
+            b"to",
+            b"subject",
+            b"date",
+            b"message-id",
+            b"reply-to",
+            b"list-unsubscribe",
+            b"list-unsubscribe-post",
+        )
+        if message[name.decode()]
+    ]
+    signed, dkim_status = _dkim_sign(raw, signable)
 
     with smtplib.SMTP(_smtp_host(), _smtp_port(), timeout=SMTP_TIMEOUT) as client:
         client.ehlo()
@@ -203,6 +243,7 @@ def _record_send(
     error: str = "",
     fallback_from: str = "",
     dkim: str = "",
+    note: str = "",
 ) -> None:
     """Persist one send attempt. Never raises: logging must not break a send."""
     try:
@@ -223,6 +264,7 @@ def _record_send(
                 "error": error[:300],
                 "fallback_from": fallback_from,
                 "dkim": dkim,
+                "note": note,
                 "sent_at": datetime.now(timezone.utc).isoformat(),
                 "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             }
@@ -251,8 +293,13 @@ def send_email(
     mode = transport_mode()
     track_id = track_id or uuid.uuid4().hex
     attempted: list[str] = []
+    # Warm-up routing, `auto` only (a strict `smtp` run means the local MTA,
+    # full stop): a receiver we deliberately keep on Brevo never touches our
+    # own IP, so Gmail and Microsoft stay deliverable while it builds history.
+    routed = brevo_routed_domain(to_email) if mode == "auto" else ""
+    note = f"brevo route: {routed}" if routed else ""
 
-    if mode in {"smtp", "auto"} and _mta_reachable():
+    if mode in {"smtp", "auto"} and not routed and _mta_reachable():
         attempted.append("smtp")
         try:
             result = _send_via_smtp(
@@ -264,6 +311,7 @@ def send_email(
                 sender_email=LOCAL_SENDER_EMAIL,
                 sender_name=LOCAL_SENDER_NAME,
                 list_unsubscribe=list_unsubscribe,
+                reply_to_email=reply_to(),
             )
             if log:
                 _record_send(
@@ -305,6 +353,7 @@ def send_email(
         text_content=text_content,
         sender_email=DEFAULT_SENDER_EMAIL,
         sender_name=DEFAULT_SENDER_NAME,
+        reply_to_email=reply_to() or None,
         tags=["newsletter", "daily"],
     )
     if log:
@@ -318,8 +367,9 @@ def send_email(
             track_id=track_id,
             error=str(result.get("error", "")),
             fallback_from=",".join(attempted),
+            note=note,
         )
-    return {**result, "transport": "brevo", "track_id": track_id}
+    return {**result, "transport": "brevo", "track_id": track_id, "note": note}
 
 
 def send_newsletter_email(

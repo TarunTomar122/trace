@@ -110,7 +110,7 @@ BUCKETS = {
         "headline": "5 big things today",
         "intro": (
             "You signed up on Trace with this email. Here is what moved the "
-            "needle in tech — nothing else."
+            "needle in tech, nothing else."
         ),
     },
     "free": {
@@ -677,7 +677,7 @@ def _cta_html(bucket: str) -> str:
         f'font-family: {_FONT};">Want the 10 big things?</p>'
         '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
         f'font-family: {_FONT};">Create a free account and pick your topics, so tomorrow&rsquo;s '
-        "brief follows exactly those — or go straight to Pro for all 10 big things in "
+        "brief follows exactly those. Or go straight to Pro for all 10 big things in "
         "tech and AI, every morning.</p>"
         f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
         f'background-color: #1d9bf0; color: #ffffff; {base}">Personalize it</a>'
@@ -794,7 +794,7 @@ def _render(
 ) -> tuple[str, str, str]:
     cfg = BUCKETS[bucket]
     headline = f"{cfg['headline']} {_daily_emoji(date)}"
-    subject = f"{headline} — {_display_date(date)}"
+    subject = f"{headline} · {_display_date(date)}"
     html = _load_template("audience_newsletter.html")
     html = html.replace("{{SUBJECT}}", escape(subject))
     html = html.replace("{{DATE}}", escape(_display_date(date)))
