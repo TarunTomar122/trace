@@ -103,6 +103,21 @@ def reply_to() -> str:
     return (os.getenv("EMAIL_REPLY_TO", "support@yourtrace.online") or "").strip()
 
 
+def brevo_sender() -> tuple[str, str]:
+    """The From identity Brevo sends as.
+
+    Defaults to the legacy address because Brevo only accepts senders it has
+    verified. That default is a gmail.com address, which no relay can align
+    SPF or DKIM for: our own docs already say a Gmail From gets filtered. Once
+    the sending domain is verified in Brevo, set
+    EMAIL_SENDER_BREVO=newsletter@mail.yourtrace.online and the Brevo route
+    authenticates like the MTA route does.
+    """
+    email = (os.getenv("EMAIL_SENDER_BREVO", "") or "").strip() or DEFAULT_SENDER_EMAIL
+    name = (os.getenv("EMAIL_SENDER_BREVO_NAME", "") or "").strip() or DEFAULT_SENDER_NAME
+    return email, name
+
+
 def brevo_routed_domain(to_email: str) -> str:
     """Receiver domain we deliberately keep on Brevo, or "".
 
@@ -345,14 +360,15 @@ def send_email(
                     "track_id": track_id,
                 }
 
+    brevo_from_email, brevo_from_name = brevo_sender()
     result = brevo_send_email(
         to_email=to_email,
         to_name=to_name,
         subject=subject,
         html_content=html_content,
         text_content=text_content,
-        sender_email=DEFAULT_SENDER_EMAIL,
-        sender_name=DEFAULT_SENDER_NAME,
+        sender_email=brevo_from_email,
+        sender_name=brevo_from_name,
         reply_to_email=reply_to() or None,
         tags=["newsletter", "daily"],
     )

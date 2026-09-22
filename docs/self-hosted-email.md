@@ -54,6 +54,13 @@ domains from the list as Postmaster Tools shows reputation recovering.
 
 Two related warm-up settings:
 
+- `EMAIL_SENDER_BREVO` (default the legacy `yourtrace.online@gmail.com`) is the
+  From identity Brevo sends as. That default is a gmail.com address, so no relay
+  can align SPF or DKIM for it — which is the very thing this document warns
+  about below. Verify `mail.yourtrace.online` in Brevo, then set
+  `EMAIL_SENDER_BREVO=newsletter@mail.yourtrace.online` and the Brevo route
+  authenticates the same way the MTA route does. Leave it unset until Brevo
+  accepts the address: Brevo refuses senders it has not verified.
 - `EMAIL_REPLY_TO` (default `support@yourtrace.online`) is the reply path. The
   sending host is a send-only null client — `mail.yourtrace.online` publishes no
   MX — so without it every reply bounces, and a sender nobody can reply to reads
