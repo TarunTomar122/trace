@@ -17,7 +17,8 @@ import {
   metadataTitle,
   SITE_BASE_URL,
 } from "@/lib/seo";
-import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
+import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
+import { proTrialCtaLabel } from "@/lib/pro-trial";
 
 type PageProps = {
   params: Promise<{
@@ -322,7 +323,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               Skip X, LinkedIn, and the newsletter pile
             </h2>
             <p className="public-body mt-4 max-w-xl">
-              Open today&apos;s briefing. Model releases, company news, and what actually changed — grouped from 400+ sources. First 4 stories free.
+              Open today&apos;s briefing for model releases, company news, and what actually changed — grouped from 400+ sources. Sign in to get more free stories daily.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -335,7 +336,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                 href="/subscribe"
                 className="landing-btn landing-btn-secondary landing-btn-sm"
               >
-                Get Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}
+                {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
               </Link>
             </div>
           </section>

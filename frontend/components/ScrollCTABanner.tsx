@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { proTrialCtaLabel, trialFootline } from "@/lib/pro-trial";
+import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
 
 export default function ScrollCTABanner() {
   const [visible, setVisible] = useState(false);
@@ -37,7 +39,7 @@ export default function ScrollCTABanner() {
               Get the full daily pulse — stories, topics, and key takeaways
             </p>
             <p className="text-[12px] text-secondary/60 mt-0.5">
-              Try Trace Pro free for 3 days. No charge today.
+              {trialFootline(SUBSCRIPTION_PRICE_DEFAULT)}
             </p>
           </div>
           <Link
@@ -45,7 +47,7 @@ export default function ScrollCTABanner() {
             onClick={() => setDismissed(true)}
             className="shrink-0 rounded-full bg-[#151515] px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-black hover:shadow-lg"
           >
-            Try it free
+            {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
           </Link>
         </div>
       </div>

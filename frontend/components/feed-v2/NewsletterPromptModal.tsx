@@ -7,15 +7,13 @@ import { trackNewsletterSignup } from '@/lib/posthog';
 /**
  * Email capture for signed-out readers exploring the feed.
  *
- * Shows the newsletter offer (5 big things free, 10 with Pro) and, on a
+ * Shows the newsletter offer and, on a
  * successful subscribe, hands off to the confetti celebration.
  */
 export default function NewsletterPromptModal({
   onClose,
-  onSignIn,
 }: {
   onClose: () => void;
-  onSignIn?: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [email, setEmail] = useState('');
@@ -91,7 +89,7 @@ export default function NewsletterPromptModal({
           id="nl-prompt-title"
           className="mb-2 text-[26px] font-extrabold leading-tight tracking-[-0.03em] text-[#0f1419] sm:text-[30px]"
         >
-          10 big things in tech and AI, every morning.
+          The biggest things in tech and AI, every morning.
         </h2>
         <p className="mb-5 text-[15px] leading-relaxed text-[#536471]">
           The biggest AI releases and developments, the market moves worth knowing, and the few stories
@@ -100,13 +98,13 @@ export default function NewsletterPromptModal({
 
         <ul className="mb-5 list-none space-y-2 rounded-2xl bg-[#f7f9f9] px-4 py-4 text-left">
           <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
-            <span aria-hidden="true">✅</span> 5 big things free. Pro reads all 10
+            <span aria-hidden="true">✅</span> A free daily brief, with the full edition in Pro
           </li>
           <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
             <span aria-hidden="true">📬</span> One email, 10:30 Berlin time, unsubscribe any time
           </li>
           <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
-            <span aria-hidden="true">🎯</span> Personalises to your topics
+            <span aria-hidden="true">🎯</span> A concise daily snapshot of what moved in tech
           </li>
         </ul>
 
@@ -118,7 +116,7 @@ export default function NewsletterPromptModal({
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
             aria-label="Email address"
-            className="h-12 flex-1 rounded-full border border-[#cfd9de] px-5 text-[15px] outline-none focus:border-[#1d9bf0] focus:ring-2 focus:ring-[#1d9bf0]/20"
+            className="h-12 min-h-12 w-full rounded-full border border-[#cfd9de] px-5 text-[15px] outline-none focus:border-[#1d9bf0] focus:ring-2 focus:ring-[#1d9bf0]/20 sm:w-auto sm:flex-1"
           />
           <button
             type="submit"
@@ -131,19 +129,6 @@ export default function NewsletterPromptModal({
 
         {error ? <p className="mt-2 text-sm font-semibold text-[#d6303a]">{error}</p> : null}
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] text-[#536471]">
-          <a href="/subscribe?from=email" className="font-bold text-[#0f1419] no-underline hover:underline">
-            Go Pro for all 10
-          </a>
-          <span className="text-[#cfd9de]">·</span>
-          <button
-            type="button"
-            onClick={() => (onSignIn ? onSignIn() : (window.location.href = '/feed'))}
-            className="border-none bg-transparent p-0 text-[13px] font-semibold text-[#536471] underline-offset-2 hover:underline"
-          >
-            or sign in to the feed
-          </button>
-        </div>
       </div>
     </div>
   );

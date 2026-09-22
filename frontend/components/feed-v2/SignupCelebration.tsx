@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { proTrialCtaLabel } from '@/lib/pro-trial';
+import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 
 const SEND_HOUR_BERLIN = 10;
 const SEND_MINUTE_BERLIN = 30;
@@ -139,7 +141,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
             href="/subscribe?from=email"
             className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-bold text-[#536471] no-underline transition-colors hover:bg-black/5 hover:text-[#0f1419]"
           >
-            Go Pro
+            {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
           </a>
         </div>
 

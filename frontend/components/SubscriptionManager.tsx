@@ -23,6 +23,7 @@ import {
 } from '@/lib/subscription-pricing';
 import SubscriptionPrice from '@/components/SubscriptionPrice';
 import { hasActiveSubscription, toDateMaybe } from '@/lib/subscription-access';
+import { proTrialCtaLabel, PRO_TRIAL_ENABLED, PRO_TRIAL_DAYS, trialFootline } from '@/lib/pro-trial';
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -439,9 +440,13 @@ export default function SubscriptionManager() {
             </p>
           </div>
           <div className="flex flex-col justify-center bg-foreground p-7 text-background">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] opacity-65">3 days free</p>
-            <p className="mt-2 text-[28px] font-semibold leading-[1.05] tracking-[-0.035em]">Try Trace Pro</p>
-            <p className="mt-2 text-[13px] opacity-70">Then {priceDisplay}. Cancel anytime.</p>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] opacity-65">
+              {PRO_TRIAL_ENABLED ? `${PRO_TRIAL_DAYS}-day free trial` : 'Trace Pro'}
+            </p>
+            <p className="mt-2 text-[28px] font-semibold leading-[1.05] tracking-[-0.035em]">
+              {PRO_TRIAL_ENABLED ? 'Try Trace Pro' : 'Get Trace Pro'}
+            </p>
+            <p className="mt-2 text-[13px] opacity-70">{trialFootline(priceDisplay)}</p>
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
@@ -450,10 +455,9 @@ export default function SubscriptionManager() {
               {isCreatingCheckout ? (
                 <><Loader2 className="animate-spin" size={15} />Setting up...</>
               ) : (
-                <>Start your free trial</>
+                <>{proTrialCtaLabel(priceDisplay)}</>
               )}
             </button>
-            <p className="mt-3 text-center text-[11px] opacity-65">No charge for the first 3 days.</p>
           </div>
         </div>
 

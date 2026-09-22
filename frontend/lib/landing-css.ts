@@ -37,7 +37,7 @@ export const LANDING_CSS = `
   .lp .hero { padding: 72px 16px 48px; }
   .lp .hero-title { font-size: clamp(2rem, 8.5vw, 2.6rem); }
   .lp .section .founder { max-width: none; margin: 0 -20px; border-radius: 0; padding: 32px 16px; }
-  .lp .final-cta { margin: 0 16px 48px; padding: 56px 24px; }
+  .lp .final-cta { margin: 0 16px 24px; padding: 56px 24px 28px; }
 }
 
 .lp .hero { position: relative; max-width: 1150px; margin: 0 auto; padding: 96px 20px 56px; text-align: center; }
@@ -384,6 +384,19 @@ export const LANDING_CSS = `
 @media (max-width: 899px) {
   .lp .yg-nt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 480px) {
+  .lp .yg-frame-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .lp .yg-feed-title { white-space: nowrap; }
+  .lp .yg-feed-tabs { align-self: flex-end; flex-wrap: nowrap; }
+  .lp .yg-feed-tab { white-space: nowrap; }
+  .lp .yg-nt-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  .lp .yg-nt-brand { grid-column: 1; grid-row: 1; }
+  .lp .yg-nt-signin { grid-column: 2; grid-row: 1; }
+  .lp .yg-nt-pills {
+    grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; justify-content: space-between; gap: 0; min-width: 0;
+  }
+  .lp .yg-nt-pill { flex: 0 0 auto; white-space: nowrap; padding-inline: 8px; }
+}
 .lp .yg-mail { background: #eef0f3; }
 .lp .yg-mail-chrome {
   display: flex; align-items: center; gap: 10px; min-width: 0;
@@ -605,7 +618,7 @@ export const LANDING_CSS = `
 @media (max-width: 760px) { .lp .discovery-grid { grid-template-columns: 1fr; } }
 
 .final-cta {
-  max-width: 1150px; margin: 0 auto 88px; padding: 88px 40px; text-align: center;
+  max-width: 1150px; margin: 0 auto 32px; padding: 88px 40px 40px; text-align: center;
   background: var(--hover); border-radius: 32px;
 }
 .lp .final-cta .hero-title { max-width: 640px; margin-left: auto; margin-right: auto; }

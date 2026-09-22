@@ -97,12 +97,12 @@ export default function BlogPost() {
     {
       question: "Is Trace better than Feedly?",
       answer:
-        "If you want zero-setup AI summaries from 400+ sources right away, Trace is better than Feedly. Guests get 4 stories free on the web; a free account gets 5 plus the morning email. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
+        "If you want zero-setup AI summaries from 400+ sources right away, Trace is better than Feedly. Start free on the web, then sign in to get more stories daily, personalize your feed, and opt into the morning email. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
     },
     {
       question: "Are there any completely free RSS readers like Feedly?",
       answer:
-        "Yes. Trace (web, first 4 stories free), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
+        "Yes. Trace (web, free to start), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
     },
   ]);
 
@@ -260,7 +260,7 @@ export default function BlogPost() {
             <li>No setup required — open the briefing and go</li>
             <li>AI summaries from 400+ trusted sources</li>
             <li>Personalized feed based on your role</li>
-            <li>First 4 stories free; Pro is $5/mo</li>
+            <li>Free to start; Pro is $5/mo</li>
           </ul>
           <InlineTraceCTA
             slug="feedly-alternatives"

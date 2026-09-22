@@ -3,6 +3,7 @@ import LandingCtaLink from '@/app/LandingCtaLink';
 import LandingDiscoveryLink from '@/app/LandingDiscoveryLink';
 import Footer from '@/components/Footer';
 import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } from '@/lib/subscription-pricing';
+import { proTrialCtaLabel, trialFootline } from '@/lib/pro-trial';
 import LandingWhatYouGet from '@/components/feed-v2/LandingWhatYouGet';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { LANDING_CSS } from '@/lib/landing-css';
@@ -68,7 +69,7 @@ const PRO_FEATURES = [
 export const LANDING_FAQ = [
   {
     q: 'Is Trace free?',
-    a: `Yes. Guests get 3 stories a day; a free account gets 5, plus the daily email brief if you want it. Pro (${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}) unlocks the whole day: every brief, full Pulse, and the archive.`,
+    a: `Yes. Guests can start reading for free. Sign in to get more free stories daily, personalize your topics, and opt into the morning email. Pro (${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}) unlocks every story, full Pulse, and the archive.`,
   },
   {
     q: 'What counts as one AI summary?',
@@ -190,11 +191,12 @@ export default function LandingScreen() {
             <p className="plan-badge">Most popular</p>
             <p className="plan-tag">Trace Pro</p>
             <p className="plan-price">{priceAmountDisplay(SUBSCRIPTION_PRICE_DEFAULT)}<span>/month</span></p>
+            <p className="mb-4 -mt-3 text-sm font-semibold text-secondary">{trialFootline(SUBSCRIPTION_PRICE_DEFAULT)}</p>
             <ul className="plan-list">
               {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
             </ul>
             <LandingCtaLink href="/subscribe" location="pricing_pro" variant="subscribe" className="btn-primary plan-btn">
-              Go Pro
+              {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
             </LandingCtaLink>
           </article>
         </div>
@@ -284,5 +286,3 @@ export default function LandingScreen() {
     </main>
   );
 }
-
-

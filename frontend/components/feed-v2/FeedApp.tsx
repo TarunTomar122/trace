@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
 import { shortPriceDisplay, SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
-import { PRO_TRIAL_ENABLED, PRO_TRIAL_DAYS } from '@/lib/pro-trial';
+import { proTrialCtaLabel, trialFootline } from '@/lib/pro-trial';
 import FeedSkeleton from './FeedSkeleton';
 import NewsletterPromptModal from './NewsletterPromptModal';
 import ProCheckoutButton from './ProCheckoutButton';
@@ -151,7 +151,7 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 // The lanes Trace actually publishes. Extras from older profiles (engineering,
 // security, open-source, policy) are ignored and dropped on the next save.
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
-// The ladder: a guest reads 3 of today's ten, a free account 5, Pro all 10.
+// Home: guests see 3 stories, free accounts 5, and Pro all 10.
 const FREE_LIMIT_SIGNED_OUT = 3;
 const FREE_LIMIT_SIGNED_IN = 5;
 // Home shows the same edition the email promises: ten big things for Pro,
@@ -1176,22 +1176,21 @@ export default function FeedApp({
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
-  const proLabel = priceDisplay ? `Go Pro — ${shortPriceDisplay(priceDisplay)}` : 'Go Pro';
+  const currentPrice = priceDisplay || SUBSCRIPTION_PRICE_DEFAULT;
+  const proLabel = proTrialCtaLabel(currentPrice);
   const isFree = !pro;
-  // Guests get 3 stories of the day's ten, free accounts 5, Pro all of them.
-  // The quota counts the first N of the view, so it cannot leak across tabs.
   const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
   const isStoryLane = tab !== 'all' && tab !== 'bookmarks' && tab !== 'profile'
     && tab !== 'conversations' && tab !== 'reading';
   const laneFree = isFree && isStoryLane;
-  // Home keeps the daily quota. Category tabs show the top story plus one more.
-  const unlockedCap = laneFree ? 2 : freeLimit;
-  // Free readers see the first N stories of the view (4 signed out, 7 with
-  // a free account), then a few blurred teasers and the paywall.
+  // Home shows 3 stories to guests and 5 to free accounts; category tabs show
+  // 2 to guests and 5 to signed-in free accounts.
+  const unlockedCap = laneFree ? (user ? FREE_LIMIT_SIGNED_IN : 2) : freeLimit;
+  // Free readers see the first N stories in this view, then teasers and the paywall.
   const full = isFree ? visible.slice(0, unlockedCap) : visible;
   const lockedStories = isFree ? visible.slice(unlockedCap) : [];
   const teasers = laneFree ? lockedStories.slice(0, 2) : lockedStories;
-  // Repeating "sign up to see full stories" on seven rows reads as nagging, so
+  // Repeating "sign up to see full stories" on every row reads as nagging, so
   // only the first locked row spells it out and the rest carry the lock icon.
   const firstLockedId = teasers[0]?.id;
   const fullIds = new Set(full.map((s) => s.id));
@@ -1241,8 +1240,8 @@ export default function FeedApp({
   useEffect(() => {
     if (paywallRef.current || !isFree || lockedStories.length === 0) return;
     paywallRef.current = true;
-    trackPaywallShown('feed_free_limit', { free_limit: freeLimit, locked_count: lockedStories.length });
-  }, [isFree, lockedStories.length, freeLimit]);
+    trackPaywallShown('feed_free_limit', { free_limit: unlockedCap, locked_count: lockedStories.length });
+  }, [isFree, lockedStories.length, unlockedCap]);
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
@@ -1442,7 +1441,7 @@ export default function FeedApp({
         )}
         {openPulse ? (
           !pro ? (
-            <PaywallPlate what="Pulse — the builders' radar" ask="pro" proLabel={proLabel} />
+            <PaywallPlate what="Pulse — the builders' radar" ask="pro" proLabel={proLabel} priceDisplay={currentPrice} />
           ) : (
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
           )
@@ -1459,6 +1458,7 @@ export default function FeedApp({
                 ask={user ? 'daily' : 'signup'}
                 signingIn={signingIn}
                 proLabel={proLabel}
+                priceDisplay={currentPrice}
                 onSignIn={handleSignIn}
               />
             </>
@@ -1498,6 +1498,7 @@ export default function FeedApp({
             onSignOut={() => { signOut(); go('all'); }}
             onSignIn={handleSignIn}
             proLabel={proLabel}
+            priceDisplay={currentPrice}
           />
         ) : tab === 'bookmarks' ? (
           <>
@@ -1697,8 +1698,8 @@ export default function FeedApp({
             {campaignWelcomeVisible && campaignWelcome && (
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
-                  <p className="welcome-strip-title">You&rsquo;re reading the free edition</p>
-                  <p className="welcome-strip-sub">Today&rsquo;s ten are listed below. Guests read 3; a free account reads 5, plus the morning email.</p>
+                  <p className="welcome-strip-title">Get more from Trace with a free account</p>
+                  <p className="welcome-strip-sub">Sign in to get more free stories daily, personalize your topics, and choose the optional morning email.</p>
                 </div>
                 <div className="welcome-strip-actions">
                   <button
@@ -1709,7 +1710,7 @@ export default function FeedApp({
                     }}
                     disabled={signingIn}
                   >
-                    {signingIn ? 'Signing in…' : 'Create free account'}
+                    {signingIn ? 'Signing in…' : 'Sign in to get more free stories daily'}
                   </button>
                   <button
                     className="welcome-strip-x"
@@ -1764,7 +1765,9 @@ export default function FeedApp({
                         hideRank={grouped}
                         showImage={showImage}
                         locked={locked}
-                        lockedLabel={locked && s.id === firstLockedId ? (user ? 'Pro reads all 10' : 'Sign up to read all 10') : locked ? '' : undefined}
+                        lockedLabel={locked && s.id === firstLockedId
+                          ? (user ? `${proLabel} to unlock every story` : 'Sign in to get more free stories daily')
+                          : locked ? '' : undefined}
                         burst={burstId === s.id}
                         fullDek={tab === 'conversations'}
                         onClick={() => openStory(s)}
@@ -1852,6 +1855,7 @@ export default function FeedApp({
                   ask={user ? 'daily' : 'signup'}
                   signingIn={signingIn}
                   proLabel={proLabel}
+                  priceDisplay={currentPrice}
                   onSignIn={handleSignIn}
                   compact={laneFree}
                 />
@@ -2021,7 +2025,7 @@ export default function FeedApp({
       {celebrate && <WelcomeModal kind={celebrate} priceDisplay={priceDisplay} onClose={() => setCelebrate(null)} />}
 
       {nlPrompt && !user && (
-        <NewsletterPromptModal onClose={dismissNewsletterPrompt} onSignIn={handleSignIn} />
+        <NewsletterPromptModal onClose={dismissNewsletterPrompt} />
       )}
     </div>
   );
@@ -2616,12 +2620,13 @@ function PaywallPerks({ items }: { items: { emoji: string; text: string }[] }) {
   );
 }
 
-function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro', compact = false }: {
+function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro', priceDisplay = SUBSCRIPTION_PRICE_DEFAULT, compact = false }: {
   what: string;
   ask: 'signup' | 'daily' | 'pro';
   onSignIn?: () => void;
   signingIn?: boolean;
   proLabel?: string;
+  priceDisplay?: string;
   compact?: boolean;
 }) {
   const cls = compact ? 'paywall compact' : 'paywall';
@@ -2629,10 +2634,9 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
     return (
       <div className={cls}>
         <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">Sign up to see full stories</h2>
+        <h2 className="paywall-title">Sign in to get more free stories daily</h2>
         <p className="paywall-sub">
-          Guests read {FREE_LIMIT_SIGNED_OUT} of today&rsquo;s {HOME_CAP_PRO}. A free account reads{' '}
-          {FREE_LIMIT_SIGNED_IN}, and the morning email comes with it.
+          Sign in to personalize your topics and choose the optional morning email.
         </p>
         <PaywallPerks items={[
           { emoji: '☀️', text: 'Daily morning brief in your inbox' },
@@ -2642,9 +2646,7 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
         <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
           {signingIn ? 'Signing in…' : 'Sign up free with Google'}
         </button>
-        <p className="paywall-foot">
-          Free accounts read {FREE_LIMIT_SIGNED_IN} a day. No card needed.
-        </p>
+        <p className="paywall-foot">No card needed.</p>
       </div>
     );
   }
@@ -2653,10 +2655,11 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
     return (
       <div className={cls}>
         <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">Pro reads all {HOME_CAP_PRO}</h2>
+        <h2 className="paywall-title">{compact ? 'Pro unlocks the whole topic' : 'Pro unlocks the full daily edition'}</h2>
         <p className="paywall-sub">
-          You&rsquo;ve read today&rsquo;s {FREE_LIMIT_SIGNED_IN}. Pro reads every story, keeps the
-          archive, and adds Pulse and agent access.
+          {compact
+            ? 'Read every story in this topic, explore the archive, and use Pulse and agent access with Pro.'
+            : 'Get the full daily edition, archive, Pulse, and agent access with Pro.'}
         </p>
         <PaywallPerks items={[
           { emoji: '☀️', text: 'Daily morning brief in your inbox' },
@@ -2664,11 +2667,7 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
           { emoji: '📌', text: 'Follow stories as they develop' },
         ]} />
         <ProCheckoutButton className="paywall-btn" label={proLabel} />
-        <p className="paywall-foot">
-          {PRO_TRIAL_ENABLED
-            ? `${PRO_TRIAL_DAYS} days free, then ${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}. Cancel anytime.`
-            : `Cancel anytime. The free account stays free.`}
-        </p>
+        <p className="paywall-foot">{trialFootline(priceDisplay)}</p>
       </div>
     );
   }
@@ -2686,7 +2685,7 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
         { emoji: '📌', text: 'Follow stories as they develop' },
       ]} />
       <ProCheckoutButton className="paywall-btn" label={proLabel} />
-      <p className="paywall-foot">Cancel anytime. Daily brief by email, every morning.</p>
+      <p className="paywall-foot">{trialFootline(priceDisplay)}</p>
     </div>
   );
 }
@@ -2702,10 +2701,10 @@ function CancelModal({ onClose, getToken, onDone }: {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const miss = [
-    'Back to 5 free stories a day',
-    'Summaries shrink, key points go away',
-    'Pulse locks: no Top HN',
-    'Profile ranking and the daily email brief stop',
+    'Full access to the daily edition and every topic',
+    'Complete summaries, key points, and archive search',
+    'Full Pulse, including Top HN',
+    'Profile ranking and the daily email brief',
   ];
   async function confirm() {
     if (busy) return;
@@ -2750,7 +2749,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null, proLabel = 'Go Pro' }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null, proLabel = 'Go Pro', priceDisplay = SUBSCRIPTION_PRICE_DEFAULT }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -2761,6 +2760,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
   streak?: ReadingStreak | null;
   weeklyWrap?: WeeklyWrapSummary | null;
   proLabel?: string;
+  priceDisplay?: string;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `Following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
@@ -2878,6 +2878,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
               <div className="p-row-main">
                 <span className="p-row-title">{pro ? 'Pro member' : 'Free plan'}</span>
                 <span className="p-row-sub">Pro unlocks the whole day, Pulse and your profile.</span>
+                {!pro && <span className="p-row-sub">{trialFootline(priceDisplay)}</span>}
               </div>
               {pro ? (
                 <button className="p-link danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>

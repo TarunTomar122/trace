@@ -1,3 +1,5 @@
+import { shortPriceDisplay } from '@/lib/subscription-pricing';
+
 /**
  * Trace Pro trial configuration.
  *
@@ -18,8 +20,14 @@ export const PRO_TRIAL_DAYS = (() => {
 
 export const PRO_TRIAL_ENABLED = PRO_TRIAL_DAYS > 0;
 
-/** "7 days free, then $5 a month" — used on the paywall and the pricing card. */
+export function proTrialCtaLabel(priceDisplay: string): string {
+  return PRO_TRIAL_ENABLED
+    ? `Start ${PRO_TRIAL_DAYS}-day free trial`
+    : `Go Pro — ${shortPriceDisplay(priceDisplay)}`;
+}
+
+/** Keep the price and today's charge clear anywhere the offer appears. */
 export function trialFootline(priceLabel: string): string {
-  if (!PRO_TRIAL_ENABLED) return `Cancel anytime. ${priceLabel} after this month.`;
-  return `${PRO_TRIAL_DAYS} days free, then ${priceLabel}. Cancel anytime.`;
+  if (!PRO_TRIAL_ENABLED) return `${priceLabel}. Cancel anytime.`;
+  return `${PRO_TRIAL_DAYS}-day free trial. No charge today; then ${priceLabel}. Cancel anytime.`;
 }

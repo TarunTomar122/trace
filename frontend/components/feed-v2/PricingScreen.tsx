@@ -3,15 +3,15 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ProCheckoutButton from './ProCheckoutButton';
-import { PRO_TRIAL_DAYS, PRO_TRIAL_ENABLED } from '@/lib/pro-trial';
+import { proTrialCtaLabel, trialFootline } from '@/lib/pro-trial';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasActiveSubscription } from '@/lib/subscription-access';
-import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } from '@/lib/subscription-pricing';
+import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay } from '@/lib/subscription-pricing';
 
 const FREE_FEATURES = [
   'Your ranked daily feed',
   '31 headlines in every new Chrome tab',
-  '3 stories a day as a guest, 5 with a free account',
+  'More free stories and a feed personalized to your topics with a Trace account',
   'Unlimited original source links',
   'Topic filters and For you ranking',
   'Bookmarks with a free Trace account',
@@ -21,7 +21,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   'Unlimited summaries in the web feed',
   '10 big things in tech and AI, in your inbox every morning',
-  'Every story of the day, not the first 5',
+  'Every story in every topic and the full daily edition',
   'The full daily news archive',
   'Search your saved archive',
   'Full personalized Pulse: tools and discussions',
@@ -45,7 +45,7 @@ export default function PricingScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const proLabel = `Go Pro — ${shortPriceDisplay(priceDisplay)}`;
+  const proLabel = proTrialCtaLabel(priceDisplay);
 
   return (
     <main className="pr">
@@ -80,9 +80,7 @@ export default function PricingScreen() {
           <p className="plan-tag">Trace Pro</p>
           <p className="plan-price">{priceAmountDisplay(priceDisplay)}<span>/month</span></p>
           <p className="plan-note">
-            {PRO_TRIAL_ENABLED
-              ? `The whole day, ranked and summarized. ${PRO_TRIAL_DAYS} days free, then cancel anytime.`
-              : 'The whole day, ranked and summarized, every morning.'}
+            The whole day, ranked and summarized. {trialFootline(priceDisplay)}
           </p>
           <ul className="plan-list">
             {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}

@@ -4,15 +4,7 @@ import { cookies } from 'next/headers';
 import { resolveSubscriptionOffer } from '@/lib/subscription-offer';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { toDateMaybe } from '@/lib/subscription-access';
-
-// Dodo takes the trial per checkout; 0 disables it. Kept in step with the
-// client copy in lib/pro-trial.ts so we never promise one we do not grant.
-const PRO_TRIAL_DAYS = (() => {
-  const raw = (process.env.NEXT_PUBLIC_PRO_TRIAL_DAYS ?? '7').trim();
-  const days = Number.parseInt(raw, 10);
-  if (!Number.isFinite(days) || days < 0) return 7;
-  return Math.min(days, 30);
-})();
+import { PRO_TRIAL_DAYS } from '@/lib/pro-trial';
 
 function readAffiliateCookie(raw: string | undefined) {
   if (!raw) return null;
@@ -217,15 +209,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(checkoutPayload(trialDays)),
       });
 
-    let checkoutResponse = await createCheckout(PRO_TRIAL_DAYS);
-
-    // A rejected trial field must never cost us the sale: retry once without it.
-    if (!checkoutResponse.ok && PRO_TRIAL_DAYS > 0) {
-      const firstError = await checkoutResponse.clone().text();
-      console.error('Dodo rejected the trial field, retrying without it:', firstError.slice(0, 300));
-      await captureServerEvent(userId, 'checkout_trial_rejected', { trial_days: PRO_TRIAL_DAYS });
-      checkoutResponse = await createCheckout(0);
-    }
+    const checkoutResponse = await createCheckout(PRO_TRIAL_DAYS);
 
     if (!checkoutResponse.ok) {
       const errorText = await checkoutResponse.text();

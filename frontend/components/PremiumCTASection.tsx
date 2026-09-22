@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
 import { LANDING_PRICING_BULLET_POINTS } from "@/lib/subscription-pricing-bullets";
+import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
+import { proTrialCtaLabel, trialFootline } from "@/lib/pro-trial";
 export default function PremiumCTASection({
   variant = "dark",
   className = "",
@@ -27,10 +29,9 @@ export default function PremiumCTASection({
             <br className="hidden sm:block" />
             advantage in tech
           </h3>
-          <p className="mt-3 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
+          <p className="mt-3 text-[30px] font-semibold leading-none tracking-[-0.03em]">Unlock Trace Pro</p>
           <p className="mt-3 text-[14px] text-secondary/50 leading-[1.7] max-w-md">
-            Deeper context, smarter filtering, and signal over noise — in one
-            daily pulse. Try it free for 3 days with no charge until the trial ends.
+            Deeper context, smarter filtering, and signal over noise — in one daily pulse.
           </p>
           <div className="mt-6 space-y-3">
             {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -52,10 +53,10 @@ export default function PremiumCTASection({
             onClick={() => trackCheckoutClicked("premium_cta_light")}
             className="mt-6 inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-foreground px-6 py-3.5 text-[13px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.01] active:scale-[0.99]"
           >
-            Start your free trial
+            {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
           </Link>
           <p className="mt-3 text-[12px] leading-snug text-secondary/40">
-            No charge for 3 days · Cancel anytime
+            {trialFootline(SUBSCRIPTION_PRICE_DEFAULT)}
           </p>
         </div>
       </section>
@@ -76,8 +77,7 @@ export default function PremiumCTASection({
           advantage in tech
         </h3>
         <p className="mt-3 text-[14px] text-white/40 leading-[1.7] max-w-md">
-          Deeper context, smarter filtering, and signal over noise — in one
-          daily pulse. Try it free for 3 days with no charge until the trial ends.
+          Deeper context, smarter filtering, and signal over noise — in one daily pulse.
         </p>
         <div className="mt-6 space-y-3">
           {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -99,10 +99,10 @@ export default function PremiumCTASection({
           onClick={() => trackCheckoutClicked("premium_cta_dark")}
           className="mt-6 inline-flex items-center justify-center w-full rounded-full bg-white px-6 py-3.5 text-[13px] font-semibold text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
         >
-          Start your free trial
+          {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
         </Link>
         <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-          No charge for 3 days · Cancel anytime
+          {trialFootline(SUBSCRIPTION_PRICE_DEFAULT)}
         </p>
       </div>
     </section>

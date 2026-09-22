@@ -39,7 +39,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "Read today's AI news in plain language",
     ctaBlurb:
-      "Trace is a daily AI briefing for people who run companies, not train models. First 4 stories free. No RSS, no Twitter lists.",
+      "Trace is a daily AI briefing for people who run companies, not train models. Get a ranked, grouped view of what matters — without RSS or Twitter lists.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "daily-ai-briefing-for-founders",
@@ -97,7 +97,7 @@ export const blogPosts: BlogPost[] = [
         heading: "A 5-minute stack that is not X or LinkedIn",
         paragraphs: [
           "One briefing. Ranked. Grouped so the same launch is not seven tabs. Stop when the list ends. That is the whole system.",
-          "Open [today's Trace edition](/feed) before Slack. Guests get 4 stories; a free account gets 5 plus the morning email. If you still want one specialist newsletter, keep it — not eight. The [newsletter replacement guide](/blog/replace-tech-newsletters-with-a-5-minute-briefing) is the unsubscribe pass.",
+          "Open [today's Trace edition](/feed) before Slack for a ranked briefing with related coverage grouped together. If you still want one specialist newsletter, keep it — not eight. The [newsletter replacement guide](/blog/replace-tech-newsletters-with-a-5-minute-briefing) is the unsubscribe pass.",
         ],
       },
     ],
@@ -116,7 +116,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "See if a model shipped overnight",
     ctaBlurb:
-      "Trace ranks model launches with the rest of the day's tech news. First 4 stories free. No lists to curate.",
+      "Trace ranks model launches alongside the day's tech news in one briefing. No lists to curate.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "ai-news-for-non-technical-founders",
@@ -156,7 +156,7 @@ export const blogPosts: BlogPost[] = [
         heading: "Treat a launch as one story, not forty posts",
         paragraphs: [
           "A useful launch page has three layers: the official post, one independent write-up, and whether anyone has it in a product yet. Quote-tweets and screenshot wars are not a fourth layer. They are the reason people think they 'followed AI' and still cannot say what shipped.",
-          "[Today's Trace edition](/feed) groups that coverage so Claude, Gemini, or a smaller drop is one card. Guests get 4 stories free.",
+          "[Today's Trace edition](/feed) groups that coverage so Claude, Gemini, or a smaller drop is one card, with the related reporting alongside it.",
         ],
       },
       {
@@ -183,7 +183,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "Open the briefing this is about",
     ctaBlurb:
-      "Trace is the daily AI briefing: ranked stories from 400+ sources, grouped, done. First 4 stories free.",
+      "Trace is the daily AI briefing: ranked stories from 400+ sources, grouped, done. Get the context in one place and move on with your day.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "ai-news-for-non-technical-founders",
@@ -223,7 +223,7 @@ export const blogPosts: BlogPost[] = [
         heading: "Rules for a briefing that actually ends",
         paragraphs: [
           "One surface. Ranked, not chronological. Related coverage grouped. A stop condition you can feel — when the list is over, you are caught up.",
-          "That is what the [Trace homepage](/) is for, and what [today's edition](/feed) is. Guests get 4 stories; a free account gets 5 plus email. No RSS setup.",
+          "That is what the [Trace homepage](/) and [today's edition](/feed) are for: a clear, ranked briefing with related coverage together. No RSS setup.",
         ],
       },
       {
@@ -247,7 +247,7 @@ export const blogPosts: BlogPost[] = [
     readTime: "9 min read",
     date: "September 18, 2026",
     image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1200&h=630&fit=crop&auto=format",
-    ctaHeading: "See today's AI briefing — 4 stories free",
+    ctaHeading: "See today's AI briefing — free to start",
     ctaBlurb:
       "Open Trace and read what shipped overnight: model launches, company news, and the one or two developments that actually matter. No X, no LinkedIn, no RSS setup.",
     ctaButton: "Open today's briefing",
@@ -321,7 +321,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "The working version looks like this. You open one surface. You read a ranked list. Related coverage of the same launch is already grouped, so a Claude, Gemini, or smaller-model drop like Bonsai is one story with several sources — not seven tabs. You stop when the list ends.",
           "That last part is the product. Social apps are designed to continue. A briefing is designed to finish. If you cannot tell when you are caught up, the tool is entertainment, even if the topic is 'AI news.'",
-          "This is what [today's Trace edition](/feed) is for: model releases and company news pulled from 400+ sources, ranked, summarized, and done. Guests get 4 stories; a free account gets 5 plus the morning email. No RSS to curate, no Twitter lists to maintain.",
+          "This is what [today's Trace edition](/feed) is for: model releases and company news pulled from 400+ sources, ranked, summarized, and done. Follow the stories that matter in one place, without RSS or Twitter lists to maintain.",
         ],
       },
       {
@@ -363,7 +363,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "Try the briefing instead of another subscribe",
     ctaBlurb:
-      "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 400+ sources. First 4 stories free. No new inbox folder.",
+      "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 400+ sources. One clear briefing, without another inbox folder.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "daily-ai-briefing-for-founders",
@@ -425,7 +425,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Open your inbox. Search 'unsubscribe.' For each tech or AI letter, ask: did this tell me something I did not already see, in the last two weeks? If no, kill it.",
           "Keep at most one daily and one weekly. Daily should be a pointer to a briefing, not a second copy of the briefing. Weekly can be a longer read for Sunday.",
-          "Replace the rest with [today's Trace edition](/feed). Guests get 4 stories free. A free account gets 5 plus the morning email — one email, same stories, not eight recaps. If you still want an RSS-style tool for a few specific blogs, that is a different job; the [Feedly alternatives](/blog/feedly-alternatives) guide is for that.",
+          "Replace the rest with [today's Trace edition](/feed): one concise briefing that brings the day's coverage together, with an optional morning email. If you still want an RSS-style tool for a few specific blogs, that is a different job; the [Feedly alternatives](/blog/feedly-alternatives) guide is for that.",
         ],
       },
       {

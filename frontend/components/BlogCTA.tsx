@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { trackBlogCtaClicked } from "@/lib/posthog";
-import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
+import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
+import { proTrialCtaLabel } from "@/lib/pro-trial";
 
 function feedHref(slug: string, location: string) {
   return `/feed?utm_source=blog&utm_medium=${location}&utm_campaign=${slug}`;
@@ -32,7 +33,7 @@ export function InlineTraceCTA({
       </h3>
       <p className="mt-2 leading-relaxed text-gray-600 dark:text-gray-400">
         {blurb ||
-          "Trace groups model releases, company news, and what actually changed from 400+ sources. Guests get 3 stories; a free account gets 5 plus the morning email. No RSS, no newsletter pile."}
+          "Trace groups model releases, company news, and what actually changed from 400+ sources. Start free as a guest; sign in to get more free stories daily and the optional morning email. No RSS, no newsletter pile."}
       </p>
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
@@ -47,7 +48,7 @@ export function InlineTraceCTA({
           onClick={() => trackBlogCtaClicked(slug, "inline_cta", "subscribe")}
           className="inline-flex items-center rounded-full border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-400 dark:border-gray-700 dark:text-gray-200"
         >
-          Get Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}
+          {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
         </Link>
       </div>
     </div>
@@ -62,7 +63,7 @@ export function StickyBlogBar({ slug }: { slug: string }) {
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 md:hidden">
       <div className="mx-auto flex max-w-3xl items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-          5-minute AI briefing — 3 stories free
+          5-minute AI briefing — free to start
         </p>
         <Link
           href={feedHref(slug, "sticky_bar")}

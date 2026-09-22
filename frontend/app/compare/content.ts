@@ -182,7 +182,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Is Trace free?",
         answer:
-          "The free plan is real: 4 stories as a guest, 5 with a free account, plus a daily email brief. Pro ($5/mo) removes the cap and adds Pulse, the archive, and agent access.",
+          "The free plan includes a personalized feed and the option to get a daily email brief. Pro adds full access, Pulse, the archive, and agent access.",
       },
     ],
   },

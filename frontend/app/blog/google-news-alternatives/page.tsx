@@ -239,7 +239,7 @@ export default function BlogPost() {
           </ul>
           <InlineTraceCTA
             slug="google-news-alternatives"
-            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, first 4 stories free."
+            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, and more free stories when you sign in."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
