@@ -39,18 +39,25 @@ silently rerouted.
 
 ### Warm-up routing
 
-`auto` also skips our IP for receivers we name explicitly:
+`auto` also sends some mail through Brevo instead of our IP. Two levers, both
+empty by default:
 
-| `EMAIL_BREVO_DOMAINS` | Behaviour |
+| Variable | Routes to Brevo |
 |---|---|
-| empty | nothing is routed; `auto` uses the MTA for everything |
-| `gmail.com,outlook.com` | those receivers go to Brevo, the rest ride our MTA |
+| `EMAIL_BREVO_DOMAINS` | receivers at those domains (`gmail.com,outlook.com`) |
+| `EMAIL_BREVO_BUCKETS` | recipients in those audience buckets (`pro`) |
 
-Set it to `gmail.com,googlemail.com,outlook.com,hotmail.com,live.com,msn.com`
-while the IP has no reputation. On the first day of sending from
-`mail.yourtrace.online` the mail was accepted everywhere but folded into Gmail's
-spam folder; Brevo's established relay does not have that problem. Remove
-domains from the list as Postmaster Tools shows reputation recovering.
+`EMAIL_BREVO_BUCKETS=pro` is the current shape: paying readers go out over
+Brevo's established relay while our own IP builds history on the free and
+landing buckets. That also keeps the MTA at a low, steady daily volume instead
+of one cold blast, which is what Gmail was objecting to (`421-4.7.28 unusual
+rate of mail originating from your IP`) on day one.
+
+Add domains to `EMAIL_BREVO_DOMAINS` while a receiver is still policing the new
+domain, and drop entries as Postmaster Tools shows reputation recovering.
+Neither lever can silently lose mail: `brevo_can_send()` checks the account
+balance first and falls back to our own MTA, recording the reason in the send
+log's `note`.
 
 Two related warm-up settings:
 

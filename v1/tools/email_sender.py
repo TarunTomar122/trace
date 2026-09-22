@@ -332,6 +332,29 @@ def _record_send(
         print(f"[email-sender] send log write failed: {type(exc).__name__}: {exc}")
 
 
+def brevo_route_reason(to_email: str, bucket: str) -> str:
+    """Why this send should leave through Brevo, or "" for our own MTA.
+
+    Two levers, both empty by default:
+
+    * `EMAIL_BREVO_DOMAINS` — receiver domains. Gmail and Microsoft police new
+      senders hardest, so they are the ones worth another relay's reputation.
+    * `EMAIL_BREVO_BUCKETS` — audience buckets. Lets paying readers ride Brevo
+      while our own IP warms on the rest, which also keeps the MTA's daily
+      volume low enough to look like a real sender rather than a blast.
+    """
+    domain = brevo_routed_domain(to_email)
+    if domain:
+        return f"domain {domain}"
+
+    wanted = (os.getenv("EMAIL_BREVO_BUCKETS", "") or "").strip().lower()
+    bucket_name = (bucket or "").strip().lower()
+    if bucket_name and wanted:
+        if bucket_name in {part.strip() for part in wanted.split(",") if part.strip()}:
+            return f"bucket {bucket_name}"
+    return ""
+
+
 def send_email(
     to_email: str,
     to_name: Optional[str],
@@ -354,10 +377,10 @@ def send_email(
     attempted: list[str] = []
     # Warm-up routing, `auto` only (a strict `smtp` run means the local MTA,
     # full stop): a receiver we deliberately keep on Brevo never touches our
-    # own IP, so Gmail and Microsoft stay deliverable while it builds history.
-    # Routing is skipped when Brevo cannot actually send, so a drained Brevo
-    # account costs placement rather than delivery.
-    routed = brevo_routed_domain(to_email) if mode == "auto" else ""
+    # own IP, so it can build history on everyone else. Routing is skipped when
+    # Brevo cannot actually send, so a drained Brevo account costs placement
+    # rather than delivery.
+    routed = brevo_route_reason(to_email, bucket) if mode == "auto" else ""
     note = ""
     if routed:
         if brevo_can_send():
