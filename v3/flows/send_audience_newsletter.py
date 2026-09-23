@@ -3,11 +3,11 @@
 
 One email per person per day. Bucket precedence: pro > free > landing.
 
-- landing: email-only subscribers from the homepage form -> the 3 biggest
+- landing: email-only subscribers from the homepage form -> the 5 biggest
   stories of the day (global, not personalized).
 - free: onboarded non-paying users, email on by default (only an explicit
-  opt-out disables it) -> top 3 stories matched to their interests.
-- pro: paying users, email always on -> top 8 stories matched to interests.
+  opt-out disables it) -> top 5 stories matched to their interests.
+- pro: paying users, email always on -> top 10 stories matched to interests.
 
 Stories come from the 24h trending pool (v3_user_feeds/_global). Topics that
 Jev flagged send_worthy=0 are dropped whenever verdicts exist. Story links
@@ -60,9 +60,8 @@ LANDING_COUNT = 5
 FREE_COUNT = 5
 PRO_COUNT = 10
 
-# Lane priority: AI always leads, then markets, tech, design, then startups.
-# Slots follow a 3/2/1/1/1 shape across the matched lanes: the leading lane
-# gets the biggest share and each next lane one fewer.
+# Selection priority: AI, markets, tech, design, startups, then other lanes.
+# Per-bucket slots give the leading lanes the biggest shares.
 LANE_ORDER = (
     "ai", "markets", "tech", "ux-design", "startups", "engineering",
     "products", "the-world",
@@ -78,9 +77,14 @@ SUBJECT_EMOJIS = ("\U0001f62e", "\U0001f525", "\U0001f680", "\U0001f440", "\U000
                   "\u26a1", "\u2728", "\U0001f973", "\U0001f37f", "\U0001f92f")
 
 # Launches get their own heading at the top of the email, ahead of the lane
-# pattern. Slots come out of the same total (8 / 3 / 3).
+# pattern. Slots come out of the same total (10 / 5 / 5).
 MODEL_RELEASE_LANE = "model-releases"
 MODEL_RELEASE_SLOTS = {"pro": 2, "free": 1, "landing": 1}
+
+# Sort only the finished pro sections; LANE_ORDER continues to control selection.
+PRO_DISPLAY_ORDER = (
+    MODEL_RELEASE_LANE, "ai", "markets", "startups", "tech", "ux-design",
+)
 
 # What counts as send-worthy is a judgement call, not a keyword list: Jev
 # (Typesafe) scores every candidate with the shared RANKING_QUESTIONS rubric
@@ -488,6 +492,13 @@ def _select(
                     used.add(g["topic_id"])
                 sections.append((lane, got))
                 remaining -= len(got)
+    if bucket == "pro":
+        display_order = {
+            lane: index for index, lane in enumerate(PRO_DISPLAY_ORDER)
+        }
+        sections.sort(
+            key=lambda section: display_order.get(section[0], len(display_order))
+        )
     return sections
 
 
@@ -661,10 +672,10 @@ def _cta_html(bucket: str) -> str:
             'style="background-color: #e5f2fc; border-radius: 16px;">'
             '<tr><td align="center" style="padding: 22px 24px;">'
             '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-            f'font-family: {_FONT};">Double this, every morning.</p>'
+            f'font-family: {_FONT};">Go deeper with Pro.</p>'
             '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-            f'font-family: {_FONT};">Pro sends 10 big things instead of 5, ranked deeper into '
-            "your interests, plus full Pulse and the archive.</p>"
+            f'font-family: {_FONT};">Explore more stories ranked around your interests, plus '
+            "full Pulse and the archive.</p>"
             f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 28px; '
             f'background-color: #1d9bf0; color: #ffffff; {base}">Go Pro</a>'
             "</td></tr></table>"
@@ -674,11 +685,10 @@ def _cta_html(bucket: str) -> str:
         'style="background-color: #f7f9f9; border-radius: 16px;">'
         '<tr><td align="center" style="padding: 22px 24px;">'
         '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-        f'font-family: {_FONT};">Want the 10 big things?</p>'
+        f'font-family: {_FONT};">Make tomorrow&rsquo;s brief yours.</p>'
         '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-        f'font-family: {_FONT};">Create a free account and pick your topics, so tomorrow&rsquo;s '
-        "brief follows exactly those. Or go straight to Pro for all 10 big things in "
-        "tech and AI, every morning.</p>"
+        f'font-family: {_FONT};">Create a free account to pick your topics, or explore '
+        "Pro for a richer morning brief.</p>"
         f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
         f'background-color: #1d9bf0; color: #ffffff; {base}">Personalize it</a>'
         '&nbsp;&nbsp;'

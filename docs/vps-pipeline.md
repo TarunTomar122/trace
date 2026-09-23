@@ -38,8 +38,12 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   one-click `List-Unsubscribe` header both write
   `free_newsletter_subscribers/{email}.active = false` and
   `dailyNewsletterEnabled`/`newsletterOptIn = false` on matching profiles.
-- Lane priority is AI → markets → tech → design → startups, with a 3/2/1/1/1
-  slot shape on pro (2/1/1 on the 5-story emails). Markets prefers macro stories.
+- Selection priority is AI → markets → tech → design → startups, with up to
+  3/2/2/1/1/1 slots on Pro and 2/1/1 on the 5-story emails. Model releases
+  take up to two Pro slots or one free/landing slot first; unused slots are
+  filled from the remaining lanes. Pro displays the selected sections as model
+  releases → AI → markets → startups → tech → design, then any other selected
+  lanes in their existing relative order. Markets prefers macro stories.
 - Delivery goes through our own Postfix on the VPS with Brevo as the per-message
   fallback (`EMAIL_TRANSPORT=auto`), and every attempt lands in `email_sends`.
   Opens and clicks land in `email_events`. `/dev/analytics` renders both: volume
