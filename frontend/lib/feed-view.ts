@@ -11,6 +11,7 @@ import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { slotsFromRankedItems } from '@/lib/feed-topic-order';
 import { filterSendWorthyTopics, rejectedStoryUrls } from './feed-value';
+import { decodeHtmlEntities } from './feed-article-text';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -251,7 +252,7 @@ export function mapTrendingToStories(
     if (!source) source = domainOf(first.url || '');
 
     const coverage = articles.map((a: { title?: string; source_name?: string; source?: string; url: string; published_date?: string }) => ({
-      title: a.title || '',
+      title: decodeHtmlEntities(a.title || ''),
       source: a.source_name || a.source || domainOf(a.url),
       url: a.url,
       time: timeAgo(a.published_date),
@@ -269,7 +270,7 @@ export function mapTrendingToStories(
       id: topic.id || topic.topic_key || `topic-${i}`,
       threadId: topic.thread_id || undefined,
       rank: i + 1,
-      title: topic.title || first.title || '',
+      title: decodeHtmlEntities(topic.title || first.title || ''),
       body: topic.summary || first.summary?.short_article?.body || first.description || '',
       takeaways: Array.isArray(topic.key_points) ? topic.key_points : [],
       img,
@@ -298,14 +299,14 @@ export function mapTrendingToStories(
     return {
       id: it.id || url,
       rank: 0,
-      title: it.title || '',
+      title: decodeHtmlEntities(it.title || ''),
       body: sa.body || it.description || '',
       takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       img: firstThumb(it.thumbnail, it.og_image, it.image),
       source,
       sources: domain ? [domain] : [],
       sourceNames: source ? [source] : [],
-      coverage: [{ title: it.title || '', source, url, time: timeAgo(it.published_date) }],
+      coverage: [{ title: decodeHtmlEntities(it.title || ''), source, url, time: timeAgo(it.published_date) }],
       time: timeAgo(it.published_date),
       ts: Date.parse(it?.published_date || '') || 0,
       cat: it.interest_id || 'tech',
