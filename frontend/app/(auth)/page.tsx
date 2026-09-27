@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { StructuredDataList } from '@/components/StructuredData';
 import {
   generateHomeApplicationSchema,
-  HOME_PRODUCT_DESCRIPTION,
 } from '@/lib/home-seo';
 import { generateFAQSchema } from '@/lib/seo';
 import { LANDING_FAQ } from '@/components/feed-v2/LandingScreen';
@@ -13,8 +12,8 @@ import LandingScreen from '@/components/feed-v2/LandingScreen';
 import LandingAuthRedirect from './LandingAuthRedirect';
 
 export const metadata: Metadata = {
-  title: "Trace: a daily AI briefing in five minutes",
-  description: HOME_PRODUCT_DESCRIPTION,
+  title: "Trace — 10 big things in tech & AI",
+  description: "The stories that moved tech and AI today, ranked and explained in five minutes.",
   keywords: [
     "AI news aggregator",
     "tech news aggregator",
@@ -29,16 +28,16 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace: a daily AI briefing in five minutes",
-    description: HOME_PRODUCT_DESCRIPTION,
+    title: "Trace — 10 big things in tech & AI",
+    description: "The stories that moved tech and AI today, ranked and explained in five minutes.",
     url: "https://www.yourtrace.online",
     type: "website",
     images: [
       {
-        url: "https://www.yourtrace.online/opengraph-image",
+        url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace AI and technology news feed",
+        alt: "Trace — 10 big things in tech and AI",
       },
     ],
   },

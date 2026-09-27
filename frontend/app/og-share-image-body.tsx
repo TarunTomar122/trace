@@ -1,99 +1,82 @@
-import { OG_LOGO_DATA_URL, OG_SHOT_DATA_URL } from './og-assets';
+import { OG_LOGO_DATA_URL } from './og-assets';
 
-const INK = '#1b1a17';
-const CREAM = '#f4f1e8';
+const INK = '#171A20';
+const BLUE = '#2557D6';
+const MUTED = '#596675';
 
-// og-app-shot is 1960x1293 (2x of the 980x646 slot below).
-const SHOT_W = 980;
-const SHOT_H = 646;
+const sections = [
+  ['01', 'AI & models', 'The releases worth knowing'],
+  ['02', 'Company moves', 'The story behind the headlines'],
+  ['03', 'Products & ideas', 'What comes next'],
+];
 
-/** Share card in the style of a product launch post: logo, hook, real app shot in a browser frame. */
+/** Static, shareable picture of Trace's ten-story daily edition. */
 export function OgShareImageBody() {
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        backgroundColor: CREAM,
-        color: INK,
-        paddingTop: 30,
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={OG_LOGO_DATA_URL} alt="" width={28} height={28} />
-        <span style={{ marginLeft: 12, fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Trace
-        </span>
+    <div style={{
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+      padding: '45px 56px', backgroundColor: '#F6F5F0', color: INK,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={OG_LOGO_DATA_URL} alt="" width={34} height={34} />
+          <span style={{ marginLeft: 11, fontSize: 27, fontWeight: 700, letterSpacing: '-0.04em' }}>Trace</span>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.13em', color: BLUE }}>
+          THE DAILY EDITION
+        </div>
       </div>
 
-      <div
-        style={{
-          marginTop: 12,
-          fontSize: 44,
-          fontWeight: 700,
-          lineHeight: 1.05,
-          letterSpacing: '-0.03em',
-          textAlign: 'center',
-        }}
-      >
-        Stay on top of tech and AI news
+      <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 38 }}>
+        <div style={{ width: 646, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ color: BLUE, fontSize: 17, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 17 }}>
+            THE SIGNAL IN THE NOISE
+          </div>
+          <div style={{ display: 'flex', fontSize: 79, lineHeight: 0.98, fontWeight: 700, letterSpacing: '-0.06em' }}>
+            <span style={{ color: BLUE }}>10</span><span style={{ marginLeft: 18 }}>big things</span>
+          </div>
+          <div style={{ fontSize: 79, lineHeight: 0.98, fontWeight: 700, letterSpacing: '-0.06em' }}>
+            in tech &amp; AI.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', color: MUTED, fontSize: 25, lineHeight: 1.35, marginTop: 27 }}>
+            <span>What happened. Why it matters.</span>
+            <span>All in five minutes.</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 36 }}>
+            {Array.from({ length: 10 }, (_, i) => (
+              <div key={i} style={{ width: 20, height: 6, borderRadius: 5, backgroundColor: i < 3 ? BLUE : '#CED8F2' }} />
+            ))}
+          </div>
+        </div>
+
+        <div style={{
+          width: 370, height: 454, display: 'flex', flexDirection: 'column',
+          backgroundColor: '#FFFFFF', border: '1px solid #DCE1E9', borderRadius: 20,
+          padding: '26px 28px', boxShadow: '0 20px 50px rgba(26, 39, 76, 0.10)',
+        }}>
+          <div style={{ color: BLUE, fontSize: 13, fontWeight: 700, letterSpacing: '0.12em' }}>TODAY&apos;S BRIEFING</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', marginTop: 7, marginBottom: 15 }}>
+            10 stories. One clear picture.
+          </div>
+          {sections.map(([number, title, subtitle]) => (
+            <div key={number} style={{ display: 'flex', borderTop: '1px solid #E8EBF0', padding: '17px 0' }}>
+              <div style={{ width: 46, color: BLUE, fontSize: 22, fontWeight: 700 }}>{number}</div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: 19, fontWeight: 700 }}>{title}</div>
+                <div style={{ color: MUTED, fontSize: 14, marginTop: 3 }}>{subtitle}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 'auto', color: BLUE, fontSize: 16, fontWeight: 700 }}>
+            + 7 more things worth your time →
+          </div>
+        </div>
       </div>
 
-      <div
-        style={{
-          marginTop: 18,
-          width: SHOT_W,
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#fff',
-          borderRadius: '16px 16px 0 0',
-          overflow: 'hidden',
-          boxShadow: '0 24px 70px rgba(27, 26, 23, 0.18)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            height: 40,
-            backgroundColor: '#f7f5ef',
-            borderBottom: '1px solid #e7e2d5',
-            padding: '0 18px',
-          }}
-        >
-          <div style={{ display: 'flex', gap: 7 }}>
-            <span style={{ width: 11, height: 11, borderRadius: 9999, backgroundColor: '#ff5f57' }} />
-            <span style={{ width: 11, height: 11, borderRadius: 9999, backgroundColor: '#febc2e' }} />
-            <span style={{ width: 11, height: 11, borderRadius: 9999, backgroundColor: '#28c840' }} />
-          </div>
-          <div
-            style={{
-              margin: '0 auto',
-              display: 'flex',
-              alignItems: 'center',
-              height: 25,
-              padding: '0 22px',
-              borderRadius: 9999,
-              backgroundColor: '#fff',
-              border: '1px solid #e7e2d5',
-              fontSize: 13,
-              color: '#75705f',
-            }}
-          >
-            yourtrace.online/feed
-          </div>
-          <div style={{ width: 52 }} />
-        </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <img src={OG_SHOT_DATA_URL} alt="" width={SHOT_W} height={SHOT_H} />
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: 16 }}>
+        <span>Less scrolling. More understanding.</span>
+        <span style={{ fontWeight: 700, color: INK }}>yourtrace.online</span>
       </div>
     </div>
   );

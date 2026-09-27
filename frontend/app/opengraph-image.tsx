@@ -2,11 +2,10 @@ import { ImageResponse } from 'next/og';
 import { OgShareImageBody } from './og-share-image-body';
 import { OG_FONT_BOLD_B64, OG_FONT_REGULAR_B64 } from './og-fonts';
 
-// Embedded screenshot and fonts exceed the 1 MB Edge Function limit.
-// Node.js preserves the share card while allowing the larger assets.
+// Keep the bundled fonts and logo in the existing Node.js image runtime.
 export const runtime = 'nodejs';
 
-export const alt = 'Trace — A feed for builders';
+export const alt = 'Trace — 10 big things in tech and AI';
 
 export const size = { width: 1200, height: 630 };
 

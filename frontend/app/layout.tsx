@@ -30,9 +30,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace: a daily AI briefing in five minutes",
+  title: "Trace — 10 big things in tech & AI",
   description:
-    "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
+    "The stories that moved tech and AI today, ranked and explained in five minutes.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
@@ -51,24 +51,24 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace: a daily AI briefing in five minutes",
+    title: "Trace — 10 big things in tech & AI",
     description:
-      "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
+      "The stories that moved tech and AI today, ranked and explained in five minutes.",
     images: [
       {
-        url: "https://www.yourtrace.online/opengraph-image",
+        url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace AI and technology news feed",
+        alt: "Trace — 10 big things in tech and AI",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace: a daily AI briefing in five minutes",
+    title: "Trace — 10 big things in tech & AI",
     description:
-      "A short daily briefing with context on model launches, company changes, layoffs, security, and new technology trends.",
-    images: ["https://www.yourtrace.online/twitter-image"],
+      "The stories that moved tech and AI today, ranked and explained in five minutes.",
+    images: ["https://www.yourtrace.online/twitter-image?v=10-big-things"],
   },
   robots: {
     index: true,

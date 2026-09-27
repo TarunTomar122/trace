@@ -1,16 +1,24 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Your Feed | Trace",
-  description: "Explore your personalized intelligence feed. Curated content from YouTube, arXiv, GitHub, and more, tailored to your interests.",
+  title: "10 big things in tech & AI | Trace",
+  description: "Today's biggest stories in tech and AI, ranked and explained in five minutes.",
   openGraph: {
-    title: "Your Feed | Trace",
-    description: "Explore your personalized intelligence feed. Curated content from YouTube, arXiv, GitHub, and more, tailored to your interests.",
+    title: "10 big things in tech & AI | Trace",
+    description: "Today's biggest stories in tech and AI, ranked and explained in five minutes.",
     url: "https://www.yourtrace.online/feed",
+    images: [{
+      url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
+      width: 1200,
+      height: 630,
+      alt: "Trace — 10 big things in tech and AI",
+    }],
   },
   twitter: {
-    title: "Your Feed | Trace",
-    description: "Explore your personalized intelligence feed. Curated content from YouTube, arXiv, GitHub, and more, tailored to your interests.",
+    card: "summary_large_image",
+    title: "10 big things in tech & AI | Trace",
+    description: "Today's biggest stories in tech and AI, ranked and explained in five minutes.",
+    images: ["https://www.yourtrace.online/twitter-image?v=10-big-things"],
   },
 };
 
@@ -21,4 +29,3 @@ export default function FeedLayout({
 }) {
   return children;
 }
-

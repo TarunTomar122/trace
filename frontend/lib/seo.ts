@@ -10,17 +10,17 @@ export const SITE_DESCRIPTION =
   'Aggregated tech news, build logs, architecture, open source, design, and product thinking for builders.';
 export const SITE_LOGO_URL = `${SITE_BASE_URL}/trace.png`;
 export const DEFAULT_OG_IMAGE = {
-  url: `${SITE_BASE_URL}/opengraph-image`,
+  url: `${SITE_BASE_URL}/opengraph-image?v=10-big-things`,
   width: 1200,
   height: 630,
-  alt: 'Trace — A feed for builders',
+  alt: 'Trace — 10 big things in tech and AI',
 };
 export const DEFAULT_OPEN_GRAPH = {
   siteName: SITE_NAME,
   locale: 'en_US',
   images: [DEFAULT_OG_IMAGE],
 };
-export const DEFAULT_TWITTER_IMAGE = `${SITE_BASE_URL}/twitter-image`;
+export const DEFAULT_TWITTER_IMAGE = `${SITE_BASE_URL}/twitter-image?v=10-big-things`;
 const TITLE_SUFFIX = ` | ${SITE_NAME}`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────

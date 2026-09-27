@@ -17,7 +17,7 @@ export async function generateMetadata({
   if (tab === 'all' || tab === 'profile' || tab === 'bookmarks' || tab === 'conversations') return {};
   const label = feedTabLabel(tab);
   const title = `${label} news | Trace`;
-  const description = `Today's ${label.toLowerCase()} stories, ranked across outlets and summarized with key points.`;
+  const description = `Today's ${label === 'AI' ? 'AI' : label.toLowerCase()} stories, ranked across outlets and summarized with key points.`;
   return {
     title,
     description,
@@ -25,8 +25,17 @@ export async function generateMetadata({
       title,
       description,
       url: `https://www.yourtrace.online/feed?tab=${tab}`,
+      images: [{
+        url: 'https://www.yourtrace.online/opengraph-image?v=10-big-things',
+        width: 1200,
+        height: 630,
+        alt: 'Trace — 10 big things in tech and AI',
+      }],
     },
-    twitter: { title, description },
+    twitter: {
+      card: 'summary_large_image', title, description,
+      images: ['https://www.yourtrace.online/twitter-image?v=10-big-things'],
+    },
   };
 }
 
