@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { proTrialCtaLabel } from '@/lib/pro-trial';
 import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 
@@ -35,6 +36,7 @@ function localSendTime(): string {
 
 export default function SignupCelebration({ onClose }: { onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState('10:30');
 
   useEffect(() => {
@@ -42,9 +44,25 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
   }, []);
 
   useEffect(() => {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     const previous = document.body.style.overflow;
@@ -52,6 +70,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = previous;
+      if (returnFocus?.isConnected) returnFocus.focus();
     };
   }, [onClose]);
 
@@ -84,13 +103,16 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
 
   const stop = useCallback((event: React.MouseEvent) => event.stopPropagation(), []);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="celebrate-scrim fixed inset-0 z-[9999] flex items-center justify-center bg-[#0f1419]/80 p-3 sm:p-5"
+      className="celebrate-scrim fixed inset-0 z-[9999] flex items-center justify-center bg-[#0f1419]/80 p-3 font-sans sm:p-5"
       onClick={onClose}
       role="presentation"
     >
       <div
+        ref={dialogRef}
         className="relative max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-3xl bg-white p-6 text-center shadow-[0_30px_80px_rgba(15,20,25,0.35)] sm:p-8"
         role="dialog"
         aria-modal="true"
@@ -147,6 +169,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
 
         <p className="mt-4 text-xs text-[#71767b]">One email a day. Unsubscribe any time from the footer.</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
