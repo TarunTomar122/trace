@@ -14,7 +14,7 @@ const FEATURES = [
     id: 'feed',
     kicker: 'Feed',
     title: 'A feed that updates hourly',
-    body: 'New coverage lands through the day. Related stories are grouped, ranked, and waiting when you open Trace, not after you refresh ten tabs.',
+    body: 'See what happened in tech and AI today. If five sites cover the same story, Trace puts them together and keeps the links to all five.',
     href: '/feed',
     link: 'Open the live feed',
   },
@@ -22,7 +22,7 @@ const FEATURES = [
     id: 'email',
     kicker: 'Email',
     title: '10 big things in tech and AI, every morning',
-    body: 'Pro reads the 10 biggest things from the last 24 hours, picked for the topics you actually follow, with why they matter. Not the whole internet.',
+    body: 'Choose the topics you follow. With Pro, get ten stories from the last 24 hours each morning, with a short note on why each one matters.',
     href: '/feed?tab=profile',
     link: 'Turn it on in your profile',
   },
@@ -30,15 +30,15 @@ const FEATURES = [
     id: 'extension',
     kicker: 'Chrome extension',
     title: 'The feed in every new tab',
-    body: 'Open a new tab and the ranked feed is already there. Top stories, your topics, zero effort.',
+    body: 'Add Trace to Chrome and your new tabs show the latest stories. Take a look whenever you want to see what’s happening.',
     href: CHROME_URL,
     link: 'Add it to Chrome',
   },
   {
     id: 'agents',
     kicker: 'Agents',
-    title: 'MCP access for OpenClaw and Hermes',
-    body: 'Drop Trace into OpenClaw on Discord, or Hermes, Claude, Codex, Cursor. Read-only. Your agent can ask what moved today and quote the same ranked feed you read.',
+    title: 'Your AI assistant can use Trace',
+    body: 'With Pro, connect Claude, Codex, OpenClaw, Hermes or Cursor. Your assistant can read the same feed you see and answer questions about today’s news. Access is read-only.',
     href: '/agents',
     link: 'Agent setup guide',
   },
@@ -56,7 +56,6 @@ export default function LandingWhatYouGet() {
   return (
     <section className="section yg" id="what-you-get">
       <h2 className="section-title">What you get</h2>
-      <p className="section-sub">The feed, the morning email, and a live read for your agents. Same ranked stories in all three.</p>
 
       {FEATURES.map((feature, i) => (
         <article
