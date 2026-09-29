@@ -86,6 +86,26 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertFalse(
             _looks_like_model_release("OpenAI Unveils Alarming AI Model Misalignment Incidents")
         )
+        self.assertFalse(_looks_like_model_release(
+            "OpenAI abandons plan to release upcoming model as safety concerns escalate",
+            content="GPT-6.1 Astra AI model fails internal safety tests",
+        ))
+        self.assertFalse(_looks_like_model_release(
+            "OpenAI Cancels GPT-6.1 Astra Launch",
+            content="The AI model will not be released",
+        ))
+        self.assertTrue(_looks_like_model_release(
+            "OpenAI launches GPT-6.2 after scrapping GPT-6.1",
+            content="The new AI model is available today.",
+        ))
+        self.assertFalse(_looks_like_model_release(
+            "OpenAI cancels GPT-6 model launch and releases safety report",
+            content="The AI model did not meet safety standards.",
+        ))
+        self.assertFalse(_looks_like_model_release("OpenAI cancels 70B AI model launch"))
+        self.assertFalse(_looks_like_model_release(
+            "OpenAI Cancels GPT-6.1 Astra Launch", source_name="AI/TLDR Models",
+        ))
 
 
 if __name__ == "__main__":

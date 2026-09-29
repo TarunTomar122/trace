@@ -49,9 +49,7 @@ from v3.lib.send_worthy import (  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
-    _document_frequencies,
     _looks_like_model_release,
-    _rare_tokens,
     _topic_tokens,
 )
 
@@ -355,38 +353,81 @@ def _ranked(candidates: list[dict]) -> list[dict]:
     )
 
 
+def _same_event_summary(a: dict, b: dict) -> bool:
+    """Match paraphrases only when they share a named event detail."""
+    # ponytail: sparse paraphrases may survive; use stable event IDs if the feed gains them.
+    def kind(title: str) -> str:
+        if re.search(r"\b(jailbreak|vulnerability|breach|exploit|patch|hack)\w*\b", title, re.I):
+            return "security"
+        if re.search(r"\b(cancel|abandon|scrap|halt|ditch)\w*\b", title, re.I):
+            return "cancellation"
+        if re.search(r"\b(release|launch|unveil|introduc|ship|debut)\w*\b", title, re.I):
+            return "launch"
+        return ""
+
+    kind_a, kind_b = kind(a["title"]), kind(b["title"])
+    if kind_a and kind_b and kind_a != kind_b:
+        return False
+
+    def names(item: dict) -> set[str]:
+        found: set[str] = set()
+        for text in (item["title"], item.get("summary", "")[:250]):
+            for match in re.finditer(r"\b(?:[A-Z][A-Za-z0-9.]*|[a-z]+[A-Z][A-Za-z0-9.]*)\b", text):
+                prefix = text[:match.start()].rstrip()
+                if prefix and not prefix.endswith((".", "!", "?")):
+                    found.update(_topic_tokens(match.group()))
+        lead = re.match(r"[a-z0-9]+", item["title"].lower())
+        if lead:
+            found.discard(lead.group())
+        return found - {"model", "models", "safety", "security", "releases", "issues", "series"}
+
+    shared_names = names(a) & names(b)
+    lead_a = re.match(r"[a-z0-9]+", a["title"].lower())
+    lead_b = re.match(r"[a-z0-9]+", b["title"].lower())
+    same_lead = (lead_a and lead_b and lead_a.group() == lead_b.group()
+                 and bool(_topic_tokens(lead_a.group())))
+    title_a = _topic_tokens(a["title"])
+    title_b = _topic_tokens(b["title"])
+    def versions(item: dict) -> set[tuple[str, str]]:
+        text = f"{item['title']} {item.get('summary', '')[:250]}"
+        return {(name.lower(), number) for name, number in re.findall(
+            r"\b([A-Za-z][A-Za-z0-9]*)[- ](\d+(?:\.\d+)*)\b", text
+        )}
+
+    same_round = (same_lead and "series" in title_a & title_b
+                  and bool(set(re.findall(r"\d+(?:\.\d+)?", a["title"]))
+                           & set(re.findall(r"\d+(?:\.\d+)?", b["title"]))))
+    anchor = (shared_names & (title_a | title_b)
+              or versions(a) & versions(b) or same_round)
+    if not anchor:
+        return False
+    tokens_a = _topic_tokens(f"{a['title']} {a.get('summary', '')[:250]}")
+    tokens_b = _topic_tokens(f"{b['title']} {b.get('summary', '')[:250]}")
+    shared = tokens_a & tokens_b
+    return len(shared) >= 6 and len(shared) / min(len(tokens_a), len(tokens_b)) >= 0.25
+
+
 def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[dict]:
     """Merge candidates covering the same event into one story group.
 
-    Uses the same deterministic rare-token title rule the feed uses for
-    merge candidates, so the email's "N sources" matches what the app
-    shows for grouped coverage. Verdict score 0 drops the group.
+    Uses exact titles plus a conservative named-event check for paraphrased
+    headlines before allocating email slots. Verdict score 0 drops the group.
     """
     verdicts = verdicts or {}
     candidates = _candidates(feed)
     ranked = _ranked(candidates)
-    df = _document_frequencies([{"title": c["title"]} for c in candidates])
-    rare = set(_rare_tokens(df, len(candidates)))
 
     groups: list[dict] = []
     for cand in ranked:
-        tokens = _topic_tokens(cand["title"])
-        target = None
-        for group in groups:
-            shared = tokens & group["_tokens"]
-            specific = {t for t in shared if len(t) >= 4}
-            if len(specific) >= 3 or ((shared & group["_rare"]) and len(specific) >= 2):
-                target = group
-                break
+        target = next((group for group in groups if
+                       cand["title"].casefold() == group["title"].casefold()
+                       or _same_event_summary(cand, group)), None)
         if target is None:
             groups.append({
                 **cand,
-                "_tokens": tokens,
-                "_rare": rare,
                 "_verdicts": [verdicts.get(cand["topic_id"])],
             })
             continue
-        target["_tokens"] |= tokens
         target["_verdicts"].append(verdicts.get(cand["topic_id"]))
         for domain in cand["sources"]:
             if domain not in target["sources"]:
@@ -400,8 +441,6 @@ def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[di
     kept: list[dict] = []
     for group in groups:
         scores = [s for s in group.pop("_verdicts", []) if s is not None]
-        group.pop("_tokens", None)
-        group.pop("_rare", None)
         # A story is only dropped when every source in the group was judged
         # worthless; one keep-worthy outlet saves the group.
         if scores and max(scores) == 0:

@@ -455,6 +455,17 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
     """True for lab/param-size model launches, not AI-safety incident coverage."""
     title_text = title or ""
     haystack = f"{title_text} {content or ''}"
+    # Named launches that never say "model": "<verb> Qwen3.8", "<verb> GPT-5".
+    named_launch = re.search(
+        r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
+        r"ships?|shipped|introduces?|introduced)\s+"
+        r"(?:[A-Z][\w.-]*\d[\w.-]*"          # Qwen3.8, GPT-5
+        r"|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b",  # Claude Opus 5
+        title_text,
+    )
+    if (re.search(r"\b(cancel\w*|abandon\w*|scrap\w*|halt\w*|ditch\w*)\b", title_text, re.I)
+            and not named_launch):
+        return False
     if re.search(
         r"\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b",
         haystack,
@@ -479,14 +490,6 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
         r"checkpoints?|open[- ]weights?)\b",
         haystack,
         re.I,
-    )
-    # Named launches that never say "model": "<verb> Qwen3.8", "<verb> GPT-5".
-    named_launch = re.search(
-        r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
-        r"ships?|shipped|introduces?|introduced)\s+"
-        r"(?:[A-Z][\w.-]*\d[\w.-]*"          # Qwen3.8, GPT-5
-        r"|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b",  # Claude Opus 5
-        title_text,
     )
     # A launch verb in the title is the thing that separates "OpenAI ships a
     # 70B model" from "Data centre firm raises $3.9B and mentions AI models".

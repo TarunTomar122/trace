@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from v3.flows.send_audience_newsletter import _select
+from v3.flows.send_audience_newsletter import _select, _story_groups
 from v3.flows.send_three_feed_newsletter import _candidate_stories, _pick_items
 
 
@@ -19,6 +19,114 @@ def _topic(title, url, articles, interest="ai"):
 
 
 class NewsletterSelectionTests(unittest.TestCase):
+    def test_email_groups_paraphrased_events_without_merging_company_news(self):
+        def topic(title, summary, url, interest="ai"):
+            return {
+                **_topic(title, url, [(title, url, "Source")], interest),
+                "id": url,
+                "summary": summary,
+            }
+
+        feed = {
+            "trending_topics": [
+                topic(
+                    "OpenAI Cancels GPT-6.1 Astra Launch",
+                    "OpenAI has decided to cancel the release of its new model, GPT-6.1 Astra, due to significant safety concerns. Internal testing revealed failed safety standards.",
+                    "https://a.com/openai-astra",
+                ),
+                topic(
+                    "OpenAI abandons plan to release upcoming model as safety concerns escalate",
+                    "OpenAI has confirmed it will not release its upcoming GPT-6.1 Astra model, citing insufficient adherence to safety standards.",
+                    "https://b.com/openai-astra",
+                ),
+                topic(
+                    "GPT-6.1 Astra fails internal safety review",
+                    "OpenAI has cancelled the GPT-6.1 Astra release after the model failed internal safety tests.",
+                    "https://h.com/openai-astra",
+                ),
+                topic(
+                    "Anthropic Releases Its Second New AI Model in Less Than a Week",
+                    "Anthropic has launched Sonnet 5.5, a new AI model positioned as a faster and more cost-effective alternative to Opus 5.5.",
+                    "https://c.com/sonnet",
+                ),
+                topic(
+                    "OpenAI reports Australian government website breach",
+                    "OpenAI disclosed unauthorized access to Australian government websites through an internal research model.",
+                    "https://d.com/breach",
+                ),
+                topic(
+                    "Rayon Raises 10 Million in Series A Funding",
+                    "Paris-based Rayon raised a Series A round for its browser-based interior design software.",
+                    "https://e.com/rayon",
+                    "startups",
+                ),
+                topic(
+                    "Rayon raises 10M Series A to expand interior design platform",
+                    "Rayon raised a Series A round to expand its browser-based interior design software.",
+                    "https://k.com/rayon",
+                    "startups",
+                ),
+                topic(
+                    "Paris-based Marble secures 6.5 million in Series A financing",
+                    "Paris-based Marble raised a Series A round for its financial software platform.",
+                    "https://f.com/marble",
+                    "startups",
+                ),
+                topic(
+                    "Apple launches iOS 27",
+                    "Apple announced a software update with security improvements and bug fixes.",
+                    "https://i.com/ios",
+                    "tech",
+                ),
+                topic(
+                    "Apple issues macOS Tahoe patch",
+                    "Apple announced a software update with security improvements and bug fixes.",
+                    "https://j.com/macos",
+                    "tech",
+                ),
+            ],
+            "trending": [{
+                "title": "Anthropic releases Sonnet 5.5, a significantly cheaper, faster work partner",
+                "summary": "Anthropic has launched Sonnet 5.5, its latest mid-tier AI model, designed to be significantly faster and more cost-effective than its predecessor.",
+                "url": "https://g.com/sonnet",
+                "interest_id": "ai",
+            }],
+        }
+
+        groups = _story_groups(feed)
+        self.assertEqual(len(groups), 7, [g["title"] for g in groups])
+        self.assertEqual(sum("astra" in g["summary"].lower() for g in groups), 1)
+        self.assertEqual(sum("sonnet" in g["summary"].lower() for g in groups), 1)
+        self.assertTrue(any("breach" in g["title"].lower() for g in groups))
+        self.assertEqual(sum(g["interest_id"] == "startups" for g in groups), 2)
+        self.assertEqual(sum(g["interest_id"] == "tech" for g in groups), 2)
+
+    def test_same_company_patches_for_different_products_stay_separate(self):
+        summary = "Apple issued a security patch with bug fixes and stability improvements. The update is available today."
+        feed = {
+            "trending_topics": [
+                {**_topic("Apple issues security patch for iOS 27", "https://a.com/ios", [("iOS patch", "https://a.com/ios", "A")], "tech"),
+                 "id": "ios", "summary": summary},
+                {**_topic("Apple issues security patch for macOS Tahoe", "https://b.com/macos", [("macOS patch", "https://b.com/macos", "B")], "tech"),
+                 "id": "macos", "summary": summary},
+            ],
+            "trending": [],
+        }
+        self.assertEqual(len(_story_groups(feed)), 2)
+
+    def test_model_launch_and_jailbreak_remain_distinct(self):
+        background = "Anthropic released Sonnet 5.5, a faster AI model with lower costs than its predecessor. The model is available to developers today."
+        feed = {
+            "trending_topics": [
+                {**_topic("Anthropic releases Sonnet 5.5", "https://a.com/launch", [("launch", "https://a.com/launch", "A")]),
+                 "id": "launch", "summary": background},
+                {**_topic("Researchers find jailbreak in Sonnet 5.5", "https://b.com/jailbreak", [("jailbreak", "https://b.com/jailbreak", "B")]),
+                 "id": "jailbreak", "summary": "Researchers found a jailbreak in Sonnet 5.5. " + background},
+            ],
+            "trending": [],
+        }
+        self.assertEqual(len(_story_groups(feed)), 2)
+
     def test_pro_reorders_finished_sections_only(self):
         groups = [
             {"topic_id": "release", "interest_id": "ai", "model_release": True},
