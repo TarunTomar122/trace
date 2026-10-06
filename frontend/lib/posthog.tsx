@@ -202,7 +202,7 @@ export function trackSponsoredToolClicked({
   sponsorId: string;
   title: string;
   domain: string;
-  placement: 'home_feed_end';
+  placement: 'desktop_tools' | 'home_feed_end';
   position: number;
   feedDate?: string;
 }) {

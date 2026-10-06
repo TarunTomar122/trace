@@ -1830,33 +1830,14 @@ export default function FeedApp({
               )}
 
               {!feedError && tab === 'all' && visible.length > 0 && homeSponsors.map((sponsor, sponsorIndex) => (
-                <a
+                <SponsoredToolLink
                   key={sponsor.id}
-                  className="sponsored-feed-strip"
-                  href={sponsor.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={`Sponsored: ${sponsor.title}. Visit website`}
-                  onClick={() => {
-                    trackFeedItemClicked(sponsor.id, 'promo', '');
-                    trackSponsoredToolClicked({
-                      sponsorId: sponsor.id,
-                      title: sponsor.title,
-                      domain: domainOf(sponsor.url),
-                      placement: 'home_feed_end',
-                      position: visible.length + sponsorIndex + 1,
-                      feedDate,
-                    });
-                  }}
-                >
-                  <span className="sponsor-label">Sponsored</span>
-                  <span className="sponsored-feed-heading">
-                    <span className="sponsor-logo"><RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} /></span>
-                    <span className="sponsor-title">{sponsor.title}</span>
-                  </span>
-                  <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
-                  {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
-                </a>
+                  sponsor={sponsor}
+                  placement="home_feed_end"
+                  position={visible.length + sponsorIndex + 1}
+                  feedDate={feedDate}
+                  variant="feed"
+                />
               ))}
 
               {!feedError && isFree && lockedStories.length > 0 && (
@@ -1969,20 +1950,28 @@ export default function FeedApp({
             <span className="rail-meta">{generated ? `updated ${generated}` : 'hourly'}</span>
           </div>
           <div className="rail-items">
+            {homeSponsors.map((sponsor, sponsorIndex) => (
+              <SponsoredToolLink
+                key={sponsor.id}
+                sponsor={sponsor}
+                placement="desktop_tools"
+                position={sponsorIndex + 1}
+                feedDate={feedDate}
+                variant="tools"
+              />
+            ))}
             {topTools(pulse.tools).map((t) => (
               <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
-                  <RailLogo item={t} />
-                  <span className="pulse-main">
-                    <span className="pulse-title">{t.title}</span>
-                    {(t.sub || (!isGithubItem(t) && t.signal)) ? (
-                      <span className="rail-sub">{t.sub || t.signal}</span>
-                    ) : null}
-                    {isGithubItem(t) && t.signal ? (
-                      <span className="rail-stars"><Star size={12} /> {t.signal}</span>
-                    ) : null}
-                  </span>
+                <RailLogo item={t} />
+                <span className="pulse-title" title={t.title} style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                {(t.sub || (!isGithubItem(t) && t.signal)) ? (
+                  <span className="rail-sub">{t.sub || t.signal}</span>
+                ) : null}
+                {isGithubItem(t) && t.signal ? (
+                  <span className="rail-stars"><Star size={12} /> {t.signal}</span>
+                ) : null}
               </a>
-              ))}
+            ))}
           </div>
           <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
         </div>
@@ -2029,8 +2018,8 @@ function WelcomeModal({ kind, onClose, priceDisplay = '' }: { kind: 'pro' | 'pro
       'Profile-ranked picks plus the daily email brief',
     ]
     : [
-      'A sponsored spot at the end of Home for 30 days',
-      'Shown at the end of Home on desktop and mobile',
+      'A sponsored spot in desktop Tools and at the end of Home when the Tools rail collapses for 30 days',
+      'Shown in desktop Tools and at the end of Home when the Tools rail collapses',
       'Support anytime: tomartarun2001@gmail.com',
     ];
   return (
@@ -2160,6 +2149,49 @@ function RailLogo({ item }: { item: PulseItem }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img className="rail-logo" src={src} alt="" loading="lazy" />
+  );
+}
+
+function SponsoredToolLink({
+  sponsor,
+  placement,
+  position,
+  feedDate,
+  variant,
+}: {
+  sponsor: PromotedTool;
+  placement: 'desktop_tools' | 'home_feed_end';
+  position: number;
+  feedDate: string;
+  variant: 'feed' | 'tools';
+}) {
+  return (
+    <a
+      className={`sponsored-tool-row sponsored-tool-row--${variant}`}
+      href={sponsor.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Sponsored: ${sponsor.title}. Visit website`}
+      onClick={() => {
+        trackFeedItemClicked(sponsor.id, 'promo', '');
+        trackSponsoredToolClicked({
+          sponsorId: sponsor.id,
+          title: sponsor.title,
+          domain: domainOf(sponsor.url),
+          placement,
+          position,
+          feedDate,
+        });
+      }}
+    >
+      <span className="sponsor-label">Sponsored</span>
+      <span className="sponsored-tool-heading">
+        <RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} />
+        <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sponsor.title}</span>
+      </span>
+      {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
+      <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
+    </a>
   );
 }
 
@@ -3373,37 +3405,40 @@ const css = `
 .xw .rail-meta { font-size: 12px; color: var(--text-3); }
 .xw .rail-items { display: flex; flex-direction: column; }
 .xw .pulse-row {
-  display: flex; flex-direction: row; gap: 10px; align-items: flex-start; text-align: left;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; row-gap: 3px;
+  align-items: flex-start; text-align: left;
   padding: 12px 16px; border: none; background: transparent;
   cursor: pointer; color: inherit; width: 100%;
   transition: background-color 0.2s ease;
 }
-.xw .sponsored-feed-strip {
+.xw .pulse-row .pulse-title { grid-column: 2; min-width: 0; }
+.xw .pulse-row .rail-sub,
+.xw .pulse-row .rail-stars { grid-column: 1 / -1; }
+.xw .sponsored-tool-row {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px;
-  margin: 12px 0 18px; padding: 11px 13px;
-  border: 1px solid #e2edf2; border-radius: 12px; box-sizing: border-box;
-  background: #f9fcfd; text-decoration: none; color: inherit;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; text-decoration: none; color: inherit; box-sizing: border-box;
+  transition: background-color 0.15s ease;
 }
-.xw .sponsored-feed-strip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-.xw .sponsored-feed-strip .sponsor-label { grid-column: 1 / -1; }
-.xw .sponsored-feed-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.xw .sponsored-feed-strip .sponsor-visit { grid-column: 2; grid-row: 2; align-self: center; }
-.xw .sponsored-feed-strip .sponsor-desc { grid-column: 1 / -1; }
+.xw .sponsored-tool-row--feed { display: none !important; }
+@media (max-width: 1300px) { .xw .sponsored-tool-row--feed { display: grid !important; } }
+.xw .sponsored-tool-row--feed { border-top: 1px solid var(--line); }
+.xw .sponsored-tool-row:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.xw .sponsored-tool-row .sponsor-label { grid-column: 1 / -1; }
+.xw .sponsored-tool-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.xw .sponsored-tool-row .sponsor-desc { grid-column: 1 / -1; }
+.xw .sponsored-tool-row .sponsor-visit { grid-column: 1 / -1; }
 .xw .sponsor-label { color: #557b8e; font-size: 9.5px; font-weight: 700; line-height: 12px; letter-spacing: 0.055em; text-transform: uppercase; }
-.xw .sponsor-logo { display: flex; flex: 0 0 28px; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #e4edf1; border-radius: 9px; background: #fff; }
-.xw .sponsor-logo .rail-logo { width: 18px; height: 18px; margin: 0; align-self: center; border-radius: 5px; }
-.xw .sponsor-title { color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.xw .sponsor-title { min-width: 0; overflow: hidden; color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .sponsor-desc { color: var(--text-2); font-size: 13px; line-height: 18px; overflow-wrap: break-word; }
 .xw .sponsor-visit { display: inline-flex; align-items: center; gap: 3px; width: fit-content; color: #28749a; font-size: 11.5px; font-weight: 600; line-height: 14px; }
 .xw .rail-logo { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
-.xw .pulse-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
 .xw .rail-items { padding-bottom: 8px; }
 .xw .fav-solo { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
 .xw .pulse-row:hover { background: var(--line); }
-.xw .sponsored-feed-strip:hover { background: #f2f9fc; border-color: #d4e5ed; }
-.xw .sponsored-feed-strip:hover .sponsor-visit { color: #075f91; }
-.xw .pulse-title { font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; }
+.xw .sponsored-tool-row:hover { background: var(--line); }
+.xw .sponsored-tool-row:hover .sponsor-visit { color: #075f91; }
+.xw .pulse-title { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
 .xw .promo-slot {
   display: flex; flex-direction: column; align-items: stretch; gap: 12px;
