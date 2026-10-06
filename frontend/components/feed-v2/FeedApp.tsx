@@ -14,6 +14,7 @@ import {
   trackFeedFilterChanged,
   trackFeedItemBookmarked,
   trackFeedItemClicked,
+  trackSponsoredToolClicked,
   trackFeedViewed,
   trackFeedOlderLoaded,
   trackBlogFeedWelcomeShown,
@@ -70,7 +71,7 @@ import {
   useCaughtUpShare,
 } from './retention/RetentionPanels';
 import {
-  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, Clock,
+  Bookmark, Share, ArrowLeft, ArrowUpRight, User, Check, Star, Plus, X, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, Lock,
   type LucideIcon,
 } from 'lucide-react';
@@ -161,7 +162,7 @@ const HOME_CAP_PRO = 10;
 // something concrete to point at (three of these ten, five of these ten).
 const HOME_CAP_FREE = 10;
 const PER_TAB_STORY_CAP = 15;
-/** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
+/** Max organic tool rows shown in the Tools rail and carousel. */
 const RAIL_TOOLS_CAP = 3;
 
 
@@ -1271,6 +1272,7 @@ export default function FeedApp({
     pinnedStories.flatMap((story) => [story.id, ...(story.mergedIds || [])]),
   );
   const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
+  const homeSponsors = promoted.slice(0, 3);
 
   // Viewing a story counts as reading it — covers shared links and
   // back-button restores too, not just taps in the list.
@@ -1310,29 +1312,7 @@ export default function FeedApp({
   // tools carousel cards (rendered twice for a seamless infinite loop).
   const toolCards = (dup: string) => (
     <>
-      <a key={`house-${dup}`} className="tool-card" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
-        <span className="tool-card-top">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="fav-solo" style={{ borderRadius: 5 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
-          <span className="rail-ad">AD</span>
-        </span>
-        <span className="tool-card-title">Stocksbrew - Understand any US stock in minutes</span>
-        <span className="tool-card-sub">Reads fundamentals, earnings and news, then tells you exactly what to do.</span>
-      </a>
       <PromoSlot key={`promo-${dup}`} monthlyReach={monthlyReach} placement="pulse_mobile" onOpen={() => setPromoOpen(true)} compact />
-      {promoted.map((p) => (
-        <a key={`${p.id}-${dup}`} className="tool-card" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
-          <span className="tool-card-top">
-            {domainOf(p.url) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="fav-solo" style={{ borderRadius: 5 }} src={`https://www.google.com/s2/favicons?domain=${domainOf(p.url)}&sz=64`} alt="" loading="lazy" />
-            ) : null}
-            <span className="rail-ad">AD</span>
-          </span>
-          <span className="tool-card-title">{p.title}</span>
-          {p.sub ? <span className="tool-card-sub">{p.sub}</span> : null}
-        </a>
-      ))}
       {topTools(pulse.tools).map((t) => (
         <a key={`${t.id}-${dup}`} className="tool-card" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
           <span className="tool-card-top">
@@ -1608,7 +1588,7 @@ export default function FeedApp({
               <span className="head-meta">{pulse.discussions.length}</span>
             </header>
             <div className="tools-carousel-wrap">
-              <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{promoted.length + pulse.tools.length}</span></div>
+              <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{topTools(pulse.tools).length}</span></div>
               <div className="tools-carousel" ref={carouselRef}>
                 <div className="tools-track">
                   <div className="tools-group">{toolCards('a')}</div>
@@ -1849,6 +1829,36 @@ export default function FeedApp({
                 })
               )}
 
+              {!feedError && tab === 'all' && visible.length > 0 && homeSponsors.map((sponsor, sponsorIndex) => (
+                <a
+                  key={sponsor.id}
+                  className="sponsored-feed-strip"
+                  href={sponsor.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Sponsored: ${sponsor.title}. Visit website`}
+                  onClick={() => {
+                    trackFeedItemClicked(sponsor.id, 'promo', '');
+                    trackSponsoredToolClicked({
+                      sponsorId: sponsor.id,
+                      title: sponsor.title,
+                      domain: domainOf(sponsor.url),
+                      placement: 'home_feed_end',
+                      position: visible.length + sponsorIndex + 1,
+                      feedDate,
+                    });
+                  }}
+                >
+                  <span className="sponsor-label">Sponsored</span>
+                  <span className="sponsored-feed-heading">
+                    <span className="sponsor-logo"><RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} /></span>
+                    <span className="sponsor-title">{sponsor.title}</span>
+                  </span>
+                  <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
+                  {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
+                </a>
+              ))}
+
               {!feedError && isFree && lockedStories.length > 0 && (
                 <PaywallPlate
                   what="the full ranked feed"
@@ -1951,7 +1961,7 @@ export default function FeedApp({
         <MilestoneModal days={milestoneDays} onClose={() => setMilestoneDays(null)} />
       )}
 
-      {/* right rail: two pulse cards */}
+      {/* right rail: tools */}
       <aside className="right">
         <div className="rail">
           <div className="rail-head">
@@ -1959,34 +1969,8 @@ export default function FeedApp({
             <span className="rail-meta">{generated ? `updated ${generated}` : 'hourly'}</span>
           </div>
           <div className="rail-items">
-            {railToolSlots(promoted, pulse.tools).map((slot) => {
-              if (slot.kind === 'promoted') {
-                const p = slot.item;
-                return (
-                  <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
-                    <RailLogo item={{ url: p.url, source: '' } as PulseItem} />
-                    <span className="pulse-main">
-                      <span className="pulse-title">{p.title} <span className="rail-ad">AD</span></span>
-                      {p.sub ? <span className="rail-sub">{p.sub}</span> : null}
-                    </span>
-                  </a>
-                );
-              }
-              if (slot.kind === 'house') {
-                return (
-                  <a key="house-stocksbrew" className="pulse-row" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="fav-solo" style={{ borderRadius: 5, alignSelf: 'flex-start', marginTop: 2 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
-                    <span className="pulse-main">
-                      <span className="pulse-title">Stocksbrew - Understand any US stock in minutes <span className="rail-ad">AD</span></span>
-                      <span className="rail-sub">Stocksbrew reads fundamentals, earnings and news for you then tells you exactly what to do with your stocks.</span>
-                    </span>
-                  </a>
-                );
-              }
-              const t = slot.item;
-              return (
-                <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
+            {topTools(pulse.tools).map((t) => (
+              <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
                   <RailLogo item={t} />
                   <span className="pulse-main">
                     <span className="pulse-title">{t.title}</span>
@@ -1997,9 +1981,8 @@ export default function FeedApp({
                       <span className="rail-stars"><Star size={12} /> {t.signal}</span>
                     ) : null}
                   </span>
-                </a>
-              );
-            })}
+              </a>
+              ))}
           </div>
           <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
         </div>
@@ -2040,14 +2023,14 @@ function WelcomeModal({ kind, onClose, priceDisplay = '' }: { kind: 'pro' | 'pro
   }, [onClose]);
   const perks = isPro
     ? [
-      'The full ranked feed, no 7-story cap',
+      "All 10 stories in today's ranked edition",
       'Full summaries with key points',
       'Pulse: Top HN',
       'Profile-ranked picks plus the daily email brief',
     ]
     : [
-      'Your tool is featured in Tools for 30 days',
-      'Seen across the feed on desktop and mobile',
+      'A sponsored spot at the end of Home for 30 days',
+      'Shown at the end of Home on desktop and mobile',
       'Support anytime: tomartarun2001@gmail.com',
     ];
   return (
@@ -2200,7 +2183,7 @@ function isBlogPage(t: PulseItem): boolean {
 }
 
 function topTools(tools: PulseItem[]): PulseItem[] {
-  const list = tools || [];
+  const list = (tools || []).filter((tool) => !isStocksBrewTool(tool));
   const gh = list
     .filter((t) => isGithubItem(t) && !isBlogPage(t))
     .sort((a, b) => starCount(b) - starCount(a));
@@ -2218,23 +2201,8 @@ function topTools(tools: PulseItem[]): PulseItem[] {
   return picked.slice(0, RAIL_TOOLS_CAP);
 }
 
-type RailToolSlot =
-  | { kind: 'promoted'; item: PromotedTool }
-  | { kind: 'house' }
-  | { kind: 'pulse'; item: PulseItem };
-
-function railToolSlots(promoted: PromotedTool[], tools: PulseItem[]): RailToolSlot[] {
-  const slots: RailToolSlot[] = [];
-  for (const p of promoted) {
-    if (slots.length >= RAIL_TOOLS_CAP) break;
-    slots.push({ kind: 'promoted', item: p });
-  }
-  if (slots.length < RAIL_TOOLS_CAP) slots.push({ kind: 'house' });
-  for (const t of topTools(tools)) {
-    if (slots.length >= RAIL_TOOLS_CAP) break;
-    slots.push({ kind: 'pulse', item: t });
-  }
-  return slots;
+function isStocksBrewTool(tool: PulseItem): boolean {
+  return tool.title.toLowerCase().includes('stocksbrew') || domainOf(tool.url).toLowerCase().includes('stocksbrew');
 }
 
 function PromoSlot({ monthlyReach, placement, onOpen, compact = false }: { monthlyReach: number; placement: string; onOpen: () => void; compact?: boolean }) {
@@ -3410,17 +3378,36 @@ const css = `
   cursor: pointer; color: inherit; width: 100%;
   transition: background-color 0.2s ease;
 }
+.xw .sponsored-feed-strip {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px;
+  margin: 12px 0 18px; padding: 11px 13px;
+  border: 1px solid #e2edf2; border-radius: 12px; box-sizing: border-box;
+  background: #f9fcfd; text-decoration: none; color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.xw .sponsored-feed-strip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.xw .sponsored-feed-strip .sponsor-label { grid-column: 1 / -1; }
+.xw .sponsored-feed-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.xw .sponsored-feed-strip .sponsor-visit { grid-column: 2; grid-row: 2; align-self: center; }
+.xw .sponsored-feed-strip .sponsor-desc { grid-column: 1 / -1; }
+.xw .sponsor-label { color: #557b8e; font-size: 9.5px; font-weight: 700; line-height: 12px; letter-spacing: 0.055em; text-transform: uppercase; }
+.xw .sponsor-logo { display: flex; flex: 0 0 28px; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #e4edf1; border-radius: 9px; background: #fff; }
+.xw .sponsor-logo .rail-logo { width: 18px; height: 18px; margin: 0; align-self: center; border-radius: 5px; }
+.xw .sponsor-title { color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.xw .sponsor-desc { color: var(--text-2); font-size: 13px; line-height: 18px; overflow-wrap: break-word; }
+.xw .sponsor-visit { display: inline-flex; align-items: center; gap: 3px; width: fit-content; color: #28749a; font-size: 11.5px; font-weight: 600; line-height: 14px; }
 .xw .rail-logo { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
 .xw .pulse-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
 .xw .rail-items { padding-bottom: 8px; }
 .xw .fav-solo { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
 .xw .pulse-row:hover { background: var(--line); }
+.xw .sponsored-feed-strip:hover { background: #f2f9fc; border-color: #d4e5ed; }
+.xw .sponsored-feed-strip:hover .sponsor-visit { color: #075f91; }
 .xw .pulse-title { font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
-.xw .rail-ad { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--blue); background: rgba(29,155,240,0.1); border: 1px solid rgba(29,155,240,0.35); border-radius: 4px; padding: 1px 4px; vertical-align: 1px; white-space: nowrap; }
 .xw .promo-slot {
-  display: flex; flex-direction: column; align-items: stretch; gap: 15px;
-  margin: 0; padding: 18px 16px; width: 100%; min-height: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+  margin: 0; padding: 16px; width: 100%; min-height: 0;
   border-top: 1px solid var(--line);
   background: #fff; color: var(--text);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3430,10 +3417,10 @@ const css = `
 .xw .promo-slot-actions { display: flex; flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap; }
 .xw .promo-cta:focus-visible,
 .xw .promo-proof-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 10px; }
-.xw .promo-headline { color: var(--text); font-size: 17px; font-weight: 700; line-height: 22px; letter-spacing: -0.01em; }
+.xw .promo-headline { color: var(--text); font-size: 15.5px; font-weight: 700; line-height: 20px; letter-spacing: -0.01em; }
 .xw .promo-subline { color: var(--text-2); font-size: 13px; line-height: 18px; }
 .xw .promo-cta {
-  min-height: 38px; width: auto; border: 0; border-radius: 9999px; padding: 9px 16px;
+  min-height: 36px; width: auto; border: 0; border-radius: 9999px; padding: 8px 14px;
   background: var(--blue); color: #fff; cursor: pointer; font: inherit; font-size: 13px;
   font-weight: 700; line-height: 18px; white-space: nowrap;
   transition: background-color 0.15s ease, transform 0.15s ease;

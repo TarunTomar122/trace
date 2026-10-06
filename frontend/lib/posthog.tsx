@@ -191,6 +191,32 @@ export function trackFeedItemClicked(itemId: string, itemType: string, source: s
   });
 }
 
+export function trackSponsoredToolClicked({
+  sponsorId,
+  title,
+  domain,
+  placement,
+  position,
+  feedDate,
+}: {
+  sponsorId: string;
+  title: string;
+  domain: string;
+  placement: 'home_feed_end';
+  position: number;
+  feedDate?: string;
+}) {
+  posthog.capture("sponsored_tool_clicked", {
+    sponsor_id: sponsorId,
+    sponsor_title: title,
+    sponsor_domain: domain,
+    placement,
+    position,
+    feed_date: feedDate,
+    surface: "web",
+  });
+}
+
 export function trackFeedItemUpvoted(itemId: string, itemType: string) {
   posthog.capture("feed_item_upvoted", { item_id: itemId, item_type: itemType });
 }
