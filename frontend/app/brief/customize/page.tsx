@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function CustomizeBriefPage() {
   return (
     <div className="min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Open the feed" ctaHref="/feed?from=brief" />
+      <PublicHeader variant="landing" hideCta />
       <main className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl pt-10 pb-20 sm:pt-14">
           <h1 className="max-w-[20ch] text-[2rem] font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">

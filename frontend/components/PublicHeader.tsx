@@ -26,12 +26,15 @@ function attributedHref(href: string): string {
 export default function PublicHeader({
   ctaLabel = 'Start reading free',
   ctaHref = '/feed?utm_source=site&utm_medium=header',
+  hideCta = false,
   centerSlot,
   rightSlot,
   showMobileNav = true,
 }: {
   ctaLabel?: string;
   ctaHref?: string;
+  /** No call-to-action button on the right (the nav links are enough). */
+  hideCta?: boolean;
   centerSlot?: ReactNode;
   rightSlot?: ReactNode;
   showMobileNav?: boolean;
@@ -69,7 +72,7 @@ export default function PublicHeader({
           </nav>
         )}
         <div className="flex items-center gap-2" style={{ justifySelf: 'end' }}>
-          {rightSlot ?? <Link href={attributedHref(ctaHref)} className="inline-flex min-h-10 items-center rounded-full bg-[#1d9bf0] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#1a8cd8]" style={{ whiteSpace: 'nowrap' }}>{ctaLabel}</Link>}
+          {hideCta ? null : rightSlot ?? <Link href={attributedHref(ctaHref)} className="inline-flex min-h-10 items-center rounded-full bg-[#1d9bf0] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#1a8cd8]" style={{ whiteSpace: 'nowrap' }}>{ctaLabel}</Link>}
           {!centerSlot && showMobileNav && (
             <details className="public-mobile-nav relative">
               <summary aria-label="Open navigation" className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full border border-foreground/15 text-foreground [&::-webkit-details-marker]:hidden">

@@ -28,7 +28,7 @@ export default async function DailyArchivePage() {
 
   return (
     <div className="min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Open the feed" ctaHref="/feed?from=brief" />
+      <PublicHeader variant="landing" hideCta />
 
       <main className="px-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[720px] pt-10 pb-16 sm:pt-14">

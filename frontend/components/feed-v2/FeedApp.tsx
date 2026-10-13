@@ -1790,7 +1790,7 @@ export default function FeedApp({
             {topTools(pulse.tools).map((t) => (
               <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
                 <RailLogo item={t} />
-                <span className="pulse-title" title={t.title} style={{ display: 'block', minWidth: 0, overflowWrap: 'anywhere' }}>{t.title}</span>
+                <span className="pulse-title" title={t.title} style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
                 {(t.sub || (!isGithubItem(t) && t.signal)) ? (
                   <span className="rail-sub">{t.sub || t.signal}</span>
                 ) : null}
@@ -2002,7 +2002,7 @@ function SponsoredToolLink({
       <span className="sponsor-label">Sponsored</span>
       <span className="sponsored-tool-heading">
         <RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} />
-        <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{sponsor.title}</span>
+        <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sponsor.title}</span>
       </span>
       {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
       <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
@@ -2717,7 +2717,7 @@ const css = `
   .xw .post { padding: 16px 14px 10px; }
   .xw .post-title { font-size: 18px; }
   .xw .post-thumb { width: 104px; height: 104px; flex-basis: 104px; border-radius: 12px; }
-  .xw .post-dek { font-size: 14px; }
+  .xw .post-dek { font-size: 14px; -webkit-line-clamp: 2; }
   .xw .headline-title { font-size: 18px; }
   .xw .headline { margin: 8px 8px 14px; }
   .xw .feed { padding-bottom: 104px; }
@@ -2942,24 +2942,26 @@ const css = `
     box-sizing: border-box;
   }
   .xw .promo-slot-compact .promo-headline {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     font-size: 14px; line-height: 18px;
   }
   .xw .promo-slot-compact .promo-subline { font-size: 12px; line-height: 16px; }
   .xw .promo-slot-compact .promo-slot-actions { margin-top: auto; }
   .xw .promo-slot-compact .promo-cta { width: 100%; }
   .xw .tool-card-top { display: flex; align-items: center; gap: 6px; }
-  .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; }
-  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); }
+  .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .xw .tool-card-meta { display: none; }
 }
 .xw .post-title { margin: 0 0 8px; font-size: 22px; font-weight: 800; line-height: 1.22; letter-spacing: -0.03em; }
 .xw .post-dek {
-  margin: 0 0 10px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin: 0 0 10px;
   font-size: 15px; line-height: 1.45; color: var(--text-2);
 }
 /* Discussion cards (Show HN, Top HN): the description is the story, so let
    it run instead of cutting it at two lines. */
-.xw .post-dek.full { display: block; overflow: visible; }
+.xw .post-dek.full { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .xw .post-row { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
 .xw .post-copy { flex: 1; min-width: 0; }
 .xw .post-thumb {
@@ -3099,7 +3101,7 @@ const css = `
 .xw .sponsored-tool-row .sponsor-desc { grid-column: 1 / -1; }
 .xw .sponsored-tool-row .sponsor-visit { grid-column: 1 / -1; }
 .xw .sponsor-label { color: #557b8e; font-size: 9.5px; font-weight: 700; line-height: 12px; letter-spacing: 0.055em; text-transform: uppercase; }
-.xw .sponsor-title { min-width: 0; color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; }
+.xw .sponsor-title { min-width: 0; overflow: hidden; color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .sponsor-desc { color: var(--text-2); font-size: 13px; line-height: 18px; overflow-wrap: break-word; }
 .xw .sponsor-visit { display: inline-flex; align-items: center; gap: 3px; width: fit-content; color: #28749a; font-size: 11.5px; font-weight: 600; line-height: 14px; }
 .xw .rail-logo { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
@@ -3108,7 +3110,7 @@ const css = `
 .xw .pulse-row:hover { background: var(--line); }
 .xw .sponsored-tool-row:hover { background: var(--line); }
 .xw .sponsored-tool-row:hover .sponsor-visit { color: #075f91; }
-.xw .pulse-title { min-width: 0; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; }
+.xw .pulse-title { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
 .xw .promo-slot {
   display: flex; flex-direction: column; align-items: stretch; gap: 12px;
@@ -3448,7 +3450,8 @@ ${retentionCss}
   .xw .post-title {
     grid-area: title; align-self: start;
     font-size: 18px; margin: 0; line-height: 1.25;
-    }
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
   .xw .post-dek { grid-area: dek; margin: 0; font-size: 14px; }
   .xw .post-meta { grid-area: meta; margin: 0; min-width: 0; align-self: center; }
   .xw .post-copy > .actions { grid-area: actions; margin: 0; align-self: center; flex-shrink: 0; }

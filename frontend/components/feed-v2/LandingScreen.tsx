@@ -121,7 +121,7 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
             <Link href="/brief" className="nav-hide-sm">Daily brief</Link>
             <Link href="/how-it-works" className="nav-hide-sm">How it works</Link>
             <Link href="/blog" className="nav-hide-sm">Blog</Link>
-            <LandingCtaLink href="/feed?utm_source=site&utm_medium=nav" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
+            <LandingCtaLink href="/feed?utm_source=site&utm_medium=nav" location="nav">Feed</LandingCtaLink>
           </nav>
         </div>
       </header>
@@ -251,7 +251,7 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
         <LandingBuilderDemo fallback={sample} />
       </section>
 
-      <LandingWhatYouGet />
+      <LandingWhatYouGet stories={edition?.stories ?? []} />
 
       <div className="band">
         <section className="section trust" id="open-source" aria-labelledby="trust-title">

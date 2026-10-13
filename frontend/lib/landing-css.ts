@@ -373,8 +373,9 @@ export const LANDING_CSS = `
 .lp .yg-feed-thumb { width: 92px; height: 92px; border-radius: 14px; object-fit: cover; background: #eee; display: block; }
 .lp .yg-feed-row-title {
   margin: 0; font-size: 14.5px; font-weight: 800; letter-spacing: -0.015em; line-height: 1.3;
-  }
-.lp .yg-feed-row .yg-why { margin: 5px 0 0; font-size: 12.5px; }
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.lp .yg-feed-row .yg-why { -webkit-line-clamp: 2; margin: 5px 0 0; font-size: 12.5px; }
 .lp .yg-feed-row .yg-meta { margin: 8px 0 0; }
 .lp .yg-feed-src { font-weight: 700; color: var(--ink); }
 .lp .yg-feed-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; padding: 2px 0 4px; }
@@ -387,7 +388,8 @@ export const LANDING_CSS = `
 .lp .yg-stitle { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.32; letter-spacing: -0.02em; }
 .lp .yg-why {
   margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--text-2);
-  }
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .lp .yg-meta {
   display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px;
   margin: 8px 0 0; font-size: 12px; font-weight: 600; color: var(--text-2);
@@ -419,7 +421,7 @@ export const LANDING_CSS = `
 .lp .yg-hero-title {
   margin: 0; font-size: 16.5px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.22;
 }
-.lp .yg-hero .yg-why { }
+.lp .yg-hero .yg-why { -webkit-line-clamp: 2; }
 
 .lp .yg-dots {
   width: 42px; height: 8px; border-radius: 99px; flex-shrink: 0;
@@ -484,7 +486,8 @@ export const LANDING_CSS = `
 .lp .yg-nt-title {
   margin: 0; font-size: 11.5px; font-weight: 650; line-height: 1.4;
   letter-spacing: -0.01em; color: #18181b;
-  }
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
 @media (max-width: 899px) {
   .lp .yg-nt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -508,6 +511,7 @@ export const LANDING_CSS = `
 }
 .lp .yg-mail-chrome p {
   margin: 0; font-size: 13px; font-weight: 650; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .lp .yg-letter {
   margin: 10px; background: #fff; border-radius: 12px; overflow: hidden;
@@ -536,7 +540,7 @@ export const LANDING_CSS = `
   font-variant-numeric: tabular-nums;
 }
 .lp .yg-letter-list .yg-stitle { font-family: Georgia, "Times New Roman", serif; font-size: 14.5px; }
-.lp .yg-letter-list .yg-why { }
+.lp .yg-letter-list .yg-why { -webkit-line-clamp: 2; }
 .lp .yg-letter-list .yg-meta { margin: 5px 0 0; }
 .lp .yg-letter-more {
   display: block; margin: 10px 14px 0; padding-top: 9px;
@@ -606,11 +610,13 @@ export const LANDING_CSS = `
 .lp .yg-dc-embed-k { margin: 0 0 4px !important; font-size: 11px; font-weight: 700; color: #949ba4; }
 .lp .yg-dc-embed-t {
   margin: 0 !important; font-size: 13.5px; font-weight: 700; color: #f2f3f5; line-height: 1.3;
-  }
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
 .lp .yg-dc-msg ol { margin: 8px 0 0; padding-left: 18px; }
 .lp .yg-dc-msg li {
   margin: 0 0 5px;
-  }
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .lp .yg-dc-msg li span { color: #949ba4; }
 .lp .yg-dc-compose {
   margin: 4px 12px 12px; padding: 9px 12px; border-radius: 8px;

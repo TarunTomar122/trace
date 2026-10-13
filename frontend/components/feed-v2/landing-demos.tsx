@@ -43,7 +43,7 @@ export function FeedDemo({ stories }: { stories: LandingDemoStory[] }) {
         <div className="yg-shot">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={featured.image} alt="" />
-          <span>{featured.mark}</span>
+          {featured.mark && <span>{featured.mark}</span>}
         </div>
         <h4 className="yg-hero-title">{featured.title}</h4>
         <p className="yg-why">{featured.why}</p>

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { AppWindow, Bot, Newspaper } from 'lucide-react';
 import { LANDING_DEMO_STORIES, type LandingDemoStory } from '@/lib/landing-demo-stories';
+import type { DailyStory } from '@/lib/daily-editions';
+import { topicLabel } from '@/lib/newsletter-prefs';
 import {
   DiscordDemo,
   FeedDemo,
@@ -42,8 +44,26 @@ function DemoFor({ id, stories }: { id: string; stories: LandingDemoStory[] }) {
   return <FeedDemo stories={stories} />;
 }
 
-export default function LandingWhatYouGet() {
-  const demo = LANDING_DEMO_STORIES;
+/** Today's real stories for the mockups; the samples only if there are too few with images. */
+function demoStories(stories: DailyStory[]): LandingDemoStory[] {
+  const real = stories
+    .filter((story) => story.image)
+    .map((story) => ({
+      id: story.url,
+      title: story.title,
+      tag: topicLabel(story.lane),
+      why: story.summary,
+      sources: story.sources.length ? story.sources : [story.source_name],
+      sourceName: story.source_name,
+      image: story.image,
+      mark: '',
+      coverage: [],
+    }));
+  return real.length >= 4 ? real.slice(0, 6) : LANDING_DEMO_STORIES;
+}
+
+export default function LandingWhatYouGet({ stories = [] }: { stories?: DailyStory[] }) {
+  const demo = demoStories(stories);
   return (
     <section className="section yg" id="what-you-get">
       <div className="sec-head">

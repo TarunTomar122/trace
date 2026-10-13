@@ -47,7 +47,8 @@ export const retentionCss = `
   line-height: 1.16; color: var(--text);
 }
 .xw .ret-sotd-dek {
-  margin: 10px 0 0;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; margin: 10px 0 0;
   font-size: 16px; line-height: 1.45; color: var(--text-2);
 }
 .xw .ret-sotd-meta {
@@ -61,7 +62,7 @@ export const retentionCss = `
 }
 .xw .ret-sotd-faves img + img { margin-left: -5px; }
 .xw .ret-sotd.lead .ret-sotd-title { font-size: 28px; letter-spacing: -0.035em; }
-.xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; }
+.xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; -webkit-line-clamp: 3; }
 .xw .ret-streak-slot {
   padding: 0 12px 8px; flex-shrink: 0;
 }
@@ -157,7 +158,8 @@ export const retentionCss = `
   line-height: 1.35; color: var(--text);
 }
 .xw .ret-pulse-hook-dek {
-  margin-top: 6px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin-top: 6px;
   font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--text-2);
 }
 .xw .ret-pulse-hook-meta {
@@ -232,7 +234,7 @@ export const retentionCss = `
   .xw .ret-sotd-shot { width: 100%; max-width: none; height: 240px; margin: 0 0 18px; }
   .xw .ret-sotd-copy { padding: 0 14px; }
   .xw .ret-sotd-title { font-size: 22px; }
-  .xw .ret-sotd-dek { font-size: 14.5px; }
+  .xw .ret-sotd-dek { font-size: 14.5px; -webkit-line-clamp: 2; }
   .xw .ret-sotd.lead .ret-sotd-title { font-size: 22px; }
   .xw .ret-launchpad { padding: 20px 16px; margin-bottom: 20px; }
   .xw .ret-launchpad-actions { max-width: none; width: 100%; }
@@ -257,8 +259,12 @@ export function storyDek(story: FeedStory): string {
     .replace(/\*\*/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  // Always the whole summary: a story card never cuts its text.
-  return raw;
+  // Feed cards are previews: the full story opens on click.
+  if (!raw) return '';
+  if (raw.length <= 220) return raw;
+  const cut = raw.slice(0, 220);
+  const at = cut.lastIndexOf(' ');
+  return `${(at > 140 ? cut.slice(0, at) : cut).trim()}…`;
 }
 
 export function StoryOfDayCard({
