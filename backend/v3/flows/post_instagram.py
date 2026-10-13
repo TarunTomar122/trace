@@ -6,14 +6,15 @@
 
 trace-instagram.timer runs it at 09:00 and 20:00 Europe/London. Each run
 picks 3-5 of today's top stories that were not posted before (two AI, then
-Markets, Startups and Design), renders a
-photo slide and a story slide (its first paragraphs, as the feed splits
-them) for each, writes the JPEGs where Caddy serves
-them (INSTAGRAM_MEDIA_DIR -> INSTAGRAM_MEDIA_URL), shares the carousel now
-through Buffer and waits until Buffer reports it sent.
+Markets, Startups and Design), renders a photo slide and a story slide (its
+first paragraphs, as the feed splits them) for each, writes the JPEGs where
+Caddy serves them (INSTAGRAM_MEDIA_DIR -> INSTAGRAM_MEDIA_URL), shares the
+carousel now through Buffer and waits until Buffer reports it sent.
 
-Every post is logged in `instagram_posts/{date}-{slot}`. A slot that already
-posted (or is posting) is skipped, so a re-run or retry never double-posts.
+Every post is logged in `instagram_posts/{date}-{slot}`. A slot is posted
+again only when nothing can have gone out (see RETRY), so a re-run or retry
+does not double-post. Live runs by hand should go through the service
+(`systemctl --user start trace-instagram.service`), which holds the lock.
 """
 
 from __future__ import annotations
@@ -44,7 +45,15 @@ load_dotenv(BACKEND_ROOT.parent / ".env")
 
 from v3.build_trending import _looks_promotional  # noqa: E402
 from v3.flows.send_audience_newsletter import _paragraphs  # noqa: E402  (the feed's paragraph split)
-from v3.lib.instagram_slides import PALETTES, SlideStory, fetch_image, render_carousel  # noqa: E402
+from v3.lib.instagram_slides import (  # noqa: E402
+    PALETTES,
+    SlideStory,
+    drawable,
+    fetch_image,
+    fits_story_slide,
+    render_carousel,
+    without_missing_glyphs,
+)
 from v3.lib.store import V3Store  # noqa: E402
 
 LONDON = ZoneInfo("Europe/London")
@@ -54,17 +63,34 @@ BUFFER_URL = "https://api.buffer.com"
 MEDIA_DIR = Path(os.getenv("INSTAGRAM_MEDIA_DIR", "/var/www/trace-social"))
 MEDIA_URL = os.getenv("INSTAGRAM_MEDIA_URL", "https://db.yourtrace.online/social").rstrip("/")
 COPY_MODEL = os.getenv("INSTAGRAM_COPY_MODEL", "gpt-4.1-mini")
-MIN_STORIES = int(os.getenv("INSTAGRAM_MIN_STORIES", "3"))
-MAX_STORIES = int(os.getenv("INSTAGRAM_MAX_STORIES", "5"))
+
+
+def _env_int(name: str, default: int, low: int, high: int) -> int:
+    try:
+        value = int(os.getenv(name, "").strip() or default)
+    except ValueError:
+        value = default
+    return max(low, min(high, value))
+
+
+MIN_STORIES = _env_int("INSTAGRAM_MIN_STORIES", 3, 1, 5)
+# Two slides per story, and an Instagram carousel holds at most 10.
+MAX_STORIES = _env_int("INSTAGRAM_MAX_STORIES", 5, MIN_STORIES, 5)
 # One story per entry, in this order: two AI, then Markets, Startups, Design.
 LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "ai,ai,markets,startups,ux-design").split(",") if lane.strip()]
 LANE_LABELS = {"ai": "AI", "markets": "Markets", "startups": "Startups", "tech": "Tech", "ux-design": "Design"}
-# Live posts already made by hand or by earlier runs stay unique for this long.
-REPEAT_WINDOW_DAYS = 4
+# A story that went out is not posted again for this long.
+REPEAT_WINDOW_DAYS = 14
 KEEP_MEDIA_DAYS = 14
-# Statuses that mean the post went out or may have: never post that slot or
-# its stories again. "unknown" is a post whose status could not be read.
-DONE = {"posting", "sent", "scheduled", "sending", "unknown"}
+# A slot is tried again only when nothing can have gone out: Buffer turned the
+# post down before creating it ("failed") or reports that publishing failed
+# ("error"). Every other status (posting, draft, needs_approval, scheduled,
+# sending, sent, unknown) counts as posted, as do its stories.
+RETRY = {"failed", "error"}
+# Buffer statuses still on their way; the next run re-reads them.
+IN_FLIGHT = {"posting", "draft", "needs_approval", "scheduled", "sending"}
+GENERIC_WORDS = {"launches", "launch", "unveils", "announces", "says", "plans", "with", "from", "after",
+                 "over", "into", "about", "their", "will", "amid", "this", "that", "than", "more"}
 
 HASHTAGS = {
     "ai": ["#ai", "#artificialintelligence"],
@@ -88,8 +114,20 @@ def _url_key(url: str) -> str:
     return f"{parts.netloc.lower().removeprefix('www.')}{parts.path.rstrip('/')}" if parts.netloc else ""
 
 
+def _words(title: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]+", title.lower()) if len(w) >= 4 and w not in GENERIC_WORDS}
+
+
 def _similar(a: str, b: str) -> bool:
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= 0.6
+    """Same story: near-identical titles, or most of the same distinctive words.
+
+    "Apple launches iPhone 17 Pro" and "Apple launches iPad Pro M5" stay apart.
+    """
+    if SequenceMatcher(None, a.lower(), b.lower()).ratio() >= 0.85:
+        return True
+    wa, wb = _words(a), _words(b)
+    shared = wa & wb
+    return len(shared) >= 3 and len(shared) / len(wa | wb) >= 0.5
 
 
 def slot_for(now: datetime) -> tuple[str, str]:
@@ -118,7 +156,7 @@ def recent_posts(store: V3Store, now: datetime) -> list[dict[str, Any]]:
     """Posts that went out (or may have) lately; failed attempts free their stories."""
     since = (now.astimezone(LONDON) - timedelta(days=REPEAT_WINDOW_DAYS)).strftime("%Y-%m-%d")
     docs = (d.to_dict() or {} for d in store.db.collection(COLLECTION).where("date", ">=", since).stream())
-    return [doc for doc in docs if doc.get("status") in DONE]
+    return [doc for doc in docs if doc.get("status") not in RETRY]
 
 
 def _image_urls(topic: dict[str, Any]) -> list[str]:
@@ -131,6 +169,20 @@ def _image_urls(topic: dict[str, Any]) -> list[str]:
         if url.startswith("http") and url not in seen:
             seen.append(url)
     return seen[:4]
+
+
+def _best_image(topic: dict[str, Any]) -> Any:
+    """The first candidate at least 600px on its short side, else the largest."""
+    best = None
+    for url in _image_urls(topic):
+        image = fetch_image(url)
+        if image is None:
+            continue
+        if best is None or image.width * image.height > best.width * best.height:
+            best = image
+        if min(image.size) >= 600:
+            break
+    return best
 
 
 def _kicker(lane: str) -> str:
@@ -146,7 +198,9 @@ def pick_stories(
     from any lane fills the gap at the end.
 
     Like the brief, the "Top in X" kicker shows once per lane, so the second
-    AI story in a row has none.
+    AI story in a row has none, and a story filling a gap has none either.
+    Stories the slide can't show well are skipped: text the font can't draw,
+    or a first paragraph too long for the story slide.
     """
     lanes = lanes or LANES
     posted_ids = {i for p in posted for i in p.get("topic_ids") or []}
@@ -155,9 +209,11 @@ def pick_stories(
 
     candidates: list[dict[str, Any]] = []  # feed order
     for topic in topics:
-        title = _clean(topic.get("title"))
+        title = without_missing_glyphs(_clean(topic.get("title")))
         paragraphs = _paragraphs(_clean(topic.get("summary")))[:3]
-        if not title or topic.get("jev_send_worthy") == 0 or not paragraphs or _looks_promotional(title):
+        if not title or topic.get("jev_send_worthy") == 0 or _looks_promotional(title):
+            continue
+        if not fits_story_slide(paragraphs) or not drawable(" ".join(paragraphs)):
             continue
         url_keys = {_url_key(a.get("url", "")) for a in topic.get("articles") or [] if isinstance(a, dict)} - {""}
         if topic.get("id") in posted_ids or url_keys & posted_urls or any(_similar(title, old) for old in posted_titles):
@@ -171,28 +227,32 @@ def pick_stories(
     picked: list[dict[str, Any]] = []
     tried: set[int] = set()
 
-    def take(story: dict[str, Any]) -> bool:
+    def take(story: dict[str, Any], lane_pick: bool) -> bool:
         if id(story) in tried:
             return False
         tried.add(id(story))
         if any(_similar(story["title"], p["title"]) for p in picked):
             return False
-        image = next((img for img in map(fetch_image, _image_urls(story["topic"])) if img is not None), None)
+        image = _best_image(story["topic"])
         if image is None:
             _log(f"skip (no usable image): {story['title']}")
             return False
-        picked.append({**story, "image": image})
+        picked.append({**story, "image": image, "lane_pick": lane_pick})
         return True
 
     for lane in lanes[:limit]:
-        any(take(story) for story in candidates if story["lane"] == lane)
+        any(take(story, True) for story in candidates if story["lane"] == lane)
     for story in candidates:
         if len(picked) >= limit:
             break
-        take(story)
+        take(story, False)
 
-    for i, story in enumerate(picked):
-        story["kicker"] = _kicker(story["lane"]) if i == 0 or picked[i - 1]["lane"] != story["lane"] else ""
+    labelled: set[str] = set()
+    for story in picked:
+        story["kicker"] = ""
+        if story["lane_pick"] and story["lane"] not in labelled:
+            story["kicker"] = _kicker(story["lane"])
+            labelled.add(story["lane"])
     return picked
 
 
@@ -262,7 +322,7 @@ def write_copy(stories: list[dict[str, Any]]) -> str:
         index = row.get("index")
         if not isinstance(index, int) or not 0 <= index < len(stories):
             continue
-        headline = _clean(row.get("headline")).rstrip(".")
+        headline = without_missing_glyphs(_clean(row.get("headline"))).rstrip(".")
         if 2 <= len(headline.split()) <= 10 and len(headline) <= 70:
             stories[index]["headline"] = headline
     return _clean(result.get("hook"))[:120]
@@ -277,7 +337,7 @@ def caption_for(stories: list[dict[str, Any]], hook: str) -> str:
         for tag in HASHTAGS.get(story["lane"], []):
             if tag not in tags:
                 tags.append(tag)
-    lines.append(" ".join(tags[:8] + ["#trace"]))
+    lines.append(" ".join(tags[:8] + ["#yourtrace"]))
     return "\n".join(lines)
 
 
@@ -310,10 +370,24 @@ def prune_media(now: datetime) -> None:
             shutil.rmtree(folder, ignore_errors=True)
 
 
-def buffer(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+class BufferRefused(RuntimeError):
+    """Buffer turned the request down before creating anything: safe to retry."""
+
+
+# Buffer's documented refusals (top-level codes and typed mutation errors).
+# Anything else, UNEXPECTED or a timeout above all, may have created the post.
+REFUSED_CODES = {"UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "RATE_LIMIT_EXCEEDED"}
+REFUSED_TYPES = {
+    "InvalidInputError", "LimitReachedError", "NotFoundError", "UnauthorizedError",
+    "PostInvalidInputError", "PostLimitReachedError", "PostChannelNotFoundError", "ChannelRefreshRequired",
+}
+
+
+def buffer(query: str, variables: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """(data, errors) from Buffer. Errors can ride along with good data as warnings."""
     key = os.getenv("BUFFER_API_KEY", "").strip()
     if not key:
-        raise RuntimeError("BUFFER_API_KEY is not set")
+        raise BufferRefused("BUFFER_API_KEY is not set")
     response = requests.post(
         BUFFER_URL,
         json={"query": query, "variables": variables or {}},
@@ -322,30 +396,36 @@ def buffer(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any
     )
     response.raise_for_status()
     body = response.json()
-    if body.get("errors"):
-        raise RuntimeError(f"Buffer: {body['errors']}")
-    return body.get("data") or {}
+    return body.get("data") or {}, body.get("errors") or []
+
+
+def _read(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+    data, errors = buffer(query, variables)
+    if errors and not any(data.values()):
+        raise RuntimeError(f"Buffer: {errors}"[:500])
+    return data
 
 
 def instagram_channel() -> str:
     configured = os.getenv("BUFFER_INSTAGRAM_CHANNEL_ID", "").strip()
     if configured:
         return configured
-    orgs = buffer("{ account { organizations { id } } }")["account"]["organizations"]
-    for org in orgs:
-        channels = buffer(
+    for org in _read("{ account { organizations { id } } }")["account"]["organizations"]:
+        channels = _read(
             "query($o: OrganizationId!) { channels(input: {organizationId: $o}) { id service isDisconnected isLocked } }",
             {"o": org["id"]},
         )["channels"]
         for channel in channels:
             if channel["service"] == "instagram" and not channel["isDisconnected"] and not channel["isLocked"]:
                 return channel["id"]
-    raise RuntimeError("no connected Instagram channel in Buffer")
+    raise BufferRefused("no connected Instagram channel in Buffer")
 
 
 def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
-    data = buffer(
+    """Create the post; BufferRefused when nothing was created, RuntimeError when unsure."""
+    data, errors = buffer(
         """mutation($input: CreatePostInput!) { createPost(input: $input) {
+            __typename
             ... on PostActionSuccess { post { id status } }
             ... on MutationError { message }
         } }""",
@@ -361,25 +441,67 @@ def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
         }},
     )
     result = data.get("createPost") or {}
-    post = result.get("post")
-    if not post:
-        raise RuntimeError(f"Buffer refused the post: {result.get('message') or result}")
-    return post["id"]
+    if (result.get("post") or {}).get("id"):
+        return result["post"]["id"]
+    kind = result.get("__typename") or ""
+    codes = {str((e.get("extensions") or {}).get("code") or "") for e in errors}
+    detail = f"{kind or ','.join(sorted(codes)) or 'no detail'}: {result.get('message') or errors or result}"[:500]
+    if kind in REFUSED_TYPES or (errors and not kind and codes <= REFUSED_CODES):
+        raise BufferRefused(f"Buffer refused the post ({detail})")
+    raise RuntimeError(f"Buffer returned no post id ({detail})")
+
+
+def post_state(post_id: str) -> dict[str, Any]:
+    return _read(
+        "query($id: PostId!) { post(input: {id: $id}) { id status externalLink sentAt error { message } } }",
+        {"id": post_id},
+    ).get("post") or {}
+
+
+def _state_fields(state: dict[str, Any]) -> dict[str, Any]:
+    error = state.get("error") if isinstance(state.get("error"), dict) else {}
+    return {
+        "status": state.get("status") or "unknown",
+        "external_link": state.get("externalLink") or "",
+        "sent_at": state.get("sentAt") or "",
+        "error": error.get("message") or "",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def wait_until_sent(post_id: str, timeout: int = 600) -> dict[str, Any]:
-    """Poll Buffer until the post is sent or errors; returns the last state."""
-    deadline = time.time() + timeout
+    """Poll until Buffer reports sent or error (every 20s, then every minute).
+
+    A failed check is logged and retried, never raised: the post exists either way.
+    """
+    started = time.time()
     state: dict[str, Any] = {}
-    while time.time() < deadline:
-        state = buffer(
-            "query($id: PostId!) { post(input: {id: $id}) { id status externalLink sentAt error { message } } }",
-            {"id": post_id},
-        ).get("post") or {}
+    while time.time() - started < timeout:
+        try:
+            state = post_state(post_id) or state
+        except Exception as exc:
+            _log(f"status check failed, trying again: {exc}")
         if state.get("status") in {"sent", "error"}:
             break
-        time.sleep(15)
+        time.sleep(20 if time.time() - started < 120 else 60)
     return state
+
+
+def refresh(ref: Any, record: dict[str, Any]) -> dict[str, Any]:
+    """Re-read a post that was still on its way when its run ended."""
+    post_id = record.get("buffer_post_id")
+    if not post_id or record.get("status") not in IN_FLIGHT:
+        return record
+    try:
+        state = post_state(post_id)
+    except Exception as exc:
+        _log(f"could not re-read Buffer post {post_id}: {exc}")
+        return record
+    if not state:
+        return record
+    fields = _state_fields(state)
+    ref.set(fields, merge=True)
+    return {**record, **fields}
 
 
 # ---------------------------------------------------------------------------
@@ -391,14 +513,17 @@ def run(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc)
     date, slot = slot_for(now)
     slot = args.slot or slot
-    doc_id = f"{date}-{slot}"
+    # --force never touches the slot's own record, so a live post's history stays.
+    doc_id = f"{date}-{slot}" + (f"-{now:%H%M%S}" if args.force else "")
     store = V3Store()
     ref = store.db.collection(COLLECTION).document(doc_id)
 
-    existing = ref.get().to_dict() if not args.dry_run else None
-    if existing and existing.get("status") in DONE and not args.force:
-        _log(f"{doc_id} already {existing.get('status')}; nothing to do")
-        return 0
+    existing = ref.get().to_dict() if not (args.dry_run or args.force) else None
+    if existing:
+        existing = refresh(ref, existing)
+        if existing.get("status") not in RETRY:
+            _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
+            return 0
 
     topics, feed_date = load_topics(store, now)
     stories = pick_stories(topics, recent_posts(store, now), MAX_STORIES)
@@ -409,7 +534,7 @@ def run(args: argparse.Namespace) -> int:
 
     hook = write_copy(stories)
     caption = caption_for(stories, hook)
-    palette = PALETTES[int(hashlib.sha256(doc_id.encode()).hexdigest(), 16) % len(PALETTES)]
+    palette = PALETTES[int(hashlib.sha256(f"{date}-{slot}".encode()).hexdigest(), 16) % len(PALETTES)]
     slides = render_carousel(
         [SlideStory(s["headline"], s["paragraphs"], s["image"], s["kicker"]) for s in stories], palette
     )
@@ -438,31 +563,29 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     prune_media(now)
-    folder = f"{doc_id}-{uuid.uuid4().hex[:8]}"
-    image_urls = host_slides(slides, folder)
+    image_urls = host_slides(slides, f"{doc_id}-{uuid.uuid4().hex[:8]}")
     channel_id = instagram_channel()
     ref.set({**record, "status": "posting", "image_urls": image_urls, "created_at": now.isoformat()}, merge=True)
     try:
         post_id = share_now(channel_id, caption, image_urls)
-    except Exception as exc:
+    except BufferRefused as exc:
+        # Nothing was created, so the service's retry may post this slot.
         ref.set({"status": "failed", "error": str(exc)[:500]}, merge=True)
-        _log(f"post failed: {exc}")
+        _log(f"post refused: {exc}")
         return 1
+    except Exception as exc:
+        # The post may exist; trying again could post it twice.
+        ref.set({"status": "unknown", "error": str(exc)[:500]}, merge=True)
+        _log(f"post may or may not exist, not retrying (check Buffer): {exc}")
+        return 0
     ref.set({"buffer_post_id": post_id}, merge=True)
     _log(f"shared to Buffer as {post_id}; waiting for Instagram")
 
-    state = wait_until_sent(post_id)
-    status = state.get("status") or "unknown"
-    error = (state.get("error") or {}).get("message") if isinstance(state.get("error"), dict) else None
-    ref.set({
-        "status": status,
-        "external_link": state.get("externalLink") or "",
-        "sent_at": state.get("sentAt") or "",
-        "error": error or "",
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }, merge=True)
-    _log(f"{doc_id}: {status} {state.get('externalLink') or ''} {error or ''}".strip())
-    return 0 if status == "sent" else 1
+    fields = _state_fields(wait_until_sent(post_id))
+    ref.set(fields, merge=True)
+    _log(f"{doc_id}: {fields['status']} {fields['external_link']} {fields['error']}")
+    # Only a publish error is worth the service's retry; anything else is live or on its way.
+    return 1 if fields["status"] == "error" else 0
 
 
 def main() -> None:
@@ -470,7 +593,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="render slides and caption locally; no hosting, posting or writes")
     parser.add_argument("--out", default="/tmp/trace-instagram", help="where --dry-run writes the slides")
     parser.add_argument("--slot", choices=["am", "pm"], help="override the slot worked out from London time")
-    parser.add_argument("--force", action="store_true", help="post even if this slot already posted")
+    parser.add_argument("--force", action="store_true", help="post again even if this slot posted (logged separately)")
     sys.exit(run(parser.parse_args()))
 
 

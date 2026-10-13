@@ -26,6 +26,9 @@ ASSETS = Path(__file__).resolve().parent.parent / "assets" / "instagram"
 FOOTER = "read full story at yourtrace.online"
 USER_AGENT = "Mozilla/5.0 (compatible; TraceBot/1.0; +https://yourtrace.online)"
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
+# The story slide's text block: between the logo row and the footer.
+STORY_TOP, STORY_BOTTOM, LABEL_GAP = 210, H - 180, 60
 KICKER = (249, 24, 128)  # the brief's "Top in X" pink
 
 RGB = tuple[int, int, int]
@@ -80,7 +83,7 @@ def _logo() -> Image.Image:
 
 
 def fetch_image(url: str, timeout: int = 20, min_side: int = 400) -> Image.Image | None:
-    """Download a story image, or None when it is missing, broken or tiny."""
+    """Download a story image, or None when it is missing, broken, tiny or huge."""
     if not url.startswith(("http://", "https://")):
         return None
     try:
@@ -90,10 +93,36 @@ def fetch_image(url: str, timeout: int = 20, min_side: int = 400) -> Image.Image
         if len(data) > MAX_IMAGE_BYTES:
             return None
         image = Image.open(io.BytesIO(data))
+        # Check the header before decoding: a small file can unpack to gigabytes.
+        # 16-bit and float images turn white when converted, so skip those too.
+        if image.width * image.height > MAX_IMAGE_PIXELS or image.mode in {"I", "I;16", "I;16B", "I;16L", "F"}:
+            return None
         image = ImageOps.exif_transpose(image).convert("RGB")
+        image.thumbnail((2400, 2400))
     except Exception:
         return None
     return image if min(image.size) >= min_side else None
+
+
+@lru_cache(maxsize=1)
+def _missing_glyph() -> bytes:
+    # A supplementary private-use code point no font maps: draws the "no glyph" box.
+    return bytes(_bold(40).getmask("\U0010fffd"))
+
+
+@lru_cache(maxsize=4096)
+def _has_glyph(char: str) -> bool:
+    return char.isspace() or bytes(_bold(40).getmask(char)) != _missing_glyph()
+
+
+def drawable(text: str) -> bool:
+    """Whether Inter has every character (no emoji, CJK or Arabic boxes)."""
+    return all(_has_glyph(char) for char in text)
+
+
+def without_missing_glyphs(text: str) -> str:
+    """Drop characters Inter can't draw, such as an emoji in a headline."""
+    return " ".join("".join(char for char in text if _has_glyph(char)).split())
 
 
 def _wrap(text: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
@@ -123,12 +152,20 @@ def _fit(text: str, width: int, sizes: range, max_lines: int) -> tuple[ImageFont
 
 
 def _cover(image: Image.Image) -> Image.Image:
-    """Scale and crop to fill the slide, keeping a little more of the top."""
-    scale = max(W / image.width, H / image.height)
+    """The photo filling the slide above the headline, on black.
+
+    The bottom fifth is solid black under the fade anyway, so the photo only
+    has to cover the top 80%: a wide 1200x630 article image keeps more of its
+    width. Cropping keeps a little more of the top than the bottom.
+    """
+    area_h = round(H * 0.8)
+    scale = max(W / image.width, area_h / image.height)
     resized = image.resize((round(image.width * scale), round(image.height * scale)), Image.LANCZOS)
     left = (resized.width - W) // 2
-    top = round((resized.height - H) * 0.4)
-    return resized.crop((left, top, left + W, top + H))
+    top = round((resized.height - area_h) * 0.4)
+    slide = Image.new("RGB", (W, H), (0, 0, 0))
+    slide.paste(resized.crop((left, top, left + W, top + area_h)), (0, 0))
+    return slide
 
 
 def _ramp(stops: list[tuple[float, int]]) -> Image.Image:
@@ -194,6 +231,17 @@ def _story_layout(paragraphs: list[str], size: int, width: int) -> tuple[list[li
     return wrapped, sum(len(lines) for lines in wrapped) * step + gap * (len(wrapped) - 1)
 
 
+def fits_story_slide(paragraphs: list[str]) -> bool:
+    """Whether at least the first paragraph fits the story slide at the smallest
+    size, under a two-line label, with no word wider than the slide."""
+    if not paragraphs:
+        return False
+    width = W - 2 * MARGIN
+    room = STORY_BOTTOM - STORY_TOP - 2 * round(30 * 1.3) - LABEL_GAP
+    [lines], height = _story_layout(paragraphs[:1], 34, width)
+    return height <= room and all(_bold(34).getlength(line) <= width for line in lines)
+
+
 def render_story_slide(story: SlideStory, index: int, total: int, palette: Palette = PALETTES[0]) -> Image.Image:
     """The headline small, then the story's first paragraphs, the lede in bold.
 
@@ -206,8 +254,8 @@ def render_story_slide(story: SlideStory, index: int, total: int, palette: Palet
     label_font, label_lines = _fit(story.headline, W - 2 * MARGIN, range(36, 29, -2), max_lines=2)
     label_step = round(label_font.size * 1.3)
     width = W - 2 * MARGIN
-    top, bottom = 210, H - 180
-    room = bottom - top - label_step * len(label_lines) - 60
+    top, bottom = STORY_TOP, STORY_BOTTOM
+    room = bottom - top - label_step * len(label_lines) - LABEL_GAP
 
     paragraphs, size, wrapped, height = story.paragraphs, 34, [], 0
     for count in range(len(story.paragraphs), 0, -1):
@@ -223,7 +271,7 @@ def render_story_slide(story: SlideStory, index: int, total: int, palette: Palet
     for line in label_lines:
         draw.text((MARGIN, y + label_font.size), line, font=label_font, anchor="ls", fill=(*palette.label, 255))
         y += label_step
-    y += 60
+    y += LABEL_GAP
     step, gap = round(size * 1.34), round(size * 0.85)
     for i, lines in enumerate(wrapped):
         font = _bold(size) if i == 0 else _semibold(size)

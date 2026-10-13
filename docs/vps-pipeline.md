@@ -75,27 +75,51 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
 - Each run picks 3-5 stories from today's feed in this order: two AI, then
   one each from Markets, Startups and Design (`INSTAGRAM_LANES`). A lane with
   nothing new is skipped and the best remaining story from any lane fills the
-  gap. The "Top in X" kicker shows once per lane, as in the brief. Stories posted in the last 4 days are
-  skipped (by topic id, article URL and similar title).
+  gap. The "Top in X" kicker shows once per lane, as in the brief; gap fillers
+  have none. Stories posted in the last 14 days are skipped (by topic id,
+  article URL and similar title), as are promos and stories the slide can't
+  show well (characters Inter lacks, or a first paragraph too long to fit).
 - Two slides per story, 1080x1350 JPEG, rendered with Pillow
   (`backend/v3/lib/instagram_slides.py`, fonts in `backend/v3/assets/instagram`):
-  the photo with a short rewritten headline and a "Top in X" kicker, then the
-  story's first paragraphs exactly as the feed splits them. The story slide's
-  palette (paper, ink, navy) changes from post to post.
+  the photo with a short rewritten headline and the kicker, then the story's
+  first paragraphs exactly as the feed splits them (whole paragraphs only).
+  The story slide's palette (paper, ink, navy) changes from post to post.
 - Slides are written to `/var/www/trace-social/{date}-{slot}-{id}/` and served
   by Caddy at `https://db.yourtrace.online/social/...` (see
   `backend/vps/Caddyfile.trace`); Buffer fetches them when it publishes.
   Folders older than 14 days are deleted.
 - The job shares the post now and waits for Buffer to report it sent. Every
   post is logged in `instagram_posts/{date}-{am|pm}` with the stories,
-  headlines, caption, Buffer id and Instagram link. A slot that already posted
-  is skipped, so the service's retries can't double-post.
+  headlines, caption, Buffer id and Instagram link.
+- A slot is posted again only when nothing can have gone out: Buffer refused
+  the post (`failed`) or reported a publishing error (`error`); the service
+  then retries after 15 minutes, at most 3 times. Anything that may have
+  created a post (a timeout, Buffer's `UNEXPECTED`) is logged as `unknown` and
+  never retried, so check Buffer by hand. Drafts, approvals and posts still
+  sending count as posted, and the next run re-reads their status.
 - Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` (see `.env.example`).
+
+One-time setup on the VPS:
+
+```bash
+sudo mkdir -p /var/www/trace-social && sudo chown ubuntu:ubuntu /var/www/trace-social
+# add the /social block from backend/vps/Caddyfile.trace to /etc/caddy/Caddyfile, then:
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy
+~/trace/.venv/bin/pip install -r ~/trace/backend/requirements.txt   # Pillow
+# add BUFFER_API_KEY (and BUFFER_INSTAGRAM_CHANNEL_ID) to ~/trace/.env
+cp ~/trace/backend/vps/trace-instagram.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now trace-instagram.timer
+```
+
+Day to day:
 
 ```bash
 # preview without posting or writing anything
 cd ~/trace/backend && ../.venv/bin/python -m v3.flows.post_instagram --dry-run --out /tmp/ig
 tail -50 ~/trace/logs/instagram.log
+# a live run by hand: go through the service so it takes the lock. It uses the
+# current slot (before 14:00 London is "am"), so a run after 14:00 is tonight's post.
+systemctl --user start trace-instagram.service
 ```
 
 ## Story grouping

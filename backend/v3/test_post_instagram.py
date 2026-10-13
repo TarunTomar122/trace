@@ -122,7 +122,8 @@ class PickTests(unittest.TestCase):
         topics = [topic(1, "tech"), topic(2, "ai"), topic(3, "ux-design"), topic(4, "markets"), topic(5, "ai")]
         picked = self.pick(topics)
         self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_5", "tt_4", "tt_3", "tt_1"])
-        self.assertEqual(picked[-1]["kicker"], "Top in Tech")
+        # Gap fillers carry no kicker: tt_1 isn't the top of any lane the post covers.
+        self.assertEqual([p["kicker"] for p in picked], ["Top in AI", "", "Top in Markets", "Top in Design", ""])
 
     def test_a_story_without_an_image_gives_way_to_the_next_in_its_lane(self):
         topics = [topic(2, "ai", thumbnail="", articles=[]), topic(4, "ai"), topic(7, "ai"), topic(3, "markets")]
@@ -140,19 +141,34 @@ class PickTests(unittest.TestCase):
         ]
         picked = self.pick(topics, posted)
         self.assertEqual([p["topic"]["id"] for p in picked], ["tt_7"])
-        self.assertEqual(picked[0]["kicker"], "Top in Tech")
 
     def test_event_ticket_promos_are_never_posted(self):
         promo = topic(5, "startups", title="Final chance for ticket savings at Disrupt 2026")
         picked = self.pick([topic(2, "ai"), promo, topic(8, "startups")])
         self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_8"])
 
+    def test_stories_the_slide_cannot_show_are_skipped(self):
+        chinese = topic(2, "ai", summary="华为发布了新的芯片。")
+        too_long = topic(4, "ai", summary=" ".join(["word"] * 260) + ".")
+        emoji = topic(7, "ai", title="AI agents take off 🚀")
+        picked = self.pick([chinese, too_long, emoji])
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_7"])
+        self.assertEqual(picked[0]["title"], "AI agents take off")
+
     def test_failed_posts_do_not_block_their_stories(self):
         store = FakeStore()
         now = datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc)
         store.db.collection(ig.COLLECTION).document("2026-10-13-am").set({"date": "2026-10-13", "status": "failed", "topic_ids": ["tt_1"]})
         store.db.collection(ig.COLLECTION).document("2026-10-12-pm").set({"date": "2026-10-12", "status": "sent", "topic_ids": ["tt_2"]})
-        self.assertEqual([p["topic_ids"] for p in ig.recent_posts(store, now)], [["tt_2"]])
+        store.db.collection(ig.COLLECTION).document("2026-10-12-am").set({"date": "2026-10-12", "status": "needs_approval", "topic_ids": ["tt_3"]})
+        store.db.collection(ig.COLLECTION).document("2026-10-11-pm").set({"date": "2026-10-11", "status": "error", "topic_ids": ["tt_4"]})
+        self.assertEqual(sorted(i for p in ig.recent_posts(store, now) for i in p["topic_ids"]), ["tt_2", "tt_3"])
+
+    def test_similar_titles(self):
+        self.assertTrue(ig._similar("Cyberattack hits French supermarket fridges", "Cyberattack hits French supermarket fridges!"))
+        self.assertTrue(ig._similar("Hackers heat French supermarket fridges to 50C", "French supermarket fridges hit 50C after hackers strike"))
+        self.assertFalse(ig._similar("Apple launches iPhone 17 Pro", "Apple launches iPad Pro M5"))
+        self.assertFalse(ig._similar("Google unveils Gemini 3", "Google unveils Pixel 10"))
 
 
 class CopyTests(unittest.TestCase):
@@ -210,7 +226,7 @@ class CopyTests(unittest.TestCase):
         self.assertIn("yourtrace.online", caption)
         tags = caption.splitlines()[-1].split()
         self.assertEqual(tags[0], "#technews")
-        self.assertEqual(tags[-1], "#trace")
+        self.assertEqual(tags[-1], "#yourtrace")
         self.assertEqual(len(tags), len(set(tags)))
 
 
@@ -252,6 +268,104 @@ class RunTests(unittest.TestCase):
                 patch.object(ig, "share_now") as share:
             self.assertEqual(ig.run(self.args()), 1)
         share.assert_not_called()
+
+
+class BufferTests(unittest.TestCase):
+    def share(self, data, errors=()):
+        with patch.object(ig, "buffer", return_value=(data, list(errors))):
+            return ig.share_now("chan", "caption", ["https://x/1.jpg", "https://x/2.jpg"])
+
+    def test_a_post_id_wins_even_with_warnings(self):
+        self.assertEqual(self.share({"createPost": {"__typename": "PostActionSuccess", "post": {"id": "p1"}}},
+                                    [{"message": "warning"}]), "p1")
+
+    def test_clear_refusals_are_safe_to_retry(self):
+        with self.assertRaises(ig.BufferRefused):
+            self.share({"createPost": {"__typename": "InvalidInputError", "message": "bad"}})
+        with self.assertRaises(ig.BufferRefused):
+            self.share({"createPost": None}, [{"message": "slow down", "extensions": {"code": "RATE_LIMIT_EXCEEDED"}}])
+
+    def test_unclear_failures_are_not_refusals(self):
+        for data, errors in [
+            ({"createPost": {"__typename": "UnexpectedError", "message": "oops"}}, []),
+            ({"createPost": None}, [{"message": "server", "extensions": {"code": "UNEXPECTED"}}]),
+            ({"createPost": None}, [{"message": "no code"}]),
+            ({}, []),
+        ]:
+            with self.assertRaises(RuntimeError) as caught:
+                self.share(data, errors)
+            self.assertNotIsInstance(caught.exception, ig.BufferRefused)
+
+    def test_polling_survives_a_failed_check(self):
+        states = [RuntimeError("blip"), {"status": "sending"}, {"status": "sent", "externalLink": "https://ig/p/1"}]
+        with patch.object(ig, "post_state", side_effect=states), patch.object(ig.time, "sleep"):
+            self.assertEqual(ig.wait_until_sent("p1")["status"], "sent")
+
+
+class RunSafetyTests(unittest.TestCase):
+    def args(self, **overrides):
+        return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False, **overrides})
+
+    def setUp(self):
+        self.store = FakeStore([topic(2, "ai"), topic(4, "ai"), topic(3, "markets"), topic(5, "startups"), topic(6, "ux-design")])
+        self.date, _ = ig.slot_for(datetime.now(timezone.utc))
+        self.docs = self.store.db.data.setdefault(ig.COLLECTION, {})
+
+    def run_job(self, share, **kwargs):
+        with patch.object(ig, "V3Store", return_value=self.store), patch.object(ig, "fetch_image", side_effect=picture), \
+                patch("openai.OpenAI", side_effect=RuntimeError("offline")), patch.object(ig, "host_slides", return_value=["u"] * 10), \
+                patch.object(ig, "prune_media"), patch.object(ig, "instagram_channel", return_value="chan"), \
+                patch.object(ig, "share_now", **share) as share_mock, \
+                patch.object(ig, "wait_until_sent", return_value={"status": "sent", "externalLink": "https://ig/p/1"}):
+            return ig.run(self.args(**kwargs)), share_mock
+
+    def test_refused_post_is_marked_failed_and_retried(self):
+        code, _ = self.run_job({"side_effect": ig.BufferRefused("bad input")})
+        self.assertEqual((code, self.docs[f"{self.date}-am"]["status"]), (1, "failed"))
+        code, share = self.run_job({"return_value": "p1"})
+        self.assertEqual((code, self.docs[f"{self.date}-am"]["status"]), (0, "sent"))
+        share.assert_called_once()
+
+    def test_unclear_failure_is_never_retried(self):
+        code, _ = self.run_job({"side_effect": TimeoutError("read timed out")})
+        self.assertEqual((code, self.docs[f"{self.date}-am"]["status"]), (0, "unknown"))
+        code, share = self.run_job({"return_value": "p1"})
+        self.assertEqual(code, 0)
+        share.assert_not_called()
+
+    def test_drafts_and_approvals_count_as_posted(self):
+        for status in ("draft", "needs_approval"):
+            self.docs[f"{self.date}-am"] = {"date": self.date, "status": status}
+            code, share = self.run_job({"return_value": "p1"})
+            self.assertEqual(code, 0)
+            share.assert_not_called()
+
+    def test_a_post_still_on_its_way_is_re_read(self):
+        self.docs[f"{self.date}-am"] = {"date": self.date, "status": "sending", "buffer_post_id": "p0"}
+        with patch.object(ig, "post_state", return_value={"status": "sent", "externalLink": "https://ig/p/0"}):
+            code, share = self.run_job({"return_value": "p1"})
+        self.assertEqual(code, 0)
+        share.assert_not_called()
+        self.assertEqual(self.docs[f"{self.date}-am"]["external_link"], "https://ig/p/0")
+
+    def test_force_logs_a_separate_record(self):
+        live = {"date": self.date, "status": "sent", "topic_ids": ["tt_9"]}
+        self.docs[f"{self.date}-am"] = dict(live)
+        code, share = self.run_job({"return_value": "p1"}, force=True)
+        self.assertEqual(code, 0)
+        share.assert_called_once()
+        self.assertEqual(self.docs[f"{self.date}-am"], live)
+        self.assertEqual(len([k for k in self.docs if k.startswith(f"{self.date}-am-")]), 1)
+
+
+class EnvTests(unittest.TestCase):
+    def test_story_counts_parse_defensively(self):
+        with patch.dict("os.environ", {"X": ""}):
+            self.assertEqual(ig._env_int("X", 3, 1, 5), 3)
+        with patch.dict("os.environ", {"X": "nine"}):
+            self.assertEqual(ig._env_int("X", 3, 1, 5), 3)
+        with patch.dict("os.environ", {"X": "12"}):
+            self.assertEqual(ig._env_int("X", 5, 3, 5), 5)
 
 
 if __name__ == "__main__":
