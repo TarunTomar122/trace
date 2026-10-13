@@ -43,7 +43,11 @@ SUBJECT = "Thank you. Trace is free for everyone now"
 
 def first_name(name: str) -> str:
     name = (name or "").strip()
-    return name.split()[0] if name else "there"
+    if not name:
+        return "there"
+    first = name.split()[0]
+    # "farouk" and "MICHELLE" read as Farouk and Michelle; leave "McKay" alone.
+    return first.capitalize() if first.islower() or first.isupper() else first
 
 
 def paying_supporters(store: FirestoreStore) -> list[dict]:
@@ -144,15 +148,23 @@ def main() -> None:
     done = already_thanked(store)
     todo = [p for p in people if p["email"] not in done]
     print(f"{len(people)} supporters, {len(done & {p['email'] for p in people})} already thanked, {len(todo)} to send")
+    failed: list[str] = []
     for person in todo:
         if not args.send:
             print(f"  [dry-run] {person['email']}  ({first_name(person['name'])})")
             continue
         page, text = render(person["name"])
         result = send_email(person["email"], person["name"] or None, SUBJECT, page, text, bucket=BUCKET)
-        print(f"  sent {person['email']} via {result.get('transport')}")
+        if result.get("success") is False:
+            failed.append(person["email"])
+            print(f"  FAILED {person['email']} via {result.get('transport')}: {result.get('error')}")
+        else:
+            print(f"  sent {person['email']} via {result.get('transport')}")
     if not args.send:
         print("dry run: nothing sent (add --send)")
+    elif failed:
+        print(f"{len(failed)} failed; re-run to retry them (sent ones are skipped)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
