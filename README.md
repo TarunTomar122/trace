@@ -41,8 +41,8 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 
 - **Grouping.** Articles about the same event are merged into one story, so
   you see "1 story · 5 sources" instead of five near-identical links.
-- **Ranking.** Coverage, source weight, recency and an optional LLM judge
-  decide what makes the cut. Model releases get their own slot.
+- **Ranking.** Coverage, source weight, recency and an LLM editor (OpenAI
+  structured outputs) decide what makes the cut and what is worth an email. Model releases get their own slot.
 - **Cost.** Summaries are cached per article, so LLM cost scales with the
   number of articles, not the number of readers.
 - **The brief.** `backend/v3/flows/send_audience_newsletter.py` picks each

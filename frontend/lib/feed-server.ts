@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { applyFeedDedupe } from '@/lib/feed-dedupe';
 import { resolveHeadlines } from '@/lib/story-headlines';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
-import { hasPaidSubscription, subscriptionStatuses } from '@/lib/subscription-access';
+import { subscriptionStatuses } from '@/lib/subscription-access';
 
 /** Today + yesterday's global edition; pipeline handles source freshness. */
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
@@ -96,7 +96,8 @@ function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
 
 function computeFeedAccess(profile: DocData | null) {
   const { web: webSub, app: appSub } = subscriptionStatuses(profile);
-  return { webSub, appSub, hasAccess: hasPaidSubscription(profile) };
+  // Trace is free: every account is Pro (old app builds still read has_access).
+  return { webSub, appSub, hasAccess: true };
 }
 
 function buildViewerProfile(profile: DocData | null, roleFromProfile: string, viewerInterests: string[]) {
@@ -543,7 +544,7 @@ export async function getPublicBootstrapFeed(roleFromQuery = 'developer'): Promi
       onboarded: false,
       subscription_status: 'none',
       app_subscription_status: 'none',
-      has_access: false,
+      has_access: true,
     },
   };
   console.log(`[perf][feed-server] getPublicBootstrapFeed role=${normalizedRole} total_ms=${Date.now() - totalStart}`);

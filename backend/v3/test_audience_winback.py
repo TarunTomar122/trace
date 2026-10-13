@@ -61,6 +61,8 @@ PROFILES = [
     {"uid": "i", "email": "wbonly@x.com", "lastActiveAt": _ago(30)},
     {"uid": "j", "email": "dormant-landing@x.com", "lastActiveAt": _ago(100)},
     {"uid": "k", "email": "deleted@x.com", "lastActiveAt": _ago(1), "deleted": True},
+    # Paid before Trace went free; subscription cancelled since. Still a supporter.
+    {"uid": "m", "email": "supporter@x.com", "lastActiveAt": _ago(90), "subscriptionStatus": "cancelled"},
 ]
 
 COLLECTIONS = {
@@ -108,7 +110,7 @@ class AudienceTests(unittest.TestCase):
     def test_members_keep_the_daily_and_winback_is_off_by_default(self):
         buckets = self.resolve()
         self.assertEqual(_emails(buckets["member"]),
-                         ["active@x.com", "builder@x.com", "continuing@x.com", "paid@x.com"])
+                         ["active@x.com", "builder@x.com", "continuing@x.com", "paid@x.com", "supporter@x.com"])
         self.assertEqual(buckets["winback"], [])
         # Dormant account that also signed up on the landing page keeps that email.
         self.assertEqual(_emails(buckets["landing"]), ["dormant-landing@x.com", "landing@x.com"])

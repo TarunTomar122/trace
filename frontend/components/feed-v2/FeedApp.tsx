@@ -2532,7 +2532,10 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, c
           <div className="profile-hero-main">
             <div className="profile-hero-top">
               <div className="profile-hero-id">
-                <h1 className="profile-name">{user ? (user.displayName || profile.name) : 'Signed out'}</h1>
+                <h1 className="profile-name">
+                  {user ? (user.displayName || profile.name) : 'Signed out'}
+                  {user && <span className="pro-badge" title="Every Trace account is Pro">Pro</span>}
+                </h1>
                 <p className="profile-handle">
                   {user ? `@${(user.email || '').split('@')[0]}` : 'Sign in to personalize your feed'}
                 </p>
@@ -3277,6 +3280,7 @@ const css = `
 .xw .profile-hero-main { flex: 1; min-width: 0; }
 .xw .profile-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .xw .profile-hero-id { min-width: 0; }
+.xw .pro-badge { display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 9px; border-radius: 9999px; background: var(--blue); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; vertical-align: middle; }
 .xw .profile-name { margin: 0; font-size: 24px; font-weight: 800; line-height: 29px; letter-spacing: -0.02em; }
 .xw .profile-handle { margin: 2px 0 0; font-size: 14.5px; color: var(--text-3); }
 .xw .profile-bio { margin: 10px 0 8px; font-size: 15px; line-height: 20px; }

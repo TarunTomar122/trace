@@ -101,7 +101,7 @@ class TopicGroupingTests(unittest.TestCase):
         ]
         summaries = {article["url"]: summary("Meta launched a subscription bundle.") for article in articles}
         with patch("v3.build_trending._group_embeddings", return_value=[[1.0, 0.0], [0.99, 0.01]]), patch(
-            "v3.build_trending._typesafe_group_decisions",
+            "v3.build_trending._group_decisions",
             return_value=({(0, 1): {"same_card": 0.99, "relationship": "same_concrete_event"}}, False),
         ):
             clusters = _group_story_clusters(FakeStore(), articles, summaries)
@@ -119,7 +119,7 @@ class TopicGroupingTests(unittest.TestCase):
         store = FakeStore()
         with patch("v3.build_trending._group_embeddings", return_value=[[1.0, 0.0], [0.99, 0.01]]), \
              patch(
-                 "v3.build_trending._typesafe_group_decisions",
+                 "v3.build_trending._group_decisions",
                  return_value=({(0, 1): {"same_card": 0.9, "relationship": "same_concrete_event"}}, True),
              ) as decide:
             first = _group_story_clusters(store, articles, summaries)

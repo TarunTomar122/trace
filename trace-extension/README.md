@@ -2,11 +2,9 @@
 
 Trace New Tab is a Manifest V3 Chrome extension that puts a fresh selection of Trace articles on every new tab.
 
-The article pool contains news from the current Edition. Cards show a thumbnail, story tag, and headline. Selecting one opens the Trace summary, key takeaways, and original-source link in the new tab. Free readers can open five unique summaries each day. Original-source links stay available.
+The article pool contains news from the current Edition. Cards show a thumbnail, story tag, and headline. Selecting one opens the Trace summary, key takeaways, and original-source link in the new tab. Trace is free: every summary is open to everyone.
 
 Bookmarks are stored locally and appear under the Saved filter.
-
-The five-summary limit is enforced from local extension storage in this version. It is a product-flow limit, not an authorization boundary. The public article response still contains the summary data.
 
 ## Request behavior
 

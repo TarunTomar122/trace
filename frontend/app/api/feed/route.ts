@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           onboarded: sessionProfile.profile.onboarded ?? true,
           subscription_status: sessionProfile.profile.subscriptionStatus || 'none',
           app_subscription_status: sessionProfile.profile.appSubscriptionStatus || 'none',
-          has_access: sessionProfile.profile.hasAccess ?? false,
+          has_access: true, // Trace is free: everyone is Pro
         })
       : await getBootstrapFeedForUid(uid, roleFromQuery);
     readsDoneAt = performance.now();

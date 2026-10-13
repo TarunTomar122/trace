@@ -169,7 +169,7 @@ test('isCacheFresh applies the local 15 minute request window', () => {
   assert.equal(isCacheFresh('invalid', now), false);
 });
 
-test('free summaries count five unique stories per day', () => {
+test('every summary is open to everyone (Trace is free)', () => {
   const date = '2026-08-05';
   let reads = normalizeSummaryReads(null, date);
 
@@ -181,10 +181,10 @@ test('free summaries count five unique stories per day', () => {
 
   assert.equal(canOpenSummary(reads, 'story-0'), true);
   assert.equal(addSummaryRead(reads, 'story-0'), reads);
-  assert.equal(canOpenSummary(reads, 'story-6'), false);
+  assert.equal(canOpenSummary(reads, 'story-6'), true);
 });
 
-test('summary reads reset on a new date and Pro bypasses the limit', () => {
+test('summary reads reset on a new date', () => {
   const full = { date: '2026-08-04', ids: ['1', '2', '3', '4', '5'] };
   const reset = normalizeSummaryReads(full, '2026-08-05');
 

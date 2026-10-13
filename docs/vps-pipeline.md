@@ -80,7 +80,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   deterministic ranking stay in code. Semantic title dedupe is not used for
   trending; if embeddings or Jev fail, articles remain singleton topics.
 - Decisions are cached in `v3_synthesis_cache` using a content fingerprint,
-  model names, thresholds, and `jev-story-grouping-v1`. `TYPESAFE_API_KEY` is
+  model names, thresholds, and `jev-story-grouping-v1`. `OPENAI_API_KEY` (structured decisions, `backend/v3/lib/decisions.py`; Jev/Typesafe was replaced on 2026-10-13) is
   read from the process environment only. `TRENDING_GROUP_TOP_K`,
   `TRENDING_GROUP_MAX_PAIRS`, `TRENDING_GROUP_JEV_BATCH`,
   `TRENDING_GROUP_EMBED_MIN`, and `TRENDING_GROUP_SAME_CARD_MIN` provide
@@ -95,7 +95,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   complete batch cannot be validated, the run keeps the existing deterministic
   order. Successful results use the same seven-day synthesis cache.
 - Local runs load the gitignored `.environment`; the VPS should expose
-  `TYPESAFE_API_KEY` through its existing chmod-600 `.env` or systemd
+  `OPENAI_API_KEY` through its existing chmod-600 `.env` or systemd
   environment before enabling this code there.
 
 ## Interest depth (markets, tech, startups, design)

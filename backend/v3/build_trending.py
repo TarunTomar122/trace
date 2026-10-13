@@ -52,6 +52,7 @@ from v3.lib.diversity import (  # noqa: E402
 )
 from v3.lib.story_headlines import build_headlines  # noqa: E402
 from v3.lib.ai_tldr import select_model_releases as _select_ai_tldr_model_releases  # noqa: E402
+from v3.lib.decisions import decide, decision_model, decisions_available  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 15
@@ -1000,13 +1001,12 @@ def _group_cache_key(
     return f"story_grouping_jev:{GROUPING_PROMPT_VERSION}:{digest}"
 
 
-def _typesafe_group_decisions(
+def _group_decisions(
     pairs: list[tuple[int, int, float]],
     states: list[dict[str, str]],
     model: str,
 ) -> tuple[dict[tuple[int, int], dict[str, Any]], bool]:
-    api_key = os.getenv("TYPESAFE_API_KEY", "").strip()
-    if not api_key or not pairs:
+    if not decisions_available() or not pairs:
         return {}, False
 
     batch_size = max(1, _env_int("TRENDING_GROUP_JEV_BATCH", "20"))
@@ -1043,16 +1043,8 @@ def _typesafe_group_decisions(
                 ),
                 "criteria": GROUPING_RELATIONSHIPS,
             }
-        payload = {"model": model, "state": {"pairs": state_pairs}, "questions": questions}
-        request = Request(
-            "https://api.typesafe.ai/v1/systemone",
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            method="POST",
-        )
         try:
-            with urlopen(request, timeout=30) as response:
-                result = json.loads(response.read().decode("utf-8"))
+            result = decide({"pairs": state_pairs}, questions)
             answers = result.get("answers", {}) if isinstance(result, dict) else {}
             for offset, (left, right, _similarity) in enumerate(batch):
                 pair_id = f"p{batch_start + offset}"
@@ -1070,7 +1062,7 @@ def _typesafe_group_decisions(
                 }
         except Exception as exc:
             complete = False
-            _log(f"Story grouping Jev batch failed: {exc}")
+            _log(f"Story grouping decision batch failed: {exc}")
     return decisions, complete
 
 
@@ -1167,7 +1159,7 @@ def _group_story_clusters(
     if len(items) < 2:
         return _clusters_from_group_decisions(items, {}, 1.0)
 
-    model = os.getenv("TYPESAFE_GROUPING_MODEL", "jev-latest").strip() or "jev-latest"
+    model = decision_model()
     embed_model = os.getenv("TRENDING_GROUP_EMBED_MODEL", "text-embedding-3-small").strip() or "text-embedding-3-small"
     threshold = _env_float("TRENDING_GROUP_SAME_CARD_MIN", "0.70")
     top_k = max(1, _env_int("TRENDING_GROUP_TOP_K", "8"))
@@ -1221,7 +1213,7 @@ def _group_story_clusters(
         })
         return _clusters_from_group_decisions(items, {}, threshold)
 
-    decisions, complete = _typesafe_group_decisions(pairs, states, model)
+    decisions, complete = _group_decisions(pairs, states, model)
     if not complete:
         return _clusters_from_group_decisions(items, {}, threshold)
 
@@ -2092,14 +2084,13 @@ def _parse_ranking_answers(
     return parsed
 
 
-def _typesafe_rank_decisions(
+def _rank_decisions(
     states: list[dict[str, Any]],
     model: str,
     minimum_confidence: float,
 ) -> dict[str, dict[str, Any]]:
     """Score topics in bounded batches; return only fully valid topic scores."""
-    api_key = os.getenv("TYPESAFE_API_KEY", "").strip()
-    if not api_key or not states:
+    if not decisions_available() or not states:
         return {}
 
     batch_size = max(1, _env_int("TRENDING_RANK_JEV_BATCH", "12"))
@@ -2118,20 +2109,8 @@ def _typesafe_rank_decisions(
                         f"{question['instructions']}"
                     ),
                 }
-        payload = {
-            "model": model,
-            "state": {"topics": topic_state},
-            "questions": questions,
-        }
-        request = Request(
-            "https://api.typesafe.ai/v1/systemone",
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            method="POST",
-        )
         try:
-            with urlopen(request, timeout=30) as response:
-                result = json.loads(response.read().decode("utf-8"))
+            result = decide({"topics": topic_state}, questions)
             answers = result.get("answers", {}) if isinstance(result, dict) else {}
             parsed = _parse_ranking_answers(answers, topic_keys, minimum_confidence)
             decisions.update(parsed)
@@ -2141,7 +2120,7 @@ def _typesafe_rank_decisions(
                     "falling back to deterministic ranking"
                 )
         except Exception as exc:
-            _log(f"Story ranking Jev batch failed: {type(exc).__name__}")
+            _log(f"Story ranking decision batch failed: {type(exc).__name__}: {exc}")
     return decisions
 
 
@@ -2151,10 +2130,9 @@ def _score_clusters_with_jev(
     summary_map: dict[str, dict[str, Any] | None],
 ) -> bool:
     """Populate all cluster scores, or leave the caller on current ranking."""
-    api_key = os.getenv("TYPESAFE_API_KEY", "").strip()
-    if not api_key or not clusters:
+    if not decisions_available() or not clusters:
         return False
-    model = os.getenv("TYPESAFE_RANKING_MODEL", "jev-latest").strip() or "jev-latest"
+    model = decision_model()
     # Confidence is retained for diagnostics. The historical experiment had no
     # calibration labels, so it must not silently disable the winning ranker.
     minimum_confidence = max(0.0, min(1.0, _env_float("TRENDING_RANK_JEV_MIN_CONFIDENCE", "0")))
@@ -2182,7 +2160,7 @@ def _score_clusters_with_jev(
         pending_indices.append(index)
 
     if pending_states:
-        fresh = _typesafe_rank_decisions(pending_states, model, minimum_confidence)
+        fresh = _rank_decisions(pending_states, model, minimum_confidence)
         for pending_index, (state, cache_key, original_index) in enumerate(
             zip(pending_states, pending_keys, pending_indices)
         ):
@@ -2209,7 +2187,7 @@ def _score_clusters_with_jev(
     complete = len(decisions) == len(clusters)
     if not complete:
         _log(
-            f"Story ranking Jev unavailable for {len(clusters) - len(decisions)}/{len(clusters)} topics; "
+            f"Story ranking decisions unavailable for {len(clusters) - len(decisions)}/{len(clusters)} topics; "
             "preserving deterministic popularity ranking"
         )
     # Verdicts are still attached for the topics Jev did answer: the send
@@ -2223,7 +2201,7 @@ def _score_clusters_with_jev(
         cluster["_jev_confidence"] = result["confidence"]
         cluster["_jev_semantic_score"] = result["semantic_score"]
     if complete:
-        _log(f"Jev ranked {len(clusters)} canonical topics")
+        _log(f"Decisions ranked {len(clusters)} canonical topics")
     return complete
 
 

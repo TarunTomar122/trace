@@ -170,8 +170,10 @@ export function normalizeSummaryReads(value, date = new Date().toISOString().sli
   return { date, ids: [...new Set(value.ids.filter((id) => typeof id === 'string' && id))] };
 }
 
-export function canOpenSummary(reads, articleId, hasProAccess = false) {
-  return hasProAccess || reads.ids.includes(articleId) || reads.ids.length < FREE_SUMMARY_LIMIT;
+// Trace is free: every reader can open every summary. The read log stays for
+// the "seen" state; the old five-a-day cap is gone.
+export function canOpenSummary() {
+  return true;
 }
 
 export function addSummaryRead(reads, articleId) {

@@ -97,8 +97,8 @@ class JevRankingTests(unittest.TestCase):
     def test_scores_are_cached_and_reused(self):
         clusters = [cluster("One story", 1, 1), cluster("Two story", 1, 1)]
         store = FakeStore()
-        with patch.dict(os.environ, {"TYPESAFE_API_KEY": "test-key"}, clear=False), patch(
-            "v3.build_trending._typesafe_rank_decisions",
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=False), patch(
+            "v3.build_trending._rank_decisions",
             return_value={"t0": valid_result(2.0), "t1": valid_result(1.0)},
         ) as decide:
             self.assertTrue(_score_clusters_with_jev(store, clusters, {}))
@@ -109,8 +109,8 @@ class JevRankingTests(unittest.TestCase):
 
     def test_partial_or_low_confidence_batch_falls_back(self):
         clusters = [cluster("One story", 1, 1), cluster("Two story", 1, 1)]
-        with patch.dict(os.environ, {"TYPESAFE_API_KEY": "test-key"}, clear=False), patch(
-            "v3.build_trending._typesafe_rank_decisions",
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=False), patch(
+            "v3.build_trending._rank_decisions",
             return_value={"t0": valid_result()},
         ):
             self.assertFalse(_score_clusters_with_jev(FakeStore(), clusters, {}))

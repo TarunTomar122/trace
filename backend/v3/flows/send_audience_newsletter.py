@@ -726,6 +726,20 @@ def _winback_due(profile: dict, now: datetime) -> bool:
     return last is None or now - last >= timedelta(days=WINBACK_GAP_DAYS)
 
 
+# Anyone who ever paid, including after their subscription is cancelled now
+# that Trace is free: supporters keep the daily without having to come back.
+SUPPORTER_STATUSES = {"active", "trial", "on_hold", "cancelled", "expired"}
+
+
+def _supporter(profile: dict) -> bool:
+    if is_user_subscribed(profile):
+        return True
+    return any(
+        str(profile.get(field) or "") in SUPPORTER_STATUSES
+        for field in ("subscriptionStatus", "appSubscriptionStatus")
+    )
+
+
 def _audience_profiles(store: FirestoreStore, v3_store) -> list[dict]:
     """Onboarded accounts, plus anyone who turned the daily on in the
     newsletter builder before finishing onboarding (signed in from
@@ -792,7 +806,7 @@ def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
         profile_emails.add(email)
         last = _last_active(profile)
         if (
-            is_user_subscribed(profile)
+            _supporter(profile)
             or email in continuing
             or (last is not None and last >= active_cutoff)
         ):

@@ -9,11 +9,10 @@ import {
   verifyTraceSession,
   type TraceSessionProfile,
 } from '@/lib/server-session';
-import { hasPaidSubscription } from '@/lib/subscription-access';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeHasAccess(profile: any): boolean {
-  return hasPaidSubscription(profile);
+// Trace is free: every account is Pro. Paid status only drives billing controls.
+function computeHasAccess(): boolean {
+  return true;
 }
 
 async function ensureUserProfile(
@@ -88,7 +87,7 @@ async function loadProfileForSession(uid: string): Promise<SessionProfileResult>
         onboarded: data.onboarded === true,
         subscriptionStatus: typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'none',
         appSubscriptionStatus: typeof data.appSubscriptionStatus === 'string' ? data.appSubscriptionStatus : 'none',
-        hasAccess: computeHasAccess(data),
+        hasAccess: computeHasAccess(),
       },
     };
   } catch (error) {
