@@ -1,3 +1,0 @@
-workspace = "default"
-project = "claudia"
-project_strategy = "repo-root"

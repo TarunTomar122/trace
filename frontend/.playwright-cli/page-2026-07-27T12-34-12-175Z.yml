@@ -1,4 +1,0 @@
-- generic [active] [ref=e1]:
-  - banner [ref=e4]
-  - button "Open Next.js Dev Tools" [ref=e58] [cursor=pointer]
-  - alert [ref=e62]

@@ -26,3 +26,35 @@ v1/tools/trace_user_emails.csv
 analysis/data/user_summary.csv
 data/localdb/
 localdb.sqlite3
+
+# Not part of Trace: agent/editor state and side projects (kept locally only)
+.ai-memory.toml
+AGENTS.md
+CLAUDE.md
+**/.commandcode/
+**/.cursor/
+**/.opencode/
+**/.claude/
+**/.agents/
+**/.playwright-cli/
+**/.vscode/
+**/.idea/
+skills-lock.json
+analysis/
+better-pod/
+brag/
+brag-output/
+brief-samples/
+codebase_subway*
+Codex Image*
+content/
+control_plane_experiments/
+control_plane_runs/
+experiments/
+hackathon/
+img/
+social-post-prototype/
+trace-images/
+vantage/
+videos/
+wonder/

@@ -1,4 +1,0 @@
----
-alwaysApply: true
----
-Do not create architecture documents or any other .md files or whatever else unless the user specifically asks for it. Never create those files unless the user specifically asks for it.
