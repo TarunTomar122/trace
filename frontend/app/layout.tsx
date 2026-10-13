@@ -30,9 +30,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — 10 big things in tech & AI",
+  title: "Trace — reads the internet so you don't have to",
   description:
-    "The stories that moved tech and AI today, ranked and explained in five minutes.",
+    "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
@@ -51,23 +51,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — 10 big things in tech & AI",
+    title: "Trace — reads the internet so you don't have to",
     description:
-      "The stories that moved tech and AI today, ranked and explained in five minutes.",
+      "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     images: [
       {
         url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace — 10 big things in tech and AI",
+        alt: "Trace — reads the internet so you don't have to",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — 10 big things in tech & AI",
+    title: "Trace — reads the internet so you don't have to",
     description:
-      "The stories that moved tech and AI today, ranked and explained in five minutes.",
+      "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     images: ["https://www.yourtrace.online/twitter-image?v=10-big-things"],
   },
   robots: {

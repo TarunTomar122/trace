@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { sourceHost, type DailyStory } from '@/lib/daily-editions';
 import { faviconUrl } from '@/lib/topic-icons';
+import { bodyParagraphs } from '@/lib/body-text';
 
 /**
  * One story in the feed's home-card layout (RetentionPanels .ret-sotd):
@@ -48,9 +49,12 @@ export default function BriefStory({
         <h2 className="text-[22px] font-extrabold leading-[1.16] tracking-[-0.035em] text-[#0f1419] sm:text-[28px]">
           <a href={story.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{story.title}</a>
         </h2>
-        {story.summary && (
-          <p className="mt-2.5 text-[14.5px] leading-[1.45] text-[#536471] sm:text-[16px]">{story.summary}</p>
-        )}
+        {/* Split into short paragraphs and bold key names, like the feed's story view. */}
+        {bodyParagraphs(story.summary).map((para, index) => (
+          <p key={index} className={`${index ? 'mt-3.5' : 'mt-2.5'} text-[14.5px] leading-[1.5] text-[#536471] sm:text-[16px]`}>
+            {para.split('**').map((part, i) => (i % 2 ? <strong key={i} className="font-bold text-[#0f1419]">{part}</strong> : part))}
+          </p>
+        ))}
         <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] font-semibold text-[#536471]">
           {favs.length > 0 && (
             <span className="inline-flex items-center" title={favs.join(', ')} aria-hidden="true">

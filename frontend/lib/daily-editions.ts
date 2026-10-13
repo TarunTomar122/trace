@@ -5,7 +5,7 @@ import { isModelRelease } from '@/lib/feed-ranking';
 /**
  * Public daily editions: the non-personalised brief the email pipeline
  * publishes to `daily_editions/{YYYY-MM-DD}` before each send
- * (v3/flows/send_audience_newsletter.py `_publish_edition`).
+ * (backend/v3/flows/send_audience_newsletter.py `_publish_edition`).
  */
 
 export const EDITIONS_COLLECTION = 'daily_editions';

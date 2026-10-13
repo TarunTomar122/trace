@@ -7,7 +7,7 @@ import { adminDb } from '@/lib/firebase-admin';
  *   /api/email/track?e=o&t=<trackId>            → 1x1 pixel (open)
  *   /api/email/track?e=c&t=<trackId>&u=<url>    → 302 to the app (click)
  *
- * `<trackId>` is a per-send UUID minted by v1/tools/email_sender.py. It is
+ * `<trackId>` is a per-send UUID minted by backend/v1/tools/email_sender.py. It is
  * unguessable rather than signed, which is enough for aggregate stats and
  * avoids putting a secret in every email.
  */

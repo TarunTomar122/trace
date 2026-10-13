@@ -8,7 +8,7 @@ TODO: this overlap packer is brittle. It tokenizes titles and merges on
 "2 specific nouns" or "company + one 5+ letter noun", which is why two
 unrelated Google stories grouped on a shared "they". Come back with a
 real storyline signal (embeddings / LLM-only groups / entity+event) instead
-of more stopword patches. See also v3/lib/story_headlines.py.
+of more stopword patches. See also backend/v3/lib/story_headlines.py.
 */
 
 export type Headlineable = {

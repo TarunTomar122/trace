@@ -29,7 +29,7 @@ export async function generateMetadata({
         url: 'https://www.yourtrace.online/opengraph-image?v=10-big-things',
         width: 1200,
         height: 630,
-        alt: 'Trace — 10 big things in tech and AI',
+        alt: "Trace — reads the internet so you don't have to",
       }],
     },
     twitter: {

@@ -6,7 +6,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 TimeoutStartSec=30min
-WorkingDirectory=%h/trace
+WorkingDirectory=%h/trace/backend
 EnvironmentFile=%h/trace/.env
 ExecStart=/usr/bin/flock -n %h/trace/.pipeline.lock %h/trace/.venv/bin/python -u -m v3.scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10 --enrich-max-per-topic 4 --skip-notifications
 StandardOutput=append:%h/trace/logs/pipeline.log

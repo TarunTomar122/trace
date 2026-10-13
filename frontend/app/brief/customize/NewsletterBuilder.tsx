@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import DailySignup from '../DailySignup';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
 import { faviconUrl, topicIcon } from '@/lib/topic-icons';
+import { bodyParagraphs } from '@/lib/body-text';
 import {
   DEFAULT_STORY_COUNT,
   NEWSLETTER_TOPICS,
@@ -351,9 +352,9 @@ export default function NewsletterBuilder() {
                     <p className="mt-2 text-[19px] font-bold leading-[25px] tracking-[-0.01em]">
                       <a href={story.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{story.title}</a>
                     </p>
-                    {prefs.format !== 'headlines' && story.summary && (
-                      <p className="mt-2 text-[15px] leading-[23px] text-[#0f1419]">{story.summary}</p>
-                    )}
+                    {prefs.format !== 'headlines' && bodyParagraphs(story.summary).map((para, i) => (
+                      <p key={i} className={`${i ? 'mt-2.5' : 'mt-2'} text-[15px] leading-[23px] text-[#0f1419]`}>{para}</p>
+                    ))}
                     {prefs.format === 'images' && story.image && (
                       // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails, as in the email
                       <img

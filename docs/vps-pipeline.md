@@ -29,7 +29,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
 - Pipeline and pulse timers are **calendar-only** (`OnCalendar` + `Persistent=true`), same as foryou/newsletter. Do not use `OnUnitActiveSec` / `OnBootSec`: a user-systemd restart drops that baseline and the timer sits at `NEXT="-"` until someone kicks it. Calendar + Persistent catch up immediately after the manager comes back.
 - `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so
   DST is handled by systemd; `Persistent=true` catches up a missed run.
-- The newsletter is sent by `v3/flows/send_audience_newsletter.py`, which
+- The newsletter is sent by `backend/v3/flows/send_audience_newsletter.py`, which
   resolves three mutually exclusive buckets and sends **one email per person**:
   **pro** (10 stories) > **free** (5 stories) > **landing** (5 stories for
   email-only homepage signups). Pro/free stories come from the recipient's
@@ -51,10 +51,10 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   bucket, top clicked targets, and the last 25 sends. See
   `docs/self-hosted-email.md`.
 - Story links point at the app, never the publisher. Retired flows:
-  `send_three_feed_newsletter.py` (shared blast) and `v1/flows/send_free_newsletter.py`
+  `send_three_feed_newsletter.py` (shared blast) and `backend/v1/flows/send_free_newsletter.py`
   (never scheduled).
 - Story quality is a Jev (Typesafe) judgement call: `send_worthy` in
-  `RANKING_QUESTIONS` (`v3/build_trending.py`) scores 0 for appointments,
+  `RANKING_QUESTIONS` (`backend/v3/build_trending.py`) scores 0 for appointments,
   opinion, lawsuits without outcome, PR, shopping/how-to content, crowdfunding,
   personality colour, and single-company stock notes. The newsletter requests
   fresh verdicts for any story that has none yet and caches them for 7 days in
@@ -64,11 +64,11 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   `python -m v3.flows.send_audience_newsletter --preview --preview-bucket pro`.
   Demo one address: `--demo-email you@example.com --demo-bucket free`.
   Pull on the VPS after changing the flow, the template
-  (`v1/templates/audience_newsletter.html`), or the ranking rubric.
+  (`backend/v1/templates/audience_newsletter.html`), or the ranking rubric.
 
 ## Story grouping
 
-- After summaries are available, `v3/build_trending.py` embeds each article's
+- After summaries are available, `backend/v3/build_trending.py` embeds each article's
   title and short summary, retrieves the top candidate neighbors, and sends
   those pairs to TypeSafe Jev in small batches.
 - Jev returns a strict `same_card` probability plus a four-way relationship:
@@ -133,7 +133,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   top-stories feeds were removed: they syndicate investment-advice blogs that
   are not market news.
 - Cross-source blog/listicle filter (`MARKET_BLOG_KEYWORDS` in
-  `v3/build_trending.py`) drops advice titles from any finance brand:
+  `backend/v3/build_trending.py`) drops advice titles from any finance brand:
   "Could Upstart 10x From Here?", "Rivian vs. Lucid: This Stock Is Clearly
   the Better Buy", "If You'd Invested $5,000...", 401(k)/retirement advice,
   crypto price predictions. Classification also follows the story's primary
@@ -147,7 +147,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
 
 ## Coverage enrichment
 
-- Module: `v3/enrich_coverage.py`. Post-clustering hook in `build_trending`
+- Module: `backend/v3/enrich_coverage.py`. Post-clustering hook in `build_trending`
   (`--enrich-coverage`, default **off** so Actions behavior is unchanged).
 - Flow: top-N thin topics → Firecrawl `/v2/search` → blocklist + title-overlap
   filter → up to 4 new outlets appended to cluster items → overviews generate
@@ -171,7 +171,7 @@ systemctl --user status trace-pipeline.timer
 journalctl --user -u trace-pipeline.service -n 50 --no-pager
 tail -50 ~/trace/logs/pipeline.log
 # manual run (writes live doc, skips pushes):
-cd ~/trace && .venv/bin/python -m v3.scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --skip-notifications
+cd ~/trace/backend && ../.venv/bin/python -m v3.scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --skip-notifications
 ```
 
 Enable timers (cutover = this writes the live feed every 20 min):

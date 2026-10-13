@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { selectFromGroups, type PoolStory, type Section } from '@/lib/newsletter-select';
 import { STORY_COUNTS, laneKicker, topicLabel, type StoryCount, type StoryFormat } from '@/lib/newsletter-prefs';
 import { faviconUrl, topicIcon } from '@/lib/topic-icons';
+import { bodyParagraphs } from '@/lib/body-text';
 
 const PHONE_PREVIEW = 3;
 const TOPICS = ['ai', 'markets', 'startups', 'tech', 'ux-design'] as const;
@@ -112,7 +113,7 @@ export default function LandingBuilderDemo({ fallback }: { fallback: { id: strin
                     {story.source_count > 1 ? <span>· {story.source_count} sources</span> : null}
                   </span>
                   <h3><a href={story.url} target="_blank" rel="noopener noreferrer">{story.title}</a></h3>
-                  {format !== 'headlines' && story.summary && <p>{story.summary}</p>}
+                  {format !== 'headlines' && bodyParagraphs(story.summary).map((para, i) => <p key={i}>{para}</p>)}
                   {format === 'images' && story.image && (
                     // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails
                     <img src={story.image} alt="" loading="lazy" className="bd-img"

@@ -16,6 +16,11 @@ env:
   TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
   FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
+# The pipeline lives in backend/ (v1/v2/v3 packages, requirements.txt).
+defaults:
+  run:
+    working-directory: backend
+
 jobs:
   unmap-user:
     runs-on: ubuntu-latest

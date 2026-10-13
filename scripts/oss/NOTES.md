@@ -155,3 +155,13 @@ paywall removal in progress by another agent), `remotion/` (video renders),
   OK, 84 v3 tests OK (1 skipped), 8 backend tests OK.
 - Still the owner's call: CONTACT_EMAIL fallback (Gmail), author/brand
   references in blog posts and SEO metadata (intentional: it is the hosted site).
+
+## Oct 13: repo layout
+- v1/v2/v3 live in `backend/` (dead legacy files deleted: 9 of 107 v1/v2 files
+  were still imported, plus the push-notification flow a workflow runs). The
+  pipeline runs from `backend/`; `v1/storage.py` puts the repo root on
+  sys.path so `backend.localdb` still imports. LocalDB is unchanged.
+- README, CONTRIBUTING, SECURITY, LICENSE, .env.example, docker/, CI and the
+  GitHub templates now live in the repo itself; the overlay only keeps what must
+  differ publicly (env-only Firebase config, generic Caddyfile, .gitignore).
+- export.sh copies git-tracked files only (stage or commit before exporting).

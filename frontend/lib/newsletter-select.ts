@@ -1,8 +1,8 @@
 /**
  * Story allocation for the daily email, ported line for line from
- * `_select_from_groups` in v3/flows/send_audience_newsletter.py so the
+ * `_select_from_groups` in backend/v3/flows/send_audience_newsletter.py so the
  * newsletter builder can preview exactly what a reader will receive.
- * v3/test_newsletter_parity.py runs both against the same fixture; change
+ * backend/v3/test_newsletter_parity.py runs both against the same fixture; change
  * them together.
  */
 

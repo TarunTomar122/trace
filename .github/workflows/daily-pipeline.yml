@@ -48,6 +48,11 @@ env:
   BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
   EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
 
+# The pipeline lives in backend/ (v1/v2/v3 packages, requirements.txt).
+defaults:
+  run:
+    working-directory: backend
+
 jobs:
   morning-pipeline:
     if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch')

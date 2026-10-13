@@ -35,27 +35,23 @@ touch "$TARGET/$MARKER"
 # Paths are relative to the repo root. Keep this list explicit: anything not
 # listed here is NOT exported.
 ALLOW=(
+  README.md
+  LICENSE
+  CONTRIBUTING.md
+  SECURITY.md
+  .env.example
+  .dockerignore
+  docker-compose.yml
+  docker
+  docs/screenshot-landing.png
+  docs/screenshot-builder.png
+  .github/FUNDING.yml
+  .github/ISSUE_TEMPLATE
+  .github/pull_request_template.md
+  .github/workflows/ci.yml
   frontend
-  v3
-  # v1 modules imported (transitively) by v3 + the email templates v3 loads
-  v1/storage.py
-  v1/newsletter_preferences.py
-  v1/tools/__init__.py
-  v1/tools/brevo_client.py
-  v1/tools/email_sender.py
-  v1/tools/youtube_transcript.py
-  v1/templates/audience_newsletter.html
-  v1/templates/three_feed_newsletter.html
-  # v2 modules the v3 scheduler shells out to / imports
-  v2/flows/build_unified_newsletter.py
-  v2/utils/fetch_article_links.py
-  # self-hosted store + deployment examples
-  backend/__init__.py
-  backend/localdb
-  backend/patches
-  backend/scripts
-  backend/tests
-  backend/vps
+  backend
+  trace-extension
 )
 
 EXCLUDES=(
@@ -120,14 +116,35 @@ EXCLUDES=(
   --exclude=/frontend/app/instagram-studio/
   --exclude=/frontend/app/api/carousel/
   --exclude=.idea/
+  # internal: migration selector lists for the hosted instance
+  --exclude=/backend/config/
   --exclude=.vscode/
 )
 
 cd "$REPO"
 for p in "${ALLOW[@]}"; do
-  if [ ! -e "$p" ]; then echo "WARN: allowlisted path missing: $p" >&2; continue; fi
-  rsync -a --relative "${EXCLUDES[@]}" "./$p" "$TARGET/"
+  [ -e "$p" ] || echo "WARN: allowlisted path missing: $p" >&2
 done
+# Only files git tracks: local caches, logs and scratch output never leak into
+# the export. Commit first, then export.
+# Paths never published even though their parent is allowlisted: maintainer
+# tools, personal scripts, hosted-instance config. (rsync's anchored excludes do
+# not apply to an explicit file list, so they are git pathspecs here.)
+SKIP=(
+  ':(exclude)frontend/app/dev'
+  ':(exclude)frontend/app/api/dev'
+  ':(exclude)frontend/app/(auth)/dev'
+  ':(exclude)frontend/app/instagram-studio'
+  ':(exclude)frontend/app/api/carousel'
+  ':(exclude)frontend/scripts/brief-*.mjs'
+  ':(exclude)frontend/scripts/dump-items.mjs'
+  ':(exclude)frontend/scripts/audit-user-profiles.js'
+  ':(exclude)frontend/scripts/voice-lab*.mjs'
+  ':(exclude)frontend/scripts/seed-clone.mjs'
+  ':(exclude)frontend/scripts/profiles'
+  ':(exclude)backend/config'
+)
+git ls-files -z -- "${ALLOW[@]}" "${SKIP[@]}" | rsync -a --from0 --files-from=- "${EXCLUDES[@]}" ./ "$TARGET/"
 echo "copied $(find "$TARGET" -type f | wc -l | tr -d ' ') files"
 
 # --- overlay -----------------------------------------------------------------

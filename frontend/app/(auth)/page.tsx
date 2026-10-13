@@ -13,8 +13,8 @@ import LandingAuthRedirect from './LandingAuthRedirect';
 import { listDailyEditions } from '@/lib/daily-editions';
 
 export const metadata: Metadata = {
-  title: "Trace — 10 big things in tech & AI",
-  description: "The stories that moved tech and AI today, ranked and explained in five minutes.",
+  title: "Trace — reads the internet so you don't have to",
+  description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
   keywords: [
     "AI news aggregator",
     "tech news aggregator",
@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace — 10 big things in tech & AI",
-    description: "The stories that moved tech and AI today, ranked and explained in five minutes.",
+    title: "Trace — reads the internet so you don't have to",
+    description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     url: "https://www.yourtrace.online",
     type: "website",
     images: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace — 10 big things in tech and AI",
+        alt: "Trace — reads the internet so you don't have to",
       },
     ],
   },

@@ -1,6 +1,6 @@
 /**
  * The reader's own daily brief. Mirrors `newsletter_prefs` and
- * `_email_enabled` in v3/flows/send_audience_newsletter.py: change both.
+ * `_email_enabled` in backend/v3/flows/send_audience_newsletter.py: change both.
  */
 
 export const NEWSLETTER_TOPICS = [
@@ -31,7 +31,7 @@ export type NewsletterPrefs = {
 const TOPIC_IDS = new Set<string>(NEWSLETTER_TOPICS.map((topic) => topic.id));
 
 // Every lane a story can carry (pickable or backfilled), as the email names
-// them (INTEREST_LABELS in v3/flows/send_audience_newsletter.py).
+// them (INTEREST_LABELS in backend/v3/flows/send_audience_newsletter.py).
 const LANE_LABELS: Record<string, string> = {
   'model-releases': 'Model releases',
   ai: 'AI',

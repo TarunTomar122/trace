@@ -5,7 +5,7 @@ import { isModelRelease } from './feed-ranking.ts';
  * drop anything Jev judged worthless, lead with new model releases, then fill
  * lane quotas in priority order (AI, markets, tech, design, startups).
  *
- * Kept in step with v3/flows/send_audience_newsletter.py on purpose: the
+ * Kept in step with backend/v3/flows/send_audience_newsletter.py on purpose: the
  * homepage promises "10 big things in tech and AI", so the feed should show
  * the same ten.
  */

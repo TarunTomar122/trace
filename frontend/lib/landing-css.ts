@@ -48,6 +48,8 @@ export const LANDING_CSS = `
 .lp .nav-links { display: flex; align-items: center; gap: var(--s4); }
 .lp .nav-links a:not(.nav-cta) { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); font-weight: 550; }
 .lp .nav-links a:not(.nav-cta):hover { color: var(--ink); }
+.lp .nav-links a.nav-gh { display: inline-flex; align-items: center; color: var(--ink); }
+.lp .nav-links a.nav-gh:hover { color: var(--text-2); }
 .lp .nav-cta {
   display: inline-flex; align-items: center; height: 38px; padding: 0 18px; border-radius: 9999px;
   background: var(--ink); color: #fff; font-size: var(--fs-sm); font-weight: 650; text-decoration: none;

@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
         queryCollection('affiliate_conversions', ['createdAt']),
         queryCollection('promoted_tools', ['status']),
         queryCollection('v3_pipeline_runs', ['last_run_at', 'status'], 100),
-        // One doc per send attempt (v1/tools/email_sender.py) and one per open
+        // One doc per send attempt (backend/v1/tools/email_sender.py) and one per open
         // or click (app/api/email/track), joined on track_id.
         queryCollection('email_sends', [
           'to', 'bucket', 'subject', 'transport', 'status', 'track_id', 'dkim',

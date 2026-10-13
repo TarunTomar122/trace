@@ -1,4 +1,4 @@
-/** Same-story detection for feed list items (mirrors v3/lib/diversity.py). */
+/** Same-story detection for feed list items (mirrors backend/v3/lib/diversity.py). */
 
 const STOPWORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'in', 'is',
