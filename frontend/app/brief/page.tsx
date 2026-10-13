@@ -7,7 +7,7 @@ import DailySignup from './DailySignup';
 import { formatEditionDate, listDailyEditions } from '@/lib/daily-editions';
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle, SITE_BASE_URL } from '@/lib/seo';
 
-export const revalidate = 3600;
+export const revalidate = 600;
 
 const TITLE = 'The daily brief: the biggest stories in tech, every day';
 const DESCRIPTION =

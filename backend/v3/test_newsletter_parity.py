@@ -45,6 +45,7 @@ PARAGRAPH_SAMPLES = [
     "on the news. Traders now price a cut in December, e.g. at the next meeting. Bond yields fell "
     "for a third day, and the dollar slipped against the euro and the yen. Analysts were split!",
     "No final punctuation in this one but it keeps going for quite a while without stopping at all",
+    "🚀🚀 Launch day for the new model 🚀. " * 12,
 ]
 
 NODE_RUNNER = """

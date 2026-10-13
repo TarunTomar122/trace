@@ -12,14 +12,16 @@ Nothing here has been deployed, pushed, sent, or cancelled.
 2. **Web app (Vercel)**: deploy `frontend/`. Set
    `NEXT_PUBLIC_GITHUB_REPO_URL` once the repo is public (the "Open source"
    links stay hidden until then). Optional: `NEXT_PUBLIC_CONTACT_EMAIL`.
-3. **Pipeline (VPS)**: the pipeline moved into `backend/`. In `~/trace`, run
-   `bash scripts/server/move-pipeline-to-backend.sh --check` (shows what it
-   changes), then without `--check`: it pulls, reinstalls requirements and
-   points the pipeline units at `~/trace/backend`. LocalDB is not touched. Then publish today once so
+3. **Pipeline (VPS)**: the pipeline moved into `backend/`. In `~/trace`:
+   `git pull --ff-only` (brings the script), then
+   `bash scripts/server/move-pipeline-to-backend.sh --check` to see what it
+   changes, then the same without `--check`. It waits for any running job,
+   pauses the pipeline timers, reinstalls requirements and points the pipeline
+   units at `~/trace/backend`. LocalDB is not touched. Then publish today once so
    `/brief` is not empty:
-   `cd backend && python -m v3.flows.send_audience_newsletter --publish-only`
+   `cd backend && ../.venv/bin/python -m v3.flows.send_audience_newsletter --publish-only`
 4. **Check before the next send**:
-   `cd backend && python -m v3.flows.send_audience_newsletter --dry-run` and confirm the
+   `cd backend && ../.venv/bin/python -m v3.flows.send_audience_newsletter --dry-run` and confirm the
    audience counts (member / winback / landing) look right.
 
 ### Email env (VPS `~/trace/.env`)

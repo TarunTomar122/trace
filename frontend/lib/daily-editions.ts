@@ -1,4 +1,7 @@
+import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { adminFirestore } from '@/lib/firebase-admin';
+import { sameEvent } from '@/lib/same-event';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
 import { isModelRelease } from '@/lib/feed-ranking';
 
@@ -36,6 +39,11 @@ export function isEditionDate(value: string): boolean {
   if (!DATE_RE.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+/** Today's date in IST, the timezone editions and feed docs are dated in. */
+function todayIst(now: number = Date.now()): string {
+  return new Date(now + 5.5 * 3_600_000).toISOString().slice(0, 10);
 }
 
 /** Published today or yesterday (editions are dated in IST). */
@@ -251,40 +259,22 @@ function topicToPool(raw: unknown): PoolStory[] {
   }];
 }
 
-const NAME_STOPWORDS = new Set([
-  'the', 'and', 'for', 'with', 'its', 'new', 'how', 'why', 'what', 'who', 'after', 'over', 'into',
-  'from', 'this', 'that', 'says', 'model', 'models', 'launches', 'unveils', 'introduces', 'releases',
-]);
-
-function titleNames(title: string): Set<string> {
-  return new Set(
-    (title.match(/\b[A-Z][\w.-]{2,}/g) || [])
-      .map((word) => word.toLowerCase())
-      .filter((word) => !NAME_STOPWORDS.has(word)),
-  );
-}
-
-/**
- * The feed can carry one event as several topics ("Meta Unveils Muse Wonder AI
- * Models" / "...AI Model"). Like the pipeline's same-event merge, two titles
- * sharing two or more names are one story; the higher-ranked one is kept.
- */
+/** One event filed as several topics: keep the higher-ranked one. */
 function mergeSameEvent(pool: PoolStory[]): PoolStory[] {
-  const kept: { story: PoolStory; names: Set<string> }[] = [];
+  const kept: PoolStory[] = [];
   for (const story of pool) {
-    const names = titleNames(story.title);
-    const twin = kept.find((entry) => [...names].filter((name) => entry.names.has(name)).length >= 2);
+    const twin = kept.find((entry) => sameEvent(entry.title, story.title));
     if (twin) {
-      twin.story.source_count = Math.max(twin.story.source_count, story.source_count);
-      twin.story.coverage += story.coverage;
+      twin.source_count = Math.max(twin.source_count, story.source_count);
+      twin.coverage += story.coverage;
       continue;
     }
-    kept.push({ story: { ...story }, names });
+    kept.push({ ...story });
   }
-  return kept.map((entry) => entry.story);
+  return kept;
 }
 
-async function getLivePool(): Promise<{ date: string; pool: PoolStory[] } | null> {
+async function readLivePool(): Promise<{ date: string; pool: PoolStory[] } | null> {
   if (!adminFirestore) return null;
   try {
     const snap = await adminFirestore
@@ -307,6 +297,9 @@ async function getLivePool(): Promise<{ date: string; pool: PoolStory[] } | null
     return null;
   }
 }
+
+// One read of the feed per 10 minutes across requests, and once per render.
+const getLivePool = cache(unstable_cache(readLivePool, ['daily-editions-live-pool'], { revalidate: 600 }));
 
 async function getLiveEdition(): Promise<DailyEdition | null> {
   const live = await getLivePool();
@@ -332,13 +325,18 @@ async function getLiveEdition(): Promise<DailyEdition | null> {
 export async function getDailyEdition(date: string): Promise<DailyEdition | null> {
   const published = await getPublishedEdition(date);
   if (published) return published;
+  // Only today's (or yesterday's) date can come from the live feed.
+  if (!isFreshEdition(date)) return null;
   const live = await getLiveEdition();
   return live && live.date === date ? live : null;
 }
 
 /** Newest first; today's live brief leads when nothing newer is published. */
 export async function listDailyEditions(limit = 60): Promise<DailyEdition[]> {
-  const [published, live] = await Promise.all([listPublishedEditions(limit), getLiveEdition()]);
+  const published = await listPublishedEditions(limit);
+  // Today's edition is out: no need to look at the live feed.
+  if (published[0] && isFreshEdition(published[0].date) && published[0].date >= todayIst()) return published;
+  const live = await getLiveEdition();
   if (live && (!published.length || live.date > published[0].date)) return [live, ...published].slice(0, limit);
   return published;
 }

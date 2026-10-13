@@ -848,6 +848,10 @@ def _clean_summary(text: str) -> str:
 _ABBR_DOT = "\u2024"  # stands in for a non-sentence period while splitting
 
 
+def _u16(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
+
+
 def _paragraphs(text: str) -> list[str]:
     """Split a summary into short paragraphs, like the feed's story view.
 
@@ -876,7 +880,8 @@ def _paragraphs(text: str) -> list[str]:
         if not t:
             continue
         cur_words = len(cur.split()) if cur else 0
-        if cur and (cur_words + len(t.split()) > 38 or len(cur) + len(t) > 230):
+        # Lengths in UTF-16 units, as JavaScript counts them (emoji count twice).
+        if cur and (cur_words + len(t.split()) > 38 or _u16(cur) + _u16(t) > 230):
             paras.append(un(cur.strip()))
             cur = t
         else:

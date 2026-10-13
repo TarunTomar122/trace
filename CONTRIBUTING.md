@@ -10,7 +10,7 @@ Thanks for helping out. Small, focused pull requests are easiest to review.
 
 ## Checks before you open a PR
 CI runs these on every pull request (`.github/workflows/ci.yml`):
-- Frontend: `cd frontend && npx tsc --noEmit -p . && node --test lib/feed-ranking.test.mjs && npm run build`
+- Frontend: `cd frontend && npx tsc --noEmit -p . && node --test lib/feed-ranking.test.mjs lib/same-event.test.mjs && npm run build`
 - Pipeline (from `backend/`): `python3 -m unittest discover -s v3 -p "test_*.py" -t .`
 - LocalDB (from `backend/`): `python3 -m unittest discover -s tests`
 
@@ -23,7 +23,7 @@ The same goes for summary paragraph splitting (`_paragraphs` / `frontend/lib/bod
   keys. Only `.env.example` is tracked.
 
 ## Good first contributions
-- New news sources (see "Adding news sources" in the README).
+- New news sources (see "Add a news source" in the README).
 - Better summaries/ranking prompts, source-quality fixes, bug reports.
 - Docs and self-hosting improvements.
 

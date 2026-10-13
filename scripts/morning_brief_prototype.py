@@ -23,8 +23,10 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# The pipeline packages (v1/v2/v3) live in backend/.
+for path in (REPO_ROOT / "backend", REPO_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 load_dotenv(REPO_ROOT / ".env")
 

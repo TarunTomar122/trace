@@ -20,7 +20,7 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 | **The feed** | One card per story, every source attached, ranked by how much it matters. Topic lanes (AI, Markets, Tech, Startups, Design), Top HN, bookmarks, an archive. |
 | **The daily brief** | A morning email. Ten stories by default; each reader picks topics, 5/10/15 stories, and summaries, headlines only, or images. The preview in the builder is the real selection. |
 | **Public archive** | Every edition at `/brief/YYYY-MM-DD`, with share buttons and its own share image. |
-| **Mobile app** | Android/iOS app (Expo) in [`trace/`](trace). |
+| **Mobile app** | Android app on Google Play; the Expo source lives in `trace/` in the main repo. |
 | **New tab** | Chrome extension in [`trace-extension/`](trace-extension): the latest stories on every new tab. |
 | **Agents** | Claude, Cursor and other MCP clients can read the feed ([`/agents`](https://www.yourtrace.online/agents)). |
 
@@ -58,10 +58,10 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 | [`backend/v1/`, `backend/v2/`](backend) | Shared modules the pipeline still uses (storage, email sending, templates, push notifications) |
 | [`backend/localdb/`](backend/localdb) | Self-hosted SQLite document store with a Firestore-compatible client and HTTP server |
 | [`backend/vps/`](backend/vps) | systemd units, Caddy example and backup script for a single-server deployment |
-| [`trace/`](trace) | Mobile app (Expo / React Native) |
+| [`trace/`](trace) | Mobile app (Expo / React Native); not yet in the public mirror |
 | [`trace-extension/`](trace-extension) | Chrome new-tab extension (Manifest V3) |
 | [`docker/`](docker), [`docker-compose.yml`](docker-compose.yml) | Self-hosting stack: LocalDB + pipeline + web app |
-| [`docs/`](docs) | Deployment and launch notes |
+| [`docs/`](docs) | Screenshots and deployment notes |
 
 ## Run it yourself
 
@@ -99,8 +99,8 @@ python3 -m backend.localdb.server --db data/localdb/documents.sqlite3 --port 850
 # 2. Pipeline
 python3 -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
 cd backend
-TRACE_DB=local TRACE_LOCALDB_PATH=../data/localdb/documents.sqlite3 \
-  ../.venv/bin/python -m v3.scheduler --jobs trending assemble --audience all --force-pools
+export TRACE_DB=local TRACE_LOCALDB_PATH=../data/localdb/documents.sqlite3
+../.venv/bin/python -m v3.scheduler --jobs trending assemble --audience all --force-pools
 ../.venv/bin/python -m v3.flows.send_audience_newsletter --publish-only   # today's /brief
 cd ..
 
@@ -114,8 +114,8 @@ FIRESTORE_BACKEND=local LOCALDB_URL=http://127.0.0.1:8502 LOCALDB_API_TOKEN=... 
 
 ### Mobile app and extension
 
-- **Mobile:** `cd trace && npm install && npm run start` (Expo). Point it at
-  your web app's API in its config; see [`trace/README.md`](trace/README.md).
+- **Mobile:** `cd trace && npm install && npm run start` (Expo), where the
+  app source is included. Point it at your web app's API in its config.
 - **Extension:** open `chrome://extensions`, enable Developer mode, **Load
   unpacked** → `trace-extension/`. See [`trace-extension/README.md`](trace-extension/README.md).
 

@@ -17,8 +17,9 @@ import {
 } from '@/lib/daily-editions';
 import { metadataTitle, SITE_BASE_URL } from '@/lib/seo';
 
-// Editions are written once per morning; an hour of staleness is invisible.
-export const revalidate = 3600;
+// Ten minutes: today's brief can come from the live feed until the morning
+// edition is published, and a not-yet-published date must not 404 for long.
+export const revalidate = 600;
 
 type Props = { params: Promise<{ date: string }> };
 

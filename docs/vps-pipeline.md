@@ -51,7 +51,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   bucket, top clicked targets, and the last 25 sends. See
   `docs/self-hosted-email.md`.
 - Story links point at the app, never the publisher. Retired flows:
-  `send_three_feed_newsletter.py` (shared blast) and `backend/v1/flows/send_free_newsletter.py`
+  `send_three_feed_newsletter.py` (shared blast) and the former `send_free_newsletter.py` (removed)
   (never scheduled).
 - Story quality is a Jev (Typesafe) judgement call: `send_worthy` in
   `RANKING_QUESTIONS` (`backend/v3/build_trending.py`) scores 0 for appointments,
