@@ -99,6 +99,14 @@ PROMO_TITLE_KEYWORDS = (
     "comparison",
     "app cleaner",
     "uninstaller",
+    # Event ticket promos ("Final chance for ticket savings at Disrupt").
+    "ticket savings",
+    "save up to",
+    "early bird",
+    "early-bird",
+    "promo code",
+    "register now",
+    "tickets on sale",
 )
 MARKET_BLOG_KEYWORDS = (
     "if you'd invested",

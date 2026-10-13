@@ -142,6 +142,11 @@ class PickTests(unittest.TestCase):
         self.assertEqual([p["topic"]["id"] for p in picked], ["tt_7"])
         self.assertEqual(picked[0]["kicker"], "Top in Tech")
 
+    def test_event_ticket_promos_are_never_posted(self):
+        promo = topic(5, "startups", title="Final chance for ticket savings at Disrupt 2026")
+        picked = self.pick([topic(2, "ai"), promo, topic(8, "startups")])
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_8"])
+
     def test_failed_posts_do_not_block_their_stories(self):
         store = FakeStore()
         now = datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc)

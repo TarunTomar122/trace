@@ -42,6 +42,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
+from v3.build_trending import _looks_promotional  # noqa: E402
 from v3.flows.send_audience_newsletter import _paragraphs  # noqa: E402  (the feed's paragraph split)
 from v3.lib.instagram_slides import PALETTES, SlideStory, fetch_image, render_carousel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
@@ -156,7 +157,7 @@ def pick_stories(
     for topic in topics:
         title = _clean(topic.get("title"))
         paragraphs = _paragraphs(_clean(topic.get("summary")))[:3]
-        if not title or topic.get("jev_send_worthy") == 0 or not paragraphs:
+        if not title or topic.get("jev_send_worthy") == 0 or not paragraphs or _looks_promotional(title):
             continue
         url_keys = {_url_key(a.get("url", "")) for a in topic.get("articles") or [] if isinstance(a, dict)} - {""}
         if topic.get("id") in posted_ids or url_keys & posted_urls or any(_similar(title, old) for old in posted_titles):
