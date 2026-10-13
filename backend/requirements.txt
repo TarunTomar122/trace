@@ -10,3 +10,4 @@ sib-api-v3-sdk          # optional: only when EMAIL_TRANSPORT=brevo|auto
 dkimpy                  # DKIM signing for the self-hosted MTA path
 youtube-transcript-api
 yt-dlp
+Pillow>=10              # Instagram carousel slides (v3/lib/instagram_slides.py)

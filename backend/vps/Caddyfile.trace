@@ -4,5 +4,13 @@
 # Requires DNS: db.yourtrace.online -> A 144.217.6.112 (proxied OFF).
 db.yourtrace.online {
 	bind 144.217.6.112
-	reverse_proxy 127.0.0.1:8502
+	# Instagram carousel slides (backend/v3/flows/post_instagram.py); Buffer fetches them.
+	handle_path /social/* {
+		root * /var/www/trace-social
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8502
+	}
 }

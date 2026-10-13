@@ -20,8 +20,9 @@ Actions keeps push notifications plus manual/replay workflows.
 | `trace-pulse.service/.timer` | every 3 h | `scheduler --jobs pulse assemble --audience all --force-pools` |
 | `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
 | `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_audience_newsletter` |
+| `trace-instagram.service/.timer` | 09:00 and 20:00 Europe/London | `v3.flows.post_instagram` |
 
-Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
+Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}` and `trace-instagram.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
 
@@ -65,6 +66,37 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse
   Demo one address: `--demo-email you@example.com --demo-bucket free`.
   Pull on the VPS after changing the flow, the template
   (`backend/v1/templates/audience_newsletter.html`), or the ranking rubric.
+
+## Instagram carousels
+
+`trace-instagram.timer` posts to the Trace Instagram account through Buffer at
+09:00 and 20:00 UK time (`Europe/London`, so it follows BST and GMT).
+
+- Each run picks 3-5 stories from today's feed in this order: two AI, then
+  one each from Markets, Startups and Design (`INSTAGRAM_LANES`). A lane with
+  nothing new is skipped and the best remaining story from any lane fills the
+  gap. The "Top in X" kicker shows once per lane, as in the brief. Stories posted in the last 4 days are
+  skipped (by topic id, article URL and similar title).
+- Two slides per story, 1080x1350 JPEG, rendered with Pillow
+  (`backend/v3/lib/instagram_slides.py`, fonts in `backend/v3/assets/instagram`):
+  the photo with a short rewritten headline and a "Top in X" kicker, then the
+  story's first paragraphs exactly as the feed splits them. The story slide's
+  palette (paper, ink, navy) changes from post to post.
+- Slides are written to `/var/www/trace-social/{date}-{slot}-{id}/` and served
+  by Caddy at `https://db.yourtrace.online/social/...` (see
+  `backend/vps/Caddyfile.trace`); Buffer fetches them when it publishes.
+  Folders older than 14 days are deleted.
+- The job shares the post now and waits for Buffer to report it sent. Every
+  post is logged in `instagram_posts/{date}-{am|pm}` with the stories,
+  headlines, caption, Buffer id and Instagram link. A slot that already posted
+  is skipped, so the service's retries can't double-post.
+- Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` (see `.env.example`).
+
+```bash
+# preview without posting or writing anything
+cd ~/trace/backend && ../.venv/bin/python -m v3.flows.post_instagram --dry-run --out /tmp/ig
+tail -50 ~/trace/logs/instagram.log
+```
 
 ## Story grouping
 

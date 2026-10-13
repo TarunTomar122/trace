@@ -1,0 +1,13 @@
+[Unit]
+Description=Post a Trace Instagram carousel at 09:00 and 20:00 UK time
+
+[Timer]
+# Europe/London follows BST and GMT, so these stay 9am and 8pm UK time.
+OnCalendar=*-*-* 09:00:00 Europe/London
+OnCalendar=*-*-* 20:00:00 Europe/London
+AccuracySec=1min
+Persistent=false
+Unit=trace-instagram.service
+
+[Install]
+WantedBy=timers.target

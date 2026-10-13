@@ -1,0 +1,18 @@
+[Unit]
+Description=Trace Instagram carousel via Buffer
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=2h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+TimeoutStartSec=30min
+WorkingDirectory=%h/trace/backend
+EnvironmentFile=%h/trace/.env
+ExecStart=/usr/bin/flock -w 600 %h/trace/.instagram.lock %h/trace/.venv/bin/python -u -m v3.flows.post_instagram
+# A failed run retries; a slot that already posted is skipped, so no doubles.
+Restart=on-failure
+RestartSec=15min
+StandardOutput=append:%h/trace/logs/instagram.log
+StandardError=append:%h/trace/logs/instagram.log
