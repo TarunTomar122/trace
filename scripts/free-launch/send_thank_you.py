@@ -78,7 +78,7 @@ def render(name: str) -> tuple[str, str]:
         "run all of it, the feed, the daily brief and the apps, for free.",
         "I've cancelled your subscription, so you won't be charged again. Your account stays Pro; "
         "the only thing that changes is the bill.",
-        f"New since you joined: you can build your own daily brief, with your topics, 5, 10 or 15 "
+        f"New since you joined: you can customize your daily email, with your topics, 5, 10 or 15 "
         f"stories, and images if you like, at {APP_URL}/brief/customize",
         "Thank you for believing in Trace early. You made this possible.",
     ]
