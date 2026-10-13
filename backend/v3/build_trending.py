@@ -281,15 +281,6 @@ TOPIC_EVENT_TOKEN_CANONICAL = {
     "unveiling": "unveil",
 }
 
-TOKEN_DISPLAY = {
-    "ai": "AI",
-    "us": "US",
-    "uk": "UK",
-    "eu": "EU",
-    "china": "China",
-    "war": "War",
-}
-
 CANONICAL_TRENDING_INTEREST_MAP = {
     "technology": "tech",
     "business-market": "markets",
@@ -1267,48 +1258,18 @@ def _cluster_popularity_score(cluster: dict[str, Any]) -> float:
     return round(source_count * 3.5 + article_count * 0.8 + avg_signal * 0.4 + recency, 3)
 
 
-def _pretty_topic_token(token: str) -> str:
-    return TOKEN_DISPLAY.get(token, token.capitalize())
-
-
 def _topic_title(cluster: dict[str, Any]) -> str:
-    """Generate a specific topic title using consensus tokens.
+    """The topic's title until the overview model writes one: the lead
+    article's own headline.
 
-    Prefers tokens seen in multiple articles (consensus). Longer/more specific
-    tokens are ranked higher to avoid generic titles like 'Technology and Business'.
+    Titles stitched from shared tokens read as nonsense ("Soon and Anthropic"),
+    and two of them can even look alike to the feed's same-story check.
     """
-    # Use the pre-computed consensus tokens (in >=2 articles) if available,
-    # otherwise fall back to counting from scratch.
-    consensus: set[str] = cluster.get("consensus_tokens", set())
-    if consensus:
-        token_counts: Counter[str] = Counter()
-        for item in cluster.get("items", []) or []:
-            for tok in _topic_tokens_for_item(item):
-                if tok in consensus:
-                    token_counts[tok] += 1
-        # Prefer longer tokens (more specific) — break ties by frequency
-        top = sorted(token_counts.keys(), key=lambda t: (token_counts[t], len(t)), reverse=True)
-    else:
-        token_counts = Counter()
-        for item in cluster.get("items", []) or []:
-            token_counts.update(_topic_tokens_for_item(item))
-        top = [tok for tok, cnt in token_counts.most_common(6) if cnt >= 2]
-
-    if len(top) >= 2:
-        return f"{_pretty_topic_token(top[0])} and {_pretty_topic_token(top[1])}"
-    if len(top) == 1:
-        return f"{_pretty_topic_token(top[0])} updates"
-
-    # Fall back to the top article's title
     items: list[dict[str, Any]] = cluster.get("items", []) or []
     if not items:
         return "Trending now"
-    top_item = sorted(
-        items,
-        key=lambda x: float(x.get("_trend_score", 0.0)),
-        reverse=True,
-    )[0]
-    return str(top_item.get("title", "Trending now"))[:80]
+    lead = sorted(items, key=lambda x: float(x.get("_trend_score", 0.0)), reverse=True)[0]
+    return str(lead.get("title") or "").strip() or "Trending now"
 
 
 def _event_summary_for_item(
@@ -1371,29 +1332,35 @@ def _build_topic_timeline(
     return events
 
 
-def _deterministic_topic_overview(topic_title: str, timeline: list[dict[str, Any]]) -> tuple[str, list[str]]:
-    if not timeline:
-        return (
-            f"{topic_title} is active in the last 24 hours with fresh reporting across sources.",
-            [],
-        )
-    first = timeline[0]
-    last = timeline[-1]
-    source_count = len(
-        {
-            str(e.get("source_name", "")).strip()
-            for e in timeline
-            if str(e.get("source_name", "")).strip()
-        }
-    )
-    overview = (
-        f"{topic_title} saw {len(timeline)} notable updates in the last 24 hours "
-        f"across {source_count} sources. The story moved from "
-        f"{first.get('title', 'an initial report')} to "
-        f"{last.get('title', 'the latest development')}."
-    )
-    points = [str(e.get("title", "")).strip() for e in timeline[:3] if str(e.get("title", "")).strip()]
-    return overview, points
+def _lead_article_overview(
+    items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> tuple[str, list[str]]:
+    """Summary and takeaways of the best-ranked article that has a summary,
+    or ("", []).
+
+    What a topic shows whenever its overview can't be written, so a failed
+    model call still leaves a real summary of the story rather than filler.
+    Raw page content is never used: it is scraped navigation and bylines.
+    """
+    for item in items:
+        summary = summary_map.get(str(item.get("url", "")).strip())
+        short = summary.get("short_article") if isinstance(summary, dict) else None
+        if not isinstance(short, dict):
+            continue
+        overview = str(short.get("body", "") or "").strip() or str(short.get("subtitle", "") or "").strip()
+        if not overview:
+            continue
+        takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
+        return overview, [str(point).strip() for point in takeaways if str(point).strip()][:5]
+    return "", []
+
+
+# What the old template fallback wrote. Cached overviews like this are retried.
+_TEMPLATE_OVERVIEW = re.compile(
+    r"saw \d+ notable updates in the last 24 hours"
+    r"|is active in the last 24 hours with fresh reporting across sources"
+)
 
 
 def _topic_cache_key(items: list[dict[str, Any]]) -> str:
@@ -1658,16 +1625,14 @@ def _timeline_fallback_points(timeline: list[dict[str, Any]], limit: int = 4) ->
 def _normalize_topic_overview_output(
     overview: str,
     key_points: list[str],
-    deterministic_overview: str,
-    deterministic_points: list[str],
+    fallback_points: list[str],
     timeline: list[dict[str, Any]],
 ) -> tuple[str, list[str]]:
     salient_mentions = _timeline_salient_mentions(timeline)
+    # The model's overview always stands: a stray phrase such as "market
+    # volatility" used to swap a good overview for a template.
     normalized_overview = overview.strip()
     normalized_points = [str(point).strip() for point in key_points if str(point).strip()]
-
-    if not _line_has_concrete_detail(normalized_overview, salient_mentions):
-        normalized_overview = deterministic_overview
 
     concrete_points: list[str] = []
     seen_signatures: set[str] = set()
@@ -1688,13 +1653,17 @@ def _normalize_topic_overview_output(
         concrete_points.append(point.rstrip(".") + ".")
 
     if not concrete_points:
-        fallback_points = [
-            point for point in _timeline_fallback_points(timeline)
-            if not _is_date_only_or_filler_point(point, salient_mentions)
-            and not _is_speculative_point(point)
-            and not _is_redundant_point(point, normalized_overview)
-        ]
-        normalized_points = fallback_points
+        # The lead article's takeaways first, then other outlets' headlines.
+        normalized_points = []
+        for point in [*fallback_points, *_timeline_fallback_points(timeline)]:
+            if (
+                _is_date_only_or_filler_point(point, salient_mentions)
+                or _is_speculative_point(point)
+                or _is_redundant_point(point, normalized_overview)
+                or any(_is_redundant_point(point, kept) for kept in normalized_points)
+            ):
+                continue
+            normalized_points.append(point)
     else:
         normalized_points = concrete_points
 
@@ -1706,28 +1675,9 @@ def _build_singleton_topic_overview(
     fallback_title: str,
     summary_map: dict[str, dict[str, Any] | None],
 ) -> tuple[str, str, list[str], bool]:
-    url = str(item.get("url", "")).strip()
-    summary = summary_map.get(url) if url else None
     title = str(item.get("title", "")).strip() or fallback_title
-
-    if not isinstance(summary, dict):
-        overview, key_points = _deterministic_topic_overview(title, [])
-        return title, overview, key_points, False
-
-    short = summary.get("short_article", {}) or {}
-    body = str(short.get("body", "")).strip()
-    takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
-    if body:
-        key_points = [str(point).strip() for point in takeaways if str(point).strip()][:5]
-        return title, body, key_points, True
-
-    subtitle = str(short.get("subtitle", "")).strip()
-    if subtitle:
-        key_points = [str(point).strip() for point in takeaways if str(point).strip()][:5]
-        return title, subtitle, key_points, True
-
-    overview, key_points = _deterministic_topic_overview(title, [])
-    return title, overview, key_points, False
+    overview, key_points = _lead_article_overview([item], summary_map)
+    return title, overview, key_points, bool(overview)
 
 
 def _build_topic_prompt_context(
@@ -1802,7 +1752,7 @@ def _build_topic_overview(
         cached_overview = str(cached.get("overview", "")).strip()
         cached_title = str(cached.get("title", "")).strip()
         cached_points = cached.get("key_points")
-        if cached_overview:
+        if cached_overview and not _TEMPLATE_OVERVIEW.search(cached_overview):
             return (
                 cached_title or fallback_title,
                 cached_overview,
@@ -1810,22 +1760,9 @@ def _build_topic_overview(
                 True,
             )
 
-    deterministic_overview, deterministic_points = _deterministic_topic_overview(
-        fallback_title, timeline
-    )
+    lead_overview, lead_points = _lead_article_overview(items, summary_map)
     if not timeline:
-        store.cache_synthesis(
-            cache_key,
-            {
-                "topic_id": topic_id,
-                "title": fallback_title,
-                "overview": deterministic_overview,
-                "key_points": deterministic_points,
-                "article_count": len(items),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-        return fallback_title, deterministic_overview, deterministic_points, False
+        return fallback_title, lead_overview, lead_points, False
 
     timeline_text = _build_topic_prompt_context(items, timeline, summary_map)
 
@@ -1834,8 +1771,8 @@ def _build_topic_overview(
     import time as _time
 
     title = fallback_title
-    overview = deterministic_overview
-    key_points = deterministic_points
+    overview = ""
+    key_points: list[str] = []
 
     try:
         t0 = _time.time()
@@ -1865,12 +1802,16 @@ def _build_topic_overview(
             key_points = [str(p).strip() for p in maybe_points if str(p).strip()][:5]
     except Exception as exc:
         _log(f"  Topic overview LLM failed for {topic_id}: {exc}")
+        # Not cached, so the next run writes the real overview.
+        return fallback_title, lead_overview, lead_points, False
+
+    if not overview:
+        return fallback_title, lead_overview, lead_points, False
 
     overview, key_points = _normalize_topic_overview_output(
         overview=overview,
         key_points=key_points,
-        deterministic_overview=deterministic_overview,
-        deterministic_points=deterministic_points,
+        fallback_points=lead_points,
         timeline=timeline,
     )
 
