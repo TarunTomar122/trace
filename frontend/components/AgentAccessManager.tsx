@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { Check, Copy, KeyRound, Loader2, RotateCw, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { hasActiveSubscription } from '@/lib/subscription-access';
 
 type KeyStatus = {
   configured: boolean;
@@ -13,13 +11,12 @@ type KeyStatus = {
 };
 
 export default function AgentAccessManager() {
-  const { user, profile, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'key' | 'prompt' | null>(null);
-  const isPro = hasActiveSubscription(profile);
 
   const setupPrompt = useMemo(() => token ? `Connect this agent to Trace as a read-only MCP server.
 
@@ -108,19 +105,8 @@ Store the key securely as TRACE_AGENT_KEY. Never commit or print it. After setup
       <div className="border border-[#d9dded] bg-white p-6 sm:p-8">
         <KeyRound size={20} className="text-[#2557d6]" />
         <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.02em]">Sign in to create your Agent Key</h3>
-        <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-[#6d7280]">The key is read-only and belongs to your Trace account. Agent Access is included with Pro.</p>
+        <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-[#6d7280]">The key is read-only and belongs to your Trace account. Agent Access is free.</p>
         <button type="button" onClick={() => void signInWithGoogle('read')} className="mt-5 bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Sign in with Google</button>
-      </div>
-    );
-  }
-
-  if (!isPro) {
-    return (
-      <div className="border border-[#d9dded] bg-white p-6 sm:p-8">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2557d6]">Pro feature</p>
-        <h3 className="mt-3 text-[22px] font-semibold tracking-[-0.02em]">Go Pro to connect an agent</h3>
-        <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-[#6d7280]">Cancel anytime. Your key keeps working only while Pro or the trial is active.</p>
-        <Link href="/feed?tab=profile" className="mt-5 inline-flex bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Go Pro</Link>
       </div>
     );
   }

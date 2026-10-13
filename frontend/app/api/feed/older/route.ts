@@ -1,9 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { FieldPath } from 'firebase-admin/firestore';
-import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession, isTraceSessionProfileFresh } from '@/lib/server-session';
-import { hasActiveSubscription } from '@/lib/subscription-access';
 import { mapTrendingToStories } from '@/lib/feed-view';
 import { getTodayIstDate, ISO_DATE_RE } from '@/lib/daily-date-utils';
 import type { FeedStory } from '@/components/feed-v2/FeedApp';
@@ -79,14 +76,6 @@ const getOlderStories = unstable_cache(
 );
 
 export async function GET(request: NextRequest) {
-  // The archive is a Pro feature; enforce it here, not just in the UI.
-  const sessionCookie = (await cookies()).get(TRACE_SESSION_COOKIE_NAME)?.value;
-  const session = sessionCookie ? verifyTraceSession(sessionCookie) : null;
-  const sessionProfile = session?.profile && isTraceSessionProfileFresh(session) ? session.profile : null;
-  if (!hasActiveSubscription(sessionProfile)) {
-    return NextResponse.json({ error: 'Trace Pro is required for the archive', code: 'pro_required' }, { status: 403 });
-  }
-
   const beforeParam = request.nextUrl.searchParams.get('before') || '';
   const limitParam = Number(request.nextUrl.searchParams.get('limit') || '');
   const limit = Number.isFinite(limitParam)

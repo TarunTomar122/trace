@@ -674,12 +674,12 @@ def evaluate_for_you_fit(
         content=(content or "")[:4000],
     )
     try:
-        model_name = MODEL
-        if feed_type not in ("trending", "deep_dives") and output_format != "cards":
-            model_name = FOR_YOU_PROSE_MODEL
-
+        # A yes/no lane classification, so the cheap model. This block used to
+        # pick a model from `feed_type`/`output_format`, names that do not exist
+        # here: every call raised NameError and failed open, so the gate never
+        # rejected anything.
         resp = client.chat.completions.create(
-            model=model_name,
+            model=MODEL,
             messages=[
                 {
                     "role": "system",
@@ -1080,17 +1080,20 @@ def batch_presummarize(
                     subinterest_id=str(item.get("subinterest_id", "")),
                     source_name=str(item.get("source_name", "")),
                 )
-                store.save_cached_summary_v2(
-                    url,
-                    fit_bucket,
-                    {
-                        "is_fit": fit_ok,
-                        "reason": fit_reason,
-                        "interest_id": str(item.get("interest_id", "")),
-                        "subinterest_id": str(item.get("subinterest_id", "")),
-                    },
-                    MODEL,
-                )
+                # Fail-open results are not verdicts: caching them would wave
+                # the article through forever instead of retrying next run.
+                if not fit_reason.startswith(("fit_gate_error:", "openai_not_configured")):
+                    store.save_cached_summary_v2(
+                        url,
+                        fit_bucket,
+                        {
+                            "is_fit": fit_ok,
+                            "reason": fit_reason,
+                            "interest_id": str(item.get("interest_id", "")),
+                            "subinterest_id": str(item.get("subinterest_id", "")),
+                        },
+                        MODEL,
+                    )
                 if not fit_ok:
                     summary_map[url] = None
                     stats["rejected"] += 1

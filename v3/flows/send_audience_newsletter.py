@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Send the redesigned audience newsletters: landing / free / pro.
+"""Send the audience newsletters: member / winback / landing.
 
-One email per person per day. Bucket precedence: pro > free > landing.
+One email per person per day. Bucket precedence: member > winback > landing.
+Trace is free for everyone; there are no paid tiers.
 
-- landing: email-only subscribers from the homepage form -> the 5 biggest
-  stories of the day (global, not personalized).
-- free: onboarded non-paying users, email on by default (only an explicit
-  opt-out disables it) -> top 5 stories matched to their interests.
-- pro: paying users, email always on -> top 10 stories matched to interests.
+- member: onboarded accounts that are active (or got the daily recently),
+  email on by default (only an explicit opt-out disables it) -> stories
+  matched to their saved topics, 5/10/15 per their preferences (default 10).
+- winback: dormant accounts, opt-in via NEWSLETTER_WINBACK=1 plus `winback`
+  in EMAIL_BREVO_BUCKETS; capped per run, at most WINBACK_MAX_SENDS each.
+- landing: email-only subscribers from the homepage form -> the day's
+  biggest stories (global, not personalized).
 
 Stories come from the 24h trending pool (v3_user_feeds/_global). Topics that
 Jev flagged send_worthy=0 are dropped whenever verdicts exist. Story links
@@ -53,10 +56,25 @@ from v3.build_trending import (  # noqa: E402
     _topic_tokens,
 )
 
-APP_URL = "https://yourtrace.online"
-LANDING_COUNT = 5
-FREE_COUNT = 5
-PRO_COUNT = 10
+# Self-hosters set TRACE_APP_URL; every link in the email is built from it.
+APP_URL = (os.getenv("TRACE_APP_URL") or "https://yourtrace.online").rstrip("/")
+LANDING_COUNT = 10
+MEMBER_COUNT = 10
+
+# Readers build their own brief in the app (frontend/lib/newsletter-prefs.ts
+# mirrors these): how many stories, which lanes, and summaries or headlines.
+STORY_COUNT_CHOICES = (5, 10, 15)
+FORMAT_CHOICES = ("summaries", "headlines", "images")
+
+# Trace is free: every account reader is a "member" and gets the full edition.
+# Dormant accounts get a short win-back run instead of the daily ("winback").
+# Both share the member layout; landing subscribers keep the short edition.
+WINBACK_MAX_SENDS = 3
+WINBACK_GAP_DAYS = 4
+WINBACK_DAILY_CAP_DEFAULT = 250
+# Someone who got the daily inside this window stays on it, even if the app
+# never stamped them active (lastActiveAt was not written Sep 4 – Oct 12).
+MEMBER_CONTINUITY_DAYS = 7
 
 # Selection priority: AI, markets, tech, design, startups, then other lanes.
 # Per-bucket slots give the leading lanes the biggest shares.
@@ -65,22 +83,25 @@ LANE_ORDER = (
     "products", "the-world",
 )
 LANE_PATTERN = {
-    "pro": (3, 2, 2, 1, 1, 1),
-    "free": (2, 1, 1),
+    "member": (3, 2, 2, 1, 1, 1),
+    "winback": (3, 2, 2, 1, 1, 1),
     "landing": (2, 1, 1),
 }
 
 # Subject/headline: "<count> big things today <emoji>", emoji rotating daily.
+def _headline(story_count: int) -> str:
+    return f"{story_count} big things today"
+
 SUBJECT_EMOJIS = ("\U0001f62e", "\U0001f525", "\U0001f680", "\U0001f440", "\U0001f9e0",
                   "\u26a1", "\u2728", "\U0001f973", "\U0001f37f", "\U0001f92f")
 
 # Launches get their own heading at the top of the email, ahead of the lane
-# pattern. Slots come out of the same total (10 / 5 / 5).
+# pattern. Slots come out of the same total story count.
 MODEL_RELEASE_LANE = "model-releases"
-MODEL_RELEASE_SLOTS = {"pro": 2, "free": 1, "landing": 1}
+MODEL_RELEASE_SLOTS = {"member": 2, "winback": 2, "landing": 1}
 
-# Sort only the finished pro sections; LANE_ORDER continues to control selection.
-PRO_DISPLAY_ORDER = (
+# Sort only the finished full-edition sections; LANE_ORDER controls selection.
+FULL_DISPLAY_ORDER = (
     MODEL_RELEASE_LANE, "ai", "markets", "startups", "tech", "ux-design",
 )
 
@@ -104,34 +125,41 @@ INTEREST_LABELS = {
     "tech": "Tech",
     "engineering": "Engineering",
     "ux-design": "Design",
+    "products": "Products",
+    "the-world": "World",
 }
 
 BUCKETS = {
     "landing": {
         "count": LANDING_COUNT,
-        "headline": "5 big things today",
         "intro": (
             "You signed up on Trace with this email. Here is what moved the "
             "needle in tech, nothing else."
         ),
     },
-    "free": {
-        "count": FREE_COUNT,
-        "headline": "5 big things today",
-        "intro": (
-            "Picked from the last 24 hours, matched to the topics you follow. "
-            "Every original source is one tap away in the app."
-        ),
-    },
-    "pro": {
-        "count": PRO_COUNT,
-        "headline": "10 big things today",
+    "member": {
+        "count": MEMBER_COUNT,
         "intro": (
             "The complete picture for your interests, ranked from everything "
             "that moved in the last 24 hours."
         ),
     },
+    "winback": {
+        "count": MEMBER_COUNT,
+        # Leads the subject line: the news is the reason to open this one.
+        "subject_lead": "Everything in Trace is unlocked",
+        "intro": (
+            "Every story, Pulse, and the full archive are now included for "
+            "everyone. Trace is free and open source. Here is what moved in "
+            "tech today, matched to the topics you picked."
+        ),
+    },
 }
+
+
+# Readers who may not be able to sign in to manage settings get a one-click
+# unsubscribe link instead (it also clears the profile flags).
+UNSUBSCRIBE_LINK_BUCKETS = ("landing", "winback")
 
 
 def _today_ist() -> str:
@@ -150,7 +178,8 @@ def _load_template(name: str) -> str:
     path = REPO_ROOT / "v1" / "templates" / name
     if not path.exists():
         raise FileNotFoundError(f"Template not found: {path}")
-    return path.read_text()
+    # Templates carry the hosted URL; point them at this deployment.
+    return path.read_text().replace("https://yourtrace.online", APP_URL)
 
 
 def _log(msg: str) -> None:
@@ -229,6 +258,20 @@ def _source_name(item: dict) -> str:
     return _domain(str(item.get("url", ""))) or "Source"
 
 
+NON_IMAGE_RE = re.compile(r"\.(avi|mp4|m4v|mov|webm|m3u8|mpd)(\?|#|$)", re.IGNORECASE)
+
+
+def _image(*items: dict) -> str:
+    """First usable https thumbnail among the given feed items, or ""."""
+    for item in items:
+        url = str((item or {}).get("thumbnail") or "").strip()
+        # Some feeds put a video in the thumbnail slot; mail clients show those
+        # as a broken box.
+        if url.startswith("https://") and not NON_IMAGE_RE.search(url):
+            return url
+    return ""
+
+
 def _candidates(feed: dict) -> list[dict]:
     """Flatten trending topics + raw trending rows into candidate stories.
 
@@ -282,6 +325,7 @@ def _candidates(feed: dict) -> list[dict]:
             "summary": summary,
             "interest_id": interest,
             "source_name": _source_name(hero),
+            "image": _image(topic, hero, *articles),
             "sources": sources[:4],
             "source_count": int(
                 topic.get("source_count") or len(sources) or 1
@@ -312,6 +356,7 @@ def _candidates(feed: dict) -> list[dict]:
             "summary": summary,
             "interest_id": interest,
             "source_name": _source_name(row),
+            "image": _image(row),
             "sources": [domain] if domain else [],
             "source_count": 1,
             "coverage": coverage.get(url, 1),
@@ -401,6 +446,10 @@ def _same_event_summary(a: dict, b: dict) -> bool:
               or versions(a) & versions(b) or same_round)
     if not anchor:
         return False
+    # Two distinctive names in both headlines ("Muse Wonder") is the same
+    # event even when the summaries paraphrase too loosely to overlap.
+    if len(shared_names & title_a & title_b) >= 2:
+        return True
     tokens_a = _topic_tokens(f"{a['title']} {a.get('summary', '')[:250]}")
     tokens_b = _topic_tokens(f"{b['title']} {b.get('summary', '')[:250]}")
     shared = tokens_a & tokens_b
@@ -463,7 +512,21 @@ def _select(
     available story from the other lanes behind it. Signed-in users only get
     lanes they actually follow, in the same priority order.
     """
-    groups = _story_groups(feed, verdicts)
+    return _select_from_groups(_story_groups(feed, verdicts), interests, count, bucket)
+
+
+def _select_from_groups(
+    groups: list[dict],
+    interests: list[str],
+    count: int,
+    bucket: str,
+) -> list[tuple[str, list[dict]]]:
+    """The allocation half of _select, over already-merged story groups.
+
+    frontend/lib/newsletter-select.ts is a line-for-line port used for the
+    live preview in the newsletter builder; keep the two in step
+    (v3/test_newsletter_parity.py checks them against each other).
+    """
     if interests:
         wanted = {i.strip().lower() for i in interests if i.strip()}
         primary = [g for g in groups if g["interest_id"] in wanted]
@@ -480,6 +543,9 @@ def _select(
     # Model releases lead the email under their own heading, before the lane
     # pattern. Only stories the reader's interests already cover qualify.
     release_slots = MODEL_RELEASE_SLOTS.get(bucket, 0)
+    if count <= 5:
+        # A five-story brief cannot spend two of its slots on launches.
+        release_slots = min(release_slots, 1)
     if release_slots:
         releases = [g for g in ordered if g.get("model_release")][:release_slots]
         if releases:
@@ -531,9 +597,15 @@ def _select(
                     used.add(g["topic_id"])
                 sections.append((lane, got))
                 remaining -= len(got)
-    if bucket == "pro":
+    # Backfill can reopen a lane the pattern already used; one heading per
+    # lane reads better than "Top in AI" twice.
+    merged: dict[str, list[dict]] = {}
+    for lane, stories in sections:
+        merged.setdefault(lane, []).extend(stories)
+    sections = list(merged.items())
+    if bucket in ("member", "winback"):
         display_order = {
-            lane: index for index, lane in enumerate(PRO_DISPLAY_ORDER)
+            lane: index for index, lane in enumerate(FULL_DISPLAY_ORDER)
         }
         sections.sort(
             key=lambda section: display_order.get(section[0], len(display_order))
@@ -547,7 +619,7 @@ def _select(
 
 
 def _email_enabled(profile: dict) -> bool:
-    """Email is on by default for every bucket, pro included.
+    """Email is on by default for every bucket.
 
     An explicit opt-out always wins, whatever the bucket. The unsubscribe link
     and the List-Unsubscribe header both land in the same flags, and an
@@ -560,32 +632,180 @@ def _email_enabled(profile: dict) -> bool:
     return True
 
 
-def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
-    buckets: dict[str, list[dict]] = {"pro": [], "free": [], "landing": []}
-    seen_emails: set[str] = set()
+def _parse_ts(value: Any) -> datetime | None:
+    """Firestore timestamp, datetime, or ISO string → aware datetime."""
+    if value is None or value == "":
+        return None
+    try:
+        if isinstance(value, datetime):
+            ts = value
+        elif hasattr(value, "seconds"):
+            ts = datetime.fromtimestamp(value.seconds, tz=timezone.utc)
+        else:
+            ts = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError, OverflowError):
+        return None
 
-    for profile in v3_store.get_onboarded_users("all"):
-        email = str(profile.get("email", "")).strip().lower()
-        if not email or email in seen_emails:
+
+def _last_active(profile: dict) -> datetime | None:
+    return (
+        _parse_ts(profile.get("lastActiveAt"))
+        or _parse_ts(profile.get("updatedAt"))
+        or _parse_ts(profile.get("onboardedAt"))
+    )
+
+
+def _recent_daily_recipients(store: FirestoreStore, since: str) -> set[str]:
+    """Emails that got the daily (not a win-back) on or after `since`."""
+    recipients: set[str] = set()
+    docs = store.db.collection("email_sends").where("date", ">=", since).stream()
+    for doc in docs:
+        data = doc.to_dict() or {}
+        if data.get("status") != "sent" or data.get("bucket") in ("winback", "test"):
             continue
-        bucket = "pro" if is_user_subscribed(profile) else "free"
+        email = str(data.get("to", "")).strip().lower()
+        if email:
+            recipients.add(email)
+    return recipients
+
+
+# The lanes the pipeline publishes and the builder offers (newsletter-prefs.ts).
+PICKABLE_LANES = ("ai", "markets", "tech", "ux-design", "startups")
+
+
+def newsletter_prefs(profile: dict) -> dict:
+    """The reader's own brief: lanes, story count, format (validated).
+
+    Topics fall back to the feed interests, so nobody has to visit the
+    builder to get a sensible email. A saved empty list means all topics.
+    """
+    topics = profile.get("newsletterTopics")
+    if not isinstance(topics, list):
+        topics = profile.get("interests", []) or []
+    lanes: list[str] = []
+    for topic in topics:
+        lane = str(topic).strip().lower()
+        # Only the lanes the builder offers, so its preview stays exact.
+        if lane in PICKABLE_LANES and lane not in lanes:
+            lanes.append(lane)
+    try:
+        count = int(profile.get("newsletterStoryCount") or MEMBER_COUNT)
+    except (TypeError, ValueError):
+        count = MEMBER_COUNT
+    if count not in STORY_COUNT_CHOICES:
+        count = MEMBER_COUNT
+    story_format = str(profile.get("newsletterFormat") or "summaries")
+    if story_format not in FORMAT_CHOICES:
+        story_format = "summaries"
+    return {"interests": lanes, "count": count, "format": story_format}
+
+
+def winback_enabled() -> tuple[bool, str]:
+    """Win-back sends are opt-in and must ride Brevo.
+
+    Mailing hundreds of cold addresses from our own, still-warming MTA is how
+    it gets filtered, so the run refuses unless Brevo is the route for the
+    bucket. Returns (enabled, reason when not).
+    """
+    if (os.getenv("NEWSLETTER_WINBACK", "") or "").strip() != "1":
+        return False, "NEWSLETTER_WINBACK is not 1"
+    buckets = {
+        part.strip().lower()
+        for part in (os.getenv("EMAIL_BREVO_BUCKETS", "") or "").split(",")
+    }
+    if "winback" not in buckets:
+        return False, "winback is not in EMAIL_BREVO_BUCKETS (refusing to send cold mail from our MTA)"
+    return True, ""
+
+
+def _winback_due(profile: dict, now: datetime) -> bool:
+    if int(profile.get("winbackSends") or 0) >= WINBACK_MAX_SENDS:
+        return False
+    last = _parse_ts(profile.get("winbackLastSentAt"))
+    return last is None or now - last >= timedelta(days=WINBACK_GAP_DAYS)
+
+
+def _audience_profiles(store: FirestoreStore, v3_store) -> list[dict]:
+    """Onboarded accounts, plus anyone who turned the daily on in the
+    newsletter builder before finishing onboarding (signed in from
+    /brief/customize and saved), who would otherwise never get it."""
+    profiles = list(v3_store.get_onboarded_users("all", max_inactive_days=0))
+    seen = {str(p.get("uid", "")) for p in profiles}
+    try:
+        docs = store.db.collection("user_profiles").where(
+            "dailyNewsletterEnabled", "==", True
+        ).stream()
+    except Exception as exc:  # noqa: BLE001 - audience must still resolve
+        _log(f"builder-only profiles skipped: {exc}")
+        return profiles
+    for doc in docs:
+        if doc.id in seen:
+            continue
+        seen.add(doc.id)
+        profiles.append({"uid": doc.id, **(doc.to_dict() or {})})
+    return profiles
+
+
+def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
+    """Split readers into member (daily), winback (dormant) and landing.
+
+    Member: an onboarded account that was active inside the window, is still
+    paying out a subscription, or already gets the daily (continuity, so going
+    free never silently drops a current reader). Everyone else with email on
+    is dormant and, when enabled, gets at most WINBACK_MAX_SENDS win-back
+    emails, most recently active first, capped per day. Opening the feed
+    stamps lastActiveAt, which makes them a member the next morning.
+    """
+    buckets: dict[str, list[dict]] = {"member": [], "winback": [], "landing": []}
+    profile_emails: set[str] = set()
+    now = datetime.now(timezone.utc)
+    active_cutoff = now - timedelta(days=MEMBER_CONTINUITY_DAYS)
+    continuing = _recent_daily_recipients(
+        store, (now - timedelta(days=MEMBER_CONTINUITY_DAYS)).strftime("%Y-%m-%d")
+    )
+    winback_on, winback_reason = winback_enabled()
+    if not winback_on:
+        _log(f"win-back off: {winback_reason}")
+    try:
+        cap = int(os.getenv("NEWSLETTER_WINBACK_DAILY_CAP", "") or WINBACK_DAILY_CAP_DEFAULT)
+    except ValueError:
+        cap = WINBACK_DAILY_CAP_DEFAULT
+
+    dormant: list[tuple[datetime, dict]] = []
+    for profile in _audience_profiles(store, v3_store):
+        email = str(profile.get("email", "")).strip().lower()
+        if not email or email in profile_emails or profile.get("deleted") is True:
+            continue
         if not _email_enabled(profile):
             continue
-        interests = [
-            str(i).strip().lower()
-            for i in (profile.get("interests", []) or [])
-            if str(i).strip()
-        ]
+        prefs = newsletter_prefs(profile)
         name = str(profile.get("name", "")).strip() or str(
             profile.get("displayName", "")
         ).strip()
-        buckets[bucket].append({
+        recipient = {
             "uid": str(profile.get("uid", "") or profile.get("id", "")),
             "email": email,
             "name": name,
-            "interests": interests,
-        })
-        seen_emails.add(email)
+            **prefs,
+        }
+        profile_emails.add(email)
+        last = _last_active(profile)
+        if (
+            is_user_subscribed(profile)
+            or email in continuing
+            or (last is not None and last >= active_cutoff)
+        ):
+            buckets["member"].append(recipient)
+        elif winback_on and _winback_due(profile, now):
+            recipient["winback_sends"] = int(profile.get("winbackSends") or 0)
+            dormant.append((last or datetime.min.replace(tzinfo=timezone.utc), recipient))
+
+    dormant.sort(key=lambda item: item[0], reverse=True)
+    buckets["winback"] = [recipient for _, recipient in dormant[:max(cap, 0)]]
+    # A dormant account that also joined from the landing page and was not
+    # picked for win-back today still gets the landing edition, as before.
+    seen_emails = {r["email"] for r in buckets["member"] + buckets["winback"]}
 
     # Landing-page subscribers: everyone the account buckets did not claim.
     docs = (
@@ -613,24 +833,19 @@ _FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial
 def _favicon_stack(sources: list[str]) -> str:
     icons = "".join(
         f'<img src="https://www.google.com/s2/favicons?domain={escape(d)}&sz=64" '
-        'width="14" height="14" alt="" style="display: inline-block; border-radius: 3px; '
+        'width="16" height="16" alt="" style="display: inline-block; border-radius: 50%; '
         'border: 1px solid #eff3f4; vertical-align: middle; margin-right: 3px;" />'
         for d in sources[:3]
     )
     return f'<span style="white-space: nowrap;">{icons}</span>'
 
 
-def _clamp_summary(text: str, limit: int = 340) -> str:
-    text = re.sub(r"\s+", " ", text or "").strip()
-    if len(text) <= limit:
-        return text
-    cut = text[:limit]
-    if "." in cut:
-        cut = cut[: cut.rfind(".") + 1]
-    return cut.rstrip(" ,;:") + "…"
+def _clean_summary(text: str) -> str:
+    """Collapse whitespace. Summaries are always published in full."""
+    return re.sub(r"\s+", " ", text or "").strip()
 
 
-def _story_html(story: dict) -> str:
+def _story_html(story: dict, show_summary: bool = True, show_image: bool = False) -> str:
     title = escape(story["title"])
     # Topic ids are recomputed on every trending rebuild (sha of cluster urls),
     # so an emailed tt_… link is dead within half an hour. The article URL is
@@ -638,27 +853,45 @@ def _story_html(story: dict) -> str:
     app_link = (
         f"{APP_URL}/feed?from=email&story={quote(story['url'], safe='')}"
     )
-    summary = escape(story["summary"])
+    summary = escape(story["summary"]) if show_summary else ""
+    image_url = str(story.get("image") or "") if show_image else ""
+    original = escape(story["url"])
+    # The feed's story layout: byline, title, full summary, inset image.
+    image = (
+        f'<a href="{original}" style="display: block; margin: 14px 0 0 0; text-decoration: none;">'
+        f'<img src="{escape(image_url)}" alt="" width="568" '
+        'style="display: block; width: 100%; max-width: 568px; height: auto; '
+        'border: 0; border-radius: 16px;" /></a>'
+    ) if image_url.startswith("https://") else ""
     favicon = _favicon_stack(story["sources"])
     count_word = "source" if story["source_count"] == 1 else "sources"
-    meta = (
-        f'<p style="margin: 0; font-size: 12px; color: #71767b; font-family: {_FONT};">'
-        f'{favicon}{source}&nbsp;&middot;&nbsp;{story["source_count"]} {count_word}</p>'
-    ) if (source := escape(story["source_name"])) else ""
+    source = escape(story["source_name"])
+    byline = (
+        f'<p style="margin: 0 0 8px 0; font-size: 14px; color: #71767b; font-family: {_FONT};">'
+        f'{favicon}<a href="{original}" style="color: #0f1419; font-weight: 700; '
+        f'text-decoration: none;">{source}</a>'
+        + (f'&nbsp;&middot;&nbsp;{story["source_count"]} {count_word}'
+           if int(story.get("source_count") or 1) > 1 else "")
+        + "</p>"
+    ) if source else ""
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="margin: 0 0 4px 0;">'
         "<tr>"
-        '<td style="padding: 16px 0 0 0; vertical-align: top;">'
-        f'<a href="{app_link}" style="display: block; margin: 0 0 7px 0; font-size: 18px; '
-        f'font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; color: #0f1419; '
+        '<td style="padding: 18px 0 0 0; vertical-align: top;">'
+        + byline
+        + f'<a href="{app_link}" style="display: block; margin: 0; font-size: 20px; '
+        f'font-weight: 700; letter-spacing: -0.01em; line-height: 26px; color: #0f1419; '
         f'text-decoration: none; font-family: {_FONT};">{title}</a>'
-        f'<p style="margin: 0 0 9px 0; font-size: 14px; color: #536471; line-height: 1.65; '
-        f'font-family: {_FONT};">{summary}</p>'
-        f"{meta}"
-        "</td>"
+        + (
+            f'<p style="margin: 10px 0 0 0; font-size: 16px; color: #0f1419; line-height: 25px; '
+            f'font-family: {_FONT};">{summary}</p>'
+            if summary else ""
+        )
+        + image
+        + "</td>"
         "</tr>"
-        '<tr><td style="padding: 16px 0 0 0;">'
+        '<tr><td style="padding: 18px 0 0 0;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
         '<td height="1" style="height: 1px; line-height: 1px; font-size: 1px; '
         'background-color: #eff3f4;">&nbsp;</td>'
@@ -667,17 +900,26 @@ def _story_html(story: dict) -> str:
     )
 
 
-def _section_body(label: str, stories: list[dict]) -> str:
+def _section_body(
+    label: str, stories: list[dict], show_summary: bool = True, show_image: bool = False,
+) -> str:
     kicker = (
-        '<p style="margin: 0 0 2px 0; font-size: 11px; color: #e5484d; '
+        '<p style="margin: 0 0 2px 0; font-size: 12px; color: #f91880; '
         f'font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; '
         f'font-family: {_FONT};">'
         f"&#9733; {escape(label)}</p>"
     )
-    return kicker + "".join(_story_html(story) for story in stories)
+    return kicker + "".join(
+        _story_html(story, show_summary, show_image) for story in stories
+    )
 
 
-def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
+def _sections_html(
+    bucket: str,
+    sections: list[tuple[str, list[dict]]],
+    show_summary: bool = True,
+    show_image: bool = False,
+) -> str:
     """One table row per section.
 
     The email stays plain text on white — the launch group is set apart by
@@ -690,11 +932,11 @@ def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
         elif bucket == "landing":
             label = "Top stories"
         else:
-            label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
+            label = f"Top in {INTEREST_LABELS[lane]}" if lane in INTEREST_LABELS else "More stories"
         top = 18 if index == 0 else 22
         rows.append(
             f'<tr><td class="nl-p28" style="padding: {top}px 28px 0 28px;">'
-            f"{_section_body(label, stories)}"
+            f"{_section_body(label, stories, show_summary, show_image)}"
             "</td></tr>"
         )
     return "".join(rows)
@@ -702,37 +944,32 @@ def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
 
 def _cta_html(bucket: str) -> str:
     base = f"height: 46px; line-height: 46px; border-radius: 999px; font-size: 15px; font-weight: 700; text-decoration: none; font-family: {_FONT};"
-    if bucket == "pro":
-        # Pro already has everything; no upsell block.
+    if bucket == "member":
         return ""
-    if bucket == "free":
-        return (
-            '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-            'style="background-color: #e5f2fc; border-radius: 16px;">'
-            '<tr><td align="center" style="padding: 22px 24px;">'
-            '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-            f'font-family: {_FONT};">Go deeper with Pro.</p>'
-            '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-            f'font-family: {_FONT};">Explore more stories ranked around your interests, plus '
-            "full Pulse and the archive.</p>"
-            f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 28px; '
-            f'background-color: #1d9bf0; color: #ffffff; {base}">Go Pro</a>'
-            "</td></tr></table>"
+    if bucket == "winback":
+        title = "Your feed is still here."
+        body = (
+            "Everything is unlocked now: every story, Pulse, and the archive. "
+            "No plan, no trial, nothing to pay."
         )
+        label = "Open my feed"
+    else:
+        title = "Make tomorrow&rsquo;s brief yours."
+        body = (
+            "Create a free account to pick your topics, how many stories "
+            "you get, and how you read them."
+        )
+        label = "Personalize it"
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="background-color: #f7f9f9; border-radius: 16px;">'
         '<tr><td align="center" style="padding: 22px 24px;">'
         '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-        f'font-family: {_FONT};">Make tomorrow&rsquo;s brief yours.</p>'
+        f'font-family: {_FONT};">{title}</p>'
         '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-        f'font-family: {_FONT};">Create a free account to pick your topics, or explore '
-        "Pro for a richer morning brief.</p>"
+        f'font-family: {_FONT};">{body}</p>'
         f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
-        f'background-color: #1d9bf0; color: #ffffff; {base}">Personalize it</a>'
-        '&nbsp;&nbsp;'
-        f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 22px; '
-        f'border: 1px solid #cfd9de; color: #0f1419; {base}">Go Pro</a>'
+        f'background-color: #1d9bf0; color: #ffffff; {base}">{label}</a>'
         "</td></tr></table>"
     )
 
@@ -746,7 +983,8 @@ RATINGS = (
 
 
 def _feedback_html(bucket: str, email: str, date: str) -> str:
-    email_esc = escape(email)
+    # Percent-encode first: a raw "+" in a query string decodes to a space.
+    email_esc = escape(quote(email, safe=''))
     rows = "".join(
         '<tr><td style="padding: 0 0 8px 0;">'
         f'<a href="{APP_URL}/api/newsletter-feedback?r={score}&amp;email={email_esc}&amp;d={date}" '
@@ -759,7 +997,7 @@ def _feedback_html(bucket: str, email: str, date: str) -> str:
         for score, stars, label in RATINGS
     )
     manage = (
-        f"{APP_URL}/api/unsubscribe?email={email_esc}" if bucket == "landing"
+        f"{APP_URL}/api/unsubscribe?email={email_esc}" if bucket in UNSUBSCRIBE_LINK_BUCKETS
         else f"{APP_URL}/feed?tab=profile"
     )
     return (
@@ -824,7 +1062,7 @@ def _instrument_tracking(html: str, track_id: str) -> str:
         )
         return match.group(0).replace(url, tracked)
 
-    html = re.sub(r'href="(https://yourtrace\.online[^"]*)"', _wrap, html)
+    html = re.sub(rf'href="({re.escape(APP_URL)}[^"]*)"', _wrap, html)
     pixel = (
         f'<img src="{APP_URL}/api/email/track?e=o&t={track_id}" width="1" height="1" '
         'alt="" style="display:block;width:1px;height:1px;border:0;" />'
@@ -840,54 +1078,83 @@ def _render(
     date: str,
     email: str = "",
     track_id: str = "",
+    story_format: str = "summaries",
 ) -> tuple[str, str, str]:
     cfg = BUCKETS[bucket]
-    headline = f"{cfg['headline']} {_daily_emoji(date)}"
+    story_count = sum(len(group) for _, group in sections)
+    headline = f"{_headline(story_count)} {_daily_emoji(date)}"
     subject = f"{headline} · {_display_date(date)}"
+    if cfg.get("subject_lead"):
+        subject = f"{cfg['subject_lead']} · {headline}"
     html = _load_template("audience_newsletter.html")
     html = html.replace("{{SUBJECT}}", escape(subject))
     html = html.replace("{{DATE}}", escape(_display_date(date)))
     html = html.replace("{{HEADLINE}}", escape(headline))
     html = html.replace("{{INTRO}}", escape(cfg["intro"]))
-    html = html.replace("{{SECTIONS_HTML}}", _sections_html(bucket, sections))
+    show_summary = story_format != "headlines"
+    show_image = story_format == "images"
+    html = html.replace(
+        "{{SECTIONS_HTML}}", _sections_html(bucket, sections, show_summary, show_image)
+    )
     html = _replace_block(html, "CTA", _cta_html(bucket))
     # Feedback block is intentionally hidden for now; the renderer stays in
     # place so it can be switched on with one line.
     html = _replace_block(html, "FEEDBACK", "")
 
-    if bucket == "landing":
-        footer = (
-            f'<a href="{APP_URL}/feed?from=email" style="color: #1d9bf0; font-weight: 700; '
-            'text-decoration: none;">Open the feed</a>'
-            "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
-            f'<a href="{APP_URL}/api/unsubscribe?email={escape(email)}" '
+    share = (
+        f'<a href="{_share_url(date)}" style="color: #1d9bf0; font-weight: 700; '
+        'text-decoration: none;">Share today&rsquo;s brief</a>'
+        "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
+    )
+    dot = "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
+    # Topics, length and format live in the builder; it also has the on/off.
+    customize = (
+        f'<a href="{APP_URL}/brief/customize?from=email" style="color: #1d9bf0; font-weight: 700; '
+        'text-decoration: none;">Customize your brief</a>'
+    )
+    if bucket in UNSUBSCRIBE_LINK_BUCKETS:
+        footer = share + customize + dot + (
+            f'<a href="{APP_URL}/api/unsubscribe?email={escape(quote(email, safe=""))}" '
             'style="color: #71767b; text-decoration: underline;">Unsubscribe</a>'
         )
     else:
-        footer = (
-            f'<a href="{APP_URL}/feed?from=email" style="color: #1d9bf0; font-weight: 700; '
-            'text-decoration: none;">Open the feed</a>'
-            "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
+        footer = share + customize + dot + (
             f'<a href="{APP_URL}/feed?tab=profile" style="color: #71767b; text-decoration: underline;">'
-            "Manage email settings</a>"
+            "Email settings</a>"
         )
     html = html.replace("{{FOOTER_LINKS}}", footer)
     html = _instrument_tracking(html, track_id)
-    text = _text_version(cfg, sections)
+    text = _text_version(_headline(story_count), sections, date, show_summary)
     return subject, html, text
 
 
-def _text_version(cfg: dict, sections: list[tuple[str, list[dict]]]) -> str:
-    lines = ["TRACE", cfg["headline"], ""]
+def _share_url(date: str) -> str:
+    """Public web copy of the day's brief: the thing readers forward."""
+    return f"{APP_URL}/brief/{date}?from=email-share"
+
+
+def _text_version(
+    headline: str,
+    sections: list[tuple[str, list[dict]]],
+    date: str = "",
+    show_summary: bool = True,
+) -> str:
+    lines = ["TRACE", headline, ""]
     for _, stories in sections:
         for story in stories:
             lines.append(story["title"])
-            lines.append(f"   {story['summary']}")
+            if show_summary and story.get("summary"):
+                lines.append(f"   {story['summary']}")
+            count = int(story.get("source_count") or 1)
             lines.append(
-                f"   {story['source_name']} · {story['source_count']} sources"
+                f"   {story['source_name']}"
+                + (f" · {count} sources" if count > 1 else "")
             )
-            lines.append(f"   {APP_URL}/feed?from=email")
+            lines.append(f"   {story['url']}")
             lines.append("")
+    if date:
+        lines.append(f"Share today's brief: {_share_url(date)}")
+    lines.append(f"Customize your brief: {APP_URL}/brief/customize?from=email")
     return "\n".join(lines)
 
 
@@ -920,6 +1187,87 @@ def _load_global_feed(store: FirestoreStore, date: str) -> dict:
     return {}
 
 
+EDITIONS_COLLECTION = "daily_editions"
+
+
+def _record_winback(store: FirestoreStore, recipient: dict) -> None:
+    """Count the win-back send so the run stops after WINBACK_MAX_SENDS."""
+    uid = recipient.get("uid")
+    if not uid:
+        return
+    try:
+        store.db.collection("user_profiles").document(uid).set(
+            {
+                "winbackSends": int(recipient.get("winback_sends") or 0) + 1,
+                "winbackLastSentAt": datetime.now(timezone.utc).isoformat(),
+            },
+            merge=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - a failed stamp must not stop the run
+        _log(f"win-back stamp failed for {uid}: {exc}")
+
+
+POOL_FIELDS = (
+    "topic_id", "title", "summary", "url", "source_name", "image", "sources",
+    "source_count", "coverage", "interest_id", "macro", "model_release",
+    "send_worthy",
+)
+
+
+def _web_story(story: dict, lane: str) -> dict:
+    return {
+        "title": story["title"],
+        "summary": _clean_summary(story.get("summary", "")),
+        "url": story["url"],
+        "source_name": story.get("source_name", ""),
+        "image": story.get("image", ""),
+        "sources": list(story.get("sources") or [])[:4],
+        "source_count": int(story.get("source_count") or 1),
+        "lane": lane,
+        "model_release": bool(story.get("model_release")),
+    }
+
+
+def _publish_edition(
+    store: FirestoreStore,
+    feed: dict,
+    date: str,
+    verdicts: dict[str, int] | None,
+) -> int:
+    """Save the day's brief for the public /brief pages and the builder.
+
+    `stories` is the landing selection (no interests), exactly what a new
+    subscriber receives. `pool` is every merged story group the selection
+    chose from, so the newsletter builder can preview any combination of
+    lanes and counts with the same allocation (newsletter-select.ts).
+    Returns the story count.
+    """
+    groups = _story_groups(feed, verdicts)
+    sections = _select_from_groups(groups, [], BUCKETS["landing"]["count"], "landing")
+    stories = [_web_story(story, lane) for lane, group in sections for story in group]
+    if not stories:
+        return 0
+    pool = [
+        {
+            **{field: group.get(field) for field in POOL_FIELDS},
+            "summary": _clean_summary(group.get("summary", "")),
+            "sources": list(group.get("sources") or [])[:4],
+        }
+        for group in groups
+    ]
+    headline = f"{_headline(len(stories))} {_daily_emoji(date)}"
+    store.db.collection(EDITIONS_COLLECTION).document(date).set({
+        "date": date,
+        "headline": headline,
+        "subject": f"{headline} · {_display_date(date)}",
+        "stories": stories,
+        "story_count": len(stories),
+        "pool": pool,
+        "published_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return len(stories)
+
+
 def _send_one(
     store: FirestoreStore,
     feed: dict,
@@ -931,25 +1279,27 @@ def _send_one(
     verdicts: dict[str, int] | None = None,
 ) -> dict:
     interests = tuple(recipient.get("interests") or [])
-    key = (bucket, interests)
+    count = int(recipient.get("count") or BUCKETS[bucket]["count"])
+    key = (bucket, interests, count)
     if key not in cache:
-        cache[key] = _select(
-            feed, list(interests), BUCKETS[bucket]["count"], bucket, verdicts
-        )
+        cache[key] = _select(feed, list(interests), count, bucket, verdicts)
     sections = cache[key]
     stories = [s for _, group in sections for s in group]
     if not stories:
         return {"ok": False, "error": "no stories selected"}
-    if len(stories) < BUCKETS[bucket]["count"]:
+    if len(stories) < count:
         _log(
-            f"only {len(stories)}/{BUCKETS[bucket]['count']} stories for "
+            f"only {len(stories)}/{count} stories for "
             f"{recipient['email']} (interests={list(interests)})"
         )
 
     # Mint the tracking id before rendering so the pixel and the wrapped
     # links carry the same id the send log will record.
     track_id = uuid.uuid4().hex
-    subject, html, text = _render(bucket, sections, date, recipient["email"], track_id)
+    subject, html, text = _render(
+        bucket, sections, date, recipient["email"], track_id,
+        story_format=recipient.get("format") or "summaries",
+    )
     if dry_run:
         _log(f"[dry-run] {bucket} -> {recipient['email']} | {subject}")
         return {"ok": True}
@@ -963,8 +1313,8 @@ def _send_one(
         bucket=bucket,
         track_id=track_id,
         list_unsubscribe=(
-            f"{APP_URL}/api/unsubscribe?email={quote(recipient['email'])}"
-            if bucket == "landing"
+            f"{APP_URL}/api/unsubscribe?email={quote(recipient['email'], safe='')}"
+            if bucket in UNSUBSCRIBE_LINK_BUCKETS
             else f"{APP_URL}/feed?tab=profile"
         ),
     )
@@ -985,6 +1335,7 @@ def send_audience_newsletter(
     preview: bool = False,
     preview_bucket: str = "",
     preview_interests: str = "",
+    publish_only: bool = False,
 ) -> dict:
     store = FirestoreStore()
     v3_store = V3Store()
@@ -999,7 +1350,7 @@ def send_audience_newsletter(
         interests = [
             i.strip().lower() for i in preview_interests.split(",") if i.strip()
         ]
-        for bucket in ([preview_bucket] if preview_bucket else ["pro", "free", "landing"]):
+        for bucket in ([preview_bucket] if preview_bucket else ["member", "winback", "landing"]):
             sections = _select(
                 feed, interests, BUCKETS[bucket]["count"], bucket, verdicts
             )
@@ -1018,7 +1369,7 @@ def send_audience_newsletter(
         return {"success": True, "mode": "preview", "date": target_date}
 
     if demo_email:
-        bucket = demo_bucket or "pro"
+        bucket = demo_bucket or "member"
         interests = [
             i.strip().lower() for i in demo_interests.split(",") if i.strip()
         ]
@@ -1031,18 +1382,16 @@ def send_audience_newsletter(
             )
             for doc in matches:
                 profile = doc.to_dict() or {}
-                interests = [
-                    str(i).strip().lower()
-                    for i in (profile.get("interests", []) or [])
-                    if str(i).strip()
-                ]
-                if not profile.get("name") and bucket != "landing":
-                    pass
+                # The reader's own brief (topics, length, format), as the daily sends it.
+                prefs = newsletter_prefs(profile)
+                interests = prefs["interests"]
                 recipient = {
                     "uid": doc.id,
                     "email": demo_email.strip().lower(),
                     "name": str(profile.get("name", "")).strip(),
                     "interests": interests,
+                    "count": prefs["count"],
+                    "format": prefs["format"],
                 }
                 break
             else:
@@ -1072,6 +1421,23 @@ def send_audience_newsletter(
             "dry_run": dry_run,
         }
 
+    if publish_only or not dry_run:
+        # Publish before sending so every "Share today's brief" link resolves
+        # the moment the first email lands. A failure here must not cost the send.
+        try:
+            published = _publish_edition(store, feed, target_date, verdicts)
+            _log(f"published {EDITIONS_COLLECTION}/{target_date} ({published} stories)")
+        except Exception as exc:  # noqa: BLE001
+            published = 0
+            _log(f"publishing {EDITIONS_COLLECTION}/{target_date} failed: {exc}")
+        if publish_only:
+            return {
+                "success": published > 0,
+                "mode": "publish",
+                "date": target_date,
+                "stories": published,
+            }
+
     buckets = _resolve_audience(store, v3_store)
     counts = {k: len(v) for k, v in buckets.items()}
     _log(f"audience: {counts}")
@@ -1080,11 +1446,13 @@ def send_audience_newsletter(
     errors: list[str] = []
     cache: dict = {}
     transports: dict[str, int] = {}
-    for bucket in ("pro", "free", "landing"):
+    for bucket in ("member", "winback", "landing"):
         for recipient in buckets[bucket]:
             res = _send_one(
                 store, feed, target_date, bucket, recipient, dry_run, cache, verdicts
             )
+            if res["ok"] and bucket == "winback" and not dry_run:
+                _record_winback(store, recipient)
             if res["ok"]:
                 sent += 1
                 if res.get("transport"):
@@ -1112,9 +1480,9 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--demo-email", default="", help="Send a single demo email to this address")
     p.add_argument(
         "--demo-bucket",
-        choices=["", "pro", "free", "landing"],
+        choices=["", "member", "winback", "landing"],
         default="",
-        help="Bucket for the demo email (default: pro)",
+        help="Bucket for the demo email (default: member)",
     )
     p.add_argument(
         "--interests",
@@ -1128,7 +1496,7 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--preview-bucket",
-        choices=["", "pro", "free", "landing"],
+        choices=["", "member", "winback", "landing"],
         default="",
         help="Limit --preview to one bucket (default: all)",
     )
@@ -1136,6 +1504,11 @@ def _parse_args() -> argparse.Namespace:
         "--preview-interests",
         default="",
         help="Comma-separated interests for --preview (default: none/global)",
+    )
+    p.add_argument(
+        "--publish-only",
+        action="store_true",
+        help="Save the day's public web edition (/brief/<date>) without sending",
     )
     return p.parse_args()
 
@@ -1151,6 +1524,7 @@ def main() -> None:
         preview=args.preview,
         preview_bucket=args.preview_bucket,
         preview_interests=args.preview_interests,
+        publish_only=args.publish_only,
     )
     print(json.dumps(result, indent=2))
     if not result.get("success"):

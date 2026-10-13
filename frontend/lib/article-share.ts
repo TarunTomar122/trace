@@ -1,5 +1,3 @@
-import type { UserProfile } from '@/lib/firestore';
-import { resolveFeedAccess } from '@/lib/subscription-access';
 export {
   buildArticleShareUrl,
   FEED_TYPE_PREFIX,
@@ -25,28 +23,8 @@ export type PublicStoryCta = {
 
 export function getPublicStoryCta(options: {
   user: { uid: string } | null;
-  profile: UserProfile | null;
-  loading: boolean;
-  profileFresh: boolean;
-  profileRefreshFailed: boolean;
 }): PublicStoryCta {
-  const {
-    user,
-    profile,
-    loading,
-    profileFresh,
-    profileRefreshFailed,
-  } = options;
-  const access = resolveFeedAccess({
-    serverHasAccess: false,
-    clientProfile: profile,
-    clientProfileFresh: profileFresh,
-    clientProfileRefreshFailed: profileRefreshFailed,
-    authLoading: loading,
-    signedIn: Boolean(user),
-  });
-
-  if (user && access.hasAccess) {
+  if (options.user) {
     return {
       href: '/feed',
       headerLabel: 'Open feed',
@@ -54,29 +32,6 @@ export function getPublicStoryCta(options: {
       promoCopy: '',
       buttonLabel: '',
       showPromo: false,
-    };
-  }
-
-  if (access.pending) {
-    return {
-      href: '/feed',
-      headerLabel: 'Open feed',
-      promoTitle: '',
-      promoCopy: '',
-      buttonLabel: '',
-      showPromo: false,
-    };
-  }
-
-  if (user) {
-    return {
-      href: '/feed?tab=profile',
-      headerLabel: 'Try Pro',
-      promoTitle: 'Unlock your full feed with Trace Pro',
-      promoCopy:
-        'Get unlimited reads, Pulse signals, and a feed tuned to your interests. Cancel anytime.',
-      buttonLabel: 'Go Pro',
-      showPromo: true,
     };
   }
 

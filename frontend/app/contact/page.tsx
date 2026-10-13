@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from '@/lib/site-links';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
@@ -7,7 +8,7 @@ import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 export const metadata: Metadata = {
   title: 'Contact — Trace',
   description:
-    'Get in touch with the Trace team. Have questions, feedback, or need help with your subscription? We are here to help.',
+    'Get in touch with the Trace team. Have questions, feedback, or need help? We are here to help.',
   alternates: {
     canonical: 'https://www.yourtrace.online/contact',
   },
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
     ...DEFAULT_OPEN_GRAPH,
     title: 'Contact — Trace',
     description:
-      'Get in touch with the Trace team. Have questions, feedback, or need help with your subscription? We are here to help.',
+      'Get in touch with the Trace team. Have questions, feedback, or need help? We are here to help.',
     url: 'https://www.yourtrace.online/contact',
     type: 'website',
   },
@@ -26,7 +27,7 @@ export default function ContactPage() {
     <LegalPageShell
       activeTab="contact"
       title="Contact Us"
-      subtitle="Questions, feedback, or subscription help — we're here."
+      subtitle="Questions, feedback, or help — we're here."
     >
       <div className="mb-8 flex flex-wrap gap-2 text-sm">
         <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
@@ -36,7 +37,7 @@ export default function ContactPage() {
 
       <div className="space-y-4 max-w-md">
         <a
-          href="mailto:tomartarun2001@gmail.com"
+          href={`mailto:${CONTACT_EMAIL}`}
           className="flex items-center gap-4 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-4 transition-all hover:border-[#d1d5db] hover:shadow-sm group"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
@@ -44,7 +45,7 @@ export default function ContactPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-[#111827]">Email</p>
-            <p className="text-sm text-[#6b7280]">tomartarun2001@gmail.com</p>
+            <p className="text-sm text-[#6b7280]">{CONTACT_EMAIL}</p>
           </div>
         </a>
 
@@ -84,11 +85,11 @@ export default function ContactPage() {
       </div>
 
       <div className="mt-8 max-w-md rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-5">
-        <p className="text-sm font-semibold text-[#111827] mb-2">Subscription & Billing Support</p>
+        <p className="text-sm font-semibold text-[#111827] mb-2">Existing subscribers</p>
         <p className="text-sm text-[#6b7280] leading-relaxed">
-          For subscription cancellations or billing issues on Android, manage your subscription via{' '}
+          To cancel on Android, use{' '}
           <strong className="text-[#111827]">Google Play &gt; Account &gt; Subscriptions</strong>.
-          For web subscriptions, visit your{' '}
+          For web subscriptions, use your{' '}
           <Link href="/feed?tab=profile" className="text-[#2563eb] hover:underline">profile page</Link>.
         </p>
       </div>

@@ -114,6 +114,18 @@ class NewsletterSelectionTests(unittest.TestCase):
         }
         self.assertEqual(len(_story_groups(feed)), 2)
 
+    def test_paraphrased_launch_headlines_sharing_two_names_merge(self):
+        feed = {
+            "trending_topics": [
+                {**_topic("Meta Introduces Muse Wonder AI Model", "https://a.com/muse", [("a", "https://a.com/muse", "A")]),
+                 "id": "muse-a", "summary": "Meta has launched its new Muse Wonder AI model, designed to be the most advanced digital assistant available. Plans start at $20 per month."},
+                {**_topic("Meta Unveils Muse Wonder AI Models", "https://b.com/muse", [("b", "https://b.com/muse", "B")]),
+                 "id": "muse-b", "summary": "Meta has launched its first frontier AI models, Muse Wonder and Muse Wonder Full, built at its Prometheus data center in Ohio."},
+            ],
+            "trending": [],
+        }
+        self.assertEqual(len(_story_groups(feed)), 1)
+
     def test_model_launch_and_jailbreak_remain_distinct(self):
         background = "Anthropic released Sonnet 5.5, a faster AI model with lower costs than its predecessor. The model is available to developers today."
         feed = {
@@ -148,17 +160,19 @@ class NewsletterSelectionTests(unittest.TestCase):
         ]
 
         with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
-            pro = _select({}, interests, 10, "pro")
-            free = _select({}, interests, 5, "free")
+            pro = _select({}, interests, 10, "member")
+            free = _select({}, interests, 5, "landing")
             landing = _select({}, [], 5, "landing")
 
         self.assertEqual(
             [lane for lane, _ in pro],
             [
                 "model-releases", "ai", "markets", "startups", "tech",
-                "engineering", "products", "the-world", "products", "the-world",
+                "engineering", "products", "the-world",
             ],
         )
+        # Backfill folds into the lane's existing section: one heading each.
+        self.assertEqual(len(dict(pro)["products"]), 2)
         selected = [group["topic_id"] for _, stories in pro for group in stories]
         self.assertCountEqual(
             selected,
@@ -176,8 +190,8 @@ class NewsletterSelectionTests(unittest.TestCase):
         design = {"topic_id": "design", "interest_id": "ux-design", "model_release": False,
                   "send_worthy": 1, "source_count": 1, "coverage": 1, "macro": False}
         with patch("v3.flows.send_audience_newsletter._story_groups", return_value=[*groups, design]):
-            pro_with_design = _select({}, interests, 10, "pro")
-            free_with_design = _select({}, interests, 5, "free")
+            pro_with_design = _select({}, interests, 10, "member")
+            free_with_design = _select({}, interests, 5, "landing")
             landing_with_design = _select({}, [], 5, "landing")
         lanes_with_design = [lane for lane, _ in pro_with_design]
         self.assertIn("ux-design", lanes_with_design)

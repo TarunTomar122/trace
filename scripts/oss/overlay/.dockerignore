@@ -1,0 +1,11 @@
+# Keep host builds, secrets and data out of the images.
+**/node_modules
+**/.next
+**/.env*
+!.env.example
+**/__pycache__
+**/*.pyc
+.venv*
+data/
+*.sqlite3*
+.git

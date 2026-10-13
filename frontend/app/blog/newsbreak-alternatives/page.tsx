@@ -97,7 +97,7 @@ export default function BlogPost() {
     {
       question: "Are there free NewsBreak alternatives with fewer ads?",
       answer:
-        "Yes. Trace is free and built for a clean, high signal briefing with no clickbait. SmartNews and Google News are also free with a lower clutter layout. Feedly and Inoreader have free plans plus paid plans for advanced features.",
+        "Yes. Trace is free and open source, built for a clean, high-signal briefing with no clickbait. SmartNews and Google News are also free with a lower clutter layout. Feedly and Inoreader have free plans plus paid plans for advanced features.",
     },
     {
       question: "How is Trace different from NewsBreak?",
@@ -117,7 +117,7 @@ export default function BlogPost() {
             <li aria-hidden="true">/</li>
             <li><Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link></li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">NewsBreak Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">NewsBreak Alternatives</li>
           </ol>
         </nav>
 
@@ -173,7 +173,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Ground News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Bias Transparency</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">SmartNews</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Clean Reading</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Google News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Broad Headlines</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
@@ -187,7 +187,7 @@ export default function BlogPost() {
             1. Trace: Best for Tech News
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free
+            <strong>Price:</strong> Free, open source
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Where NewsBreak gives you an endless mixed feed, Trace gives you a
@@ -200,7 +200,7 @@ export default function BlogPost() {
             <li>Multi-source summaries that show the full picture fast</li>
             <li>Topic grouping, so one launch is one story, not five posts</li>
             <li>Clean ranking with no clickbait framing</li>
-            <li>Free with zero setup, open and read</li>
+            <li>Free and open source, with zero setup</li>
           </ul>
 
           <InlineTraceCTA
@@ -279,7 +279,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             NewsBreak works for casual local browsing. But for cleaner, higher
             signal news, pick a tool with less noise and a clear endpoint. <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace</Link> gives
-            tech readers a free 10-minute briefing with multi-source summaries.
+            tech readers a 10-minute briefing with multi-source summaries, free and open source.
             <strong> Ground News</strong> adds bias context. <strong>SmartNews </strong>
             and <strong>Google News</strong> cover free basics, while <strong>Feedly </strong>
             and <strong>Inoreader</strong> give you source control.

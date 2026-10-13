@@ -64,12 +64,12 @@ export default function AgentsPage() {
       <main>
         <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
           <div className="mx-auto max-w-6xl rounded-[24px] bg-surface p-7 ring-1 ring-foreground/7 dark:ring-white/10 sm:p-12">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Trace for agents · Pro</p>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Trace for agents · Free</p>
             <h1 className="mt-6 max-w-4xl tracking-[-0.05em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif', fontSize: 'clamp(3rem, 7vw, 6.2rem)', lineHeight: 0.92 }}>Your agent should know what tech is doing today.</h1>
             <p className="mt-7 max-w-2xl text-[17px] leading-[1.8] text-secondary">Create a key, paste one prompt, done. Your agent gets structured current tech news, notable builds, and practitioner conversations without searching the open web from scratch every time.</p>
             <div className="mt-8 flex flex-wrap gap-3 text-[12px] font-semibold">
               <span className="inline-flex items-center gap-2 rounded-full bg-surface-secondary px-3 py-2"><ShieldCheck size={14} className="text-accent" />Read only</span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-surface-secondary px-3 py-2"><Check size={14} className="text-accent" />Pro checked on every request</span>
+              <span className="inline-flex items-center gap-2 rounded-full bg-surface-secondary px-3 py-2"><Check size={14} className="text-accent" />Included for every account</span>
               <span className="inline-flex items-center gap-2 rounded-full bg-surface-secondary px-3 py-2"><Bot size={14} className="text-accent" />MCP + HTTPS</span>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function AgentsPage() {
               </div>
               <div>
                 <h3 className="text-[14px] font-semibold">Never allowed</h3>
-                <ul className="mt-3 space-y-2 text-[14px] text-secondary"><li>Changing your Trace account</li><li>Publishing, purchasing, or writing data</li><li>Access after the key is revoked or Pro ends</li></ul>
+                <ul className="mt-3 space-y-2 text-[14px] text-secondary"><li>Changing your Trace account</li><li>Publishing, purchasing, or writing data</li><li>Access after the key is revoked</li></ul>
               </div>
             </div>
             <p className="mt-7 text-[13px] text-secondary">Full machine-readable setup notes: <Link href="/agents/llms.txt" className="font-semibold text-accent">/agents/llms.txt</Link></p>

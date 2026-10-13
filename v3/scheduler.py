@@ -62,7 +62,7 @@ JOBS = {
     },
     "newsletter_send": {
         "module": "v3.flows.send_audience_newsletter",
-        "description": "Send audience newsletters (landing / free / pro buckets)",
+        "description": "Send audience newsletters (member / winback / landing buckets)",
     },
 }
 
@@ -107,7 +107,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
-        default="subscribed",
+        default="all",
         help="Which audience to build feeds for",
     )
     p.add_argument(
@@ -424,8 +424,8 @@ def main() -> None:
 
         if run_all or "newsletter" in requested or "newsletter_send" in requested:
             _log("--- Send newsletter ---")
-            # The audience newsletter resolves its own buckets (landing / free /
-            # pro), so it takes no --user-id or --audience flags.
+            # The audience newsletter resolves its own buckets (member /
+            # winback / landing), so it takes no --user-id or --audience flags.
             nl_send_args = []
             if nl_date:
                 nl_send_args.extend(["--date", nl_date])

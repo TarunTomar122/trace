@@ -1,8 +1,9 @@
+import { CONTACT_EMAIL } from '@/lib/site-links';
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/LegalPageShell';
 import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 
-const SUPPORT_EMAIL = 'tomartarun2001@gmail.com';
+const SUPPORT_EMAIL = CONTACT_EMAIL;
 
 export const metadata: Metadata = {
   title: 'Delete Account — Trace',

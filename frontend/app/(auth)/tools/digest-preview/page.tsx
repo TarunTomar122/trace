@@ -100,10 +100,10 @@ function DigestArticleCard({ item, index }: { item: TrendingItem; index: number 
           <span className="text-xs text-secondary/40">•</span>
           <span className="text-xs text-secondary/40">3 min read</span>
         </div>
-        <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
+        <h3 className="font-semibold text-[15px] leading-snug group-hover:text-amber-600 transition-colors">
           {item.title}
         </h3>
-        <p className="text-sm text-secondary/60 line-clamp-1 mt-1">
+        <p className="text-sm text-secondary/60 mt-1">
           {item.summary}
         </p>
       </div>
@@ -364,7 +364,7 @@ export default function DigestPreviewPage() {
 
                   <div className="text-center">
                     <p className="text-xs text-secondary/50">
-                      Free forever. Premium features available.
+                      Free for everyone. Open source.
                     </p>
                   </div>
                 </div>

@@ -44,7 +44,8 @@ export default function LandingHeroSignup() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email..."
+          placeholder="you@example.com"
+          autoComplete="email"
           aria-label="Email address"
           className="signup-input"
         />
@@ -58,10 +59,7 @@ export default function LandingHeroSignup() {
           {message}
         </p>
       )}
-      <p className="signup-note">
-        One email every morning, unsubscribe anytime. Or just{' '}
-        <a href="/feed">open the feed</a>.
-      </p>
+      <p className="signup-note">Free. One email each morning. Unsubscribe anytime.</p>
       {celebrating && <SignupCelebration onClose={() => setCelebrating(false)} />}
     </div>
   );

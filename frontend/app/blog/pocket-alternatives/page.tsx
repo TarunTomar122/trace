@@ -117,7 +117,7 @@ export default function BlogPost() {
             <li aria-hidden="true">/</li>
             <li><Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link></li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">Pocket Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">Pocket Alternatives</li>
           </ol>
         </nav>
 
@@ -174,7 +174,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=pocket-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Replacing the queue</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source summaries</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=pocket-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Replacing the queue</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source summaries</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Instapaper</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / premium tiers</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Classic read-it-later</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Distraction-free reading</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Raindrop.io</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Bookmarks manager</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Collections and search</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Readwise Reader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Highlights sync</td></tr>
@@ -188,7 +188,7 @@ export default function BlogPost() {
             1. Trace: Best for Never Needing Read-It-Later
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free
+            <strong>Price:</strong> Free, open source
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             To be honest, Trace replaces the habit, not the feature. Instead of
@@ -200,7 +200,7 @@ export default function BlogPost() {
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
             <li>AI briefing from 50+ tech sources in about 10 minutes</li>
             <li>Multi-source summaries with grouped topics, not single links</li>
-            <li>Free to use with zero setup or import required</li>
+            <li>Free and open source, with zero setup or import required</li>
             <li>Natural endpoint, you know when you are caught up</li>
             <li>Best for tech news (keep a classic queue for longform essays)</li>
           </ul>
@@ -278,7 +278,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             If your Pocket was mostly tech news, stop rebuilding the queue and
             change the workflow. <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=pocket-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace</Link> gives
-            you the day&apos;s tech coverage in about 10 minutes, free. Keep <strong>Instapaper</strong> for
+            you the day&apos;s tech coverage in about 10 minutes, free and open source. Keep <strong>Instapaper</strong> for
             longform essays and <strong>Raindrop.io</strong> for bookmarks you truly want to keep.
           </p>
 

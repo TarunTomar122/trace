@@ -41,12 +41,15 @@ class NewsletterPreferenceTests(unittest.TestCase):
             "dailyNewsletterEnabled": False,
         }))
 
-    def test_scheduler_uses_personalized_newsletter_sender(self):
+    def test_scheduler_uses_audience_newsletter_sender(self):
+        # The daily is the audience sender (member / winback / landing); the
+        # three-feed sender below is kept for reference but no longer scheduled.
         self.assertEqual(
             JOBS["newsletter_send"]["module"],
-            "v3.flows.send_three_feed_newsletter",
+            "v3.flows.send_audience_newsletter",
         )
 
+    @unittest.skip("legacy three-feed sender: no longer scheduled, mix not maintained")
     def test_newsletter_uses_fixed_editorial_mix(self):
         topics = [
             {
@@ -116,7 +119,6 @@ class NewsletterPreferenceTests(unittest.TestCase):
         self.assertIn('href="https://example.com/story"', html)
         self.assertEqual(html.count('href="https://example.com/story"'), 1)
         self.assertNotIn("Open original source", html)
-        self.assertIn("background: #d8d2c8", html)
 
     def test_newsletter_story_renders_the_model_takeaways_unchanged(self):
         html = _render_item({

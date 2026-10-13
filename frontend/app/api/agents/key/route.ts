@@ -1,26 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminFirestore } from '@/lib/firebase-admin';
 import { createAgentKey, getAgentKeyStatus, revokeAgentKey } from '@/lib/agent-access';
 import { getSignedInUid } from '@/lib/request-auth';
-import { hasActiveSubscription } from '@/lib/subscription-access';
-
-async function requirePro(request: NextRequest) {
-  const uid = await getSignedInUid(request);
-  if (!uid) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  if (!adminFirestore) {
-    return { error: NextResponse.json({ error: 'Server configuration error' }, { status: 500 }) };
-  }
-  const profile = await adminFirestore.collection('user_profiles').doc(uid).get();
-  if (!profile.exists || !hasActiveSubscription(profile.data())) {
-    return {
-      error: NextResponse.json(
-        { error: 'Trace Agent Access requires an active Pro plan or trial' },
-        { status: 402 },
-      ),
-    };
-  }
-  return { uid };
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,9 +17,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requirePro(request);
-    if ('error' in access) return access.error;
-    const token = await createAgentKey(access.uid);
+    const uid = await getSignedInUid(request);
+    if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = await createAgentKey(uid);
     return NextResponse.json({
       token,
       scope: 'trace:read',

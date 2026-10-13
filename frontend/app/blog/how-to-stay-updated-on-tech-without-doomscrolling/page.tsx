@@ -125,7 +125,7 @@ export default function BlogPost() {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">
               Stay Updated Without Doomscrolling
             </li>
           </ol>
@@ -233,7 +233,7 @@ export default function BlogPost() {
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             <a href="https://play.google.com/store/apps/details?id=online.yourtrace.app" className="text-blue-600 dark:text-blue-400 hover:underline font-medium" rel="noopener noreferrer">
-              Try Trace free on Android →
+              Get the daily brief on Android, free and open source →
             </a>
           </p>
 

@@ -2,110 +2,110 @@ import Link from 'next/link';
 import LandingCtaLink from '@/app/LandingCtaLink';
 import LandingDiscoveryLink from '@/app/LandingDiscoveryLink';
 import Footer from '@/components/Footer';
-import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } from '@/lib/subscription-pricing';
-import { proTrialCtaLabel, trialFootline } from '@/lib/pro-trial';
+import { BUY_ME_A_COFFEE_URL, GITHUB_REPO_URL } from '@/lib/site-links';
 import LandingWhatYouGet from '@/components/feed-v2/LandingWhatYouGet';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { LANDING_CSS } from '@/lib/landing-css';
+import { LANDING_DEMO_STORIES } from '@/lib/landing-demo-stories';
+import { formatEditionDate, isFreshEdition, type DailyEdition } from '@/lib/daily-editions';
+import { laneKicker } from '@/lib/newsletter-prefs';
+import LandingBuilderDemo from '@/components/feed-v2/LandingBuilderDemo';
+import { Code2, Coffee, Layers, Mail, Radar, Sparkles, Star, Unlock } from 'lucide-react';
+import { faviconUrl } from '@/lib/topic-icons';
 
 const ANDROID_URL = 'https://play.google.com/store/apps/details?id=online.yourtrace.app';
 const CHROME_URL = 'https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk';
 
+// Outlets the pipeline actually reads (v3/config/*_sources.json, Pulse).
 const SOURCES = [
-  { name: 'TechCrunch', src: 'https://cdn.simpleicons.org/techcrunch/00B289' },
-  { name: 'Hacker News', src: 'https://cdn.simpleicons.org/ycombinator/FF6600' },
-  { name: 'Reddit', src: 'https://cdn.simpleicons.org/reddit/FF4500' },
-  { name: 'Product Hunt', src: 'https://cdn.simpleicons.org/producthunt/DA552F' },
-  { name: 'X', src: 'https://cdn.simpleicons.org/x/181815' },
-  { name: 'YouTube', src: 'https://cdn.simpleicons.org/youtube/FF0000' },
-  { name: 'Bluesky', src: 'https://cdn.simpleicons.org/bluesky/1185FE' },
-  { name: 'Substack', src: 'https://cdn.simpleicons.org/substack/FF6719' },
-  { name: 'DEV Community', src: 'https://cdn.simpleicons.org/devdotto/181815' },
-];
-
-const HERO_TILES = [
-  { name: 'Hacker News', style: { top: '10%', left: '4%' }, size: 56 },
-  { name: 'X', style: { top: '40%', left: '8%' }, size: 44 },
-  { name: 'YouTube', style: { top: '64%', left: '5%' }, size: 56 },
-  { name: 'Product Hunt', style: { top: '86%', left: '13%' }, size: 44 },
-  { name: 'TechCrunch', style: { top: '12%', right: '5%' }, size: 48 },
-  { name: 'DEV Community', style: { top: '42%', right: '9%' }, size: 44 },
-  { name: 'Bluesky', style: { top: '66%', right: '5%' }, size: 56 },
-  { name: 'Substack', style: { top: '88%', right: '12%' }, size: 48 },
+  { name: 'TechCrunch', domain: 'techcrunch.com' },
+  { name: 'The Verge', domain: 'theverge.com' },
+  { name: 'Bloomberg', domain: 'bloomberg.com' },
+  { name: 'Ars Technica', domain: 'arstechnica.com' },
+  { name: 'Wired', domain: 'wired.com' },
+  { name: 'MIT Tech Review', domain: 'technologyreview.com' },
+  { name: 'Hacker News', domain: 'news.ycombinator.com' },
+  { name: 'Product Hunt', domain: 'producthunt.com' },
+  { name: 'Hugging Face', domain: 'huggingface.co' },
+  { name: 'GitHub', domain: 'github.com' },
 ];
 
 const HOW_IT_WORKS = [
-  {
-    title: 'Find the signal',
-    body: 'We collect reporting about model releases, company changes, layoffs, security, policy, and the trends shaping technology.',
-  },
-  {
-    title: 'Group the noise',
-    body: 'When several publications report the same event, Trace puts that coverage into one story and keeps the original links attached.',
-  },
-  {
-    title: 'Make it yours',
-    body: 'Pick the topics you care about and your For You feed re-orders around them. Every morning, ranked for you.',
-  },
+  { title: 'Scan', body: 'Over a hundred sources, every morning.', Icon: Radar },
+  { title: 'Group and rank', body: 'Same story, one card, every source attached.', Icon: Layers },
+  { title: 'Read', body: 'Five minutes, by email or in the feed.', Icon: Mail },
 ];
 
-const FREE_FEATURES = [
-  'A personalized AI and tech news feed',
-  'Unlimited original source links',
-  'Topic filters and For you ranking',
-  'Bookmarks with a free Trace account',
-  'Daily email brief (opt-in)',
-];
+// The "group" step, drawn: five outlets' coverage folding into one story.
+const GROUP_DEMO = ['techcrunch.com', 'theverge.com', 'bloomberg.com', 'wired.com', 'arstechnica.com'];
 
-const PRO_FEATURES = [
-  'Unlimited AI summaries in the web feed',
-  '10 big things in tech and AI, in your inbox every morning',
-  'Search your complete saved archive',
-  'The complete daily news archive',
-  'Full personalized Pulse',
-  'Read-only Agent Access',
-];
+const SAMPLE_COUNT = 3;
 
 export const LANDING_FAQ = [
   {
-    q: 'Is Trace free?',
-    a: `Yes. Guests can start reading for free. Sign in to get more free stories daily, personalize your topics, and opt into the morning email. Pro (${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}) unlocks every story, full Pulse, and the archive.`,
+    q: 'Is Trace really free?',
+    a: 'Yes. Trace is free for everyone and open source. Every story, Pulse, the full archive, bookmarks, and agent access are included. There are no tiers and nothing to upgrade to.',
   },
   {
-    q: 'What counts as one AI summary?',
-    a: 'Opening a new story brief counts once. You can reopen the same brief as often as you like without using another read, and original publisher links are always unlimited. The counter resets every morning with the new edition.',
+    q: 'What do I get in the morning email?',
+    a: 'Ten stories by default, each with a short summary and links to the original reporting. You can change that: pick your topics, choose 5, 10, or 15 stories, and read them as summaries, headlines only, or with images. A live preview shows what your email will look like.',
   },
   {
     q: 'Where does Trace get its news?',
-    a: 'Trace reads 400+ sources overnight: established tech publications, company announcements, research teams, Hacker News, Reddit, Product Hunt, GitHub, and X. When several outlets cover the same event, the card shows every source, so you can verify anything in one tap.',
+    a: 'Trace scans over a hundred sources each morning: established tech publications, company announcements, research teams, Hacker News, Reddit, Product Hunt, GitHub, and X. When several outlets cover the same event, the story shows every source, so you can verify anything in one tap.',
   },
   {
     q: 'How is this different from a news aggregator?',
-    a: 'Aggregators hand you a firehose and make ranking your job. Trace hands you the stories that mattered, grouped across outlets, summarized with key points, and ranked around your topics. You open it, you read it, you are caught up in under 10 minutes.',
+    a: 'Aggregators hand you a firehose and make ranking your job. Trace groups the coverage of each event into one story, ranks the stories, and summarises them. You open it, read it, and are caught up in about five minutes.',
   },
   {
-    q: 'How does personalization work?',
-    a: 'Pick your interests in your profile and your For You feed re-orders around them right away — they only change ordering, nothing else. Same transparent ranking, weighted to your topics. No engagement bait, no outrage optimization.',
+    q: 'Can I read past editions?',
+    a: 'Yes. Every daily edition is saved in a public archive at /brief, and each edition has its own link at /brief/YYYY-MM-DD that you can share.',
   },
   {
     q: 'What is Pulse?',
-    a: 'Pulse is the builders’ radar next to your feed: trending GitHub repos with star counts, and Hacker News discussions with points. Full Pulse is part of Pro.',
+    a: 'Pulse is the builders’ radar next to your feed: markets, trending GitHub repos with star counts, and Hacker News discussions with points. It is included for everyone.',
   },
   {
-    q: 'Can I cancel Pro anytime?',
-    a: 'Yes. Cancel anytime from your profile, no retention call, no exit survey. You keep Pro until the end of the billing period, and your bookmarks and profile stay exactly as they are on the free plan.',
+    q: 'Is there an app?',
+    a: 'Trace is web-first, with a Chrome extension that puts the ranked feed in every new tab and an Android app on Google Play. The daily email is the easiest way to start.',
   },
   {
-    q: 'Is there an app or email version?',
-    a: 'Trace is web-first today, with a Chrome extension that puts the ranked feed in every new tab and an Android app on Google Play. A daily email brief lands every morning at 10:30 Europe/Berlin — turn it on from your profile.',
-  },
-  {
-    q: 'Does Trace work with OpenClaw or Hermes?',
-    a: 'Yes. Pro includes read-only MCP access, so OpenClaw, Hermes, Claude, Codex, or Cursor can pull the same ranked feed you read. The agent can never post, delete, or change anything.',
+    q: 'Does Trace work with Claude, Cursor, OpenClaw or Hermes?',
+    a: 'Yes. Agent Access is read-only MCP access included for everyone, so Claude, Codex, Cursor, OpenClaw, or Hermes can pull the same ranked feed you read. The agent can never post, delete, or change anything.',
   },
 ];
 
-export default function LandingScreen() {
+type SampleStory = { id: string; url: string; domains: string[]; title: string; why: string; tag: string; sourceCount: number; source: string; image: string };
+
+/** Today's real brief when it is published; the demo stories otherwise. */
+export default function LandingScreen({ edition = null }: { edition?: DailyEdition | null }) {
+  const sample: SampleStory[] = edition
+    ? edition.stories.slice(0, SAMPLE_COUNT).map((story) => ({
+      id: story.url,
+      url: story.url,
+      domains: story.sources,
+      title: story.title,
+      why: story.summary,
+      tag: laneKicker(story.lane),
+      sourceCount: story.source_count,
+      source: story.source_name,
+      image: story.image,
+    }))
+    : LANDING_DEMO_STORIES.slice(0, SAMPLE_COUNT).map((story) => ({
+      id: story.id,
+      url: '',
+      domains: story.sources,
+      title: story.title,
+      why: story.why,
+      tag: `Top in ${story.tag}`,
+      sourceCount: story.sources.length,
+      source: story.sourceName,
+      image: story.image,
+    }));
+  const moreCount = (edition ? edition.stories.length : 10) - sample.length;
+  const fresh = edition ? isFreshEdition(edition.date) : false;
+  const sampleHeading = !edition ? 'A morning brief, for example' : fresh ? 'Today’s brief' : 'The latest brief';
   return (
     <main className="lp">
       <style>{LANDING_CSS}</style>
@@ -117,123 +117,199 @@ export default function LandingScreen() {
             <img src="/trace.webp" alt="Trace" className="brand-logo" />
             <span className="wordmark">Trace</span>
           </Link>
-          <nav className="nav-links">
-            <a href="/how-it-works">How it works</a>
-            <Link href="/subscribe">Pricing</Link>
-            <Link href="/blog">Blog</Link>
+          <nav className="nav-links" aria-label="Main">
+            <Link href="/brief" className="nav-hide-sm">Daily brief</Link>
+            <Link href="/how-it-works" className="nav-hide-sm">How it works</Link>
+            <Link href="/blog" className="nav-hide-sm">Blog</Link>
+            <LandingCtaLink href="/feed?utm_source=site&utm_medium=nav" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
           </nav>
         </div>
       </header>
 
       <section className="hero">
-        <div className="hero-float" aria-hidden="true">
-          {HERO_TILES.map((t) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={t.name}
-              src={SOURCES.find((s) => s.name === t.name)?.src}
-              alt=""
-              loading="lazy"
-              className="hero-tile"
-              style={{ ...t.style, width: t.size, height: t.size }}
-            />
-          ))}
-        </div>
-        <h1 className="hero-title">10 big things in tech and AI</h1>
-        <p className="hero-sub">
-          Trace reads 400+ sources, groups the coverage, and gives you the fastest way to stay
-          updated.
-        </p>
+        <p className="pill"><i aria-hidden="true" />Free for everyone. Open source.</p>
+        <h1 className="hero-title">Trace reads the internet so you don&rsquo;t have to.</h1>
+        <p className="hero-sub">100+ tech sources, 10 stories, 5 minutes. Every morning, free.</p>
         <LandingHeroSignup />
+        <p className="hero-links">
+          <Link href="/brief" className="text-link">Read today&rsquo;s brief</Link>
+          <LandingCtaLink href="/feed?utm_source=site&utm_medium=hero" location="hero" className="text-link">Open the feed</LandingCtaLink>
+        </p>
 
         <div className="proof">
-          <p className="proof-label">Companies shaping the AI and tech news Trace follows</p>
-          <div className="logos">
-            {SOURCES.map((s) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={s.name} src={s.src} alt={s.name} title={s.name} loading="lazy" />
+          <p className="proof-label">Reading over a hundred sources, including</p>
+          <ul className="logos">
+            {SOURCES.map((source) => (
+              <li key={source.domain}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- publisher favicons */}
+                <img src={faviconUrl(source.domain)} alt="" width={20} height={20} loading="lazy" />
+                {source.name}
+              </li>
             ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="section" id="sample" style={{ paddingTop: 'var(--s5)' }} aria-labelledby="sample-title">
+        <div className="sec-head">
+          <h2 className="h2" id="sample-title">{sampleHeading}</h2>
+          {edition && <p className="sec-date"><time dateTime={edition.date}>{formatEditionDate(edition.date)}</time></p>}
+        </div>
+        {/* The feed's own card: kicker, full-bleed image, heavy headline. */}
+        <div className="fcol">
+          {sample.map((story, i) => (
+            <article key={story.id} className="fcard">
+              {/* One kicker per topic run, never the same label twice in a row. */}
+              {(i < 2 || story.tag !== sample[i - 1].tag) && (
+                <p className="fkicker"><Star size={12} fill="currentColor" aria-hidden="true" /> {i === 0 ? 'Story of the day' : story.tag}</p>
+              )}
+              {story.image && (
+                <a href={story.url || undefined} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- publisher thumbnails */}
+                  <img src={story.image} alt="" className="fimg" referrerPolicy="no-referrer" loading={i === 0 ? 'eager' : 'lazy'} />
+                </a>
+              )}
+              <div className="fbody">
+                <h3 className="ftitle">
+                  {story.url ? <a href={story.url} target="_blank" rel="noopener noreferrer">{story.title}</a> : story.title}
+                </h3>
+                {story.why && <p className="fsum">{story.why}</p>}
+                <p className="fmeta">
+                  <span className="fav-stack" aria-hidden="true">
+                    {story.domains.slice(0, 4).map((domain) => (
+                      // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
+                      <img key={domain} src={faviconUrl(domain)} alt="" width={16} height={16} loading="lazy" />
+                    ))}
+                  </span>
+                  <span>{story.source}</span>
+                  {story.sourceCount > 1 && <span>· {story.sourceCount} sources</span>}
+                </p>
+              </div>
+            </article>
+          ))}
+          <div className="ffoot">
+            <span>{moreCount > 0 ? `+ ${moreCount} more in today’s edition` : 'Every morning'}</span>
+            <Link href={edition ? `/brief/${edition.date}` : '/brief'} className="fbtn">Read the full edition</Link>
           </div>
         </div>
+      </section>
+
+      <div className="band">
+        <section className="section" id="how" aria-labelledby="how-title">
+          <div className="sec-head">
+            <h2 className="h2" id="how-title">How it works</h2>
+          </div>
+          <ol className="steps">
+            {HOW_IT_WORKS.map((step, i) => (
+              <li key={step.title} className="step">
+                <span className="step-icon" aria-hidden="true"><step.Icon size={22} strokeWidth={2.2} /></span>
+                <h3 className="step-title">{step.title}</h3>
+                <p className="step-body">{step.body}</p>
+                {i === 0 && (
+                  <div className="step-viz" aria-hidden="true">
+                    <span className="viz-stack">
+                      {SOURCES.slice(5, 10).map((source) => (
+                        // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
+                        <img key={source.domain} src={faviconUrl(source.domain)} alt="" width={28} height={28} loading="lazy" />
+                      ))}
+                    </span>
+                    <span className="viz-more">+100 more</span>
+                  </div>
+                )}
+                {i === 2 && (
+                  <div className="step-viz" aria-hidden="true">
+                    <span className="viz-mail">
+                      <Mail size={15} strokeWidth={2.4} />
+                      <span><b>Trace</b> · 10 big things today</span>
+                      <em>8:00</em>
+                    </span>
+                  </div>
+                )}
+                {i === 1 && (
+                  <div className="step-viz" aria-hidden="true">
+                    <span className="viz-stack">
+                      {GROUP_DEMO.map((domain) => (
+                        // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
+                        <img key={domain} src={faviconUrl(domain)} alt="" width={28} height={28} loading="lazy" />
+                      ))}
+                    </span>
+                    <span className="viz-arrow">→</span>
+                    <span className="viz-card">1 story · 5 sources</span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+
+      <section className="section" id="make-it-yours" aria-labelledby="mine-title">
+        <div className="sec-head">
+          <h2 className="h2" id="mine-title">Make it yours</h2>
+          <p className="lede">Try it. The preview is today&rsquo;s email, built from your picks.</p>
+        </div>
+        <LandingBuilderDemo fallback={sample} />
       </section>
 
       <LandingWhatYouGet />
 
       <div className="band">
-        <section className="section" id="how">
-          <h2 className="section-title">How Trace works</h2>
-          <p className="section-sub">Three steps between you and a fully caught-up morning.</p>
-          <div className="steps">
-            {HOW_IT_WORKS.map((s, i) => (
-              <article key={s.title} className="card">
-                <span className="step-num">{String(i + 1).padStart(2, '0')}</span>
-                <h3 className="card-title">{s.title}</h3>
-                <p className="card-body">{s.body}</p>
-              </article>
-            ))}
+        <section className="section trust" id="open-source" aria-labelledby="trust-title">
+          <span className="trust-icon" aria-hidden="true"><Unlock size={26} strokeWidth={2.2} /></span>
+          <h2 className="h2" id="trust-title">Free for everyone. Open source.</h2>
+          <p className="lede">No paywall, no tiers.{GITHUB_REPO_URL ? ' Read every line of code.' : ''}</p>
+          <ul className="trust-points">
+            <li><Sparkles size={16} strokeWidth={2.3} aria-hidden="true" /> Every feature unlocked</li>
+            <li><Mail size={16} strokeWidth={2.3} aria-hidden="true" /> Your own daily brief</li>
+            <li><Code2 size={16} strokeWidth={2.3} aria-hidden="true" /> Open source code</li>
+          </ul>
+          <div className="btn-row trust-actions">
+            {GITHUB_REPO_URL && (
+              <LandingDiscoveryLink href={GITHUB_REPO_URL} slug="open-source" className="btn-ghost">View the source on GitHub</LandingDiscoveryLink>
+            )}
+            <LandingCtaLink href="/feed?utm_source=site&utm_medium=open_source" location="open_source" className="btn-primary">Open the feed</LandingCtaLink>
           </div>
         </section>
       </div>
 
-      <section className="section" id="pricing">
-        <h2 className="section-title">Save 45+ minutes every morning.</h2>
-        <p className="section-sub">Trace reads 400+ sources overnight and hands you the stories that matter.</p>
-        <div className="plans">
-          <article className="plan">
-            <p className="plan-tag">Free</p>
-            <p className="plan-price">$0<span>/month</span></p>
-            <ul className="plan-list">
-              {FREE_FEATURES.map((f) => <li key={f}>{f}</li>)}
-            </ul>
-            <LandingCtaLink href="/feed?utm_source=site&utm_medium=pricing_free" location="pricing_free" className="btn-ghost plan-btn">Start reading free</LandingCtaLink>
-          </article>
-          <article className="plan plan-pro">
-            <p className="plan-badge">Most popular</p>
-            <p className="plan-tag">Trace Pro</p>
-            <p className="plan-price">{priceAmountDisplay(SUBSCRIPTION_PRICE_DEFAULT)}<span>/month</span></p>
-            <p className="mb-4 -mt-3 text-sm font-semibold text-secondary">{trialFootline(SUBSCRIPTION_PRICE_DEFAULT)}</p>
-            <ul className="plan-list">
-              {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
-            </ul>
-            <LandingCtaLink href="/subscribe" location="pricing_pro" variant="subscribe" className="btn-primary plan-btn">
-              {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
-            </LandingCtaLink>
-          </article>
-        </div>
-      </section>
-
-      <section className="section">
+      <section className="section" aria-labelledby="founder-title">
         <div className="founder">
-          <p className="kicker">A note from the person behind Trace</p>
-          <div className="founder-head">
-            <h2 className="section-title founder-title">Hey, I am Tarat.</h2>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/tarat-avatar.jpg" alt="Tarat" className="founder-avatar" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/tarat-avatar.jpg" alt="Tarat" className="founder-avatar" />
+          <div>
+            <h2 className="founder-title" id="founder-title">Hey, I am Tarat.</h2>
+            <p className="founder-p">
+              Trace is the first solo indie app I have built and launched. I put it out at the end of January 2026,
+              and it got so much traction on Product Hunt that I decided to keep going.
+            </p>
+            <p className="founder-p">
+              Eight months in, the app has changed a lot. I read every bit of feedback I can get and genuinely love
+              working on it, making Trace more useful, clearer, and more worth opening for the people who use it.
+            </p>
+            <p className="founder-p">
+              On the personal side, I&rsquo;ve just started my master&rsquo;s in AI at the University of Edinburgh.
+              Trace is now free and open source, so sharing it with a friend is the best way to help me keep building
+              while I figure out student life.
+            </p>
+            <p className="founder-p">
+              If you&rsquo;re into investing or the US stock market, I also make{' '}
+              <a href="https://stocksbrew.online" target="_blank" rel="noreferrer" className="flink">StocksBrew</a>. You can find more
+              about me and the other things I&rsquo;m building at{' '}
+              <a href="https://www.tarat.space" target="_blank" rel="noreferrer" className="flink">tarat.space</a>.
+            </p>
+            <p className="founder-sign">Tarat</p>
+            <a href={BUY_ME_A_COFFEE_URL} target="_blank" rel="noopener noreferrer" className="bmc-btn">
+              <Coffee size={18} strokeWidth={2.3} aria-hidden="true" /> Buy me a coffee
+            </a>
+            <p className="bmc-note">Trace is free. If it saves you time, a coffee keeps it running.</p>
           </div>
-          <p className="founder-p">
-            Trace is the first solo indie app I have built and launched. I put it out at the end of January 2026,
-            and it got so much traction on Product Hunt that I decided to keep going.
-          </p>
-          <p className="founder-p">
-            Six months in, the app has changed a lot. I read every bit of feedback I can get and genuinely love
-            working on it, making Trace more useful, clearer, and more worth opening for the people who use it.
-          </p>
-          <p className="founder-p">
-            On the personal side, I am starting my master&rsquo;s in AI at the University of Edinburgh this September.
-            So anything you spend on Trace helps me keep building while I figure out student life.
-          </p>
-          <p className="founder-p">
-            If you&rsquo;re into investing or the US stock market, I also make{' '}
-            <a href="https://stocksbrew.online" target="_blank" rel="noreferrer" className="flink">StocksBrew</a>. You can find more
-            about me and the other things I&rsquo;m building at{' '}
-            <a href="https://www.tarat.space" target="_blank" rel="noreferrer" className="flink">tarat.space</a>.
-          </p>
-          <p className="founder-sign">Tarat</p>
         </div>
       </section>
 
-      <section className="section" id="faq">
-        <h2 className="section-title">Questions, answered</h2>
+      <section className="section" id="faq" style={{ paddingTop: 0 }} aria-labelledby="faq-title">
+        <div className="sec-head">
+          <h2 className="h2" id="faq-title">FAQ</h2>
+        </div>
         <div className="faq">
           {LANDING_FAQ.map((item) => (
             <details key={item.q} className="faq-item">
@@ -244,43 +320,18 @@ export default function LandingScreen() {
         </div>
       </section>
 
-      <section className="section discovery-links" aria-labelledby="explore-trace-title">
-        <p className="kicker">Explore Trace</p>
-        <h2 className="section-title" id="explore-trace-title">How it works, pricing, and the blog.</h2>
-        <p className="section-sub">The only three places you need after the feed: how Trace works, what it costs, and the writing behind it.</p>
-        <div className="discovery-grid">
-          <LandingDiscoveryLink href="/how-it-works" slug="how-it-works" className="discovery-card">
-            <strong>How it works</strong>
-            <span>See how Trace finds the signal, groups coverage, and ranks a daily edition.</span>
-          </LandingDiscoveryLink>
-          <LandingDiscoveryLink href="/subscribe" slug="pricing" className="discovery-card">
-            <strong>Pricing</strong>
-            <span>Free to start reading. Pro unlocks the full day, Pulse, and the archive.</span>
-          </LandingDiscoveryLink>
-          <LandingDiscoveryLink href="/blog" slug="blog" className="discovery-card">
-            <strong>Blog</strong>
-            <span>Guides on tech reading, AI tools, and staying current with less noise.</span>
-          </LandingDiscoveryLink>
-        </div>
-      </section>
-
-      <section className="final-cta">
-        <h2 className="hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
-          Tomorrow morning, be the person who already knows.
-        </h2>
-        <div className="hero-ctas">
-          <a href={ANDROID_URL} target="_blank" rel="noreferrer" className="btn-primary">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://cdn.simpleicons.org/android/ffffff" alt="" className="btn-logo" />
-            Get the Android app
-          </a>
-          <a href={CHROME_URL} target="_blank" rel="noreferrer" className="btn-ghost">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://cdn.simpleicons.org/googlechrome/4285F4" alt="" className="btn-logo" />
-            Add the Chrome extension
-          </a>
-        </div>
-      </section>
+      <div className="final-wrap">
+        <section className="final-cta on-dark" aria-labelledby="final-title">
+          <h2 className="h2" id="final-title">Be the one who already knows.</h2>
+          <LandingHeroSignup />
+          <p className="final-apps">
+            <span>Also on</span>
+            <a href={CHROME_URL} target="_blank" rel="noreferrer">Chrome</a>
+            <a href={ANDROID_URL} target="_blank" rel="noreferrer">Android</a>
+            <Link href="/feed?utm_source=site&utm_medium=final">the web feed</Link>
+          </p>
+        </section>
+      </div>
 
       <Footer variant="landing" />
     </main>

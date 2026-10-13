@@ -1,0 +1,12 @@
+# Python dependencies for the Trace pipeline (v3/), LocalDB (backend/localdb/)
+# and the email tooling (v1/tools). Derived from the imports actually used.
+openai>=1.40            # summaries, ranking, embeddings, newsletter copy
+requests
+python-dotenv
+beautifulsoup4
+feedparser
+firebase-admin          # also provides google.cloud.firestore (types used by the stores)
+sib-api-v3-sdk          # optional: only when EMAIL_TRANSPORT=brevo|auto
+dkimpy                  # DKIM signing for the self-hosted MTA path
+youtube-transcript-api
+yt-dlp

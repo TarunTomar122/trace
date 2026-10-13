@@ -1,0 +1,74 @@
+# Trace self-hosting stack: LocalDB + pipeline scheduler + Next.js frontend.
+#   cp .env.example .env   # fill in OPENAI_API_KEY, LOCALDB_API_TOKEN, TRACE_SESSION_SECRET, Firebase Auth creds
+#   docker compose up --build
+# Web app: http://localhost:3000   LocalDB: http://localhost:8502 (bearer auth)
+name: trace
+
+x-env: &env
+  env_file:
+    - path: .env
+      required: false
+
+services:
+  localdb:
+    build:
+      context: .
+      dockerfile: docker/localdb.Dockerfile
+    <<: *env
+    environment:
+      LOCALDB_PATH: /data/documents.sqlite3
+      LOCALDB_HOST: 0.0.0.0
+      LOCALDB_PORT: "8502"
+      LOCALDB_API_TOKEN: ${LOCALDB_API_TOKEN:?set LOCALDB_API_TOKEN in .env}
+      LOCALDB_ALLOWED_COLLECTIONS: ${LOCALDB_ALLOWED_COLLECTIONS:-user_profiles,user_preferences,user_patterns,user_streaks,user_bookmarks,user_interactions,user_seen_urls,user_weekly_wraps,user_integrations,free_newsletter_subscribers,feedback,newsletter_feedback,extension_sessions,agent_access_keys,promoted_tools,daily_editions,email_sends,email_events,affiliate_codes,affiliate_clicks,affiliate_conversions,app_config,v3_user_feeds,v3_trending_pool,v3_deep_dive_pool,v3_for_you_pool,v3_summary_cache,v3_synthesis_cache,v3_extraction_cache,v3_seen_urls,v3_pipeline_runs,v3_push_notifications,v3_curated_queue,newsletter_editions,unified_newsletters,trending_news,topics,user_feeds,feed_jobs}
+    volumes:
+      - trace-data:/data
+    ports:
+      - "127.0.0.1:8502:8502"
+    restart: unless-stopped
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/pipeline.Dockerfile
+    <<: *env
+    environment:
+      TRACE_DB: local
+      TRACE_LOCALDB_PATH: /data/documents.sqlite3
+    volumes:
+      - trace-data:/data   # same SQLite file as localdb (WAL mode, same host)
+    depends_on:
+      - localdb
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-}
+        NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_GITHUB_REPO_URL: ${NEXT_PUBLIC_GITHUB_REPO_URL:-}
+    <<: *env
+    environment:
+      FIRESTORE_BACKEND: local
+      LOCALDB_URL: http://localdb:8502
+      LOCALDB_API_TOKEN: ${LOCALDB_API_TOKEN:?set LOCALDB_API_TOKEN in .env}
+    depends_on:
+      - localdb
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  trace-data:

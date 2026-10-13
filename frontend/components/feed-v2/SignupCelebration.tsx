@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { proTrialCtaLabel } from '@/lib/pro-trial';
-import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 
 const SEND_HOUR_BERLIN = 10;
 const SEND_MINUTE_BERLIN = 30;
@@ -158,12 +156,6 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
             className="inline-flex h-11 items-center justify-center rounded-full bg-[#1d9bf0] px-6 text-sm font-bold text-white no-underline transition-colors hover:bg-[#1a8cd8]"
           >
             Open the feed
-          </a>
-          <a
-            href="/subscribe?from=email"
-            className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-bold text-[#536471] no-underline transition-colors hover:bg-black/5 hover:text-[#0f1419]"
-          >
-            {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
           </a>
         </div>
 

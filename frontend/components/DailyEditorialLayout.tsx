@@ -98,7 +98,7 @@ function EditorialHeroCard({
           {stripMarkdown(item.title)}
         </h2>
         {item.preview && (
-          <p className="text-[15px] text-secondary/70 leading-relaxed line-clamp-3">
+          <p className="text-[15px] text-secondary/70 leading-relaxed">
             {stripMarkdown(item.preview)}
           </p>
         )}
@@ -148,11 +148,11 @@ function EditorialMediumCard({
             </>
           )}
         </div>
-        <h3 className="min-h-[3.6rem] text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1 line-clamp-3">
+        <h3 className="min-h-[3.6rem] text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1">
           {stripMarkdown(item.title)}
         </h3>
         {item.preview && (
-          <p className="text-[13px] text-secondary/60 leading-relaxed line-clamp-2">
+          <p className="text-[13px] text-secondary/60 leading-relaxed">
             {stripMarkdown(item.preview)}
           </p>
         )}
@@ -181,12 +181,12 @@ function EditorialSidebarItem({
       <article
         className={`py-3.5 ${showDivider ? "border-b border-border/15" : ""}`}
       >
-        <h4 className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1.5 line-clamp-3">
+        <h4 className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1.5">
           {stripMarkdown(item.title)}
         </h4>
         <div className="flex items-center gap-1.5 text-[10px] text-secondary/50">
           {item.source && (
-            <span className="truncate max-w-[120px]">{item.source}</span>
+            <span>{item.source}</span>
           )}
           {item.sourceCount > 1 && (
             <>
@@ -227,7 +227,7 @@ function EditorialTopicItem({
             Topic
           </span>
         </div>
-        <h4 className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] mb-1.5 line-clamp-2">
+        <h4 className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] mb-1.5">
           {stripMarkdown(topic.title)}
         </h4>
         <div className="flex items-center gap-1.5 text-[10px] text-secondary/50">

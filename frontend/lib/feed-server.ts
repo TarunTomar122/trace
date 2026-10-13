@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { applyFeedDedupe } from '@/lib/feed-dedupe';
 import { resolveHeadlines } from '@/lib/story-headlines';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
-import { hasActiveSubscription, subscriptionStatuses } from '@/lib/subscription-access';
+import { hasPaidSubscription, subscriptionStatuses } from '@/lib/subscription-access';
 
 /** Today + yesterday's global edition; pipeline handles source freshness. */
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
@@ -96,7 +96,7 @@ function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
 
 function computeFeedAccess(profile: DocData | null) {
   const { web: webSub, app: appSub } = subscriptionStatuses(profile);
-  return { webSub, appSub, hasAccess: hasActiveSubscription(profile) };
+  return { webSub, appSub, hasAccess: hasPaidSubscription(profile) };
 }
 
 function buildViewerProfile(profile: DocData | null, roleFromProfile: string, viewerInterests: string[]) {
@@ -608,15 +608,25 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
     console.log(`[perf][feed-server] getBootstrapFeedForUid uid=${uid.slice(0, 6)} total_ms=${Date.now() - totalStart}`);
   }
 
-  // Opening the feed is the activity signal that DAU/WAU/MAU are built from.
-  // Fire-and-forget: a failed stamp must never slow down or break the feed.
-  void adminFirestore
-    .collection('user_profiles')
-    .doc(uid)
-    .set({ lastActiveAt: new Date() }, { merge: true })
-    .catch((error) => console.error('[feed-server] lastActiveAt stamp failed:', error));
-
   return result;
+}
+
+/**
+ * Opening the feed is the activity signal DAU/WAU/MAU and email routing are
+ * built from. Callers run this through `after()`: a bare fire-and-forget write
+ * is dropped when the serverless function freezes after responding, which is
+ * why lastActiveAt stopped moving in early September.
+ */
+export async function stampLastActive(uid: string): Promise<void> {
+  if (!uid || !adminFirestore) return;
+  try {
+    await adminFirestore
+      .collection('user_profiles')
+      .doc(uid)
+      .set({ lastActiveAt: new Date() }, { merge: true });
+  } catch (error) {
+    console.error('[feed-server] lastActiveAt stamp failed:', error);
+  }
 }
 
 export async function getPulseFeedForUid(uid: string, roleFromQuery = ''): Promise<Pick<

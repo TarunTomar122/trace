@@ -182,7 +182,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Is Trace free?",
         answer:
-          "The free plan includes a personalized feed and the option to get a daily email brief. Pro adds full access, Pulse, the archive, and agent access.",
+          "Yes. Trace is free for everyone and open source. Every story, Pulse, the archive, agent access, a personalized feed, and the optional daily email brief are all included.",
       },
     ],
   },
@@ -311,7 +311,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Sources",
-        trace: "400+ tech sources including HN, Reddit, Product Hunt, GitHub",
+        trace: "100+ tech sources including HN, Reddit, Product Hunt, GitHub",
         alternative: "Mainstream business publications",
       },
       {
@@ -742,7 +742,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Coverage",
-        trace: "400+ sources scanned automatically",
+        trace: "100+ sources scanned automatically",
         alternative: "Whatever tabs you remember to open",
       },
       {
@@ -863,7 +863,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Content discovery",
-        trace: "Curated daily from 400+ sources automatically",
+        trace: "Curated daily from 100+ sources automatically",
         alternative: "You save what you find — discovery depends on you",
       },
       {

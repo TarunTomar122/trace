@@ -32,7 +32,6 @@ export default function PageShell({ children, wide = false, chrome = true }: { c
           <nav className="pg-links">
             <Link href="/feed">Feed</Link>
             <Link href="/blog">Blog</Link>
-            <Link href="/subscribe">Pricing</Link>
           </nav>
         </div>
       </header>
@@ -42,7 +41,6 @@ export default function PageShell({ children, wide = false, chrome = true }: { c
           <span className="pg-foot-brand">Trace</span>
           <span className="pg-foot-links">
             <Link href="/feed">Feed</Link>
-            <Link href="/subscribe">Pricing</Link>
             <Link href="/blog">Blog</Link>
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/contact">Contact</Link>

@@ -5,7 +5,6 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { useCasesContent } from "../content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
-import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -140,7 +139,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
             <h2 className="text-2xl font-semibold tracking-tight">
               {page.title.startsWith("Trace for")
                 ? page.title.replace("Trace ", "") + "? Try Trace"
-                : `Go Pro — ${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}`}
+                : "Try Trace"}
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
               See how Trace fits your workflow. One brief, under 10 minutes,

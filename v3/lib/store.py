@@ -66,15 +66,15 @@ class V3Store:
     # ------------------------------------------------------------------
 
     def get_onboarded_users(
-        self, audience: str = "subscribed", max_inactive_days: int = 7,
+        self, audience: str = "all", max_inactive_days: int = 7,
     ) -> list[dict[str, Any]]:
         """
         Get onboarded users by audience segment, skipping stale ones.
 
         audience:
-          - subscribed: trial/active users only (default; backward compatible)
+          - subscribed: trial/active users only
           - unsubscribed: onboarded users without active/trial subscription
-          - all: all onboarded users
+          - all: all onboarded users (default; Trace is free for everyone)
 
         max_inactive_days:
           Skip free users whose lastActiveAt (or updatedAt/onboardedAt

@@ -933,7 +933,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
-        default="subscribed",
+        default="all",
         help="Which users to build for",
     )
     p.add_argument(

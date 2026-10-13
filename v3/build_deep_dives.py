@@ -85,7 +85,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
-        default="subscribed",
+        default="all",
         help="Which users to build for",
     )
     return p.parse_args()
@@ -836,7 +836,7 @@ def build_user_feeds(
         candidates = [c for c in candidates if c.get("url", "") not in seen_urls]
 
         if len(candidates) < 1:
-            # Fallback to global deep dive for pro users with no personalized content
+            # Fallback to global deep dive for users with no personalized content
             if global_deep_dives:
                 store.write_feed_section(uid, target_date, "deep_dives", global_deep_dives)
                 _log(f"  user={uid} only {len(candidates)} articles → fallback to global deep dive")

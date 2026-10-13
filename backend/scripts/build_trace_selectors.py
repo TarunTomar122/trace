@@ -92,7 +92,7 @@ def build_selectors(client) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="generate trace migration selectors")
     parser.add_argument("--output", default="backend/config/trace_migration_selectors.generated.txt")
-    parser.add_argument("--project-id", default=os.getenv("FIREBASE_PROJECT_ID") or "anybrew-7c6c1")
+    parser.add_argument("--project-id", default=os.getenv("FIREBASE_PROJECT_ID"))
     args = parser.parse_args()
 
     client = _firestore_client(args.project_id)

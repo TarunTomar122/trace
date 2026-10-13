@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 
 /**
@@ -28,6 +28,14 @@ function pixel() {
   });
 }
 
+function appHost(): string {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_APP_URL || '').hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const event = params.get('e') || 'o';
@@ -35,20 +43,28 @@ export async function GET(request: NextRequest) {
 
   if (event === 'c') {
     const target = params.get('u') || '';
-    let destination = 'https://yourtrace.online/feed?from=email';
+    let destination = new URL('/feed?from=email', request.nextUrl.origin).toString();
     try {
       const url = new URL(target);
       // Only ever redirect to our own surface: this endpoint must not become
-      // an open redirect.
-      if (url.hostname.endsWith('yourtrace.online')) destination = url.toString();
+      // an open redirect. Exact host or a real subdomain ("evilyourtrace.online"
+      // must not pass), for the hosted site and for a self-hosted APP_URL.
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        const own = [request.nextUrl.hostname, appHost(), 'yourtrace.online'].filter(Boolean);
+        if (own.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
+          destination = url.toString();
+        }
+      }
     } catch {
       /* keep the default */
     }
-    void record(trackId, 'click', destination);
+    // after(): a bare fire-and-forget write is dropped when the function
+    // freezes after responding, which is why no events landed after Sep 22.
+    after(() => record(trackId, 'click', destination));
     return NextResponse.redirect(destination, 302);
   }
 
-  void record(trackId, 'open');
+  after(() => record(trackId, 'open'));
   return pixel();
 }
 

@@ -1,0 +1,7 @@
+# Public HTTPS endpoint for the web app -> VPS LocalDB traffic.
+# Keep LocalDB itself bound to 127.0.0.1:8502; Caddy terminates TLS.
+# Add `import /path/to/this/snippet` to the main Caddyfile (or paste the block).
+# Requires DNS: db.example.com -> A <your server IP>.
+db.example.com {
+	reverse_proxy 127.0.0.1:8502
+}

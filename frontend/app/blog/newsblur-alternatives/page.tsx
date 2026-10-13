@@ -97,7 +97,7 @@ export default function BlogPost() {
             <li aria-hidden="true">/</li>
             <li><Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link></li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">NewsBlur Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">NewsBlur Alternatives</li>
           </ol>
         </nav>
         <Link href="/blog" className="text-blue-600 dark:text-blue-400 hover:underline mb-6 inline-block">← Back to Blog</Link>
@@ -147,7 +147,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">AI Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">AI Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Beginners</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Miniflux</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Minimalists</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Yes</td></tr>
@@ -160,7 +160,7 @@ export default function BlogPost() {
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             1. Trace — Best for AI-Powered Tech News
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
             Where NewsBlur filters your feeds with AI, Trace goes further — it scans
             50+ sources automatically, groups related coverage, and generates multi-source
@@ -171,7 +171,7 @@ export default function BlogPost() {
             <li>Multi-source AI summaries with source attribution</li>
             <li>Topic grouping across publications</li>
             <li>Community discussion links (Reddit, HN)</li>
-            <li>Free tier with core features</li>
+            <li>Free for everyone, and open source</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

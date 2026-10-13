@@ -46,7 +46,7 @@ export default function ExtensionConnectClient({
         });
       });
       setStatus('connected');
-      if (checkout) window.location.assign('/subscribe');
+      if (checkout) window.location.assign('/feed');
     } catch (error) {
       started.current = false;
       setStatus('error');
@@ -77,7 +77,7 @@ export default function ExtensionConnectClient({
           {status === 'connected' ? 'Trace is connected.' : 'Connect Trace to Chrome.'}
         </h1>
         <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-7 text-[#6d6b62]">
-          One Google account keeps your saved stories and Trace Pro access in sync with the web feed.
+          One Google account keeps your saved stories in sync with the web feed.
         </p>
         {!user && !loading && (
           <button type="button" onClick={() => void signIn()} className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#181815] px-6 py-3.5 text-[14px] font-semibold text-white active:scale-[0.96] transition-transform">

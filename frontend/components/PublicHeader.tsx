@@ -11,7 +11,6 @@ const links = [
   ['Resources', '/resources'],
   ['How it works', '/how-it-works'],
   ['Agents', '/agents'],
-  ['Pricing', '/#pricing'],
   ['Compare', '/compare'],
   ['Newsletters', '/newsletters'],
   ['FAQs', '/#questions'],
@@ -59,7 +58,7 @@ export default function PublicHeader({
     <header className={`${hasCenterSlot ? `sticky top-0 transition-transform duration-200 ${hidden ? '-translate-y-full' : 'translate-y-0'}` : 'relative'} z-50 isolate bg-white/90 backdrop-blur-md border-b border-[#eff3f4]`} style={{ padding: '14px clamp(16px, 5vw, 72px)' }}>
       <style>{'@media(max-width:959px){.public-primary-nav{display:none!important}.public-header-grid{grid-template-columns:1fr auto!important}.public-header-center-slot{grid-column:1/-1;grid-row:2}}@media(min-width:960px){.public-mobile-nav{display:none!important}.public-header-center-slot{grid-column:2;grid-row:1}}'}</style>
       <div className="public-header-grid relative w-full" style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) auto minmax(150px, 1fr)', alignItems: 'center', maxWidth: 1120, margin: '0 auto' }}>
-        <Link href="/" className="flex min-h-11 items-center gap-3 text-foreground" style={{ justifySelf: 'start' }}>
+        <Link href="/" aria-label="Trace home" className="flex min-h-11 items-center gap-3 text-foreground" style={{ justifySelf: 'start' }}>
           <Image src="/trace.webp" width={64} height={28} alt="" className="h-7 w-auto" />
         </Link>
         {centerSlot ? (

@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
       { source: '/bookmarks', destination: '/feed', permanent: true },
       { source: '/profile', destination: '/feed', permanent: true },
       { source: '/feed/article', destination: '/feed', permanent: true },
+      // Trace is free for everyone; old pricing/checkout links land in the feed.
+      { source: '/subscribe', destination: '/feed', permanent: true },
       {
         source: "/:path+/",
         destination: "/:path+",

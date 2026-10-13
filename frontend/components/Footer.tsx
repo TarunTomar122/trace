@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ExternalLink, LineChart, Rss, Smartphone } from 'lucide-react';
+import { BUY_ME_A_COFFEE_URL, GITHUB_REPO_URL } from '@/lib/site-links';
 
 type DirectoryBadge = {
   name: string;
@@ -29,7 +30,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
   const heading = dark ? 'mb-5 text-[12px] font-semibold text-[#1d9bf0]' : 'mb-5 text-[12px] font-semibold text-foreground';
   const link = dark ? 'text-[#93a5b1] hover:text-white' : 'text-secondary hover:text-foreground';
   return (
-    <footer data-variant={props.variant ?? 'default'} className={`px-5 py-14 sm:px-8 sm:py-20 ${dark ? 'rounded-t-[32px] text-white' : 'border-t border-[#eff3f4] text-[#0f1419]'}`} style={{ backgroundColor: dark ? '#0c1216' : '#ffffff' }}>
+    <footer data-variant={props.variant ?? 'default'} className={`px-5 py-14 sm:px-8 sm:py-20 ${dark ? 'rounded-t-[32px] text-white' : 'border-t border-[var(--footer-line,#eff3f4)] text-[#0f1419]'}`} style={{ backgroundColor: dark ? '#0c1216' : 'var(--footer-bg, #ffffff)' }}>
       <div className="mx-auto max-w-[1180px]">
         <div className="grid grid-cols-2 gap-12 md:grid-cols-4 md:gap-8">
           <div className="col-span-2 md:col-span-1">
@@ -45,7 +46,10 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
             <a href="/feed" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Feed</a>
             <Link href="/how-it-works" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>How it works</Link>
             <Link href="/agents" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Agents</Link>
-            <Link href="/subscribe" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Pricing</Link>
+            {GITHUB_REPO_URL && (
+              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Open source</a>
+            )}
+            <a href={BUY_ME_A_COFFEE_URL} target="_blank" rel="noopener noreferrer" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Buy me a coffee</a>
           </nav>
 
           <nav aria-label="Learn" className="space-y-3 text-[14px]">
@@ -69,7 +73,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
 
         <div className={`mt-14 flex flex-wrap items-center justify-between gap-3 border-t pt-6 text-[12px] ${dark ? 'border-white/10 text-[#7b8d99]' : 'border-[#eff3f4] text-secondary'}`}>
           <p>© 2026 Trace</p>
-          <p>Read 400+ sources, catch up in minutes.</p>
+          <p>Over a hundred sources, caught up in minutes.</p>
         </div>
       </div>
       {props.directoryBadges && <DirectoryBadgeMarquee badges={props.directoryBadges} />}

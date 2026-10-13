@@ -144,8 +144,10 @@ export class LocalQuery {
     return new LocalQuery(this.client, this.collectionPath, this.filters, this.orders, count, this.selected, this.group);
   }
 
-  select(fields: string[]): LocalQuery {
-    return new LocalQuery(this.client, this.collectionPath, this.filters, this.orders, this.limitCount, fields, this.group);
+  // Firestore's admin SDK takes `select('a', 'b')`; callers written against it
+  // (daily-archive, daily-editions) must not send a bare string to /query.
+  select(...fields: Array<string | string[]>): LocalQuery {
+    return new LocalQuery(this.client, this.collectionPath, this.filters, this.orders, this.limitCount, fields.flat(), this.group);
   }
 
   async get(): Promise<LocalQuerySnapshot> {

@@ -6,14 +6,13 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 const STEPS = [
   {
     num: 1,
     icon: Newspaper,
     title: "Sources",
-    body: "Trace scans 400+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and Twitter/X, so you don't have to open each one separately.",
+    body: "Trace scans 100+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and Twitter/X, so you don't have to open each one separately.",
   },
   {
     num: 2,
@@ -44,15 +43,15 @@ const STEPS = [
 const FAQS = [
   {
     q: "Where do the stories come from?",
-    a: "Trace scans 400+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and X. Sources are always linked so you can verify anything in one tap.",
+    a: "Trace scans 100+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and X. Sources are always linked so you can verify anything in one tap.",
   },
   {
     q: "How is this different from an RSS reader?",
-    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief with key takeaways, and ranks the day so the free stories cover what matters. You read one page, not fifty feeds.",
+    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief with key takeaways, and ranks the day so the top stories cover what matters. You read one page, not fifty feeds.",
   },
   {
-    q: "What do I get for free?",
-    a: `The top ranked stories every day, full briefs included. Pro (${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}) unlocks the whole day, Pulse discussions and tools, bookmarks that sync, and your personalized ranking.`,
+    q: "What do I get?",
+    a: "Everything is included: every ranked story with its full brief, Pulse discussions and tools, the archive, bookmarks that sync, your personalized ranking, and read-only agent access. Free for everyone, and open source.",
   },
   {
     q: "How does personalization work?",
@@ -60,7 +59,7 @@ const FAQS = [
   },
   {
     q: "Is there an app or email version?",
-    a: "Trace is web-first today at yourtrace.online/feed, with a Chrome extension that puts the ranked feed in every new tab and an Android app. A daily email brief lands every morning if you turn it on in your profile.",
+    a: "Trace is web-first today at yourtrace.online/feed, with a Chrome extension that puts the ranked feed in every new tab and an Android app. A free daily email brief lands every morning, and you can pick its topics, length (5, 10 or 15 stories) and format at yourtrace.online/brief/customize.",
   },
 ];
 
@@ -101,12 +100,6 @@ export default function HowItWorksContent() {
               className="inline-flex rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
             >
               Read today&apos;s brief
-            </Link>
-            <Link
-              href="/subscribe"
-              className="landing-btn landing-btn-secondary landing-btn-sm inline-flex"
-            >
-              See Pro plans
             </Link>
           </div>
       </div>

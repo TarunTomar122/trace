@@ -1,14 +1,14 @@
 'use client';
 
+import { CONTACT_EMAIL } from '@/lib/site-links';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { emailEnabled, prefsFromProfile, topicLabel } from '@/lib/newsletter-prefs';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
-import { shortPriceDisplay, SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
-import { proTrialCtaLabel, trialFootline } from '@/lib/pro-trial';
+import { hasPaidSubscription } from '@/lib/subscription-access';
 import FeedSkeleton from './FeedSkeleton';
 import NewsletterPromptModal from './NewsletterPromptModal';
-import ProCheckoutButton from './ProCheckoutButton';
 import {
   trackCheckoutClicked,
   trackFeedFilterChanged,
@@ -20,7 +20,6 @@ import {
   trackBlogFeedWelcomeShown,
   trackBlogFeedWelcomeCta,
   trackDailyBriefPreferenceChanged,
-  trackPaywallShown,
   trackProfileUpdated,
   trackPromoCtaClicked,
   trackPromoIntent,
@@ -71,8 +70,8 @@ import {
   useCaughtUpShare,
 } from './retention/RetentionPanels';
 import {
-  Bookmark, Share, ArrowLeft, ArrowUpRight, User, Check, Star, Plus, X, Clock,
-  Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, Lock,
+  Bookmark, Share, ArrowLeft, ArrowUpRight, User, Check, Star, X, Clock,
+  Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -152,15 +151,9 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 // The lanes Trace actually publishes. Extras from older profiles (engineering,
 // security, open-source, policy) are ignored and dropped on the next save.
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
-// Home: guests see 3 stories, free accounts 5, and Pro all 10.
-const FREE_LIMIT_SIGNED_OUT = 3;
-const FREE_LIMIT_SIGNED_IN = 5;
-// Home shows the same edition the email promises: ten big things for Pro,
-// five for everyone else. The category tabs keep their longer list.
-const HOME_CAP_PRO = 10;
-// Free and signed-out readers see all ten titles too, so the paywall has
-// something concrete to point at (three of these ten, five of these ten).
-const HOME_CAP_FREE = 10;
+// Home shows the same edition the email promises: ten big things for everyone.
+// The category tabs keep their longer list.
+const HOME_CAP = 10;
 const PER_TAB_STORY_CAP = 15;
 /** Max organic tool rows shown in the Tools rail and carousel. */
 const RAIL_TOOLS_CAP = 3;
@@ -283,8 +276,8 @@ function bookmarkedAgo(iso?: string): string {
 }
 
 export default function FeedApp({
-  stories, headlines = [], pulse, promoted = [], monthlyReach = 0, generated, serverPro = false, feedDate = '',
-  priceDisplay = '', feedError = false, initialStory = null, initialStoryId = null, unlockedId = null,
+  stories, headlines = [], pulse, promoted = [], monthlyReach = 0, generated, feedDate = '',
+  feedError = false, initialStory = null, initialStoryId = null,
 }: {
   stories: FeedStory[];
   headlines?: HeadlineRef[];
@@ -292,32 +285,16 @@ export default function FeedApp({
   promoted?: PromotedTool[];
   monthlyReach?: number;
   generated: string | null;
-  serverPro?: boolean;
   /** Date id of today's feed doc — cursor start for older stories. */
   feedDate?: string;
-  /** Server-resolved price ("$5/month" or "₹49/month") for checkout CTAs. */
-  priceDisplay?: string;
   /** Global feed load failed server-side — show a retry state, not a blank page. */
   feedError?: boolean;
   /** Archived story resolved server-side for a shared link (not in today's feed). */
   initialStory?: FeedStory | null;
   /** Pre-open a story (shared article page). Falls back to ?story= when present. */
   initialStoryId?: string | null;
-  /** This story always opens full — the shared link must work for everyone. */
-  unlockedId?: string | null;
 }) {
-  const reachLine = monthlyReach > 0 ? `${fmtReach(monthlyReach)} readers last month` : 'Seen by builders daily';
-  const { user, profile: authProfile, loading: authLoading, profileResolved, profileFresh, profileRefreshFailed, signInWithGoogle, signOut, refreshProfile } = useAuth();
-  const access = resolveFeedAccess({
-    serverHasAccess: serverPro,
-    clientProfile: authProfile,
-    clientProfileFresh: profileFresh,
-    clientProfileRefreshFailed: profileRefreshFailed,
-    authLoading,
-    signedIn: !!user,
-  });
-  const pro = serverPro || access.hasAccess;
-  const accessPending = access.pending;
+  const { user, profile: authProfile, loading: authLoading, profileResolved, signInWithGoogle, signOut, refreshProfile } = useAuth();
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -375,7 +352,7 @@ export default function FeedApp({
   const sortSegRef = useRef<HTMLDivElement | null>(null);
   const [sortPill, setSortPill] = useState<{ left: number; width: number } | null>(null);
   const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Older stories are fetched on demand (24-ish per click) for Pro readers,
+  // Older stories are fetched on demand (24-ish per click) for everyone,
   // paging back through the daily archive docs.
   const [olderStories, setOlderStories] = useState<FeedStory[]>([]);
   const [olderBefore, setOlderBefore] = useState<string | null>(feedDate || null);
@@ -449,63 +426,27 @@ export default function FeedApp({
     };
   }, [tab]);
 
-  // purchase return (?subscription=success / ?tool_promo=success):
-  // clean the URL, then verify Pro before celebrating — the webhook can lag.
-  const [activating, setActivating] = useState(false);
-  const [proReturnPending, setProReturnPending] = useState(false);
-  const verifyStarted = useRef(false);
+  // Sponsored-tool purchase return (?tool_promo=success): clean the URL,
+  // refresh the profile and celebrate. Old ?subscription=success links are
+  // just cleaned.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    const kind =
-      q.get('subscription') === 'success' ? 'pro'
-      : q.get('tool_promo') === 'success' ? 'promo'
-      : null;
-    if (!kind) return;
+    const promoDone = q.get('tool_promo') === 'success';
+    if (!promoDone && q.get('subscription') !== 'success') return;
     window.history.replaceState(null, '', base());
+    if (!promoDone) return;
     refreshProfile().catch(() => null);
-    if (kind === 'promo') {
-      trackPurchaseCompleted('tool_promo');
-      setCelebrate('promo');
-      void fireConfetti();
-      return;
-    }
-    setProReturnPending(true);
-    setActivating(true);
+    trackPurchaseCompleted('tool_promo');
+    setCelebrate('promo');
+    void fireConfetti();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!proReturnPending || authLoading || !user) return;
-    if (verifyStarted.current) return;
-    verifyStarted.current = true;
-    let cancelled = false;
-    (async () => {
-      let active = pro;
-      for (let attempt = 0; attempt < 6 && !active && !cancelled; attempt++) {
-        const p = await refreshProfile().catch(() => null);
-        active = hasActiveSubscription(p || authProfile);
-        if (!active) await new Promise((r) => setTimeout(r, 1500));
-      }
-      if (cancelled) return;
-      setProReturnPending(false);
-      setActivating(false);
-      if (active) {
-        trackPurchaseCompleted('pro');
-        setCelebrate('pro');
-        void fireConfetti();
-      } else {
-        showToast('Payment received — Pro is still activating. Refresh in a minute.');
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proReturnPending, authLoading, user, authProfile]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: '', email: '', interests: [] });
   const [savedProfile, setSavedProfile] = useState<Profile>(profile);
   const [savingProfile, setSavingProfile] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
-  const [celebrate, setCelebrate] = useState<null | 'pro' | 'promo'>(null);
+  const [celebrate, setCelebrate] = useState<null | 'promo'>(null);
   const [dailyOn, setDailyOn] = useState(false);
   const [dailyBusy, setDailyBusy] = useState(false);
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
@@ -516,10 +457,12 @@ export default function FeedApp({
   const [showExtensionCta, setShowExtensionCta] = useState(true);
   const streakRecorded = useRef(false);
 
-  // Reflect the profile's daily-brief preference in the paywall CTA.
+  // Reflect the profile's daily-brief preference in the profile toggle.
   useEffect(() => {
     if (!authProfile) return;
-    setDailyOn(authProfile.newsletterOptIn === true || authProfile.dailyNewsletterEnabled === true);
+    // Same rule as the sender: on unless explicitly turned off. The old check
+    // showed "off" to readers who were in fact getting the email.
+    setDailyOn(emailEnabled(authProfile as unknown as Record<string, unknown>));
   }, [authProfile]);
 
   useEffect(() => {
@@ -613,15 +556,9 @@ export default function FeedApp({
         }
         try {
           const token = await user.getIdToken();
-          const q = pro && bookmarkQuery.trim() ? `&q=${encodeURIComponent(bookmarkQuery.trim())}` : '';
+          const q = bookmarkQuery.trim() ? `&q=${encodeURIComponent(bookmarkQuery.trim())}` : '';
           const res = await fetch(`/api/bookmarks?limit=100${q}`, { headers: { Authorization: `Bearer ${token}` } });
           if (cancelled) return;
-          if (res.status === 403) {
-            // Server disagrees about Pro (e.g. revoked) — drop the filter and say so.
-            showToast('Saved search is a Pro feature');
-            setBookmarkQuery('');
-            return;
-          }
           if (!res.ok) return;
           const data = await res.json();
           const rows: StoredBookmark[] = Array.isArray(data.bookmarks) ? data.bookmarks : [];
@@ -633,7 +570,7 @@ export default function FeedApp({
       })();
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [user, pro, bookmarkQuery]);
+  }, [user, bookmarkQuery]);
 
   useEffect(() => {
     if (!user) return;
@@ -678,8 +615,8 @@ export default function FeedApp({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // First-touch framing for campaign traffic (blog etc.): the free edition is
-  // a tier, not a bait-and-switch. Dismissal lasts the session.
+  // First-touch framing for campaign traffic (blog etc.): show a short sign-in
+  // nudge once. Dismissal lasts the session.
   useEffect(() => {
     try {
       if (sessionStorage.getItem('trace_campaign_welcome_dismissed') === '1') return;
@@ -691,7 +628,7 @@ export default function FeedApp({
   }, []);
 
   // Show/event only once auth has resolved, and never for signed-in readers.
-  const campaignWelcomeVisible = Boolean(campaignWelcome && !user && !pro && !authLoading);
+  const campaignWelcomeVisible = Boolean(campaignWelcome && !user && !authLoading);
   const welcomeTracked = useRef(false);
   useEffect(() => {
     if (!campaignWelcomeVisible) return;
@@ -806,23 +743,18 @@ export default function FeedApp({
     return pathname || '/feed';
   }
   function openStory(s: FeedStory) {
-    const blocked = isFree
-      && s.id !== unlockedId
-      && !fullIds.has(s.id);
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
-    if (!blocked) {
-      setReadIds((cur) => {
-        if (cur.has(s.id)) return cur;
-        const next = new Set(cur);
-        next.add(s.id);
-        storeReads(user?.uid, next);
-        return next;
-      });
-    }
+    setReadIds((cur) => {
+      if (cur.has(s.id)) return cur;
+      const next = new Set(cur);
+      next.add(s.id);
+      storeReads(user?.uid, next);
+      return next;
+    });
     window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
     trackFeedItemClicked(s.id, 'story', s.source || '');
-    trackSummaryOpened(s.id, pro, {
+    trackSummaryOpened(s.id, false, {
       surface: 'feed_v2', item_type: 'story', source: s.source,
       position: s.rank, sources_count: s.sources.length,
     });
@@ -832,7 +764,7 @@ export default function FeedApp({
     setView({ story: null, pulse: t.id });
     window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
     trackFeedItemClicked(t.id, 'pulse', t.source || '');
-    trackSummaryOpened(t.id, pro, {
+    trackSummaryOpened(t.id, false, {
       surface: 'feed_v2', item_type: 'pulse', source: t.source,
     });
   }
@@ -983,7 +915,7 @@ export default function FeedApp({
   }
 
   async function loadOlder() {
-    if (olderLoading || olderDone || !pro) return;
+    if (olderLoading || olderDone) return;
     setOlderLoading(true);
     setOlderError(false);
     const wantCat = tab === 'all' ? '' : tab;
@@ -1083,7 +1015,7 @@ export default function FeedApp({
   const sortMode = sortOverride ?? 'for_you';
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
   const storyCap = tab === 'all'
-    ? (pro ? HOME_CAP_PRO : HOME_CAP_FREE)
+    ? HOME_CAP
     : PER_TAB_STORY_CAP;
   const rankedForTab = useMemo(() => {
     const list = tab === 'all'
@@ -1177,32 +1109,7 @@ export default function FeedApp({
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
-  const currentPrice = priceDisplay || SUBSCRIPTION_PRICE_DEFAULT;
-  const proLabel = proTrialCtaLabel(currentPrice);
-  const isFree = !pro;
-  const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
-  const isStoryLane = tab !== 'all' && tab !== 'bookmarks' && tab !== 'profile'
-    && tab !== 'conversations' && tab !== 'reading';
-  const laneFree = isFree && isStoryLane;
-  // Home shows 3 stories to guests and 5 to free accounts; category tabs show
-  // 2 to guests and 5 to signed-in free accounts.
-  const unlockedCap = laneFree ? (user ? FREE_LIMIT_SIGNED_IN : 2) : freeLimit;
-  // Free readers see the first N stories in this view, then teasers and the paywall.
-  const full = isFree ? visible.slice(0, unlockedCap) : visible;
-  const lockedStories = isFree ? visible.slice(unlockedCap) : [];
-  const teasers = laneFree ? lockedStories.slice(0, 2) : lockedStories;
-  // Repeating "sign up to see full stories" on every row reads as nagging, so
-  // only the first locked row spells it out and the rest carry the lock icon.
-  const firstLockedId = teasers[0]?.id;
-  const fullIds = new Set(full.map((s) => s.id));
-  const showIds = new Set([...fullIds, ...teasers.map((s) => s.id)]);
   const viewRank = new Map(visible.map((s, i) => [s.id, i + 1]));
-  // A card that renders as open always opens; only blurred teasers paywall.
-  const openBlocked = Boolean(open)
-    && isFree
-    && open!.id !== unlockedId
-    && !fullIds.has(open!.id);
-
   const markedStories = allStories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
 
@@ -1219,30 +1126,21 @@ export default function FeedApp({
   const extraBookmarks = bookmarks.filter((b) => !matchedBookmarkIds.has(b.item_id));
   const bookmarkCount = richMarkedStories.length + richMarkedPulse.length + extraBookmarks.length;
 
-  // "caught up" only after a Pro reader has opened every story they can
-  // see, including the archive. Free readers still have locked stories
-  // behind the paywall, so celebrating would be a lie.
-  const caughtUp = !isFree
-    && full.length > 0
-    && full.every((s) => readIds.has(s.id))
-    && lockedStories.length === 0
+  // "caught up" only after the reader has opened every story they can see,
+  // including the archive.
+  const caughtUp = visible.length > 0
+    && visible.every((s) => readIds.has(s.id))
     && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
     && olderDone;
 
-  // feed viewed (once per mount) + paywall impression (once per session).
+  // feed viewed (once per mount).
   const viewedRef = useRef(false);
-  const paywallRef = useRef(false);
   useEffect(() => {
     if (viewedRef.current) return;
     viewedRef.current = true;
-    trackFeedViewed(stories.length, !pro, 'edition', pro ? 'pro' : 'free', user ? 'authenticated' : 'guest');
+    trackFeedViewed(stories.length, false, 'edition', 'free', user ? 'authenticated' : 'guest');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    if (paywallRef.current || !isFree || lockedStories.length === 0) return;
-    paywallRef.current = true;
-    trackPaywallShown('feed_free_limit', { free_limit: unlockedCap, locked_count: lockedStories.length });
-  }, [isFree, lockedStories.length, unlockedCap]);
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
@@ -1250,7 +1148,7 @@ export default function FeedApp({
   const canFeature = !detailOpen
     && tab !== 'bookmarks' && tab !== 'profile'
     && tab !== 'conversations' && tab !== 'reading';
-  const featuredPool = isFree ? full : rankedForTab;
+  const featuredPool = rankedForTab;
   const featuredStory = !canFeature
     ? null
     : sortMode === 'recent'
@@ -1278,7 +1176,7 @@ export default function FeedApp({
   // back-button restores too, not just taps in the list.
   const openStoryId = open ? open.id : null;
   useEffect(() => {
-    if (!openStoryId || openBlocked) return;
+    if (!openStoryId) return;
     setReadIds((cur) => {
       if (cur.has(openStoryId)) return cur;
       const next = new Set(cur);
@@ -1302,32 +1200,12 @@ export default function FeedApp({
         }
       })
       .catch(() => null);
-  }, [openStoryId, openBlocked, user?.uid, user]);
+  }, [openStoryId, user?.uid, user]);
 
-  // Reads are per-account: switching users must not inherit the quota.
+  // Reads are per-account: switching users must not inherit read marks.
   useEffect(() => {
     setReadIds(readStoredReads(user?.uid || null));
   }, [user?.uid]);
-
-  // tools carousel cards (rendered twice for a seamless infinite loop).
-  const toolCards = (dup: string) => (
-    <>
-      <PromoSlot key={`promo-${dup}`} monthlyReach={monthlyReach} placement="pulse_mobile" onOpen={() => setPromoOpen(true)} compact />
-      {topTools(pulse.tools).map((t) => (
-        <a key={`${t.id}-${dup}`} className="tool-card" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
-          <span className="tool-card-top">
-            {domainOf(t.url) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="fav-solo" style={{ borderRadius: 5 }} src={`https://www.google.com/s2/favicons?domain=${domainOf(t.url)}&sz=64`} alt="" loading="lazy" />
-            ) : null}
-            {t.source ? <span className="tool-card-meta">{t.source}</span> : null}
-          </span>
-          <span className="tool-card-title">{t.title}</span>
-          {(t.sub || t.sum) ? <span className="tool-card-sub">{t.sub || t.sum}</span> : null}
-        </a>
-      ))}
-    </>
-  );
 
   if (authLoading && !mounted) {
     return <FeedSkeleton />;
@@ -1399,7 +1277,6 @@ export default function FeedApp({
                 )}
                 <span className="acct-main">
                   <b>{user.displayName || authProfile?.name || 'Reader'}</b>
-                  <span>{pro ? 'Pro member' : 'Free plan'}</span>
                 </span>
               </button>
             ) : (
@@ -1414,37 +1291,10 @@ export default function FeedApp({
 
       {/* center rail */}
       <main className="main" ref={mainRef}>
-        {activating && (
-          <div className="activating" role="status" aria-live="polite">
-            <span className="activating-spin" /> Activating your subscription…
-          </div>
-        )}
         {openPulse ? (
-          !pro ? (
-            <PaywallPlate what="Pulse — the builders' radar" ask="pro" proLabel={proLabel} priceDisplay={currentPrice} />
-          ) : (
-            <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
-          )
+          <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
         ) : open ? (
-          openBlocked ? (
-            <>
-              <header className="head">
-                <button className="back" onClick={goBack} aria-label="Back to feed"><ArrowLeft size={20} /></button>
-                <h1 className="head-title">Story</h1>
-                <span className="head-spacer" />
-              </header>
-              <PaywallPlate
-                what="This story"
-                ask={user ? 'daily' : 'signup'}
-                signingIn={signingIn}
-                proLabel={proLabel}
-                priceDisplay={currentPrice}
-                onSignIn={handleSignIn}
-              />
-            </>
-          ) : (
-            <Detail story={open} displayRank={viewRank.get(open.id)} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
-          )
+          <Detail story={open} displayRank={viewRank.get(open.id)} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
         ) : storyParam ? (
           <EmptyFeed
             title="Story not found"
@@ -1463,13 +1313,14 @@ export default function FeedApp({
           <ProfileView
             profile={profile} setProfile={setProfile} storyCount={stories.length}
             dirty={dirty} saving={savingProfile} onSave={saveProfile}
-            pro={pro} onBack={() => go('all')}
+            canCancel={Boolean(user) && hasPaidSubscription(authProfile) && !authProfile?.cancelledAt} onBack={() => go('all')}
             notice={profileNotice}
             signingIn={signingIn}
             onEdit={() => setProfileNotice(null)}
             notify={showToast}
             dailyOn={dailyOn}
             onToggleDaily={() => toggleDailyEmails('profile')}
+            briefSummary={briefSummary(authProfile as unknown as Record<string, unknown> | null)}
             streak={streak}
             weeklyWrap={weeklyWrap}
             getToken={async () => (user ? user.getIdToken() : '')}
@@ -1477,15 +1328,13 @@ export default function FeedApp({
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
             onSignOut={() => { signOut(); go('all'); }}
             onSignIn={handleSignIn}
-            proLabel={proLabel}
-            priceDisplay={currentPrice}
           />
         ) : tab === 'bookmarks' ? (
           <>
             <header className="head">
               <h1 className="head-title">Bookmarks</h1>
               <span className="head-meta">{bookmarkCount}</span>
-              {user && pro ? (
+              {user ? (
                 <input
                   className="bm-search"
                   type="search"
@@ -1587,15 +1436,21 @@ export default function FeedApp({
               <h1 className="head-title">{feedTabLabel('conversations')}</h1>
               <span className="head-meta">{pulse.discussions.length}</span>
             </header>
-            <div className="tools-carousel-wrap">
-              <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{topTools(pulse.tools).length}</span></div>
-              <div className="tools-carousel" ref={carouselRef}>
-                <div className="tools-track">
-                  <div className="tools-group">{toolCards('a')}</div>
-                  <div className="tools-group" aria-hidden="true" inert>{toolCards('b')}</div>
-                </div>
+            {/* Phones: the sponsored tool alone, full width, in place of the tools carousel. */}
+            {homeSponsors.length > 0 && (
+              <div className="tools-carousel-wrap tools-sponsor-wrap">
+                {homeSponsors.map((sponsor, sponsorIndex) => (
+                  <SponsoredToolLink
+                    key={sponsor.id}
+                    sponsor={sponsor}
+                    placement="pulse_mobile"
+                    position={sponsorIndex + 1}
+                    feedDate={feedDate}
+                    variant="mobile"
+                  />
+                ))}
               </div>
-            </div>
+            )}
             <PulseFeed
               items={pulse.discussions}
               title={feedTabLabel('conversations')}
@@ -1618,11 +1473,7 @@ export default function FeedApp({
             </div>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
-              <span className="head-meta">
-                {isFree
-                  ? `${Math.min(unlockedCap, visible.length)} of ${visible.length}`
-                  : String(visible.length)}
-              </span>
+              <span className="head-meta">{visible.length}</span>
               <StreakPill streak={streak?.current_streak || 0} />
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories" ref={sortSegRef}>
@@ -1660,7 +1511,6 @@ export default function FeedApp({
                 onOpen={() => openStory(featuredStory)}
                 following={featuredStory.threadId ? followedThreads.has(featuredStory.threadId) : false}
                 onToggleFollow={featuredStory.threadId ? () => toggleThreadFollow(featuredStory) : undefined}
-                locked={isFree && !fullIds.has(featuredStory.id)}
               />
             )}
             {categoryLeads.map((story) => (
@@ -1672,14 +1522,13 @@ export default function FeedApp({
                 onOpen={() => openStory(story)}
                 following={story.threadId ? followedThreads.has(story.threadId) : false}
                 onToggleFollow={story.threadId ? () => toggleThreadFollow(story) : undefined}
-                locked={isFree && !fullIds.has(story.id)}
               />
             ))}
             {campaignWelcomeVisible && campaignWelcome && (
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
-                  <p className="welcome-strip-title">Get more from Trace with a free account</p>
-                  <p className="welcome-strip-sub">Sign in to get more free stories daily, personalize your topics, and choose the optional morning email.</p>
+                  <p className="welcome-strip-title">Make Trace yours</p>
+                  <p className="welcome-strip-sub">Sign in to personalize your topics and choose the optional morning email.</p>
                 </div>
                 <div className="welcome-strip-actions">
                   <button
@@ -1690,11 +1539,11 @@ export default function FeedApp({
                     }}
                     disabled={signingIn}
                   >
-                    {signingIn ? 'Signing in…' : 'Sign in to get more free stories daily'}
+                    {signingIn ? 'Signing in…' : 'Sign in, it’s free'}
                   </button>
                   <button
                     className="welcome-strip-x"
-                    aria-label="Dismiss free-edition notice"
+                    aria-label="Dismiss notice"
                     onClick={() => {
                       try { sessionStorage.setItem('trace_campaign_welcome_dismissed', '1'); } catch {}
                       setCampaignWelcome(null);
@@ -1735,8 +1584,6 @@ export default function FeedApp({
               ) : (
                 listRows.map((row, rowIndex) => {
                   const renderCard = (s: FeedStory, grouped: boolean, showImage = !grouped) => {
-                    if (!showIds.has(s.id)) return null;
-                    const locked = isFree && !fullIds.has(s.id);
                     return (
                       <StoryCard
                         key={s.id}
@@ -1744,10 +1591,6 @@ export default function FeedApp({
                         displayRank={viewRank.get(s.id)}
                         hideRank={grouped}
                         showImage={showImage}
-                        locked={locked}
-                        lockedLabel={locked && s.id === firstLockedId
-                          ? (user ? `${proLabel} to unlock every story` : 'Sign in to get more free stories daily')
-                          : locked ? '' : undefined}
                         burst={burstId === s.id}
                         fullDek={tab === 'conversations'}
                         onClick={() => openStory(s)}
@@ -1767,7 +1610,7 @@ export default function FeedApp({
                       return (
                         <HeadlineSection key="model-releases" label="Model releases" tone={0}>
                           {visible
-                            .filter((s) => releaseHeadings.ids.has(s.id) && showIds.has(s.id))
+                            .filter((s) => releaseHeadings.ids.has(s.id))
                             .map((s) => renderCard(s, true, true))}
                         </HeadlineSection>
                       );
@@ -1781,7 +1624,7 @@ export default function FeedApp({
                       </Fragment>
                     );
                   }
-                  const members = row.stories.filter((s) => showIds.has(s.id) && !releaseHeadings.ids.has(s.id));
+                  const members = row.stories.filter((s) => !releaseHeadings.ids.has(s.id));
                   if (members.length < 2) {
                     return <Fragment key={row.id}>{members.map((s) => renderCard(s, false))}</Fragment>;
                   }
@@ -1840,18 +1683,6 @@ export default function FeedApp({
                 />
               ))}
 
-              {!feedError && isFree && lockedStories.length > 0 && (
-                <PaywallPlate
-                  what="the full ranked feed"
-                  ask={user ? 'daily' : 'signup'}
-                  signingIn={signingIn}
-                  proLabel={proLabel}
-                  priceDisplay={currentPrice}
-                  onSignIn={handleSignIn}
-                  compact={laneFree}
-                />
-              )}
-
               {!feedError && !caughtUp && tab === 'all' && visible.length > 0 && readIds.size > 0 && pulseAfternoonItems.length > 0 && (
                 <PulseAfternoonHook
                   items={pulseAfternoonItems}
@@ -1860,45 +1691,41 @@ export default function FeedApp({
                 />
               )}
 
-              {!isFree && (
-                <>
-                  {olderForTab.length > 0 && (
-                    <div className="older-sep">
-                      <span>{tab === 'all' ? 'Earlier stories' : `Earlier in ${CAT_LABELS[tab] || tab}`}</span>
-                    </div>
-                  )}
-                  {olderForTab.map((s) => (
-                    <StoryCard
-                      key={s.id}
-                      story={s}
-                      burst={burstId === s.id}
-                      onClick={() => openStory(s)}
-                      marked={marks.has(s.id)}
-                      onToggleMark={toggleMark}
-                      onShare={share}
-                    />
-                  ))}
-                  {!olderDone && (
-                    <button className="load-older" onClick={loadOlder} disabled={olderLoading}>
-                      <Clock size={16} />
-                      {olderLoading
-                        ? 'Loading older stories…'
-                        : tab === 'all'
-                          ? 'See older stories'
-                          : `See older ${CAT_LABELS[tab] || tab} stories`}
-                    </button>
-                  )}
-                  {olderDone && olderStories.length > 0 && (
-                    <p className="older-end">
-                      {tab === 'all'
-                        ? 'That’s the whole archive for now.'
-                        : `That’s every ${CAT_LABELS[tab] || tab} story in the archive.`}
-                    </p>
-                  )}
-                  {olderError && (
-                    <p className="older-error">Couldn&rsquo;t load older stories. Try again.</p>
-                  )}
-                </>
+              {olderForTab.length > 0 && (
+                <div className="older-sep">
+                  <span>{tab === 'all' ? 'Earlier stories' : `Earlier in ${CAT_LABELS[tab] || tab}`}</span>
+                </div>
+              )}
+              {olderForTab.map((s) => (
+                <StoryCard
+                  key={s.id}
+                  story={s}
+                  burst={burstId === s.id}
+                  onClick={() => openStory(s)}
+                  marked={marks.has(s.id)}
+                  onToggleMark={toggleMark}
+                  onShare={share}
+                />
+              ))}
+              {!olderDone && (
+                <button className="load-older" onClick={loadOlder} disabled={olderLoading}>
+                  <Clock size={16} />
+                  {olderLoading
+                    ? 'Loading older stories…'
+                    : tab === 'all'
+                      ? 'See older stories'
+                      : `See older ${CAT_LABELS[tab] || tab} stories`}
+                </button>
+              )}
+              {olderDone && olderStories.length > 0 && (
+                <p className="older-end">
+                  {tab === 'all'
+                    ? 'That’s the whole archive for now.'
+                    : `That’s every ${CAT_LABELS[tab] || tab} story in the archive.`}
+                </p>
+              )}
+              {olderError && (
+                <p className="older-error">Couldn&rsquo;t load older stories. Try again.</p>
               )}
 
               {caughtUp && (
@@ -1963,7 +1790,7 @@ export default function FeedApp({
             {topTools(pulse.tools).map((t) => (
               <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
                 <RailLogo item={t} />
-                <span className="pulse-title" title={t.title} style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                <span className="pulse-title" title={t.title} style={{ display: 'block', minWidth: 0, overflowWrap: 'anywhere' }}>{t.title}</span>
                 {(t.sub || (!isGithubItem(t) && t.signal)) ? (
                   <span className="rail-sub">{t.sub || t.signal}</span>
                 ) : null}
@@ -1994,7 +1821,7 @@ export default function FeedApp({
           getToken={async () => (user ? user.getIdToken() : '')}
         />
       )}
-      {celebrate && <WelcomeModal kind={celebrate} priceDisplay={priceDisplay} onClose={() => setCelebrate(null)} />}
+      {celebrate && <WelcomeModal kind={celebrate} onClose={() => setCelebrate(null)} />}
 
       {nlPrompt && !user && (
         <NewsletterPromptModal onClose={dismissNewsletterPrompt} />
@@ -2003,36 +1830,25 @@ export default function FeedApp({
   );
 }
 
-function WelcomeModal({ kind, onClose, priceDisplay = '' }: { kind: 'pro' | 'promo'; onClose: () => void; priceDisplay?: string }) {
-  const isPro = kind === 'pro';
+function WelcomeModal({ onClose }: { kind: 'promo'; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const perks = isPro
-    ? [
-      "All 10 stories in today's ranked edition",
-      'Full summaries with key points',
-      'Pulse: Top HN',
-      'Profile-ranked picks plus the daily email brief',
-    ]
-    : [
-      'A sponsored spot in desktop Tools and at the end of Home when the Tools rail collapses for 30 days',
-      'Shown in desktop Tools and at the end of Home when the Tools rail collapses',
-      'Support anytime: tomartarun2001@gmail.com',
-    ];
+  const perks = [
+    'A sponsored spot in Tools on desktop, at the top of Top HN on phones, and at the end of Home, for 30 days',
+    `Support anytime: ${CONTACT_EMAIL}`,
+  ];
   return (
     <div className="promo-overlay" onClick={onClose}>
-      <div className="promo-modal celebrate-modal" role="dialog" aria-modal="true" aria-label={isPro ? 'Welcome to Pro' : 'Your tool is live'} onClick={(e) => e.stopPropagation()}>
+      <div className="promo-modal celebrate-modal" role="dialog" aria-modal="true" aria-label="Your tool is live" onClick={(e) => e.stopPropagation()}>
         <div className="celebrate-badge"><Check size={26} /></div>
         <h2 className="promo-title celebrate-title">
-          {isPro ? 'Welcome to Pro' : 'Your tool is live'}
+          Your tool is live
         </h2>
         <p className="promo-price celebrate-sub">
-          {isPro
-            ? 'Payment confirmed. Thanks for backing Trace, here is what just unlocked.'
-            : 'Payment confirmed. Thanks for backing Trace, your promo is now running.'}
+          Payment confirmed. Thanks for backing Trace, your promo is now running.
         </p>
         <ul className="perk-list">
           {perks.map((p) => (
@@ -2040,9 +1856,8 @@ function WelcomeModal({ kind, onClose, priceDisplay = '' }: { kind: 'pro' | 'pro
           ))}
         </ul>
         <button className="promo-pay" onClick={onClose} autoFocus>
-          {isPro ? 'Start exploring' : 'Nice'}
+          Nice
         </button>
-        {isPro && <p className="promo-support">{shortPriceDisplay(priceDisplay || SUBSCRIPTION_PRICE_DEFAULT)} · cancel anytime in Profile</p>}
       </div>
     </div>
   );
@@ -2114,7 +1929,7 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
         <button className="promo-pay" onClick={pay} disabled={busy}>
           {busy ? 'Opening checkout…' : signedIn ? 'Submit' : 'Sign in to continue'}
         </button>
-        <p className="promo-support">Support throughout your month: <a href="mailto:tomartarun2001@gmail.com">tomartarun2001@gmail.com</a></p>
+        <p className="promo-support">Support throughout your month: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
       </div>
     </div>
   );
@@ -2160,10 +1975,10 @@ function SponsoredToolLink({
   variant,
 }: {
   sponsor: PromotedTool;
-  placement: 'desktop_tools' | 'home_feed_end';
+  placement: 'desktop_tools' | 'home_feed_end' | 'pulse_mobile';
   position: number;
   feedDate: string;
-  variant: 'feed' | 'tools';
+  variant: 'feed' | 'tools' | 'mobile';
 }) {
   return (
     <a
@@ -2187,7 +2002,7 @@ function SponsoredToolLink({
       <span className="sponsor-label">Sponsored</span>
       <span className="sponsored-tool-heading">
         <RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} />
-        <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sponsor.title}</span>
+        <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{sponsor.title}</span>
       </span>
       {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
       <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
@@ -2282,10 +2097,10 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, hideRank = false, showImage = true, fullDek = false, threadFollowing = false, onToggleThreadFollow }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, displayRank, burst = false, hideRank = false, showImage = true, fullDek = false, threadFollowing = false, onToggleThreadFollow }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
-  locked?: boolean; lockedLabel?: string; displayRank?: number; burst?: boolean;
+  displayRank?: number; burst?: boolean;
   hideRank?: boolean; showImage?: boolean; fullDek?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
 }) {
   const rank = displayRank ?? story.rank;
@@ -2295,46 +2110,42 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
       onClick();
     }
   };
-  const dek = locked ? '' : storyDek(story);
+  const dek = storyDek(story);
   const thumb = showImage && story.img
-    ? <FeedImage src={story.img} className={`post-thumb${locked ? ' locked-thumb' : ''}`} alt="" />
+    ? <FeedImage src={story.img} className="post-thumb" alt="" />
     : null;
   return (
     <article
-      className={`post${locked ? ' locked' : ''}`}
+      className="post"
       role="button"
       tabIndex={0}
-      aria-label={locked ? `Locked story: ${story.title}` : story.title}
+      aria-label={story.title}
       onClick={onClick}
       onKeyDown={onKey}
     >
       <div className="post-row">
         {thumb}
         <div className="post-copy">
-          <h2 className={`post-title${locked ? ' locked-title' : ''}`}>{story.title}</h2>
-          {locked ? (
-            <p className="lock-note"><Lock size={13} /> {lockedLabel || 'Sign up to see full stories'}</p>
-          ) : dek ? (
+          <h2 className="post-title">{story.title}</h2>
+          {dek ? (
             <p className={`post-dek${fullDek ? ' full' : ''}`}>{dek}</p>
           ) : null}
           <div className="post-meta">
             <SourceStack sources={story.sources} />
-            {locked ? null : <span className="post-src">{story.source}</span>}
+            <span className="post-src">{story.source}</span>
             <span className="post-time">{story.time}</span>
             {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
             {story.threadId && (
               <span className="post-group">
                 · Ongoing story
-                {!locked && onToggleThreadFollow ? (
+                {onToggleThreadFollow ? (
                   <ThreadFollowButton threadId={story.threadId} following={threadFollowing} onToggle={onToggleThreadFollow} />
                 ) : null}
               </span>
             )}
             {!hideRank && <><span className="post-spacer" /><span className="post-rank">#{rank}</span></>}
           </div>
-          {locked ? null : (
-            <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
-          )}
+          <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
         </div>
       </div>
     </article>
@@ -2607,89 +2418,6 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
   );
 }
 
-function PaywallPerks({ items }: { items: { emoji: string; text: string }[] }) {
-  return (
-    <ul className="paywall-perks">
-      {items.map((item) => (
-        <li key={item.text}>
-          <span className="perk-ic" aria-hidden="true">{item.emoji}</span>
-          <span>{item.text}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro', priceDisplay = SUBSCRIPTION_PRICE_DEFAULT, compact = false }: {
-  what: string;
-  ask: 'signup' | 'daily' | 'pro';
-  onSignIn?: () => void;
-  signingIn?: boolean;
-  proLabel?: string;
-  priceDisplay?: string;
-  compact?: boolean;
-}) {
-  const cls = compact ? 'paywall compact' : 'paywall';
-  if (ask === 'signup') {
-    return (
-      <div className={cls}>
-        <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">Sign in to get more free stories daily</h2>
-        <p className="paywall-sub">
-          Sign in to personalize your topics and choose the optional morning email.
-        </p>
-        <PaywallPerks items={[
-          { emoji: '☀️', text: 'Daily morning brief in your inbox' },
-          { emoji: '📌', text: 'Follow stories as they develop' },
-          { emoji: '🔖', text: 'Save stories and pick up later' },
-        ]} />
-        <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
-          {signingIn ? 'Signing in…' : 'Sign up free with Google'}
-        </button>
-        <p className="paywall-foot">No card needed.</p>
-      </div>
-    );
-  }
-
-  if (ask === 'daily') {
-    return (
-      <div className={cls}>
-        <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">{compact ? 'Pro unlocks the whole topic' : 'Pro unlocks the full daily edition'}</h2>
-        <p className="paywall-sub">
-          {compact
-            ? 'Read every story in this topic, explore the archive, and use Pulse and agent access with Pro.'
-            : 'Get the full daily edition, archive, Pulse, and agent access with Pro.'}
-        </p>
-        <PaywallPerks items={[
-          { emoji: '☀️', text: 'Daily morning brief in your inbox' },
-          { emoji: '🤖', text: 'Agent access in Claude, Codex, or Cursor' },
-          { emoji: '📌', text: 'Follow stories as they develop' },
-        ]} />
-        <ProCheckoutButton className="paywall-btn" label={proLabel} />
-        <p className="paywall-foot">{trialFootline(priceDisplay)}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cls}>
-      <div className="paywall-badge"><Lock size={20} /></div>
-      <h2 className="paywall-title">This one&rsquo;s for Pro</h2>
-      <p className="paywall-sub">
-        <>{what} is part of <b>Trace Pro</b> — the whole day, ranked and summarized, every morning.</>
-      </p>
-      <PaywallPerks items={[
-        { emoji: '☀️', text: 'Daily morning brief in your inbox' },
-        { emoji: '🤖', text: 'Agent access in Claude, Codex, or Cursor' },
-        { emoji: '📌', text: 'Follow stories as they develop' },
-      ]} />
-      <ProCheckoutButton className="paywall-btn" label={proLabel} />
-      <p className="paywall-foot">{trialFootline(priceDisplay)}</p>
-    </div>
-  );
-}
-
 function CancelModal({ onClose, getToken, onDone }: {
   onClose: () => void; getToken: () => Promise<string>; onDone: () => void;
 }) {
@@ -2700,12 +2428,6 @@ function CancelModal({ onClose, getToken, onDone }: {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const miss = [
-    'Full access to the daily edition and every topic',
-    'Complete summaries, key points, and archive search',
-    'Full Pulse, including Top HN',
-    'Profile ranking and the daily email brief',
-  ];
   async function confirm() {
     if (busy) return;
     setBusy(true);
@@ -2728,39 +2450,42 @@ function CancelModal({ onClose, getToken, onDone }: {
   }
   return (
     <div className="promo-overlay" onClick={onClose}>
-      <div className="promo-modal" role="dialog" aria-modal="true" aria-label="Cancel Pro" onClick={(e) => e.stopPropagation()}>
+      <div className="promo-modal" role="dialog" aria-modal="true" aria-label="Cancel plan" onClick={(e) => e.stopPropagation()}>
         <div className="promo-head">
-          <h2 className="promo-title">Before you go</h2>
+          <h2 className="promo-title">Cancel your plan</h2>
           <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
-        <p className="promo-price">Cancelling means giving these up at the end of your billing period.</p>
-        <ul className="perk-list miss-list">
-          {miss.map((m) => (
-            <li key={m}><X size={16} /><span>{m}</span></li>
-          ))}
-        </ul>
+        <p className="promo-price">Everything in Trace is included for everyone, so you keep full access. Cancelling stops future charges at the end of your billing period.</p>
         {error ? <p className="promo-error">{error}</p> : null}
-        <button className="promo-pay" onClick={onClose}>Keep my Pro</button>
+        <button className="promo-pay" onClick={onClose}>Keep my plan</button>
         <button className="cancel-confirm" onClick={confirm} disabled={busy}>
-          {busy ? 'Cancelling…' : 'Yes, cancel Pro'}
+          {busy ? 'Cancelling…' : 'Yes, cancel plan'}
         </button>
       </div>
     </div>
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null, proLabel = 'Go Pro', priceDisplay = SUBSCRIPTION_PRICE_DEFAULT }: {
+/** "10 stories · AI, Markets · summaries" — what the reader's email holds. */
+function briefSummary(profile: Record<string, unknown> | null): string {
+  if (!profile) return '';
+  const prefs = prefsFromProfile(profile);
+  const topics = prefs.topics.length ? prefs.topics.map(topicLabel).join(', ') : 'All topics';
+  const format = { summaries: 'with summaries', headlines: 'headlines only', images: 'with summaries and images' }[prefs.format];
+  return `${prefs.count} stories · ${topics} · ${format}`;
+}
+
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, canCancel, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, briefSummary = '', streak = null, weeklyWrap = null }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
-  dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
+  dirty: boolean; saving: boolean; onSave: () => void; canCancel: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
   onSignOut: () => void; onSignIn: () => void;
   notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
   notice?: string | null; signingIn?: boolean; onEdit?: () => void;
   dailyOn?: boolean; onToggleDaily?: () => void;
+  briefSummary?: string;
   streak?: ReadingStreak | null;
   weeklyWrap?: WeeklyWrapSummary | null;
-  proLabel?: string;
-  priceDisplay?: string;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `Following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
@@ -2810,7 +2535,6 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
                 <h1 className="profile-name">{user ? (user.displayName || profile.name) : 'Signed out'}</h1>
                 <p className="profile-handle">
                   {user ? `@${(user.email || '').split('@')[0]}` : 'Sign in to personalize your feed'}
-                  {user ? <span className={`profile-plan${pro ? ' pro' : ''}`}>{pro ? 'Pro member' : 'Free plan'}</span> : null}
                 </p>
               </div>
               {user && (dirty || saving) && (
@@ -2833,7 +2557,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
 
         <section className="p-group">
           <h2 className="p-group-title">Interests</h2>
-          <p className="p-group-sub">We use these only to order your For You feed — nothing else, no emails and no hidden filtering.</p>
+          <p className="p-group-sub">These order your For You feed, and your daily email until you give it its own topics below. No hidden filtering.</p>
           <div className="p-checks">
             {ALL_INTERESTS.map((t) => {
               const on = profile.interests.includes(t);
@@ -2868,30 +2592,34 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
                 <span className="p-switch-knob" />
               </button>
             </div>
-          </div>
-        </section>
-
-        <section className="p-group">
-          <h2 className="p-group-title">Membership</h2>
-          <div className="p-card">
             <div className="p-row">
               <div className="p-row-main">
-                <span className="p-row-title">{pro ? 'Pro member' : 'Free plan'}</span>
-                <span className="p-row-sub">Pro unlocks the whole day, Pulse and your profile.</span>
-                {!pro && <span className="p-row-sub">{trialFootline(priceDisplay)}</span>}
+                <span className="p-row-title">Your daily brief</span>
+                <span className="p-row-sub">{briefSummary || 'Ten stories across all topics, with summaries.'}</span>
               </div>
-              {pro ? (
-                <button className="p-link danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>
-              ) : (
-                <a className="p-link" href="/subscribe">{proLabel}</a>
-              )}
+              <Link className="p-link" href="/brief/customize">Customize</Link>
             </div>
           </div>
         </section>
 
+        {canCancel && (
+          <section className="p-group">
+            <h2 className="p-group-title">Membership</h2>
+            <div className="p-card">
+              <div className="p-row">
+                <div className="p-row-main">
+                  <span className="p-row-title">Paid plan</span>
+                  <span className="p-row-sub">Everything in Trace is included for everyone. You can cancel your old plan here.</span>
+                </div>
+                <button className="p-link danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="p-group">
           <h2 className="p-group-title">Agent access</h2>
-          <AgentRetentionCard pro={pro} />
+          <AgentRetentionCard />
         </section>
 
         <section className="p-group p-group-last">
@@ -2912,7 +2640,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           onDone={() => {
             setCancelOpen(false);
             onSubscriptionChanged();
-            notify('Cancelled. Pro stays active until the end of your billing period.');
+            notify('Cancelled. You won’t be charged again.');
           }}
         />
       )}
@@ -2989,7 +2717,7 @@ const css = `
   .xw .post { padding: 16px 14px 10px; }
   .xw .post-title { font-size: 18px; }
   .xw .post-thumb { width: 104px; height: 104px; flex-basis: 104px; border-radius: 12px; }
-  .xw .post-dek { font-size: 14px; -webkit-line-clamp: 2; }
+  .xw .post-dek { font-size: 14px; }
   .xw .headline-title { font-size: 18px; }
   .xw .headline { margin: 8px 8px 14px; }
   .xw .feed { padding-bottom: 104px; }
@@ -3147,8 +2875,6 @@ const css = `
 }
 .xw .post:hover { background-color: var(--hover); }
 .xw .post:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
-.xw .post.locked { cursor: default; }
-.xw .post.locked:hover { background: transparent; }
 .xw .headline {
   margin: 10px 12px 18px;
   border: 1px solid var(--line);
@@ -3216,26 +2942,24 @@ const css = `
     box-sizing: border-box;
   }
   .xw .promo-slot-compact .promo-headline {
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     font-size: 14px; line-height: 18px;
   }
   .xw .promo-slot-compact .promo-subline { font-size: 12px; line-height: 16px; }
   .xw .promo-slot-compact .promo-slot-actions { margin-top: auto; }
   .xw .promo-slot-compact .promo-cta { width: 100%; }
   .xw .tool-card-top { display: flex; align-items: center; gap: 6px; }
-  .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; }
+  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); }
   .xw .tool-card-meta { display: none; }
 }
 .xw .post-title { margin: 0 0 8px; font-size: 22px; font-weight: 800; line-height: 1.22; letter-spacing: -0.03em; }
 .xw .post-dek {
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; margin: 0 0 10px;
+  margin: 0 0 10px;
   font-size: 15px; line-height: 1.45; color: var(--text-2);
 }
 /* Discussion cards (Show HN, Top HN): the description is the story, so let
    it run instead of cutting it at two lines. */
-.xw .post-dek.full { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.xw .post-dek.full { display: block; overflow: visible; }
 .xw .post-row { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
 .xw .post-copy { flex: 1; min-width: 0; }
 .xw .post-thumb {
@@ -3245,9 +2969,6 @@ const css = `
   box-shadow: 0 0 0 1px rgba(15, 20, 25, 0.06);
 }
 .xw .post-thumb-sm { flex-basis: 56px; width: 56px; height: 56px; border-radius: 10px; box-shadow: none; }
-.xw .post-thumb.locked-thumb { opacity: 0.5; filter: grayscale(0.35); }
-.xw .locked-title { filter: blur(4px); user-select: none; }
-.xw .lock-note { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; font-size: 13px; font-weight: 650; color: var(--text-2); }
 .xw .post-img {
   width: 100%; aspect-ratio: 16 / 10; max-height: 510px; object-fit: cover;
   border-radius: 16px; margin: 10px 0 6px; display: block;
@@ -3337,59 +3058,6 @@ const css = `
 }
 .xw .detail-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* paywall */
-.xw .paywall {
-  margin: 3rem auto; max-width: 30rem; text-align: center; padding: 0 24px;
-  animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
-}
-.xw .paywall.compact { margin: 20px auto 28px; }
-@keyframes t-panel-in {
-  from { opacity: 0; transform: translateY(12px); filter: blur(var(--blur-small)); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
-.xw .paywall-badge {
-  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 18px;
-  background: rgba(29, 155, 240, 0.1); color: var(--blue);
-  display: flex; align-items: center; justify-content: center;
-}
-.xw .paywall-title { margin: 0 0 8px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
-.xw .paywall-sub { margin: 0 auto 14px; font-size: 15px; line-height: 22px; color: var(--text-2); max-width: 42ch; }
-.xw .paywall-sub b { color: var(--ink); }
-.xw .paywall-perks {
-  list-style: none; margin: 0 auto 20px; padding: 0;
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  column-gap: 10px;
-  row-gap: 10px;
-}
-.xw .paywall-perks li { display: contents; }
-.xw .paywall-perks .perk-ic { width: auto; flex-shrink: 0; text-align: center; line-height: 20px; }
-.xw .paywall-perks li span:last-child {
-  font-size: 14.5px; line-height: 20px; color: var(--text); text-align: left;
-}
-.xw .paywall.compact .paywall-perks { margin-bottom: 16px; }
-.xw .paywall-btn {
-  display: inline-block; height: 46px; line-height: 46px; padding: 0 28px;
-  border: none; border-radius: 9999px; background: var(--blue); color: #fff;
-  font-size: 15px; font-weight: 700; text-decoration: none; font-family: inherit;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.xw .paywall-btn:disabled { opacity: 0.7; cursor: wait; }
-.xw .paywall-btn:hover { background: #1a8cd8; }
-.xw .paywall-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.xw .paywall-alt {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 46px; padding: 0 24px; border-radius: 9999px;
-  border: 1px solid var(--line); background: var(--bg); color: var(--text);
-  font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.xw .paywall-alt:hover:not(:disabled) { background: var(--hover); }
-.xw .paywall-alt:disabled { cursor: default; }
-.xw .paywall-alt.on { color: var(--green); border-color: rgba(0, 186, 124, 0.45); }
-.xw .paywall-foot { margin: 14px 0 0; font-size: 12.5px; color: var(--text-3); }
 
 /* signal — plain text */
 .xw .signal { font-size: 12.5px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -3423,13 +3091,15 @@ const css = `
 .xw .sponsored-tool-row--feed { display: none !important; }
 @media (max-width: 1300px) { .xw .sponsored-tool-row--feed { display: grid !important; } }
 .xw .sponsored-tool-row--feed { border-top: 1px solid var(--line); }
+.xw .tools-sponsor-wrap { padding: 0; }
+.xw .tools-sponsor-wrap .sponsored-tool-row { width: 100%; box-sizing: border-box; }
 .xw .sponsored-tool-row:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .xw .sponsored-tool-row .sponsor-label { grid-column: 1 / -1; }
 .xw .sponsored-tool-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .xw .sponsored-tool-row .sponsor-desc { grid-column: 1 / -1; }
 .xw .sponsored-tool-row .sponsor-visit { grid-column: 1 / -1; }
 .xw .sponsor-label { color: #557b8e; font-size: 9.5px; font-weight: 700; line-height: 12px; letter-spacing: 0.055em; text-transform: uppercase; }
-.xw .sponsor-title { min-width: 0; overflow: hidden; color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.xw .sponsor-title { min-width: 0; color: var(--text); font-size: 15px; font-weight: 650; line-height: 20px; letter-spacing: -0.01em; }
 .xw .sponsor-desc { color: var(--text-2); font-size: 13px; line-height: 18px; overflow-wrap: break-word; }
 .xw .sponsor-visit { display: inline-flex; align-items: center; gap: 3px; width: fit-content; color: #28749a; font-size: 11.5px; font-weight: 600; line-height: 14px; }
 .xw .rail-logo { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
@@ -3438,7 +3108,7 @@ const css = `
 .xw .pulse-row:hover { background: var(--line); }
 .xw .sponsored-tool-row:hover { background: var(--line); }
 .xw .sponsored-tool-row:hover .sponsor-visit { color: #075f91; }
-.xw .pulse-title { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; text-overflow: ellipsis; white-space: nowrap; }
+.xw .pulse-title { min-width: 0; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
 .xw .promo-slot {
   display: flex; flex-direction: column; align-items: stretch; gap: 12px;
@@ -3574,12 +3244,6 @@ const css = `
   60% { opacity: 1; transform: scale(1.08) rotate(3deg); filter: blur(0); }
   100% { transform: scale(1) rotate(0); }
 }
-.xw .activating {
-  display: flex; align-items: center; gap: 10px;
-  margin: 12px 18px 0; padding: 10px 14px;
-  border: 1px solid var(--line); border-radius: 12px; background: var(--hover);
-  font-size: 13.5px; font-weight: 600;
-}
 .xw .welcome-strip {
   display: flex; align-items: center; gap: 14px;
   margin: 0; padding: 10px 16px 12px;
@@ -3606,13 +3270,6 @@ const css = `
   .xw .welcome-strip { flex-direction: column; align-items: stretch; margin: 0 -14px; padding: 10px 14px 12px; }
   .xw .welcome-strip-actions { justify-content: space-between; }
 }
-.xw .activating-spin {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid var(--line); border-top-color: var(--blue);
-  animation: act-spin 0.8s linear infinite;
-}
-@keyframes act-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .xw .activating-spin { animation: none; } }
 .xw .profile-hero { display: flex; gap: 16px; padding: 20px 18px 6px; }
 .xw .profile-hero .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .xw .profile-hero-main { flex: 1; min-width: 0; }
@@ -3620,8 +3277,6 @@ const css = `
 .xw .profile-hero-id { min-width: 0; }
 .xw .profile-name { margin: 0; font-size: 24px; font-weight: 800; line-height: 29px; letter-spacing: -0.02em; }
 .xw .profile-handle { margin: 2px 0 0; font-size: 14.5px; color: var(--text-3); }
-.xw .profile-plan { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--text-3); }
-.xw .profile-plan.pro { color: var(--blue); }
 .xw .profile-bio { margin: 10px 0 8px; font-size: 15px; line-height: 20px; }
 .xw .profile-stats { display: flex; gap: 6px; align-items: baseline; font-size: 14px; color: var(--text-3); }
 .xw .profile-stats b { color: var(--text); font-weight: 700; }
@@ -3747,7 +3402,6 @@ const css = `
   .xw .nav-count,
   .xw .promo-overlay,
   .xw .promo-modal,
-  .xw .paywall,
   .xw .save-note,
   .xw .save-note-ic,
   .xw .welcome-strip { animation: none !important; transition: none !important; }
@@ -3794,9 +3448,8 @@ ${retentionCss}
   .xw .post-title {
     grid-area: title; align-self: start;
     font-size: 18px; margin: 0; line-height: 1.25;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-  }
-  .xw .post-dek, .xw .lock-note { grid-area: dek; margin: 0; font-size: 14px; }
+    }
+  .xw .post-dek { grid-area: dek; margin: 0; font-size: 14px; }
   .xw .post-meta { grid-area: meta; margin: 0; min-width: 0; align-self: center; }
   .xw .post-copy > .actions { grid-area: actions; margin: 0; align-self: center; flex-shrink: 0; }
   .xw .post-rank { display: none; }

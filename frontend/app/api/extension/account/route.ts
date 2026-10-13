@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/lib/firebase-admin';
 import { getSignedInUid } from '@/lib/request-auth';
-import { hasActiveSubscription, subscriptionStatuses } from '@/lib/subscription-access';
+import { subscriptionStatuses } from '@/lib/subscription-access';
 
 const HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     name: profile?.displayName || profile?.name || null,
     photoUrl: profile?.photoURL || null,
     subscriptionStatus,
-    hasAccess: hasActiveSubscription(profile),
+    hasAccess: true,
   }, { headers: HEADERS });
 }
 

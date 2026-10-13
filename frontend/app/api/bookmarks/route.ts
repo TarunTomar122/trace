@@ -10,7 +10,6 @@ import {
   searchTermsForBookmark,
 } from '@/lib/bookmarks';
 import { getSignedInUid } from '@/lib/request-auth';
-import { hasActiveSubscription } from '@/lib/subscription-access';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,13 +101,6 @@ export async function GET(request: NextRequest) {
     if (searchParams.has('q') && requestedTokens.length === 0) {
       return json({ bookmarks: [], nextCursor: null });
     }
-    if (requestedTokens.length > 0) {
-      const profile = await adminFirestore.collection('user_profiles').doc(userId).get();
-      if (!profile.exists || !hasActiveSubscription(profile.data())) {
-        return json({ error: 'Trace Pro is required for saved archive search' }, { status: 403 });
-      }
-    }
-
     const collection = adminFirestore.collection('user_bookmarks').doc(userId).collection('items');
     const scanSize = requestedTokens.length > 0 ? Math.min(pageSize * 4, 400) : pageSize + 1;
     let query = requestedTokens.length > 0

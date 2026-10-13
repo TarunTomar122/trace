@@ -86,14 +86,7 @@ function formatPublishedDate(value: string): string {
 
 export default function ArticleContent({ article }: Props) {
   const searchParams = useSearchParams();
-  const {
-    user,
-    profile,
-    loading,
-    profileResolved,
-    profileFresh,
-    profileRefreshFailed,
-  } = useAuth();
+  const { user } = useAuth();
   const [shareCopied, setShareCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
@@ -113,13 +106,7 @@ export default function ArticleContent({ article }: Props) {
   const backLabel = getStoryBackLabel(returnHref);
   const isPublicShare = !isFromFeed;
   const shareUrl = useMemo(() => buildArticleShareUrl(article), [article]);
-  const publicCta = getPublicStoryCta({
-    user,
-    profile,
-    loading: loading || !profileResolved,
-    profileFresh,
-    profileRefreshFailed,
-  });
+  const publicCta = getPublicStoryCta({ user });
 
   const handleShare = async () => {
     const url = shareUrl || (typeof window !== "undefined" ? window.location.href : "");

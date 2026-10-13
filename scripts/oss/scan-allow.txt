@@ -1,0 +1,9 @@
+# Reviewed findings that the scan should not fail on. One "path:" prefix per line.
+# Firebase *web* config apiKey is a public client identifier by design (it ships
+# in every browser bundle); access is governed by Firebase security rules and
+# API-key restrictions. Self-hosters replace this file's values anyway. Run with
+# OSS_SCAN_STRICT=1 to ignore this allowlist.
+frontend/lib/firebase.ts:
+# Single definition of the default contact address (overridable via NEXT_PUBLIC_CONTACT_EMAIL).
+# Format: path|required substring on the same line.
+frontend/lib/site-links.ts|export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ||

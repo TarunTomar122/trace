@@ -32,7 +32,6 @@ export default function LegalPageShell({
         <a href="/feed" className="flex items-center gap-2"><img src="/trace.webp" alt="Trace" className="h-6 w-auto" /><span className="text-[17px] font-extrabold tracking-[-0.02em]">Trace</span></a>
         <nav className="flex items-center gap-5 text-[13px] font-medium text-[#75705f]">
           <a className="transition-opacity hover:opacity-70" href="/feed">Feed</a>
-          <a className="transition-opacity hover:opacity-70" href="/subscribe">Pricing</a>
           <Link className="transition-opacity hover:opacity-70" href="/feed">Profile</Link>
         </nav>
       </header>

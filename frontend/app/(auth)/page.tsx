@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
 import LandingScreen from '@/components/feed-v2/LandingScreen';
 import LandingAuthRedirect from './LandingAuthRedirect';
+import { listDailyEditions } from '@/lib/daily-editions';
 
 export const metadata: Metadata = {
   title: "Trace — 10 big things in tech & AI",
@@ -49,6 +50,8 @@ export default async function HomePage() {
   if (sessionCookie && verifyTraceSession(sessionCookie)) {
     redirect('/feed');
   }
+  // Today's real brief for the "Today's brief" section (demo stories if none yet).
+  const [edition] = await listDailyEditions(1);
   return (
     <>
       <LandingAuthRedirect />
@@ -60,7 +63,7 @@ export default async function HomePage() {
           ),
         ]}
       />
-      <LandingScreen />
+      <LandingScreen edition={edition ?? null} />
     </>
   );
 }

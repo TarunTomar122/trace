@@ -2,8 +2,8 @@ import { createHmac, timingSafeEqual } from 'crypto';
 
 export const TRACE_SESSION_COOKIE_NAME = 'trace_session';
 // Session + embedded profile trusted for 36h. The cookie is HMAC-signed so
-// the client can't forge `hasAccess`. Deliberate tradeoff: a cancelled user
-// may keep Pro UI until refresh, which beats paywalling a paying user.
+// the client can't forge `hasAccess`. Trace is free, so `hasAccess` only
+// drives billing UI for accounts still on a legacy paid plan.
 export const TRACE_SESSION_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 export const TRACE_SESSION_PROFILE_FRESH_AGE_MS = 36 * 60 * 60 * 1000;
 

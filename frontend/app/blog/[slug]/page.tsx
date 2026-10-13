@@ -17,8 +17,6 @@ import {
   metadataTitle,
   SITE_BASE_URL,
 } from "@/lib/seo";
-import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
-import { proTrialCtaLabel } from "@/lib/pro-trial";
 
 type PageProps = {
   params: Promise<{
@@ -323,7 +321,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               Skip X, LinkedIn, and the newsletter pile
             </h2>
             <p className="public-body mt-4 max-w-xl">
-              Open today&apos;s briefing for model releases, company news, and what actually changed — grouped from 400+ sources. Sign in to get more free stories daily.
+              Open today&apos;s briefing for model releases, company news, and what actually changed — grouped from 100+ sources. Every story included, free for everyone.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -331,12 +329,6 @@ export default async function BlogPostPage({ params }: PageProps) {
                 className="landing-btn landing-btn-primary landing-btn-sm"
               >
                 Open today&apos;s briefing
-              </Link>
-              <Link
-                href="/subscribe"
-                className="landing-btn landing-btn-secondary landing-btn-sm"
-              >
-                {proTrialCtaLabel(SUBSCRIPTION_PRICE_DEFAULT)}
               </Link>
             </div>
           </section>
@@ -354,7 +346,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                   >
                     <p className="public-kicker">{related.tag}</p>
                     <h3 className="mt-2 text-[16px] font-semibold leading-snug text-foreground">{related.title}</h3>
-                    <p className="mt-2 line-clamp-2 text-[15px] leading-[1.65] text-secondary">{related.excerpt}</p>
+                    <p className="mt-2 text-[15px] leading-[1.65] text-secondary">{related.excerpt}</p>
                   </Link>
                 ))}
               </div>

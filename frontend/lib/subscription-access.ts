@@ -49,7 +49,12 @@ export function subscriptionStatuses(profile: SubscriptionAccessProfile | null |
   };
 }
 
-export function hasActiveSubscription(
+/**
+ * True only for a real, paid (Dodo/app) subscription. The web app is free for
+ * everyone, so this must NOT gate any feature. It only decides whether to show
+ * billing controls (cancel plan) to people who subscribed before Trace went free.
+ */
+export function hasPaidSubscription(
   profile: SubscriptionAccessProfile | null | undefined,
   now = new Date(),
 ): boolean {
@@ -65,38 +70,4 @@ export function hasActiveSubscription(
   // advisory; if they are missing or malformed, keep an explicitly active
   // subscription accessible instead of silently locking out a paying user.
   return !accessEndsAt || now < accessEndsAt;
-}
-
-export function resolveFeedAccess({
-  serverHasAccess,
-  clientProfile,
-  clientProfileFresh,
-  clientProfileRefreshFailed,
-  authLoading,
-  signedIn,
-}: {
-  serverHasAccess: boolean;
-  clientProfile: SubscriptionAccessProfile | null;
-  clientProfileFresh: boolean;
-  clientProfileRefreshFailed: boolean;
-  authLoading: boolean;
-  signedIn: boolean;
-}): { hasAccess: boolean; pending: boolean; verificationFailed: boolean } {
-  if (clientProfileFresh && hasActiveSubscription(clientProfile)) {
-    return { hasAccess: true, pending: false, verificationFailed: false };
-  }
-  if (serverHasAccess) {
-    return { hasAccess: true, pending: false, verificationFailed: false };
-  }
-  if (clientProfileFresh) {
-    return { hasAccess: false, pending: false, verificationFailed: false };
-  }
-  if (authLoading || signedIn) {
-    return {
-      hasAccess: false,
-      pending: true,
-      verificationFailed: clientProfileRefreshFailed,
-    };
-  }
-  return { hasAccess: false, pending: false, verificationFailed: false };
 }

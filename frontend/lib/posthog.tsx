@@ -202,7 +202,7 @@ export function trackSponsoredToolClicked({
   sponsorId: string;
   title: string;
   domain: string;
-  placement: 'desktop_tools' | 'home_feed_end';
+  placement: 'desktop_tools' | 'home_feed_end' | 'pulse_mobile';
   position: number;
   feedDate?: string;
 }) {
@@ -258,7 +258,7 @@ export function trackPromoSubmitted(props?: Record<string, unknown>) {
   posthog.capture("promo_submitted", { surface: "web", ...props });
 }
 
-export function trackPurchaseCompleted(product: "pro" | "tool_promo") {
+export function trackPurchaseCompleted(product: "tool_promo") {
   posthog.capture("purchase_completed", { surface: "web", product });
 }
 
@@ -276,7 +276,7 @@ export function trackSubscriptionCancelled(plan: string) {
 }
 
 // Conversion funnel events
-export function trackNewsletterSignup(source: "landing" | "feed_prompt") {
+export function trackNewsletterSignup(source: "landing" | "feed_prompt" | "daily_page") {
   posthog.capture("newsletter_signup", { surface: "web", source });
 }
 
@@ -293,25 +293,10 @@ export function trackSummaryOpened(
   });
 }
 
-export function trackPaywallShown(source: string, props?: Record<string, unknown>) {
-  posthog.capture("paywall_shown", {
-    source,
-    ...props,
-  });
-}
-
 export function trackCheckoutClicked(source: string, props?: Record<string, unknown>) {
   posthog.capture("checkout_clicked", {
     source,
     ...props,
-  });
-}
-
-/** Feed full-screen subscribe modal (logged-out-of-content click lock on /feed). */
-export function trackFeedSubscribeDialogShown(properties?: Record<string, unknown>) {
-  posthog.capture("feed_subscribe_dialog_shown", {
-    surface: "feed_click_lock",
-    ...properties,
   });
 }
 
@@ -391,14 +376,6 @@ export function trackBlogCtaClicked(postSlug: string, location: string, destinat
     location,
     destination,
     surface: "web",
-  });
-}
-
-/** Pro welcome modal auto-shown on /feed after a new user completes onboarding. */
-export function trackFeedProWelcomeShown(props?: Record<string, unknown>) {
-  posthog.capture("feed_pro_welcome_shown", {
-    surface: "feed_pro_welcome",
-    ...props,
   });
 }
 

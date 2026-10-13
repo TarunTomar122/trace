@@ -47,8 +47,7 @@ export const retentionCss = `
   line-height: 1.16; color: var(--text);
 }
 .xw .ret-sotd-dek {
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-  overflow: hidden; margin: 10px 0 0;
+  margin: 10px 0 0;
   font-size: 16px; line-height: 1.45; color: var(--text-2);
 }
 .xw .ret-sotd-meta {
@@ -62,9 +61,7 @@ export const retentionCss = `
 }
 .xw .ret-sotd-faves img + img { margin-left: -5px; }
 .xw .ret-sotd.lead .ret-sotd-title { font-size: 28px; letter-spacing: -0.035em; }
-.xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; -webkit-line-clamp: 3; }
-.xw .ret-sotd.locked .ret-sotd-shot { opacity: 0.55; filter: grayscale(0.3); }
-.xw .ret-sotd.locked .ret-sotd-title { color: var(--text-2); }
+.xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; }
 .xw .ret-streak-slot {
   padding: 0 12px 8px; flex-shrink: 0;
 }
@@ -160,8 +157,7 @@ export const retentionCss = `
   line-height: 1.35; color: var(--text);
 }
 .xw .ret-pulse-hook-dek {
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; margin-top: 6px;
+  margin-top: 6px;
   font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--text-2);
 }
 .xw .ret-pulse-hook-meta {
@@ -236,7 +232,7 @@ export const retentionCss = `
   .xw .ret-sotd-shot { width: 100%; max-width: none; height: 240px; margin: 0 0 18px; }
   .xw .ret-sotd-copy { padding: 0 14px; }
   .xw .ret-sotd-title { font-size: 22px; }
-  .xw .ret-sotd-dek { font-size: 14.5px; -webkit-line-clamp: 2; }
+  .xw .ret-sotd-dek { font-size: 14.5px; }
   .xw .ret-sotd.lead .ret-sotd-title { font-size: 22px; }
   .xw .ret-launchpad { padding: 20px 16px; margin-bottom: 20px; }
   .xw .ret-launchpad-actions { max-width: none; width: 100%; }
@@ -261,11 +257,8 @@ export function storyDek(story: FeedStory): string {
     .replace(/\*\*/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  if (!raw) return '';
-  if (raw.length <= 220) return raw;
-  const cut = raw.slice(0, 220);
-  const at = cut.lastIndexOf(' ');
-  return `${(at > 140 ? cut.slice(0, at) : cut).trim()}…`;
+  // Always the whole summary: a story card never cuts its text.
+  return raw;
 }
 
 export function StoryOfDayCard({
@@ -275,7 +268,6 @@ export function StoryOfDayCard({
   size = 'hero',
   following = false,
   onToggleFollow,
-  locked = false,
 }: {
   story: FeedStory;
   onOpen: () => void;
@@ -283,12 +275,11 @@ export function StoryOfDayCard({
   size?: 'hero' | 'lead';
   following?: boolean;
   onToggleFollow?: () => void;
-  locked?: boolean;
 }) {
   const dek = storyDek(story);
   const favs = story.sources.slice(0, 4);
   return (
-    <button type="button" className={`ret-sotd${size === 'lead' ? ' lead' : ''}${locked ? ' locked' : ''}`} onClick={onOpen}>
+    <button type="button" className={`ret-sotd${size === 'lead' ? ' lead' : ''}`} onClick={onOpen}>
       <div className="ret-sotd-kicker"><Star size={12} fill="currentColor" /> {kicker}</div>
       {story.img ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -303,9 +294,7 @@ export function StoryOfDayCard({
       ) : null}
       <div className="ret-sotd-copy">
         <span className="ret-sotd-title">{story.title}</span>
-        {locked ? (
-          <span className="ret-sotd-dek">Sign up to read the full story</span>
-        ) : dek ? (
+        {dek ? (
           <span className="ret-sotd-dek">{dek}</span>
         ) : null}
         <span className="ret-sotd-meta">
@@ -561,17 +550,15 @@ export function WeeklyWrapPanel({ wrap }: { wrap: WeeklyWrapSummary | null }) {
   );
 }
 
-export function AgentRetentionCard({ pro }: { pro: boolean }) {
+export function AgentRetentionCard() {
   return (
     <div className="ret-agent-card">
       <div className="ret-agent-title"><Bot size={16} /> Morning briefings in your agent</div>
       <p className="ret-agent-sub">
-        {pro
-          ? 'Connect Claude, Codex, or Cursor to the same ranked feed — one read-only MCP call for your standup.'
-          : 'Pro connects your AI agent to the ranked edition, Pulse, and archive over MCP.'}
+        Connect Claude, Codex, or Cursor to the same ranked feed — one read-only MCP call for your standup. Free.
       </p>
       <a className="ret-btn secondary" href="/agents" style={{ display: 'inline-flex', width: 'auto' }}>
-        <Sparkles size={14} /> {pro ? 'Agent setup' : 'See how it works'}
+        <Sparkles size={14} /> Agent setup
       </a>
     </div>
   );

@@ -1,3 +1,4 @@
+import { firebaseConfig } from './firebase-config';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -28,7 +29,7 @@ try {
       console.log('Initializing Firebase Admin with service account key');
       // Option 1: Inline JSON string
       const serviceAccount = JSON.parse(serviceAccountKey);
-      const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'anybrew-7c6c1.firebasestorage.app';
+      const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket;
       initializeApp({
         credential: cert(serviceAccount),
         storageBucket,
@@ -36,7 +37,7 @@ try {
     } else if (serviceAccountPath) {
       console.log('Initializing Firebase Admin with service account path');
       // Option 2: Path to JSON file
-      const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'anybrew-7c6c1.firebasestorage.app';
+      const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket;
       initializeApp({
         credential: cert(serviceAccountPath),
         storageBucket,

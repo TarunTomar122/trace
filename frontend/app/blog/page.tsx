@@ -114,7 +114,7 @@ export default function BlogPage() {
                 <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] leading-tight text-foreground sm:text-[2rem]">
                   {featuredPost.title}
                 </h2>
-                <p className="mt-4 line-clamp-3 text-[16px] leading-[1.72] text-secondary">
+                <p className="mt-4 text-[16px] leading-[1.72] text-secondary">
                   {featuredPost.excerpt}
                 </p>
                 <div className="mt-5 flex items-center gap-4">
@@ -182,7 +182,7 @@ export default function BlogPage() {
                   <h2 className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-snug text-foreground">
                     {post.title}
                   </h2>
-                  <p className="mt-3 flex-1 line-clamp-3 text-[15px] leading-[1.7] text-secondary">
+                  <p className="mt-3 flex-1 text-[15px] leading-[1.7] text-secondary">
                     {post.excerpt}
                   </p>
                   <div className="public-rule mt-5 flex items-center justify-between border-t pt-4">
@@ -213,10 +213,10 @@ export default function BlogPage() {
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/subscribe"
+              href="/feed?utm_source=blog&utm_medium=index_cta"
               className="landing-btn landing-btn-primary landing-btn-lg inline-flex"
             >
-              Subscribe to Trace
+              Open today&apos;s briefing
               <ArrowRight size={14} />
             </Link>
           </div>

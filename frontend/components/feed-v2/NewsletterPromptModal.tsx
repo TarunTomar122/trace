@@ -98,7 +98,7 @@ export default function NewsletterPromptModal({
 
         <ul className="mb-5 list-none space-y-2 rounded-2xl bg-[#f7f9f9] px-4 py-4 text-left">
           <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
-            <span aria-hidden="true">✅</span> A free daily brief, with the full edition in Pro
+            <span aria-hidden="true">✅</span> The full daily edition, free for everyone
           </li>
           <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
             <span aria-hidden="true">📬</span> One email, 10:30 Berlin time, unsubscribe any time

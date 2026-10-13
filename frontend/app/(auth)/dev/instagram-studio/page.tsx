@@ -562,7 +562,7 @@ export default function InstagramStudioPage() {
                                 </span>
                               )}
                             </div>
-                            <div className={`text-[12px] leading-snug line-clamp-2 ${isSelected ? "text-stone-900 font-medium" : "text-stone-700"}`}>
+                            <div className={`text-[12px] leading-snug ${isSelected ? "text-stone-900 font-medium" : "text-stone-700"}`}>
                               {topic.title}
                             </div>
                           </div>

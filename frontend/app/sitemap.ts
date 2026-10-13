@@ -6,6 +6,10 @@ import { comparePages } from './compare/content'
 import { solutionsContent } from './solutions/content'
 import { useCasesContent } from './use-cases/content'
 import { newslettersContent } from './newsletters/content'
+import { listEditionDates } from '@/lib/daily-editions'
+
+// Rebuilt hourly: a new /brief edition is published every morning.
+export const revalidate = 3600
 
 
 const ARTICLE_POOLS = [
@@ -103,9 +107,22 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.yourtrace.online'
-  const [articlePages] = await Promise.all([
+  const [articlePages, editions] = await Promise.all([
     getPublicArticlePages(baseUrl),
+    listEditionDates(365),
   ])
+
+  // One public page per daily brief, plus the archive. lastModified is the
+  // publish time, a real content date.
+  const dailyPages: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/brief`, changeFrequency: 'daily', priority: 0.85 },
+    ...editions.map((edition) => ({
+      url: `${baseUrl}/brief/${edition.date}`,
+      ...(edition.published_at ? { lastModified: edition.published_at } : {}),
+      changeFrequency: 'never' as const,
+      priority: 0.6,
+    })),
+  ]
   
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -238,6 +255,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...dailyPages,
     ...blogPages,
     ...compareDetailPages,
     ...solutionsDetailPages,

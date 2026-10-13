@@ -33,6 +33,13 @@ const PROTECTED_FIELDS = new Set([
   'feedBuildCompletedAt',
   'isEarlyAdopter',
   'deleted',
+  // Win-back bookkeeping belongs to the email pipeline; newsletter setup goes
+  // through the validated /api/newsletter/preferences.
+  'winbackSends',
+  'winbackLastSentAt',
+  'newsletterTopics',
+  'newsletterStoryCount',
+  'newsletterFormat',
 ]);
 
 function sanitizePatch(input: unknown): Record<string, unknown> | null {

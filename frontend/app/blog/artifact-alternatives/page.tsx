@@ -101,7 +101,7 @@ export default function BlogPost() {
             <li aria-hidden="true">/</li>
             <li><Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link></li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">Artifact Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">Artifact Alternatives</li>
           </ol>
         </nav>
         <Link href="/blog" className="text-blue-600 dark:text-blue-400 hover:underline mb-6 inline-block">← Back to Blog</Link>
@@ -151,7 +151,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source synthesis</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source synthesis</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Particle News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $3/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Personalization</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Limited</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Perplexity</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $20/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Research</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">On-demand</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Single-article</td></tr>
@@ -164,7 +164,7 @@ export default function BlogPost() {
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             1. Trace — Best for Multi-Source AI Summaries
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
             Trace does what Artifact doesn&apos;t: multi-source synthesis. Instead of
             summarizing one article at a time, Trace reads coverage from 50+ publications
@@ -176,7 +176,7 @@ export default function BlogPost() {
             <li>Topic grouping — one story, multiple perspectives</li>
             <li>Community discussion links (Reddit, Hacker News)</li>
             <li>No filter bubble — shows you the full picture</li>
-            <li>Free tier with core features</li>
+            <li>Free for everyone, and open source</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

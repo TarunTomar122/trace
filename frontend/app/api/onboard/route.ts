@@ -35,26 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
-    // Check subscription status to pass to feed generator (pro users get more items)
-    let tier: 'pro' | 'free' = 'free';
-    if (adminDb) {
-      try {
-        const userSnap = await adminDb.collection('user_profiles').doc(uid).get();
-        if (userSnap.exists) {
-          const userData = userSnap.data() || {};
-          const webSub = String(userData.subscriptionStatus || 'none');
-          const appSub = String(userData.appSubscriptionStatus || 'none');
-          const isEarlyAdopter = userData.isEarlyAdopter === true;
-          const hasProAccess =
-            isEarlyAdopter ||
-            ['trial', 'active'].includes(webSub) ||
-            ['trial', 'active'].includes(appSub);
-          tier = hasProAccess ? 'pro' : 'free';
-        }
-      } catch (error) {
-        console.warn('Failed to check subscription status:', error);
-      }
-    }
+    // Everyone gets the full feed now; the generator still takes a tier flag.
+    const tier = 'pro';
 
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo = process.env.GITHUB_REPO || 'ttomar/claudia'; // owner/repo format
@@ -110,7 +92,7 @@ export async function POST(request: NextRequest) {
           event_type: 'user-onboard',
           client_payload: {
             user_id: uid,
-            tier, // 'pro' or 'free' - determines how many items to generate
+            tier, // always 'pro' (full-size feed for everyone)
           },
         }),
       }

@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import {
   isTraceSessionProfileFresh,
   TRACE_SESSION_COOKIE_NAME,
   verifyTraceSession,
 } from '@/lib/server-session';
-import { getBootstrapFeedForUid, getBootstrapFeedFromProfile } from '@/lib/feed-server';
+import { getBootstrapFeedForUid, getBootstrapFeedFromProfile, stampLastActive } from '@/lib/feed-server';
 
 export async function GET(request: NextRequest) {
   const requestStartedAt = performance.now();
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     authDoneAt = performance.now();
+    after(() => stampLastActive(uid));
 
     const roleFromQuery = request.nextUrl.searchParams.get('role') || '';
     const sessionAccessIsFresh = isTraceSessionProfileFresh(sessionProfile);

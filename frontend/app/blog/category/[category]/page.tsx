@@ -213,7 +213,7 @@ export default async function CategoryPage({ params }: PageProps) {
                     <h2 className="mt-2 text-[1.25rem] font-semibold leading-snug tracking-[-0.02em] text-foreground">
                       {post.title}
                     </h2>
-                    <p className="mt-3 line-clamp-3 text-[15px] leading-[1.7] text-secondary">
+                    <p className="mt-3 text-[15px] leading-[1.7] text-secondary">
                       {post.excerpt}
                     </p>
                     <div className="public-meta mt-4 flex items-center gap-3">

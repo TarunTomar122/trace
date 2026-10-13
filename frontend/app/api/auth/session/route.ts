@@ -9,11 +9,11 @@ import {
   verifyTraceSession,
   type TraceSessionProfile,
 } from '@/lib/server-session';
-import { hasActiveSubscription } from '@/lib/subscription-access';
+import { hasPaidSubscription } from '@/lib/subscription-access';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function computeHasAccess(profile: any): boolean {
-  return hasActiveSubscription(profile);
+  return hasPaidSubscription(profile);
 }
 
 async function ensureUserProfile(

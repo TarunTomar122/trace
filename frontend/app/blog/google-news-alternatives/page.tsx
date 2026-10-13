@@ -121,7 +121,7 @@ export default function BlogPost() {
               <Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">Google News Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">Google News Alternatives</li>
           </ol>
         </nav>
 
@@ -239,7 +239,7 @@ export default function BlogPost() {
           </ul>
           <InlineTraceCTA
             slug="google-news-alternatives"
-            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, and more free stories when you sign in."
+            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, and what actually changed. Every story included, free for everyone."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

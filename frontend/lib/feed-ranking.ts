@@ -19,7 +19,10 @@ export type SortableStory = {
 const MODEL_RELEASE_SKIP = /\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b/i;
 // Parameter counts ("70B model") only — never dollar amounts ("$9.2B project").
 const MODEL_PARAM_SIZE = /(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
-const MODEL_NOUN = /\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b/i;
+// Plurals too: "Meta unveils Muse Wonder AI models" is a launch.
+const MODEL_NOUN = /\b(models?|llms?|foundation models?|open[- ]weights?|checkpoints?)\b/i;
+// "Test models before release" uses release as a noun, not a launch.
+const RELEASE_AS_NOUN = /\b(?:(?:before|after|ahead of|prior to|until|delays?|delayed|its|the|their)\s+|pre-\s*)(releases?|launch(?:es)?)\b/gi;
 const MODEL_RELEASE_VERB = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b/i;
 // "model" alone is too generic (Tesla Model Y), so a textual match also needs
 // an AI-flavoured word next to it.
@@ -40,7 +43,7 @@ export function isModelRelease(story: {
   if (/ai\/?tldr/i.test(String(story.source || ''))) return true;
   if (MODEL_PARAM_SIZE.test(title)) return true;
   const textual = NAMED_LAUNCH.test(title)
-    || (MODEL_NOUN.test(haystack) && MODEL_RELEASE_VERB.test(title));
+    || (MODEL_NOUN.test(haystack) && MODEL_RELEASE_VERB.test(title.replace(RELEASE_AS_NOUN, '')));
   return textual && AI_CONTEXT.test(haystack);
 }
 

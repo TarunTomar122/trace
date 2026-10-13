@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from '@/lib/site-links';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import LegalPageShell from '@/components/LegalPageShell';
@@ -122,18 +123,18 @@ export default function PrivacyPolicyPage() {
             <li>Opt out of certain data collection</li>
             <li>Withdraw consent at any time</li>
           </ul>
-          <p>To exercise these rights, please contact us at tomartarun2001@gmail.com</p>
+          <p>To exercise these rights, please contact us at {CONTACT_EMAIL}</p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-[#111827] mb-3">Subscriptions and Billing</h2>
+          <h2 className="text-lg font-semibold text-[#111827] mb-3">Payments and Billing</h2>
           <p className="mb-4">
-            Trace offers paid subscription plans that unlock personalized feed access and AI summaries.
-            All billing is handled securely through the respective platform (Google Play or Stripe/Dodo Payments for web).
+            The Trace web app is free. Paid items are limited to subscriptions bought earlier and sponsored tool placements.
+            All billing is handled securely through the respective platform (Google Play or Dodo Payments for web).
           </p>
           <p className="mb-4">
-            <strong className="text-[#111827]">Cancellation:</strong> You may cancel your subscription at any time through your Google Play account settings
-            or the web account portal. Cancellation takes effect at the end of the current billing period.
+            <strong className="text-[#111827]">Cancellation:</strong> You may cancel an existing subscription at any time through your Google Play account settings
+            or from your Trace profile. Cancellation takes effect at the end of the current billing period.
           </p>
           <p>
             <strong className="text-[#111827]">Billing Data:</strong> We do not store your payment card details. All payment processing is handled by
@@ -171,7 +172,7 @@ export default function PrivacyPolicyPage() {
             If you have questions or concerns about this privacy policy, please contact us:
           </p>
           <p><strong className="text-[#111827]">Email:</strong>{' '}
-            <a href="mailto:tomartarun2001@gmail.com" className="text-[#2563eb] hover:underline">tomartarun2001@gmail.com</a>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#2563eb] hover:underline">{CONTACT_EMAIL}</a>
           </p>
         </section>
 

@@ -478,7 +478,7 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
     if re.search(r"(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
         return True
     has_noun = re.search(
-        r"\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b",
+        r"\b(models?|llms?|foundation models?|open[- ]weights?|checkpoints?)\b",
         haystack,
         re.I,
     )
@@ -493,10 +493,18 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
     )
     # A launch verb in the title is the thing that separates "OpenAI ships a
     # 70B model" from "Data centre firm raises $3.9B and mentions AI models".
+    # "Test models before release" uses release as a noun, not a launch.
+    verb_text = re.sub(
+        r"\b(?:(?:before|after|ahead of|prior to|until|delays?|delayed|its|the|their)\s+|pre-\s*)"
+        r"(releases?|launch(?:es)?)\b",
+        "",
+        title_text,
+        flags=re.I,
+    )
     has_verb = re.search(
         r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
         r"ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b",
-        title_text,
+        verb_text,
         re.I,
     )
     if named_launch and ai_context:

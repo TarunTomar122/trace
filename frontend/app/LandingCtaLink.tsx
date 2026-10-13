@@ -17,14 +17,12 @@ import {
 export default function LandingCtaLink({
   href,
   location,
-  variant = 'read',
   className,
   prefetch,
   children,
 }: {
   href: string;
   location: string;
-  variant?: 'read' | 'subscribe';
   className?: string;
   prefetch?: boolean;
   children: React.ReactNode;
@@ -46,7 +44,7 @@ export default function LandingCtaLink({
     return () => window.clearTimeout(timer);
   }, [isExperiment]);
 
-  const destination = href.startsWith('/subscribe') ? 'subscribe' : 'feed';
+  const destination = 'feed';
   const experimentProps = isExperiment
     ? { experiment_id: LANDING_CTA_EXPERIMENT_ID, experiment_variant: assignment }
     : {};
@@ -61,14 +59,14 @@ export default function LandingCtaLink({
           setAssignment(nextAssignment);
           exposureTracked.current = true;
           trackLandingCtaExposure(nextAssignment);
-          trackLandingCTAClicked(variant, location, {
+          trackLandingCTAClicked('read', location, {
             destination,
             experiment_id: LANDING_CTA_EXPERIMENT_ID,
             experiment_variant: nextAssignment,
           });
           return;
         }
-        trackLandingCTAClicked(variant, location, { destination, ...experimentProps });
+        trackLandingCTAClicked('read', location, { destination, ...experimentProps });
       }}
     >
       {children}

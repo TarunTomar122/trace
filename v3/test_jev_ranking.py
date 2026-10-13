@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from v3.build_trending import (
+    RANKING_SCORE_MAX,
     RANKING_SCORE_WEIGHTS,
     _score_clusters_with_jev,
     _sort_topic_clusters,
@@ -40,25 +41,15 @@ def cluster(title, source_count, article_count, popularity=1.0):
 
 
 def valid_result(score=1.0, confidence=0.9):
-    scores = {name: min(score, maximum) for name, maximum in {
-        "importance": 4,
-        "novelty": 3,
-        "usefulness": 3,
-        "general_interest": 3,
-        "evidence_quality": 3,
-    }.items()}
+    # Every dimension the ranker validates, including the newsletter's
+    # zero-weight send_worthy score.
+    scores = {name: min(score, maximum) for name, maximum in RANKING_SCORE_MAX.items()}
     return {
         "scores": scores,
         "confidence": {name: confidence for name in RANKING_SCORE_WEIGHTS},
         "semantic_score": sum(
             RANKING_SCORE_WEIGHTS[name] * scores[name] / maximum
-            for name, maximum in {
-                "importance": 4,
-                "novelty": 3,
-                "usefulness": 3,
-                "general_interest": 3,
-                "evidence_quality": 3,
-            }.items()
+            for name, maximum in RANKING_SCORE_MAX.items()
         ),
     }
 
@@ -73,6 +64,7 @@ class JevRankingTests(unittest.TestCase):
                     "usefulness": 3,
                     "general_interest": 3,
                     "evidence_quality": 3,
+                    "send_worthy": 2,
                 },
                 "confidence": {name: 1.0 for name in RANKING_SCORE_WEIGHTS},
             },
@@ -122,7 +114,9 @@ class JevRankingTests(unittest.TestCase):
             return_value={"t0": valid_result()},
         ):
             self.assertFalse(_score_clusters_with_jev(FakeStore(), clusters, {}))
-        self.assertNotIn("_jev_semantic_score", clusters[0])
+        # Ordering stays deterministic (False), but the verdict Jev did give is
+        # kept so the newsletter's send-worthiness gate still works.
+        self.assertIn("_jev_semantic_score", clusters[0])
         self.assertNotIn("_jev_semantic_score", clusters[1])
 
 

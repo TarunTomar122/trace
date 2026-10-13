@@ -1,0 +1,38 @@
+# secrets
+.env
+.env.*
+!.env.example
+.environment
+*.pem
+*.key
+*adminsdk*.json
+*service-account*.json
+
+# data
+data/
+*.sqlite3
+*.sqlite3-*
+*.db
+logs/
+*.log
+.pipeline.lock
+
+# python
+__pycache__/
+*.pyc
+.venv*/
+venv/
+.pytest_cache/
+
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# misc
+.DS_Store
+.vercel/
+.idea/
+.vscode/

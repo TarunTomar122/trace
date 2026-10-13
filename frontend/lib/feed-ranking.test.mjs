@@ -196,6 +196,10 @@ test('signed-out Top floats a model launch above backend rank', () => {
 
 test('isModelRelease accepts param-size launches and skips incident coverage', () => {
   assert.equal(isModelRelease({ title: 'Bonsai 2 27B' }), true);
+  assert.equal(isModelRelease({ title: 'Meta Unveils Muse Wonder AI Models' }), true);
+  assert.equal(isModelRelease({ title: 'Tesla Model Y gets a refresh' }), false);
+  assert.equal(isModelRelease({ title: 'UK says it will again test OpenAI and Anthropic AI models before release' }), false);
+  assert.equal(isModelRelease({ title: 'OpenAI releases new AI models for coding' }), true);
   assert.equal(isModelRelease({ title: 'Jev coding model launches today' }), true);
   assert.equal(isModelRelease({ source: 'AI/TLDR Models', title: 'Needle 2' }), true);
   assert.equal(isModelRelease({ title: 'OpenAI Unveils Alarming AI Model Misalignment Incidents' }), false);

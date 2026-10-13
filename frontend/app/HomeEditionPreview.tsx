@@ -65,7 +65,7 @@ function StoryCard({ story, compact = false, x = false }: { story: DemoStory; co
       )}
       <div className={compact ? 'px-1 pb-2' : 'min-h-[132px] px-3 pb-3 pt-5'}>
         <p className={`font-mono font-semibold uppercase ${x ? 'text-[#1d9bf0]' : 'text-accent'} ${compact ? 'text-[9px] tracking-[0.12em]' : 'text-[10px] tracking-[0.17em]'}`}>{story.tag}</p>
-        <h3 className={compact ? 'mt-2 line-clamp-3 text-[16px] font-[550] leading-[1.35] text-foreground' : 'mt-3 text-[20px] font-semibold leading-[1.28] tracking-[-0.025em] text-foreground'}>
+        <h3 className={compact ? 'mt-2 text-[16px] font-[550] leading-[1.35] text-foreground' : 'mt-3 text-[20px] font-semibold leading-[1.28] tracking-[-0.025em] text-foreground'}>
           {story.title}
         </h3>
       </div>

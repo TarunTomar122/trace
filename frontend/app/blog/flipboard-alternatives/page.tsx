@@ -107,7 +107,7 @@ export default function BlogPost() {
     {
       question: "Are there free Flipboard alternatives with AI?",
       answer:
-        "Yes. Trace is a free AI-powered news aggregator that creates multi-source summaries from 50+ tech sources. Feedly Pro ($8/month) also offers AI summaries. Both are free or have generous free tiers.",
+        "Yes. Trace is a free, open-source AI news aggregator that creates multi-source summaries from 50+ tech sources. Feedly Pro ($8/month) also offers AI summaries. Feedly also has a free plan.",
     },
   ]);
 
@@ -122,7 +122,7 @@ export default function BlogPost() {
             <li aria-hidden="true">/</li>
             <li><Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</Link></li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">Flipboard Alternatives</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">Flipboard Alternatives</li>
           </ol>
         </nav>
 
@@ -178,7 +178,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">NewsBlur</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $36/yr</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Open Source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
@@ -192,7 +192,7 @@ export default function BlogPost() {
             1. Trace — Best for AI-Powered Tech News
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free
+            <strong>Price:</strong> Free, open source
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Where Flipboard shows you beautiful cards, Trace shows you what matters.
@@ -209,7 +209,7 @@ export default function BlogPost() {
 
           <InlineTraceCTA
             slug="flipboard-alternatives"
-            blurb="Switching from Flipboard takes zero setup: Trace already reads 400+ tech sources every morning and hands you one ranked briefing. Built for founders who want AI and model-release news without a magazine feed."
+            blurb="Switching from Flipboard takes zero setup: Trace already reads 100+ tech sources every morning and hands you one ranked briefing. Built for founders who want AI and model-release news without a magazine feed."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

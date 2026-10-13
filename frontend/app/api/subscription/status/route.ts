@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { hasActiveSubscription } from '@/lib/subscription-access';
+import { hasPaidSubscription } from '@/lib/subscription-access';
 
 // Get subscription status endpoint
 export async function GET(request: NextRequest) {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const userData = userDoc.data();
     const subscriptionStatus = userData?.subscriptionStatus || 'none';
 
-    const hasAccess = hasActiveSubscription(userData);
+    const hasAccess = hasPaidSubscription(userData);
 
     // Return subscription info
     return NextResponse.json({

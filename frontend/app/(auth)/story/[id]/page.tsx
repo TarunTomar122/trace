@@ -59,7 +59,7 @@ function MissingStory() {
 
 export default async function SharedStoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { stories, headlines, pulse, promoted, monthlyReach, generated, serverPro, feedDate, priceDisplay, feedError } = await loadFeedViewData();
+  const { stories, headlines, pulse, promoted, monthlyReach, generated, feedDate, feedError } = await loadFeedViewData();
   const story = findSharedStory(stories, id) || await findStoryInArchive(id);
 
   if (!story) {
@@ -67,8 +67,7 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
   }
 
   // The shared article renders inside the real feed chrome (same sidebar,
-  // tools rail, auth state as /feed) with the story pre-opened — and the
-  // shared story always opens full, even for signed-out readers.
+  // tools rail, auth state as /feed) with the story pre-opened.
   return (
     <Suspense fallback={<FeedSkeleton />}>
         <FeedApp
@@ -77,14 +76,11 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
           pulse={pulse}
           promoted={promoted}
           monthlyReach={monthlyReach}
-          serverPro={serverPro}
           generated={generated}
           feedDate={feedDate}
-          priceDisplay={priceDisplay}
           feedError={feedError}
           initialStory={story}
           initialStoryId={story.id}
-          unlockedId={story.id}
         />
     </Suspense>
   );

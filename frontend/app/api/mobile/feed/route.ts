@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
-import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import { getBootstrapFeedForUid, stampLastActive } from '@/lib/feed-server';
 import { filterSendWorthyTopics, rejectedStoryUrls } from '@/lib/feed-value';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 
@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
   const lookbackDays = Number.isFinite(daysParam) ? Math.max(1, Math.min(2, daysParam)) : 1;
 
   try {
+    after(() => stampLastActive(uid));
     const feed = await getBootstrapFeedForUid(uid, role);
     if (!feed) return NextResponse.json(null);
 

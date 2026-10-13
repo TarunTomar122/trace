@@ -5,7 +5,7 @@ import FeedSkeleton from './FeedSkeleton';
 import { loadFeedViewData } from '@/lib/feed-view';
 
 export default async function FeedScreen() {
-  const { stories, headlines, pulse, promoted, monthlyReach, generated, serverPro, feedDate, priceDisplay, feedError } = await loadFeedViewData();
+  const { stories, headlines, pulse, promoted, monthlyReach, generated, feedDate, feedError } = await loadFeedViewData();
 
   return (
     <Suspense fallback={<FeedSkeleton />}>
@@ -15,10 +15,8 @@ export default async function FeedScreen() {
         pulse={pulse}
         promoted={promoted}
         monthlyReach={monthlyReach}
-        serverPro={serverPro}
         generated={generated}
         feedDate={feedDate}
-        priceDisplay={priceDisplay}
         feedError={feedError}
       />
     </Suspense>

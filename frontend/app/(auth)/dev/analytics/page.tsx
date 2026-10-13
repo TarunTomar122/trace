@@ -1173,7 +1173,7 @@ export default function AnalyticsPage() {
                                   />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium line-clamp-2 group-hover:text-blue-500 transition-colors">
+                                  <p className="text-sm font-medium group-hover:text-blue-500 transition-colors">
                                     {item.title}
                                   </p>
                                   <p className="text-xs text-secondary/50 mt-1">

@@ -1,9 +1,4 @@
 import { unstable_cache } from 'next/cache';
-import { cookies, headers } from 'next/headers';
-import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession, isTraceSessionProfileFresh } from '@/lib/server-session';
-import { hasActiveSubscription } from '@/lib/subscription-access';
-import { resolveSubscriptionOfferFromHeaders } from '@/lib/subscription-offer';
-import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
 import { parseHeadlines, type HeadlineRef } from '@/lib/story-headlines';
 import { imageUrlHasPlaceholderToken } from './media-url';
@@ -183,14 +178,6 @@ export function dedupeKey(it: { url?: string; id?: string }): string {
   return (it.url || it.id || '').replace(/[#?].*$/, '').replace(/\/$/, '');
 }
 
-export async function getServerPro(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(TRACE_SESSION_COOKIE_NAME)?.value;
-  const session = sessionCookie ? verifyTraceSession(sessionCookie) : null;
-  const sessionProfile = session?.profile && isTraceSessionProfileFresh(session) ? session.profile : null;
-  return hasActiveSubscription(sessionProfile);
-}
-
 export interface FeedViewData {
   stories: FeedStory[];
   headlines: HeadlineRef[];
@@ -199,9 +186,7 @@ export interface FeedViewData {
   promoted: any[];
   monthlyReach: number;
   generated: string | null;
-  serverPro: boolean;
   feedDate: string;
-  priceDisplay: string;
   feedError: boolean;
 }
 
@@ -410,23 +395,14 @@ export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
 }
 
 export async function loadFeedViewData(): Promise<FeedViewData> {
-  const [feedResult, promoted, monthlyReach, serverPro] = await Promise.all([
+  const [feedResult, promoted, monthlyReach] = await Promise.all([
     getCachedFeed(),
     getPromotedTools(),
     getMonthlyReach(),
-    getServerPro(),
   ]);
   const feedDate = feedResult?.date || '';
   const data = feedResult?.data || {};
   const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
-
-  // Localized checkout price (IN gets ₹49) for the paywall CTAs.
-  let priceDisplay = SUBSCRIPTION_PRICE_DEFAULT;
-  try {
-    priceDisplay = resolveSubscriptionOfferFromHeaders(await headers()).priceDisplay;
-  } catch {
-    /* keep the default display */
-  }
 
   const stories = mapTrendingToStories(data.trending, data.trending_topics);
   const headlines = parseHeadlines(data.headlines);
@@ -458,9 +434,7 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
     generated: data.daily_pulse_role_generated_at?.developer
       ? timeAgo(data.daily_pulse_role_generated_at.developer)
       : null,
-    serverPro,
     feedDate,
-    priceDisplay,
     feedError: !feedResult,
   };
 }

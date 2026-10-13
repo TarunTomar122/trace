@@ -96,7 +96,7 @@ export default function BlogPost() {
     {
       question: "How do free news aggregators make money?",
       answer:
-        "Many free news aggregators use a freemium model: basic features are free, premium features require a subscription. Trace is free on Android with no ads, building toward premium features. Feedly offers a free tier with 100 sources but charges for AI features. Google News is ad-supported.",
+        "Many free news aggregators use a freemium model: basic features are free, premium features require a subscription. Trace is free for everyone with every feature included, has no ads, and is open source; sponsored tool placements help cover costs. Feedly offers a free tier with 100 sources but charges for AI features. Google News is ad-supported.",
     },
     {
       question: "What features should developers look for in a news aggregator?",
@@ -125,7 +125,7 @@ export default function BlogPost() {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">
               Free News Aggregators for Developers
             </li>
           </ol>
@@ -177,11 +177,11 @@ export default function BlogPost() {
             1. Trace — Best AI-Powered Free Option
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (Android)
+            <strong>Price:</strong> Free (web and Android)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Trace aggregates news from 100+ sources and creates 30-second AI
-            summaries. The Android app is completely free with no ads.
+            summaries. Trace is free for everyone and open source, with no ads.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
             <li>100+ trusted sources</li>

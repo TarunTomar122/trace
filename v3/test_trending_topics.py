@@ -82,6 +82,14 @@ class TrendingTopicClusteringTests(unittest.TestCase):
     def test_model_release_detector(self) -> None:
         self.assertTrue(_looks_like_model_release("Bonsai 2 27B"))
         self.assertTrue(_looks_like_model_release("Jev coding model launches today"))
+        self.assertTrue(_looks_like_model_release(
+            "Meta Unveils Muse Wonder AI Models", content="Meta launched its first frontier AI models."))
+        self.assertFalse(_looks_like_model_release(
+            "UK says it will again test OpenAI and Anthropic models before release",
+            content="The AI Security Institute will test powerful AI models."))
+        self.assertFalse(_looks_like_model_release(
+            "Researchers audit pre-release AI models for safety",
+            content="Benchmarks and reasoning evaluations."))
         self.assertTrue(_looks_like_model_release("Needle 2", source_name="AI/TLDR Models"))
         self.assertFalse(
             _looks_like_model_release("OpenAI Unveils Alarming AI Model Misalignment Incidents")

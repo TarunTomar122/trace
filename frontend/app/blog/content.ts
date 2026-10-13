@@ -183,7 +183,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "Open the briefing this is about",
     ctaBlurb:
-      "Trace is the daily AI briefing: ranked stories from 400+ sources, grouped, done. Get the context in one place and move on with your day.",
+      "Trace is the daily AI briefing: ranked stories from 100+ sources, grouped, done. Get the context in one place and move on with your day.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "ai-news-for-non-technical-founders",
@@ -321,7 +321,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "The working version looks like this. You open one surface. You read a ranked list. Related coverage of the same launch is already grouped, so a Claude, Gemini, or smaller-model drop like Bonsai is one story with several sources — not seven tabs. You stop when the list ends.",
           "That last part is the product. Social apps are designed to continue. A briefing is designed to finish. If you cannot tell when you are caught up, the tool is entertainment, even if the topic is 'AI news.'",
-          "This is what [today's Trace edition](/feed) is for: model releases and company news pulled from 400+ sources, ranked, summarized, and done. Follow the stories that matter in one place, without RSS or Twitter lists to maintain.",
+          "This is what [today's Trace edition](/feed) is for: model releases and company news pulled from 100+ sources, ranked, summarized, and done. Follow the stories that matter in one place, without RSS or Twitter lists to maintain.",
         ],
       },
       {
@@ -363,7 +363,7 @@ export const blogPosts: BlogPost[] = [
     image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&h=630&fit=crop&auto=format",
     ctaHeading: "Try the briefing instead of another subscribe",
     ctaBlurb:
-      "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 400+ sources. One clear briefing, without another inbox folder.",
+      "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 100+ sources. One clear briefing, without another inbox folder.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
       "daily-ai-briefing-for-founders",
@@ -493,7 +493,7 @@ export const blogPosts: BlogPost[] = [
         heading: "A safe connection is read-only and revocable",
         paragraphs: [
           "An agent that only needs news should not receive permission to change account settings or write data. Trace Agent Keys carry one fixed read-only scope. There are no publishing, purchasing, or account-management tools in the agent surface.",
-          "The key can be rotated or revoked from Trace. Access is also checked against the account’s current Pro or trial status on every request, so an old key cannot silently preserve access after the account loses it. Keep the key in an environment variable or secret manager and out of source control and logs."
+          "The key can be rotated or revoked from Trace. Rotating or revoking a key invalidates the old one immediately, so it cannot silently keep working. Keep the key in an environment variable or secret manager and out of source control and logs."
         ]
       },
       {
@@ -511,7 +511,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "Connect Trace to your agent",
         paragraphs: [
-          "Open the [Trace Agent Access documentation](/agents), start a Pro trial or use an active Pro account, and create a read-only Agent Key. You can copy a complete setup prompt, use the Codex command, add the remote MCP configuration to another client, or call the HTTPS endpoint directly.",
+          "Open the [Trace Agent Access documentation](/agents), sign in with your Trace account (Agent Access is included for everyone), and create a read-only Agent Key. You can copy a complete setup prompt, use the Codex command, add the remote MCP configuration to another client, or call the HTTPS endpoint directly.",
           "The setup is deliberately small: one endpoint, one key, four read-only tools. The value comes from the structured feed behind it, not from making the integration complicated."
         ]
       }
@@ -745,9 +745,9 @@ export const blogPosts: BlogPost[] = [
           "The community discussion integration is an underrated feature. For each topic, Trace links to relevant Reddit threads and Hacker News discussions, so you can see what practitioners are saying — not just what journalists are writing. This surface-level-plus-community format is something none of the other tools on this list do as well."
         ],
         bullets: [
-          "Pros: Automatic source scanning (no feed curation needed), multi-source AI summaries, topic grouping with multiple perspectives, community discussion integration, clean reading experience, free tier available",
+          "Pros: Automatic source scanning (no feed curation needed), multi-source AI summaries, topic grouping with multiple perspectives, community discussion integration, clean reading experience, free and open source",
           "Cons: Less control over individual sources compared to RSS readers, fewer customization options for power users, still newer than established competitors",
-          "Pricing: Free tier with core features; premium plans for advanced AI features and source customization",
+          "Pricing: Free for everyone, with every feature included",
           "Best for: Professionals who want to stay informed without managing feeds — especially those who value the multi-perspective view on each story"
         ]
       },
@@ -864,7 +864,7 @@ export const blogPosts: BlogPost[] = [
           "We built Trace because existing options fell into two camps: raw RSS readers that felt like work, or algorithmic feeds that optimized for engagement over understanding. We wanted something different — a tool that gave you the efficiency of curation without requiring feed management, and the depth of multi-source comparison without requiring you to read five versions of the same story.",
           "Trace scans 50+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, key points, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
           "The result is a 15-minute morning catch-up that replaces a dozen open tabs. Our users tell us they spend less time on news and retain more of what they read — not because they're consuming less, but because the information is organized in a way that matches how understanding actually works: through comparison, context, and community.",
-          "We're biased, obviously, but if you're tired of tab roulette and want a tool that treats your attention as valuable, the free tier is a good place to start. You can also check out our [daily tech briefing guide](/blog/daily-tech-briefing-guide) for tips on building an effective morning news routine, whether you use Trace or another tool."
+          "We're biased, obviously, but if you're tired of tab roulette and want a tool that treats your attention as valuable, Trace is free for everyone and open source, so it is an easy place to start. You can also check out our [daily tech briefing guide](/blog/daily-tech-briefing-guide) for tips on building an effective morning news routine, whether you use Trace or another tool."
         ]
       }
     ]
@@ -916,9 +916,9 @@ export const blogPosts: BlogPost[] = [
           "Trace's AI summaries are also multi-source — they synthesize coverage from different publications rather than summarizing one article at a time. This gives a more balanced picture of each story and helps you quickly understand not just what happened, but what the consensus is, what's disputed, and what the different angles are. Feedly's AI summarizes articles individually, which means you don't get this synthesis effect."
         ],
         bullets: [
-          "Pros: Zero feed management needed, multi-source AI summaries with source attribution, story grouping across publications, community discussion integration (Reddit, HN), fast morning catch-up workflow, free tier available",
+          "Pros: Zero feed management needed, multi-source AI summaries with source attribution, story grouping across publications, community discussion integration (Reddit, HN), fast morning catch-up workflow, free and open source",
           "Cons: Less control over individual sources compared to RSS, fewer customization options for power users, doesn't support arbitrary RSS feeds, newer product with smaller ecosystem than Feedly",
-          "Pricing: Free tier with core features; premium plans for advanced AI and customization",
+          "Pricing: Free for everyone, with every feature included",
           "Verdict vs Feedly: Choose Trace if you want AI-curated news without managing feeds — especially for fast daily catch-ups. Choose Feedly if you want precise control over which specific sources appear in your feed."
         ]
       },
@@ -1192,7 +1192,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Trace is purpose-built for the problem most AI digest tools ignore: single-source summaries give you a compressed version of one article, but understanding comes from comparison. Trace's approach is fundamentally multi-source — it scans 50+ curated tech publications, groups related coverage into topic pages, and generates AI summaries that synthesize across sources rather than summarizing them individually.",
           "The result reads differently from a standard AI summary. Instead of 'Today, Company X announced Product Y,' you get something closer to: 'Company X announced Product Y, covered by 12 major publications. The consensus is that this is a significant improvement in [area], though The Verge notes concerns about [issue] and Ars Technica's benchmarks show [data point]. Hacker News comments are split between [viewpoint 1] and [viewpoint 2].' This is a fundamentally more useful format than any single-article summary.",
-          "Trace also integrates community discussion links (Reddit, Hacker News) directly into topic pages, giving you the practitioner perspective alongside journalistic coverage. The free tier includes the core AI summarization features, with premium plans adding customization and advanced AI capabilities."
+          "Trace also integrates community discussion links (Reddit, Hacker News) directly into topic pages, giving you the practitioner perspective alongside journalistic coverage. Every feature, including AI summaries, is included, and Trace is free for everyone and open source."
         ],
         bullets: [
           "Multi-source synthesis: Excellent — built from the ground up to compare sources rather than summarize individual articles",
@@ -1273,11 +1273,11 @@ export const blogPosts: BlogPost[] = [
         heading: "Pricing Comparison: What You Get at Each Tier",
         paragraphs: [
           "AI digest tools span a wide range of pricing models — from free and open-source to premium subscriptions. Here's how the costs compare and what you get at each level.",
-          "Free tiers: Trace (AI summaries, multi-source topic pages, limited premium features), Perplexity (limited queries per day, basic search/summarization), Artifact (most features free, premium optional). These cover the needs of most individual users who want AI-powered news without a monthly commitment.",
+          "Free: Trace (AI summaries, multi-source topic pages, Pulse, archive, and agent access, all included), Perplexity (limited queries per day, basic search/summarization), Artifact (most features free, premium optional). These cover the needs of most individual users who want AI-powered news without a monthly commitment.",
           "Mid-tier ($8-15/month): Feedly Pro ($8/month for AI summaries, search, 1,000 sources), Inoreader Pro ($9.99/month for AI summaries, rules engine, monitoring), Particle News premium features. These are appropriate for professionals who consume tech news as part of their job and need advanced features.",
           "Premium / Team ($15-30/month): Feedly Pro+ ($15/month for AI feeds, team sharing, newsletter integration), Inoreader Business plans, enterprise AI digest services. These make sense for teams that need shared news monitoring, custom AI models, or API access.",
           "DIY cost ($0-20/month + time): Building your own pipeline costs API credits (GPT-4 at roughly $0.01-0.03 per summary, or Claude at similar rates) plus 2-4 hours of initial setup and occasional maintenance. For a daily digest covering 20-30 stories, expect $5-15/month in API costs. The real cost is time — both setup and the ongoing mental overhead of maintaining your own system.",
-          "Value assessment: For most individual tech professionals, the free tiers of Trace + Perplexity cover daily news catch-up and on-demand research. Add a paid plan only if you need specific features (advanced rules in Inoreader, team sharing in Feedly Pro+) or if you outgrow the free tier limits. The DIY approach is rarely cost-effective for individuals but can make sense for teams with unique requirements."
+          "Value assessment: For most individual tech professionals, Trace + the free tier of Perplexity cover daily news catch-up and on-demand research. Add a paid plan only if you need specific features (advanced rules in Inoreader, team sharing in Feedly Pro+) or if you outgrow the free tier limits. The DIY approach is rarely cost-effective for individuals but can make sense for teams with unique requirements."
         ]
       },
       {
@@ -2757,7 +2757,7 @@ export const blogPosts: BlogPost[] = [
         heading: "1. Trace: Best for a Clear Daily Catch-Up",
         paragraphs: [
           "Trace combines technology reporting, launches, builds, and community signal into grouped stories. Every item is meant to answer a simple question: what moved, why does it matter, and where can I verify it?",
-          "Use Trace when you want to begin with a concise overview and open only the source links that matter to your work. The free trial of Pro is useful if you want the complete daily edition before committing."
+          "Use Trace when you want to begin with a concise overview and open only the source links that matter to your work. The full daily edition is included, so you can read everything without signing up."
         ]
       },
       {

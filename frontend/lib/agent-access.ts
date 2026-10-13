@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminFirestore } from '@/lib/firebase-admin';
-import { hasActiveSubscription, toDateMaybe } from '@/lib/subscription-access';
+import { toDateMaybe } from '@/lib/subscription-access';
 
 const AGENT_KEY_COLLECTION = 'agent_access_keys';
 const AGENT_KEY_PREFIX = 'trace_agent_';
@@ -70,10 +70,6 @@ export async function authenticateAgentKey(token: string): Promise<AgentAccessRe
     return { ok: false, status: 401, error: 'This Trace Agent Key has been revoked' };
   }
 
-  const profileSnapshot = await adminFirestore.collection('user_profiles').doc(key.uid).get();
-  if (!profileSnapshot.exists || !hasActiveSubscription(profileSnapshot.data())) {
-    return { ok: false, status: 402, error: 'Trace Agent Access requires an active Pro plan or trial' };
-  }
   return { ok: true, uid: key.uid };
 }
 

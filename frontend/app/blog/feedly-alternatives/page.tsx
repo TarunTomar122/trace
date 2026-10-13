@@ -97,12 +97,12 @@ export default function BlogPost() {
     {
       question: "Is Trace better than Feedly?",
       answer:
-        "If you want zero-setup AI summaries from 400+ sources right away, Trace is better than Feedly. Start free on the web, then sign in to get more stories daily, personalize your feed, and opt into the morning email. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
+        "If you want zero-setup AI summaries from 100+ sources right away, Trace is better than Feedly. Trace is free for everyone: every story, Pulse, the archive, and a daily email you can customize. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
     },
     {
       question: "Are there any completely free RSS readers like Feedly?",
       answer:
-        "Yes. Trace (web, free to start), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
+        "Yes. Trace (web, free for everyone), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
     },
   ]);
 
@@ -126,7 +126,7 @@ export default function BlogPost() {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">
               Feedly Alternatives
             </li>
           </ol>
@@ -200,7 +200,7 @@ export default function BlogPost() {
               <tbody>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $5 Pro</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Quick Catch-Up</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ 30-second reads</td>
                 </tr>
@@ -248,23 +248,23 @@ export default function BlogPost() {
             1. Trace — Best Feedly Alternative for Quick Catch-Up
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free / $5 Pro
+            <strong>Price:</strong> Free
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             If you&apos;re tired of setting up RSS feeds and just want to stay
             informed, Trace is the best Feedly alternative. It uses AI to
-            aggregate news from 400+ sources and groups related coverage into
+            aggregate news from 100+ sources and groups related coverage into
             one ranked briefing.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
             <li>No setup required — open the briefing and go</li>
-            <li>AI summaries from 400+ trusted sources</li>
+            <li>AI summaries from 100+ trusted sources</li>
             <li>Personalized feed based on your role</li>
-            <li>Free to start; Pro is $5/mo</li>
+            <li>Free for everyone, open source</li>
           </ul>
           <InlineTraceCTA
             slug="feedly-alternatives"
-            blurb="Skip the RSS setup. Trace already reads 400+ tech sources and hands you one ranked briefing — model releases, company news, and what actually changed."
+            blurb="Skip the RSS setup. Trace already reads 100+ tech sources and hands you one ranked briefing — model releases, company news, and what actually changed."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from '@/lib/site-links';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import LegalPageShell from '@/components/LegalPageShell';
@@ -6,7 +7,7 @@ import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 export const metadata: Metadata = {
   title: 'Terms of Service — Trace',
   description:
-    'Read the Terms of Service for Trace, including acceptable use, subscriptions, intellectual property, and disclaimers.',
+    'Read the Terms of Service for Trace, including acceptable use, payments, intellectual property, and disclaimers.',
   alternates: {
     canonical: 'https://www.yourtrace.online/terms',
   },
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     ...DEFAULT_OPEN_GRAPH,
     title: 'Terms of Service — Trace',
     description:
-      'Read the Terms of Service for Trace, including acceptable use, subscriptions, intellectual property, and disclaimers.',
+      'Read the Terms of Service for Trace, including acceptable use, payments, intellectual property, and disclaimers.',
     url: 'https://www.yourtrace.online/terms',
     type: 'website',
   },
@@ -125,20 +126,18 @@ export default function TermsOfServicePage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-[#111827] mb-3">Subscriptions and Payments</h2>
-          <p className="mb-3">Trace offers the following paid subscription plans:</p>
-          <ul className="list-disc pl-5 space-y-1 mb-4">
-            <li>Weekly plan at $1.99/week</li>
-            <li>Monthly plan at $5/month</li>
-            <li>Yearly plan at $59.99/year</li>
-          </ul>
+          <h2 className="text-lg font-semibold text-[#111827] mb-3">Free Access, Existing Subscriptions, and Sponsorships</h2>
           <p className="mb-4">
-            <strong className="text-[#111827]">Billing:</strong> Subscriptions are billed in advance on a recurring basis. All payments are
-            processed through Google Play Billing (Android) or our web payment processor.
+            The Trace web app is free for everyone, with every feature included.
+          </p>
+          <p className="mb-4">
+            <strong className="text-[#111827]">Existing subscriptions:</strong> Paid subscriptions bought earlier are being wound down. You may
+            cancel at any time; cancellation takes effect at the end of the current billing period, and we do not provide refunds for unused portions.
+            Payments are processed through Google Play Billing (Android) or our web payment processor.
           </p>
           <p>
-            <strong className="text-[#111827]">Cancellation:</strong> You may cancel your subscription at any time. Cancellation takes effect
-            at the end of the current billing period. We do not provide refunds for unused portions.
+            <strong className="text-[#111827]">Sponsored placements:</strong> Sponsored tool placements are a paid service billed through our web
+            payment processor.
           </p>
         </section>
 
@@ -209,7 +208,7 @@ export default function TermsOfServicePage() {
             If you have questions about these Terms of Service, please contact us:
           </p>
           <p><strong className="text-[#111827]">Email:</strong>{' '}
-            <a href="mailto:tomartarun2001@gmail.com" className="text-[#2563eb] hover:underline">tomartarun2001@gmail.com</a>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#2563eb] hover:underline">{CONTACT_EMAIL}</a>
           </p>
         </section>
 

@@ -886,7 +886,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
-        default="subscribed",
+        default="all",
         help="Audience when --user-id is not provided",
     )
     p.add_argument("--dry-run", action="store_true", help="Build but do not send")
