@@ -499,6 +499,23 @@ def send_email(
                     "track_id": track_id,
                 }
 
+    if not routed and not attempted and mode in {"smtp", "auto"} and (mode == "smtp" or not brevo_can_send()):
+        # The local MTA is unreachable and there is no Brevo to fall back on (a
+        # strict `smtp` run never uses Brevo). Say so rather than recording a
+        # Brevo send that the API would accept and then quietly drop.
+        if log:
+            _record_send(
+                to_email=to_email,
+                bucket=bucket,
+                subject=subject,
+                transport="smtp",
+                status="failed",
+                track_id=track_id,
+                error="local MTA unreachable",
+                note="no transport: MTA unreachable and Brevo cannot send",
+            )
+        return {"success": False, "error": "local MTA unreachable", "transport": "smtp", "track_id": track_id}
+
     brevo_from_email, brevo_from_name = brevo_sender()
     result = brevo_send_email(
         to_email=to_email,
@@ -509,7 +526,8 @@ def send_email(
         sender_email=brevo_from_email,
         sender_name=brevo_from_name,
         reply_to_email=reply_to() or None,
-        tags=["newsletter", "daily"],
+        # One-off emails get their own tag so Brevo's stats keep the daily apart.
+        tags=[bucket] if bucket in {"welcome", "supporter_thanks"} else ["newsletter", "daily"],
     )
     if log:
         _record_send(

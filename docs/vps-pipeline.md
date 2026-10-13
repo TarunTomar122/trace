@@ -21,8 +21,9 @@ Actions keeps push notifications plus manual/replay workflows.
 | `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
 | `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_audience_newsletter` |
 | `trace-instagram.service/.timer` | 09:00 and 20:00 Europe/London | `v3.flows.post_instagram` |
+| `trace-welcome.service/.timer` | every 5 min | `v3.flows.send_welcome` |
 
-Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}` and `trace-instagram.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
+Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}` and `trace-welcome.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
 
@@ -66,6 +67,45 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   Demo one address: `--demo-email you@example.com --demo-bucket free`.
   Pull on the VPS after changing the flow, the template
   (`backend/v1/templates/audience_newsletter.html`), or the ranking rubric.
+
+## Welcome email
+
+`trace-welcome.timer` runs `backend/v3/flows/send_welcome.py` every 5 minutes
+and sends one welcome to each new reader:
+
+- an email-only subscriber (`free_newsletter_subscribers.subscribedAt`) gets
+  "your first brief lands <weekday> around 9:30am UK time", links to the latest
+  brief and `/brief/customize`, and an unsubscribe link;
+- a new web account (`user_profiles.createdAt`, from Google sign-in) gets "your
+  feed is ready" plus either "your daily brief lands every morning" or "set up
+  your daily email", by the daily's own opt-in rules. It waits until onboarding
+  is done (or 30 minutes) so that line is right. Someone who did both gets the
+  account version once. Mobile-app accounts live in Firebase, not LocalDB, so
+  they get no welcome yet.
+- Once per address, ever: `welcome_sends/{sha256(email)}` is written before
+  each send (`sending`, then `sent`/`failed`/`skipped`). If the marker can't be
+  written the run stops; a marker left at `sending` is never retried. A failed
+  send is retried twice more, at least 30 minutes apart. Undeliverable
+  addresses are marked `skipped`.
+- Only signups since 2026-10-13 and within the last 3 days count, at most 25 a
+  run and 30 an hour. Over the hourly cap the log says PAUSED: look at the
+  signup form for bot traffic.
+- `welcome` must be in `EMAIL_BREVO_BUCKETS` so first emails go through Brevo.
+
+Setup (once):
+
+```bash
+cp ~/trace/backend/vps/trace-welcome.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now trace-welcome.timer
+```
+
+Day to day (the job takes `~/trace/.welcome.lock`, so a manual run can't race the timer):
+
+```bash
+cd ~/trace/backend && ../.venv/bin/python -m v3.flows.send_welcome --dry-run    # who's next, HTML previews
+../.venv/bin/python -m v3.flows.send_welcome --test-to you@example.com          # every version to you
+tail -50 ~/trace/logs/welcome.log
+```
 
 ## Instagram carousels
 

@@ -100,7 +100,7 @@ export default function OnboardingPage() {
           >
             <span className="ob-email-copy">
               <strong>Get tomorrow&apos;s brief by email</strong>
-              <span>7 ranked stories every morning at 10:30 Europe/Berlin. One tap to turn off.</span>
+              <span>Your top 10 stories every morning, around 9:30am UK time. One tap to turn off.</span>
             </span>
             <span className="ob-email-check" aria-hidden="true">{dailyBrief ? '✓' : ''}</span>
           </button>

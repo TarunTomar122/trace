@@ -2581,7 +2581,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, c
             <div className="p-row">
               <div className="p-row-main">
                 <span className="p-row-title">Daily email brief</span>
-                <span className="p-row-sub">One email at 10:30 Europe/Berlin. Turn it off anytime.</span>
+                <span className="p-row-sub">One email around 9:30am UK time. Turn it off anytime.</span>
               </div>
               <button
                 type="button"

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         );
         return NextResponse.json({
           ok: true,
-          message: "You're back in! First newsletter lands tomorrow.",
+          message: "You're back in! Your daily brief starts again with the next edition.",
         });
       }
       return NextResponse.json({
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: "You're in! First newsletter lands tomorrow.",
+      message: "You're in! Check your inbox for a welcome email.",
     });
   } catch (error) {
     console.error('Newsletter subscribe error:', error);

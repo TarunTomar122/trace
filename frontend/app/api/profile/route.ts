@@ -17,6 +17,11 @@ import { getSignedInUid } from '@/lib/request-auth';
 // the Dodo webhook + RevenueCat sync, build state by the pipeline.
 const PROTECTED_FIELDS = new Set([
   'uid',
+  // Identity is set once at sign-up from the verified token; the welcome email
+  // keys on these, so a client must not be able to rewrite them.
+  'email',
+  'createdAt',
+  'signupPlatform',
   'subscriptionStatus',
   'appSubscriptionStatus',
   'subscriptionId',

@@ -119,7 +119,9 @@ export async function POST(request: NextRequest) {
     // (replaces client-side getOrCreateUserProfile). Never fails sign-in.
     if (body && (typeof body.email === 'string' || typeof body.displayName === 'string')) {
       await ensureUserProfile(decodedToken.uid, {
-        email: typeof body.email === 'string' ? body.email : (decodedToken.email || ''),
+        // Only the verified token's email: a client-supplied one would let
+        // anyone sign a stranger's address up for Trace email.
+        email: decodedToken.email || '',
         displayName: typeof body.displayName === 'string' ? body.displayName : (decodedToken.name || ''),
         photoURL: body.photoURL === null || typeof body.photoURL === 'string'
           ? body.photoURL

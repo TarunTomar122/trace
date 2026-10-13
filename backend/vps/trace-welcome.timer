@@ -1,0 +1,10 @@
+[Unit]
+Description=Welcome new Trace readers every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+Unit=trace-welcome.service
+
+[Install]
+WantedBy=timers.target

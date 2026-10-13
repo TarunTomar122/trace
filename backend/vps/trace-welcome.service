@@ -1,0 +1,14 @@
+[Unit]
+Description=Trace welcome email for new readers
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=10min
+WorkingDirectory=%h/trace/backend
+EnvironmentFile=%h/trace/.env
+# The job takes ~/trace/.welcome.lock itself, so manual runs are covered too.
+ExecStart=%h/trace/.venv/bin/python -u -m v3.flows.send_welcome
+StandardOutput=append:%h/trace/logs/welcome.log
+StandardError=append:%h/trace/logs/welcome.log

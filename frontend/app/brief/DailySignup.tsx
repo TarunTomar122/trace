@@ -25,7 +25,7 @@ export default function DailySignup({ compact = false }: { compact?: boolean }) 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
       setStatus('ok');
-      setMessage(data.message || "You're in! First brief lands tomorrow morning.");
+      setMessage(data.message || "You're in! Check your inbox for a welcome email.");
       setEmail('');
       trackNewsletterSignup('daily_page');
     } catch (error) {

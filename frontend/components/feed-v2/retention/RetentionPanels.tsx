@@ -394,7 +394,7 @@ export function CaughtUpLaunchpad({
       <p className="ret-launchpad-sub">
         {streak > 1
           ? `${streak}-day reading streak — keep it going tomorrow morning.`
-          : 'A fresh edition lands every morning at 10:30 Europe/Berlin.'}
+          : 'A fresh edition lands every morning around 9:30am UK time.'}
       </p>
       <div className="ret-launchpad-actions">
         {!dailyOn ? (
