@@ -6,6 +6,14 @@
     "show_hn_url": "https://hn.algolia.com/api/v1/search?tags=show_hn&hitsPerPage=15",
     "roles": ["developer", "founder"]
   },
+  "top_articles": {
+    "description": "Extra candidates for the Top articles list (title + image + one line): Hacker News's best stories of the last two days, plus curated link feeds (each with its own cap) so design gets its share.",
+    "hn_best": {"hours": 48, "min_points": 200, "hits": 50},
+    "feed_limit": 10,
+    "feeds": [
+      {"name": "Sidebar", "url": "https://sidebar.io/feed.xml", "role_hints": ["designer"], "source_kind": "community", "cap": 3}
+    ]
+  },
   "reddit": {
     "developer": [
       "programming",

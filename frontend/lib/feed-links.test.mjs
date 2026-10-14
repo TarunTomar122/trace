@@ -44,7 +44,8 @@ test('unknown categories are trusted when no catalog is provided', () => {
 test('labels for metadata', () => {
   assert.equal(feedTabLabel('markets'), 'Markets');
   assert.equal(feedTabLabel('ux-design'), 'Design');
-  assert.equal(feedTabLabel('conversations'), 'Top HN');
+  assert.equal(feedTabLabel('conversations'), 'Top articles');
+  assert.equal(normalizeFeedTab('top-articles'), 'conversations');
   assert.equal(feedTabLabel('other'), 'Top');
 });
 

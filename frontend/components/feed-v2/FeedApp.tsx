@@ -1651,7 +1651,8 @@ export default function FeedApp({
                       {row.related.map((item) => {
                         const pulseItem = pulsePool.find((entry) => entry.id === item.id);
                         if (!pulseItem) return null;
-                        const kind = 'Conversation';
+                        // HN/Lobsters items are discussions; curated links (design etc.) are reads
+                        const kind = /hacker news|show hn|lobsters/i.test(pulseItem.source) ? 'Conversation' : 'Related read';
                         return (
                           <article
                             key={pulseItem.id}
@@ -1851,7 +1852,7 @@ function WelcomeModal({ onClose }: { kind: 'promo'; onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const perks = [
-    'A sponsored spot in Tools on desktop, at the top of Top HN on phones, and at the end of Home, for 30 days',
+    'A sponsored spot in Tools on desktop, at the top of Top articles on phones, and at the end of Home, for 30 days',
     `Support anytime: ${CONTACT_EMAIL}`,
   ];
   return (
@@ -2976,7 +2977,7 @@ const css = `
   overflow: hidden; margin: 0 0 10px;
   font-size: 15px; line-height: 1.45; color: var(--text-2);
 }
-/* Discussion cards (Show HN, Top HN): the description is the story, so let
+/* Discussion cards (Top articles): the description is the story, so let
    it run instead of cutting it at two lines. */
 .xw .post-dek.full { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .xw .post-row { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }

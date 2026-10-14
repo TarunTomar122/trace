@@ -64,7 +64,7 @@ export const LANDING_FAQ = [
   },
   {
     q: 'What is Pulse?',
-    a: 'Pulse is the builders’ radar next to your feed: markets, trending GitHub repos with star counts, and Hacker News discussions with points. It is included for everyone.',
+    a: 'Pulse is the builders’ radar next to your feed: markets, trending GitHub repos with star counts, and Top articles: the best links from Hacker News, Lobsters and design. It is included for everyone.',
   },
   {
     q: 'Is there an app?',

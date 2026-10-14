@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -456,6 +457,7 @@ def _fetch_hn_items(
                 continue
             points = hit.get("points") or 0
             comment_text = _strip_html(str(hit.get("story_text", "") or hit.get("comment_text", "")))
+            created_at = str(hit.get("created_at", "") or "").strip()
             articles.append(
                 make_pool_article(
                     title=title,
@@ -465,6 +467,7 @@ def _fetch_hn_items(
                     role_hints=role_hints,
                     source_kind=source_kind,
                     snippet=comment_text,
+                    published_date=created_at,
                 )
             )
     log_fn(f"HN: fetched {len(articles)} items")
@@ -801,6 +804,40 @@ def fetch_community_pool(
         )
 
     return _dedupe_articles(articles, lane="community", log_fn=log)
+
+
+def top_article_feed_caps() -> dict[str, int]:
+    """Per-source caps for the curated Top articles feeds (lowercased name -> cap, default 2)."""
+    feeds = (_load_brief_sources().get("top_articles", {}) or {}).get("feeds") or []
+    return {
+        str(feed.get("name", "")).strip().lower(): int(feed.get("cap", 2))
+        for feed in feeds
+        if isinstance(feed, dict) and str(feed.get("name", "")).strip()
+    }
+
+
+def fetch_top_articles_extra(
+    *,
+    log_fn: Callable[[str], None] | None = None,
+) -> list[dict[str, Any]]:
+    """Candidates for Top articles beyond the community pool: Hacker News's best stories of
+    the last couple of days, and the curated link feeds in brief_sources.json top_articles."""
+    log = log_fn or _noop
+    cfg = _load_brief_sources().get("top_articles", {}) or {}
+    articles: list[dict[str, Any]] = []
+    best = cfg.get("hn_best") or {}
+    if best:
+        since = int(time.time()) - int(best.get("hours", 48)) * 3600
+        url = (
+            "https://hn.algolia.com/api/v1/search?tags=story"
+            f"&numericFilters=created_at_i>{since},points>{int(best.get('min_points', 200))}"
+            f"&hitsPerPage={int(best.get('hits', 50))}"
+        )
+        articles.extend(_fetch_hn_items([url], ["developer"], source_kind="community", log_fn=log))
+    feeds = [feed for feed in (cfg.get("feeds") or []) if isinstance(feed, dict)]
+    if feeds:
+        articles.extend(_fetch_source_entries(feeds, limit=int(cfg.get("feed_limit", 10)), log_fn=log))
+    return articles
 
 
 # Product Hunt topic → role mapping

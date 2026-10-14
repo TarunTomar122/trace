@@ -7,7 +7,7 @@ export const FEED_TAB_LABELS: Record<string, string> = {
   tech: 'Tech',
   'ux-design': 'Design',
   startups: 'Startups',
-  conversations: 'Top HN',
+  conversations: 'Top articles',
 };
 
 const FEED_TAB_ALIASES: Record<string, string> = {
@@ -49,6 +49,8 @@ const FEED_TAB_ALIASES: Record<string, string> = {
   tophn: 'conversations',
   'hacker-news': 'conversations',
   hackernews: 'conversations',
+  articles: 'conversations',
+  'top-articles': 'conversations',
 };
 
 /**
