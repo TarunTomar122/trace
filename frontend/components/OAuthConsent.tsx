@@ -34,7 +34,8 @@ export function OAuthShell({ children }: { children: ReactNode }) {
       <style>{css}</style>
       <div className="oa-card">
         <Link href="/" aria-label="Trace home" className="oa-logo">
-          <Image src="/trace.webp" width={64} height={28} alt="Trace" priority />
+          <Image src="/trace.webp" width={32} height={32} alt="" priority />
+          <span>Trace</span>
         </Link>
         {children}
       </div>
@@ -192,8 +193,8 @@ const css = `
   display: flex; justify-content: center; padding: 48px 16px 64px;
 }
 .oa-card { width: 100%; max-width: 480px; }
-.oa-logo { display: inline-flex; margin-bottom: 36px; }
-.oa-logo img { height: 28px; width: auto; }
+.oa-logo { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 36px; color: #0f1419; text-decoration: none; font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.oa-logo img { height: 32px; width: 32px; }
 .oa-kicker { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #1d9bf0; }
 .oa-title { margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.2rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.12; overflow-wrap: anywhere; }
 .oa-sub { margin: 0 0 24px; font-size: 15.5px; line-height: 1.6; color: #536471; overflow-wrap: anywhere; }
