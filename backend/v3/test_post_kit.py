@@ -341,6 +341,19 @@ class EmailTests(unittest.TestCase):
         with no_model(), patch.object(kit, "HandleFinder", FakeFinder):
             return kit.build_kit(DATE, doc, FakeFinder(), NOW)
 
+    def test_by_default_there_is_no_makers_list_and_no_lookups(self):
+        finder = FakeFinder()
+        with no_model():
+            built = kit.build_kit(DATE, DOC, finder, NOW)
+        self.assertEqual(built["makers"], [])
+        self.assertEqual(len(built["featured"]), 4)  # still kept for the share pages
+        self.assertEqual(finder.urls, [])
+        subject, page, text = kit.render_email(built)
+        self.assertEqual(subject, "Post kit for Oct 14: 2 release drafts")
+        self.assertNotIn("tell the makers", page)
+        self.assertNotIn("TELL THE MAKERS", text)
+
+    @patch.object(kit, "TELL_MAKERS", True)
     def test_the_kit_has_every_section(self):
         built = self.build()
         self.assertEqual([d["cover_name"] for d in built["drafts"]], ["cover-1.jpg", "cover-2.jpg"])
@@ -355,6 +368,7 @@ class EmailTests(unittest.TestCase):
         self.assertIn("<img", kit.render_email(built, preview=True)[1])
         self.assertIn("Line: Your repo", text)
 
+    @patch.object(kit, "TELL_MAKERS", True)
     def test_titles_are_escaped(self):
         doc = {"daily_pulse_roles": {"developer": {"tools": [
             pulse_item("x", '<script>alert("x")</script>', "https://evil.example/?a=1&b=2", "Show HN")]}}}
@@ -366,7 +380,7 @@ class EmailTests(unittest.TestCase):
     def test_quiet_day(self):
         built = self.build({"trending_topics": [MARKET]})
         subject, page, _ = kit.render_email(built)
-        self.assertEqual(subject, "Post kit for Oct 14: no big release, 0 featured to tell")
+        self.assertEqual(subject, "Post kit for Oct 14: no big release")
         self.assertIn("No AI release with wide coverage today", page)
 
 

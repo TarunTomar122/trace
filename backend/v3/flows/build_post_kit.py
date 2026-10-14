@@ -15,7 +15,8 @@ The kit has three parts:
   writes the draft; if it can't (no key, bad key, bad output) the draft is
   built from the story's own summary and key points.
 - A ready-to-post X post for the day's top story.
-- Featured makers: everything in today's Tools and Top articles, with its
+- Featured makers (off unless TRACE_KIT_MAKERS=1; the founder found tagging
+  strangers spammy): everything in today's Tools and Top articles, with its
   share page (/featured/{date}/{id}), any X handles found for the people
   behind it (v3/lib/maker_handles.py) and a short line to send them.
 
@@ -65,6 +66,8 @@ SITE_URL = "https://www.yourtrace.online"
 # The landing page leads with the email signup; /subscribe redirects to the feed, where the ask comes later.
 CTA_URL = f"{SITE_URL}/?utm_source=x&utm_medium=article"
 KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-4.1-mini")
+# The "tell the makers" list (and its handle lookups) only runs when asked for.
+TELL_MAKERS = os.getenv("TRACE_KIT_MAKERS", "").strip() == "1"
 LOCK_FILE = BACKEND_ROOT.parent / ".postkit.lock"
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 SECTIONS = (("tools", "Tools"), ("discussions", "Top articles"))
@@ -627,19 +630,24 @@ def build_kit(date: str, doc: dict[str, Any], finder: HandleFinder, now: datetim
     except Exception as exc:
         _log(f"top-story post failed: {exc}")
         post = None
+    # The featured items are always kept (share pages need them); finding their makers is optional.
+    featured: list[dict[str, Any]] = []
+    makers: list[dict[str, Any]] = []
     try:
-        makers = find_makers(featured_items(doc, date), finder, date, today)
+        featured = featured_items(doc, date)
+        if TELL_MAKERS:
+            makers = find_makers(featured, finder, date, today)
     except Exception as exc:
-        _log(f"featured makers failed: {exc}")
-        makers = []
-    return {"date": date, "today": today, "drafts": drafts, "post": post, "makers": makers,
+        _log(f"featured items failed: {exc}")
+    return {"date": date, "today": today, "drafts": drafts, "post": post, "featured": featured, "makers": makers,
             "font": headline_font_name(), "topics": len(topics)}
 
 
 def subject_for(kit: dict[str, Any]) -> str:
     count = len(kit["drafts"])
     drafts = f"{count} release draft{'s' if count != 1 else ''}" if count else "no big release"
-    return f"Post kit for {_date_label(kit['date'], 'short')}: {drafts}, {len(kit['makers'])} featured to tell"
+    tail = f", {len(kit['makers'])} featured to tell" if TELL_MAKERS else ""
+    return f"Post kit for {_date_label(kit['date'], 'short')}: {drafts}{tail}"
 
 
 def _esc(text: Any) -> str:
@@ -693,7 +701,7 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
     summary = " · ".join(filter(None, [
         f"{drafts} release draft{'s' if drafts != 1 else ''}" if drafts else "no release draft",
         "a post for the top story" if kit["post"] else "",
-        f"{len(kit['makers'])} featured ({found} with an X handle)",
+        f"{len(kit['makers'])} featured ({found} with an X handle)" if TELL_MAKERS else "",
     ]))
     body: list[str] = [
         _p("TRACE · POST KIT", size=12, color="#1d9bf0", margin="0 0 6px 0", weight=800),
@@ -739,34 +747,35 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
         body.append(_p(f"No stories in {day} feed yet.", color="#536471"))
         text += [f"No stories in {day} feed yet.", ""]
 
-    featured = "Featured today" if kit["date"] == kit["today"] else f"Featured {date_long}"
-    body.append(_heading(f"{featured}: tell the makers"))
-    intro = (f"Everything in {day} Tools and Top articles, each with a share page. "
-             "Handles are best-effort, so check the profile before you tag anyone.")
-    body.append(_p(_esc(intro), size=14, color="#536471"))
-    text += [f"{featured.upper()}: TELL THE MAKERS", intro, ""]
-    if not kit["makers"]:
-        body.append(_p("Nothing in Tools or Top articles today.", color="#536471"))
-        text += ["Nothing in Tools or Top articles today.", ""]
-    for maker in kit["makers"]:
-        contacts = [f"{_a('https://x.com/' + h['handle'][1:], h['handle'])} ({_esc(h['via'])})" for h in maker["handles"]]
-        if not contacts:
-            contacts = [_esc(_no_handle(maker))]
-        if maker.get("by"):
-            user = _a("https://news.ycombinator.com/user?id=" + quote(maker["by"]), maker["by"])
-            contacts.append(f"HN submitter: {user}")
-        body.append(_kicker(" · ".join(filter(None, [maker["label"], maker["source"], maker["signal"]]))))
-        body.append(_p(_a(maker["url"], maker["title"]), size=16, margin="0 0 4px 0", weight=700))
-        if maker["summary"]:
-            body.append(_p(_esc(maker["summary"]), size=13, color="#536471", margin="0 0 4px 0"))
-        body.append(_p(" · ".join(contacts), size=13, color="#536471", margin="0 0 4px 0"))
-        body.append(_p(f"Share page: {_a(maker['share_url'])}", size=13, color="#536471", margin="0 0 8px 0"))
-        body.append(_box(maker["line"], size=13))
-        if maker["handles"]:
-            tagged = f"{' '.join(h['handle'] for h in maker['handles'][:2])} {maker['line']}"
-            body.append(_p(_a(_intent(tagged), "Post it on X, tagged"), size=13, margin="0 0 12px 0"))
-        text += [f"[{maker['label']}] {maker['title']}", maker["url"], f"Contacts: {_handles_text(maker)}",
-                 f"Share page: {maker['share_url']}", f"Line: {maker['line']}", ""]
+    if TELL_MAKERS:
+        featured = "Featured today" if kit["date"] == kit["today"] else f"Featured {date_long}"
+        body.append(_heading(f"{featured}: tell the makers"))
+        intro = (f"Everything in {day} Tools and Top articles, each with a share page. "
+                 "Handles are best-effort, so check the profile before you tag anyone.")
+        body.append(_p(_esc(intro), size=14, color="#536471"))
+        text += [f"{featured.upper()}: TELL THE MAKERS", intro, ""]
+        if not kit["makers"]:
+            body.append(_p("Nothing in Tools or Top articles today.", color="#536471"))
+            text += ["Nothing in Tools or Top articles today.", ""]
+        for maker in kit["makers"]:
+            contacts = [f"{_a('https://x.com/' + h['handle'][1:], h['handle'])} ({_esc(h['via'])})" for h in maker["handles"]]
+            if not contacts:
+                contacts = [_esc(_no_handle(maker))]
+            if maker.get("by"):
+                user = _a("https://news.ycombinator.com/user?id=" + quote(maker["by"]), maker["by"])
+                contacts.append(f"HN submitter: {user}")
+            body.append(_kicker(" · ".join(filter(None, [maker["label"], maker["source"], maker["signal"]]))))
+            body.append(_p(_a(maker["url"], maker["title"]), size=16, margin="0 0 4px 0", weight=700))
+            if maker["summary"]:
+                body.append(_p(_esc(maker["summary"]), size=13, color="#536471", margin="0 0 4px 0"))
+            body.append(_p(" · ".join(contacts), size=13, color="#536471", margin="0 0 4px 0"))
+            body.append(_p(f"Share page: {_a(maker['share_url'])}", size=13, color="#536471", margin="0 0 8px 0"))
+            body.append(_box(maker["line"], size=13))
+            if maker["handles"]:
+                tagged = f"{' '.join(h['handle'] for h in maker['handles'][:2])} {maker['line']}"
+                body.append(_p(_a(_intent(tagged), "Post it on X, tagged"), size=13, margin="0 0 12px 0"))
+            text += [f"[{maker['label']}] {maker['title']}", maker["url"], f"Contacts: {_handles_text(maker)}",
+                     f"Share page: {maker['share_url']}", f"Line: {maker['line']}", ""]
 
     footer = f"Cover headline font: {kit['font']}. Sent by trace-postkit (backend/v3/flows/build_post_kit.py)."
     body.append(_p(_esc(footer), size=12, color="#536471", margin="32px 0 0 0"))
@@ -798,22 +807,22 @@ def due(marker: dict[str, Any] | None) -> bool:
     return marker.get("status") == "failed" and int(marker.get("attempts") or 0) < MAX_ATTEMPTS
 
 
-def save_featured(store: Any, date: str, doc: dict[str, Any], makers: list[dict[str, Any]], now: datetime) -> None:
+def save_featured(store: Any, date: str, doc: dict[str, Any], items: list[dict[str, Any]], now: datetime) -> None:
     """Copy today's featured items onto the feed doc, so share pages outlive the pulse's refreshes."""
     kept: dict[str, dict[str, Any]] = {
         str(item["id"]): item for item in doc.get("featured_items") or [] if isinstance(item, dict) and item.get("id")
     }
-    for maker in makers:
-        kept[maker["id"]] = {
-            "id": maker["id"],
-            "section": maker["section"],
-            "title": maker["title"],
-            "url": maker["url"],
-            "source": maker["source"],
-            "signal": maker["signal"],
-            "thumbnail": maker["thumbnail"],
-            "summary": {"body": maker["summary"]},
-            "featured_at": kept.get(maker["id"], {}).get("featured_at") or now.isoformat(),
+    for featured in items:
+        kept[featured["id"]] = {
+            "id": featured["id"],
+            "section": featured["section"],
+            "title": featured["title"],
+            "url": featured["url"],
+            "source": featured["source"],
+            "signal": featured["signal"],
+            "thumbnail": featured["thumbnail"],
+            "summary": {"body": featured["summary"]},
+            "featured_at": kept.get(featured["id"], {}).get("featured_at") or now.isoformat(),
         }
     (store.db.collection("v3_user_feeds").document("_global").collection("daily").document(date)
      .set({"featured_items": list(kept.values())}, merge=True))
@@ -847,7 +856,7 @@ def _send_daily(store: Any, to: str, args: argparse.Namespace, now: datetime) ->
     # Both writes go down before the email: if either fails, stop. A send we
     # can't record would be repeated, and share links would stop working.
     try:
-        save_featured(store, date, doc, kit["makers"], now)
+        save_featured(store, date, doc, kit["featured"], now)
         ref.set({"date": date, "to": to, "status": "sending", "attempts": attempts, "updated_at": stamp,
                  "created_at": (marker or {}).get("created_at") or stamp}, merge=True)
     except Exception as exc:
@@ -861,7 +870,7 @@ def _send_daily(store: Any, to: str, args: argparse.Namespace, now: datetime) ->
     try:
         ref.set({"status": "sent" if ok else "failed", "transport": result.get("transport") or "",
                  "error": "" if ok else str(result.get("error") or "")[:300],
-                 "drafts": len(kit["drafts"]), "featured": len(kit["makers"]),
+                 "drafts": len(kit["drafts"]), "featured": len(kit["featured"]),
                  "updated_at": datetime.now(timezone.utc).isoformat()}, merge=True)
     except Exception as exc:
         # Left at "sending": never retried, so never sent twice.
@@ -883,10 +892,13 @@ def _summary(kit: dict[str, Any]) -> list[str]:
         lines.append(f"  no release with {MIN_SOURCES}+ sources")
     if kit["post"]:
         lines.append(f"  post ({kit['post']['written_by']}, {kit['post']['length']}/280): {kit['post']['story']['title']}")
-    found = [m for m in kit["makers"] if m["handles"]]
-    lines.append(f"  featured: {len(kit['makers'])}, with an X handle: {len(found)}")
-    for maker in found:
-        lines.append(f"    {maker['title'][:60]}: {', '.join(h['handle'] for h in maker['handles'])}")
+    if TELL_MAKERS:
+        found = [m for m in kit["makers"] if m["handles"]]
+        lines.append(f"  featured: {len(kit['makers'])}, with an X handle: {len(found)}")
+        for maker in found:
+            lines.append(f"    {maker['title'][:60]}: {', '.join(h['handle'] for h in maker['handles'])}")
+    else:
+        lines.append(f"  featured items kept for share pages: {len(kit['featured'])} (maker list off)")
     lines.append(f"  cover font: {kit['font']}")
     return lines
 
