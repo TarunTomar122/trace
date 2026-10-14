@@ -8,9 +8,10 @@
 > | Listing | Status |
 > | --- | --- |
 > | Official MCP Registry | Published as `io.github.TarunTomar122/trace` (active) |
-> | punkpeye/awesome-mcp-servers | PR https://github.com/punkpeye/awesome-mcp-servers/pull/16430 |
+> | Glama connector | Live (imported from the registry): https://glama.ai/mcp/connectors/io.github.TarunTomar122/trace |
+> | punkpeye/awesome-mcp-servers | PR https://github.com/punkpeye/awesome-mcp-servers/pull/16430 (bot wants a Glama *server* listing, which needs a Dockerfile; connector badge added and explained) |
 > | mcpservers.org | Free form submitted; confirmation not seen (review up to 2 weeks, replies to support@) |
-> | punkpeye/awesome-remote-mcp-servers | Waiting for a Glama connector listing (Glama may import it from the registry) |
+> | punkpeye/awesome-remote-mcp-servers | PR https://github.com/punkpeye/awesome-remote-mcp-servers/pull/1820 (checks pass: endpoint-ok, has-connector) |
 > | Claude Connectors Directory | Owner: needs a paid claude.ai account login |
 > | ChatGPT app directory | Owner: needs an OpenAI developer account login |
 > | appcypher/awesome-mcp-servers | Skipped: archived |
@@ -93,11 +94,11 @@ Extraction (there is no News section), alphabetical.
 
 ```markdown
 - [Trace](https://www.yourtrace.online/agents) `https://www.yourtrace.online/api/mcp`
-  [![Trace MCP connector](https://glama.ai/mcp/connectors/online.yourtrace/trace/badges/score.svg)](https://glama.ai/mcp/connectors/online.yourtrace/trace)
+  [![Trace MCP connector](https://glama.ai/mcp/connectors/io.github.TarunTomar122/trace/badges/score.svg)](https://glama.ai/mcp/connectors/io.github.TarunTomar122/trace)
   🔐 - Today's top tech and AI stories, builds and developer conversations, grouped across 100+ sources with links.
 ```
 
-Replace `online.yourtrace/trace` in the badge with whatever Glama assigns.
+Glama assigned `io.github.TarunTomar122/trace` (from the registry name).
 
 ## punkpeye/awesome-mcp-servers
 
