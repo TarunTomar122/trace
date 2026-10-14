@@ -318,9 +318,10 @@ export default function FeedApp({
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
-  // Signed-out readers get one gentle email ask per fortnight, after they have
-  // actually engaged (two stories opened), not on arrival; never once subscribed.
+  // Signed-out readers get one gentle email ask per fortnight: 15 seconds in, or
+  // sooner once they open a story or scroll past the first few; never once subscribed.
   const [nlPrompt, setNlPrompt] = useState(false);
+  const [nlEngaged, setNlEngaged] = useState(false);
   const nlPromptArmed = useRef(false);
   useEffect(() => {
     if (user || authLoading || nlPrompt || nlPromptArmed.current) return;
@@ -332,8 +333,9 @@ export default function FeedApp({
       return;
     }
     nlPromptArmed.current = true;
-    const delay = readIds.size >= 2 ? 1500 : 45_000;
     const timer = window.setTimeout(() => {
+      // They may have signed up some other way while we waited.
+      if (isNewsletterSubscribed()) return;
       // Stamp it as seen when it appears: the card doesn't block anything, so most readers
       // simply ignore it, and it must not come back on every visit.
       try {
@@ -343,12 +345,12 @@ export default function FeedApp({
       }
       trackNewsletterPrompt('shown');
       setNlPrompt(true);
-    }, delay);
+    }, nlEngaged ? 1500 : 15_000);
     return () => {
       window.clearTimeout(timer);
       nlPromptArmed.current = false;
     };
-  }, [user, authLoading, nlPrompt, readIds.size]);
+  }, [user, authLoading, nlPrompt, nlEngaged]);
 
   function dismissNewsletterPrompt(reason: 'dismissed' | 'subscribed') {
     try {
@@ -362,7 +364,7 @@ export default function FeedApp({
   }
   const [toast, setToast] = useState<string | null>(null);
   const [burstId, setBurstId] = useState<string | null>(null);
-  const [campaignWelcome, setCampaignWelcome] = useState<{ source: string; campaign: string } | null>(null);
+  const [campaignWelcome, setCampaignWelcome] = useState<{ source: string; campaign: string; subscribed: boolean } | null>(null);
   const sortSegRef = useRef<HTMLDivElement | null>(null);
   const [sortPill, setSortPill] = useState<{ left: number; width: number } | null>(null);
   const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -378,6 +380,18 @@ export default function FeedApp({
   const mainRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const savedScroll = useRef(0);
+
+  // The email ask comes sooner once the third story has scrolled out of view.
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main || user || authLoading || nlEngaged) return;
+    const onScroll = () => {
+      const third = main.querySelectorAll('.ret-sotd, .post')[2];
+      if (third && third.getBoundingClientRect().bottom < main.getBoundingClientRect().top) setNlEngaged(true);
+    };
+    main.addEventListener('scroll', onScroll, { passive: true });
+    return () => main.removeEventListener('scroll', onScroll);
+  }, [user, authLoading, nlEngaged]);
 
   // tools carousel: map vertical wheel to horizontal + drag-to-scroll
   // (touch swipe works natively; this covers mouse/trackpad).
@@ -639,7 +653,7 @@ export default function FeedApp({
       const q = new URLSearchParams(window.location.search);
       const source = q.get('utm_source');
       if (!source) return;
-      setCampaignWelcome({ source, campaign: q.get('utm_campaign') || '' });
+      setCampaignWelcome({ source, campaign: q.get('utm_campaign') || '', subscribed: isNewsletterSubscribed() });
     } catch { /* private mode etc. */ }
   }, []);
 
@@ -761,6 +775,7 @@ export default function FeedApp({
   function openStory(s: FeedStory) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
+    setNlEngaged(true);
     setReadIds((cur) => {
       if (cur.has(s.id)) return cur;
       const next = new Set(cur);
@@ -778,6 +793,7 @@ export default function FeedApp({
   function openPulseItem(t: PulseItem) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: null, pulse: t.id });
+    setNlEngaged(true);
     window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
     trackFeedItemClicked(t.id, 'pulse', t.source || '');
     trackSummaryOpened(t.id, false, {
@@ -1544,7 +1560,12 @@ export default function FeedApp({
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
                   <p className="welcome-strip-title">Make Trace yours</p>
-                  <p className="welcome-strip-sub">Sign in to personalize your topics and choose the optional morning email.</p>
+                  <p className="welcome-strip-sub">
+                    {/* already on the email (say, from a blog post): don't pitch it twice */}
+                    {campaignWelcome.subscribed
+                      ? 'Sign in to personalize your topics.'
+                      : 'Sign in to personalize your topics and choose the optional morning email.'}
+                  </p>
                 </div>
                 <div className="welcome-strip-actions">
                   <button
