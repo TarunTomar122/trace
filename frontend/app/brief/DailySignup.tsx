@@ -5,9 +5,20 @@ import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
+type Source = 'daily_page' | 'featured_page';
 
-/** Email capture for the public /brief pages: the brief, every morning, free. */
-export default function DailySignup({ compact = false }: { compact?: boolean }) {
+/** Email capture for the public /brief and /featured pages: the brief, every morning, free. */
+export default function DailySignup({
+  compact = false,
+  source = 'daily_page',
+  heading = 'Get this in your inbox every morning',
+  blurb = 'The ten stories that mattered in tech and AI, summarised. Free, no account needed.',
+}: {
+  compact?: boolean;
+  source?: Source;
+  heading?: string;
+  blurb?: string;
+}) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
@@ -21,14 +32,14 @@ export default function DailySignup({ compact = false }: { compact?: boolean }) 
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'daily_page' }),
+        body: JSON.stringify({ email, source }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");
       setStatus('ok');
       setMessage(data.message || "You're in! Check your inbox for a welcome email.");
       setEmail('');
-      if (data.status !== 'already') trackNewsletterSignup('daily_page');
+      if (data.status !== 'already') trackNewsletterSignup(source);
       markNewsletterSubscribed();
     } catch (error) {
       setStatus('error');
@@ -40,12 +51,8 @@ export default function DailySignup({ compact = false }: { compact?: boolean }) 
     <div className={compact ? '' : 'rounded-2xl border border-border bg-surface p-6 sm:p-8'}>
       {!compact && (
         <>
-          <p className="text-lg font-semibold tracking-[-0.02em] text-foreground">
-            Get this in your inbox every morning
-          </p>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-secondary">
-            The ten stories that mattered in tech and AI, summarised. Free, no account needed.
-          </p>
+          <p className="text-lg font-semibold tracking-[-0.02em] text-foreground">{heading}</p>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-secondary">{blurb}</p>
         </>
       )}
       <form onSubmit={handleSubmit} className={`${compact ? '' : 'mt-5 '}flex flex-col gap-2.5 sm:flex-row`}>

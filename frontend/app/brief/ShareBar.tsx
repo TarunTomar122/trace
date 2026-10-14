@@ -5,13 +5,21 @@ import posthog from 'posthog-js';
 
 type Channel = 'x' | 'linkedin' | 'copy' | 'native';
 
-/** Share today's brief. Every share is a link back to this public page. */
-export default function ShareBar({ url, text }: { url: string; text: string }) {
+/** Share a public page (a day's brief, a featured item). Every share is a link back to it. */
+export default function ShareBar({
+  url,
+  text,
+  event = 'daily_edition_shared',
+}: {
+  url: string;
+  text: string;
+  event?: 'daily_edition_shared' | 'featured_page_shared';
+}) {
   const [copied, setCopied] = useState(false);
   const shareUrl = `${url}?from=share`;
 
   function track(channel: Channel) {
-    posthog.capture('daily_edition_shared', { channel, url });
+    posthog.capture(event, { channel, url });
   }
 
   async function copy() {
