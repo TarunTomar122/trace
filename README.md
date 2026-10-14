@@ -70,6 +70,20 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 Prerequisites: Docker with Compose v2, an OpenAI API key, and a free Firebase
 project (used for sign-in only).
 
+Hardware: no GPU (the model calls go to the API). Rough guide, not yet measured
+on a minimal Docker install:
+
+| | |
+| --- | --- |
+| **Running** | 2 CPU cores, 2 GB RAM. The pipeline runs for a few minutes every 20 minutes; the database process idles around 400 MB. |
+| **Building the web image** | 3–4 GB RAM for the Next.js build. On a small server, build on another machine and copy the image over. |
+| **Disk** | A few GB. The hosted instance's database is under 1 GB after nine months. |
+
+To drop a source you don't trust, remove it from
+`backend/v3/config/trending_sources.json` (news) or
+`backend/v3/config/brief_sources.json` (blogs, subreddits, Top articles); the
+next pipeline run picks it up.
+
 ```bash
 git clone <this repo> trace && cd trace
 cp .env.example .env
