@@ -7,7 +7,7 @@ StartLimitBurst=3
 
 [Service]
 Type=oneshot
-TimeoutStartSec=20min
+TimeoutStartSec=30min
 WorkingDirectory=%h/trace/backend
 EnvironmentFile=%h/trace/.env
 # The job takes ~/trace/.postkit.lock itself and writes post_kits/{date}

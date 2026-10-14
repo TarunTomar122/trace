@@ -16,13 +16,15 @@ export const revalidate = 600;
 
 type Props = { params: Promise<{ date: string; id: string }> };
 
+const TEXT_LINK = 'font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground';
+
 // Not indexed: each page is a title, one line and a link to someone else's
 // work, so in search it would be a thin copy of the original. These pages are
 // for sharing (the card on X, LinkedIn, Slack), and they still pass links on.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { date, id } = await params;
   const item = await getFeaturedItem(date, id);
-  if (!item) return { title: metadataTitle('Featured on Trace'), robots: { index: false } };
+  if (!item) return { title: metadataTitle('Featured on Trace') };
 
   const title = `Featured on Trace: ${item.title}`;
   const description = item.summary || `Picked for Trace's ${FEATURED_LABELS[item.section]} on ${formatEditionDate(date)}.`;
@@ -50,6 +52,10 @@ export default async function FeaturedItemPage({ params }: Props) {
   const via = item.source && !compact(host).startsWith(compact(item.source)) ? item.source : '';
   const url = featuredUrl(date, item.id);
   const cta = item.section === 'tools' ? `Open on ${host}` : `Read it on ${host}`;
+  // Where the pick lives: Top articles is a feed tab; Tools sit beside the feed.
+  const listHref = item.section === 'tools' ? '/feed' : '/feed?tab=top-articles';
+  // Links out are rel="noopener" without noreferrer, so makers see Trace in
+  // their referrers (origin only, per the site's Referrer-Policy).
 
   return (
     <div className="min-h-screen">
@@ -67,7 +73,7 @@ export default async function FeaturedItemPage({ params }: Props) {
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-border">
             {item.image && (
-              <a href={item.url} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
+              <a href={item.url} target="_blank" rel="noopener" tabIndex={-1} aria-hidden="true">
                 {/* eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails */}
                 <img
                   src={item.image}
@@ -79,7 +85,7 @@ export default async function FeaturedItemPage({ params }: Props) {
             )}
             <div className="p-5 sm:p-6">
               <h1 className="text-[24px] font-extrabold leading-[1.16] tracking-[-0.035em] text-[#0f1419] sm:text-[30px]">
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.title}</a>
+                <a href={item.url} target="_blank" rel="noopener" className="hover:underline">{item.title}</a>
               </h1>
               {item.summary && (
                 <p className="mt-2.5 text-[15px] leading-[1.5] text-[#536471] sm:text-[16px]">{item.summary}</p>
@@ -107,7 +113,7 @@ export default async function FeaturedItemPage({ params }: Props) {
               <a
                 href={item.url}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener"
                 className="mt-5 inline-flex h-11 items-center gap-1.5 rounded-full bg-[#0f1419] px-5 text-[15px] font-bold text-white transition hover:bg-[#272c30]"
               >
                 {cta}
@@ -121,13 +127,13 @@ export default async function FeaturedItemPage({ params }: Props) {
           </div>
 
           <p className="mt-10 text-[15px] leading-relaxed text-secondary">
-            Trace reads hundreds of tech sources every day and keeps what is worth your time: the day&apos;s top
-            stories, plus Tools and Top articles like this one.{' '}
-            <Link
-              href={`/brief/${date}`}
-              className="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
-            >
-              Read the brief for {formatEditionDate(date, 'short')}
+            Trace reads 100+ tech sources every day and keeps what is worth your time.{' '}
+            <Link href={listHref} className={TEXT_LINK}>
+              See the latest {label}
+            </Link>
+            , or the day&apos;s top stories in{' '}
+            <Link href={`/brief/${date}`} className={TEXT_LINK}>
+              the brief for {formatEditionDate(date, 'short')}
             </Link>
             .
           </p>

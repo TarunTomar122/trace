@@ -124,6 +124,7 @@ def fake_model(*answers):
         response.choices[0].message.content = json.dumps(answer)
         responses.append(response)
     client.chat.completions.create.side_effect = responses
+    client.with_options.return_value = client
     return patch("v3.lib.summarizer._get_client", return_value=client), client
 
 
@@ -140,6 +141,7 @@ class FeaturedTests(unittest.TestCase):
         doc = {"daily_pulse_roles": {"developer": {"tools": [
             None, {"id": "", "title": "x", "url": "https://a.dev"}, {"id": "a", "title": "", "url": "https://a.dev"},
             {"id": "b", "title": "B", "url": "javascript:alert(1)"}, pulse_item("c", "C", "https://c.dev", "Show HN"),
+            pulse_item("d", "D", "https://[odd.dev/x", "Show HN"), pulse_item("e", "E", "https://", "Show HN"),
             pulse_item("c", "C again", "https://c2.dev", "Show HN"),
         ]}}}
         self.assertEqual([i["id"] for i in kit.featured_items(doc, DATE)], ["c"])
@@ -164,6 +166,15 @@ class FeaturedTests(unittest.TestCase):
         finder = FakeFinder()
         makers = kit.find_makers(kit.featured_items(DOC, DATE), finder, DATE, DATE, budget=-1)
         self.assertEqual((finder.urls, len(makers)), ([], 4))
+        self.assertFalse(any(m["checked"] for m in makers))
+        self.assertIn("X handle not checked today", kit._handles_text(makers[0]))
+
+    def test_a_failing_lookup_does_not_stop_the_kit(self):
+        finder = MagicMock()
+        finder.lookup.side_effect = ValueError("Invalid IPv6 URL")
+        makers = kit.find_makers(kit.featured_items(DOC, DATE), finder, DATE, DATE)
+        self.assertEqual(len(makers), 4)
+        self.assertFalse(makers[0]["checked"])
 
 
 class StoryTests(unittest.TestCase):
@@ -171,6 +182,10 @@ class StoryTests(unittest.TestCase):
         self.assertEqual([s["topic_id"] for s in kit.pick_releases([MARKET, GEMINI, CODEX])], ["gemini", "codex"])
         thin = topic("thin", "Mistral releases Magistral 2", ["Mistral", "HN"])
         self.assertEqual(kit.pick_releases([thin]), [])
+
+    def test_launches_ahead_of_events_still_count(self):
+        llama = topic("llama", "Meta launches Llama 5 ahead of LlamaCon", ["A", "B", "C", "D"], summary="Meta's new model.")
+        self.assertEqual([s["topic_id"] for s in kit.pick_releases([llama])], ["llama"])
 
     def test_second_draft_only_when_nearly_as_big(self):
         small = topic("small", "Anthropic launches Claude for Chrome", ["A", "B", "C"])
@@ -183,6 +198,13 @@ class StoryTests(unittest.TestCase):
     def test_not_releases(self):
         cases = [
             topic("delay", "OpenAI delays its open-weights model launch", ["A", "B", "C", "D"]),
+            topic("ipo", "CoreWeave debuts on Nasdaq", ["A", "B", "C", "D"]),
+            topic("fund", "Anthropic launches $100M fund for AI startups", ["A", "B", "C", "D"]),
+            topic("price", "Microsoft rolls out Copilot price hike", ["A", "B", "C", "D"]),
+            topic("bid", "Perplexity launches bid for Chrome", ["A", "B", "C", "D"]),
+            topic("report", "OpenAI releases report on election misuse", ["A", "B", "C", "D"]),
+            topic("plan", "Nvidia unveils plan to invest $5B in AI", ["A", "B", "C", "D"]),
+            topic("vague", "Startup launches today", ["A", "B", "C", "D"]),
             topic("suit", "Authors sue Meta over Llama training data", ["A", "B", "C", "D"]),
             topic("promo", "Best deals on AI laptops this week", ["A", "B", "C", "D"]),
             topic("junk", "Google releases Gemini 4", ["A", "B", "C", "D"], jev_send_worthy=0),
@@ -219,10 +241,13 @@ class WritingTests(unittest.TestCase):
 
     def test_template_when_the_model_fails(self):
         client = MagicMock()
-        client.chat.completions.create.side_effect = RuntimeError("401 Incorrect API key")
-        with patch("v3.lib.summarizer._get_client", return_value=client):
+        client.with_options.return_value = client
+        client.chat.completions.create.side_effect = RuntimeError("401 Incorrect API key sk-proj-abc***xyz")
+        with patch("v3.lib.summarizer._get_client", return_value=client), patch.object(kit, "_log") as log:
             self.assertEqual(kit.write_article(self.story)["written_by"], "template")
             self.assertEqual(kit.write_post(self.story, DATE)["written_by"], "template")
+        self.assertNotIn("sk-proj", " ".join(str(c) for c in log.call_args_list))
+        self.assertEqual(client.with_options.call_args.kwargs, {"max_retries": 1})
 
     def test_model_draft_is_used_when_it_follows_the_rules(self):
         answer = {
@@ -243,7 +268,7 @@ class WritingTests(unittest.TestCase):
         self.assertEqual(draft["details"], [{"text": "It reads 2M tokens.", "source": "The Verge"},
                                             {"text": "Input costs $1.25 per million tokens.", "source": ""}])
         request = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(request["model"], kit.KIT_MODEL)
+        self.assertEqual((request["model"], request["timeout"]), (kit.KIT_MODEL, 60))
         self.assertTrue(request["response_format"]["json_schema"]["strict"])
 
     def test_made_up_numbers_in_the_title_fall_back_to_the_story_title(self):
@@ -271,8 +296,28 @@ class WritingTests(unittest.TestCase):
         self.assertTrue(post["text"].endswith(f"https://www.yourtrace.online/brief/{DATE}?utm_source=x&utm_medium=post"))
         self.assertLessEqual(post["length"], 280)
 
+    def test_post_never_goes_over_280(self):
+        long_post = ("Google's Gemini 3.5 Pro reads 2M tokens at once. " * 6)[:240]
+        model, _ = fake_model({"post": long_post})
+        with model:
+            post = kit.write_post(self.story, DATE)
+        self.assertEqual(post["written_by"], "template")
+        self.assertLessEqual(post["length"], 280)
+        story = {**self.story, "title": "A very long headline " * 12, "summary": "Sentence. " * 40}
+        with no_model():
+            self.assertLessEqual(kit.write_post(story, DATE)["length"], 280)
+        cjk = {**self.story, "title": "谷歌发布双子座模型" * 20}
+        with no_model():
+            self.assertLessEqual(kit.write_post(cjk, DATE)["length"], 280)
+
+    def test_number_words_count_as_numbers(self):
+        self.assertEqual(kit.invented_numbers("It is ten times faster", "It is faster"), {"ten"})
+        self.assertEqual(kit.invented_numbers("Two million tokens", "two million tokens"), set())
+        self.assertEqual(kit.invented_numbers("The one thing that matters", "a model"), set())
+
     def test_post_rules_fall_back_to_the_template(self):
-        for bad in ("#AI " + "x" * 30, "y" * 300, "Read it: https://spam.example now please ok", "It is 99% better than before."):
+        for bad in ("#AI " + "x" * 30, "y" * 300, "Read it: https://spam.example now please ok", "It is 99% better than before.",
+                    "It runs twice as fast as before, says Google."):
             model, _ = fake_model({"post": bad})
             with model:
                 post = kit.write_post(self.story, DATE)
@@ -282,6 +327,7 @@ class WritingTests(unittest.TestCase):
 
     def test_x_length_counts_links_as_23(self):
         self.assertEqual(kit.x_length("hi https://www.yourtrace.online/brief/2026-10-14?utm_source=x"), 3 + 23)
+        self.assertEqual(kit.x_length("日本"), 4)
 
     def test_release_name(self):
         self.assertEqual(kit.release_name("OpenAI releases GPT-5.5 with 1M context"), "GPT-5.5")
@@ -474,6 +520,13 @@ class DayTests(unittest.TestCase):
         self.assertEqual(kit.load_day(lambda d: docs.get(d, {}), NOW)[0], DATE)
         self.assertEqual(kit.load_day(lambda d: {}, NOW), (DATE, {}))
         self.assertEqual(kit.load_day(lambda d: docs.get(d, {}), NOW, "2026-10-13")[0], "2026-10-13")
+
+    def test_a_new_ist_day_without_lists_waits_for_the_pulse(self):
+        # 20:00 in London is already tomorrow in India; that doc has stories but no lists yet.
+        evening = datetime(2026, 10, 14, 19, 0, tzinfo=timezone.utc)
+        docs = {"2026-10-15": {"trending_topics": [MARKET]}, DATE: DOC}
+        self.assertEqual(kit.load_day(lambda d: docs.get(d, {}), evening)[0], DATE)
+        self.assertEqual(kit.feed_today(evening), "2026-10-15")
 
 
 if __name__ == "__main__":

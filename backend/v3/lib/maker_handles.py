@@ -6,9 +6,11 @@ Three places to look, all cheap:
   the repo's homepage meta if the owner has none;
 - for a Hacker News item, the submitter (`by`), which the pipeline stores.
 
-Fetches are short (a few seconds), read at most MAX_HTML_BYTES of a page, and
-are remembered in `maker_handles` so a link is looked up once, not every day.
-Nothing here raises: a lookup that fails just finds no handle.
+Fetches are short (FETCH_DEADLINE seconds at most), read at most MAX_HTML_BYTES
+of a page, only go to public hosts on ports 80/443 (every redirect hop is
+checked: this runs on the VPS next to LocalDB), and are remembered in
+`maker_handles` so a link is looked up once, not every day. Nothing here
+raises: a lookup that fails just finds no handle.
 """
 
 from __future__ import annotations
@@ -17,9 +19,11 @@ import hashlib
 import ipaddress
 import os
 import re
+import socket
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -27,6 +31,8 @@ from bs4 import BeautifulSoup
 COLLECTION = "maker_handles"
 USER_AGENT = "Mozilla/5.0 (compatible; TraceBot/1.0; +https://yourtrace.online)"
 TIMEOUT = (3, 6)  # connect, read
+FETCH_DEADLINE = 10  # seconds for a whole page fetch, redirects included
+MAX_REDIRECTS = 3
 MAX_HTML_BYTES = 256 * 1024
 GITHUB_API = "https://api.github.com"
 # Handles found stay good for a month; a failed fetch is tried again sooner.
@@ -36,6 +42,7 @@ MISSED_TTL = timedelta(days=3)
 HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 # Where a handle came from, in words for the email.
 VIA = {"twitter:creator": "page author tag", "twitter:site": "site's X account"}
+TRACKING_PARAM = re.compile(r"^(utm_|ref$|ref_src$|fbclid$|gclid$|mc_cid$|mc_eid$)", re.I)
 # The platforms' own accounts and template leftovers: never the maker.
 GENERIC_HANDLES = {
     "github", "gitlab", "producthunt", "ycombinator", "hackernews", "hn", "medium", "substack",
@@ -43,6 +50,8 @@ GENERIC_HANDLES = {
     "thepracticaldev", "devto", "hashnode", "vercel", "netlify", "notionhq", "huggingface", "arxiv",
     "googledevs", "google", "lobsters", "sourcehut", "codeberg", "bsky", "bluesky", "mastodon",
     "username", "yourhandle", "handle", "site", "twitterhandle", "yourtwitter", "example",
+    # x.com paths, not accounts (x.com/intent/user, x.com/i/flow, ...)
+    "intent", "i", "share", "home", "search", "hashtag", "explore", "settings", "login", "signup",
 }
 # Hosting platforms: their twitter:site is the platform, so only twitter:creator
 # (an author's own handle, e.g. on Medium) can be the maker.
@@ -67,31 +76,55 @@ def _now() -> datetime:
 
 
 def url_key(url: str) -> str:
-    """One spelling per link: host without www., path without the trailing slash."""
-    parts = urlsplit(str(url or "").strip())
+    """One spelling per link: host without www., no trailing slash, no tracking params.
+
+    The rest of the query stays: youtube.com/watch?v=... links are different pages.
+    """
+    try:
+        parts = urlsplit(str(url or "").strip())
+    except ValueError:
+        return ""
     host = parts.netloc.lower().removeprefix("www.")
-    return f"{host}{parts.path.rstrip('/')}" if host else ""
+    if not host:
+        return ""
+    query = urlencode(sorted((k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
+                             if not TRACKING_PARAM.match(k)))
+    return f"{host}{parts.path.rstrip('/')}" + (f"?{query}" if query else "")
 
 
 def _host(url: str) -> str:
-    return (urlsplit(url).hostname or "").lower().removeprefix("www.")
+    try:
+        return (urlsplit(url).hostname or "").lower().removeprefix("www.")
+    except ValueError:
+        return ""
 
 
 def _on_platform(host: str) -> bool:
     return any(host == domain or host.endswith(f".{domain}") for domain in PLATFORM_HOSTS)
 
 
+def _resolve(host: str) -> list[str]:
+    """Every address `host` resolves to (127.1, 2130706433 and friends included)."""
+    return [info[4][0] for info in socket.getaddrinfo(host, None)]
+
+
 def _public_http(url: str) -> bool:
-    """http(s) to a public host: never localhost or a private address (this runs on the VPS)."""
-    parts = urlsplit(url)
-    host = (parts.hostname or "").lower()
-    if parts.scheme not in {"http", "https"} or not host or host == "localhost" or host.endswith(".local"):
+    """http(s) on 80/443 to a host whose every address is public (this runs on the VPS)."""
+    try:
+        parts = urlsplit(url)
+        host = (parts.hostname or "").lower().rstrip(".")
+        port = parts.port
+    except ValueError:
+        return False
+    if parts.scheme not in {"http", "https"} or not host or port not in {None, 80, 443}:
+        return False
+    if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
         return False
     try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        return True
-    return address.is_global
+        addresses = _resolve(host)
+        return bool(addresses) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in addresses)
+    except (OSError, ValueError, UnicodeError):
+        return False
 
 
 def clean_handle(value: Any) -> str:
@@ -110,29 +143,38 @@ def clean_handle(value: Any) -> str:
 
 
 def fetch_head(url: str, session: Any = requests) -> str:
-    """The start of a page's HTML (up to MAX_HTML_BYTES, cut at </head>), or ""."""
-    if not _public_http(url):
-        return ""
+    """The start of a page's HTML (up to MAX_HTML_BYTES, cut at </head>), or "".
+
+    Redirects are followed by hand so every hop's host is checked before it is
+    asked for anything, and the whole fetch stops after FETCH_DEADLINE seconds
+    (a server that drips bytes can't hold the run).
+    """
+    deadline = time.monotonic() + FETCH_DEADLINE
     try:
-        with session.get(url, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, stream=True,
-                         allow_redirects=True) as response:
-            if response.status_code != 200:
+        for _hop in range(MAX_REDIRECTS + 1):
+            if not _public_http(url) or time.monotonic() > deadline:
                 return ""
-            if "html" not in str(response.headers.get("content-type", "")).lower():
-                return ""
-            # A redirect can land anywhere: check the final host too.
-            if not _public_http(str(getattr(response, "url", "") or url)):
-                return ""
-            data = b""
-            for chunk in response.iter_content(16 * 1024):
-                data += chunk
-                if len(data) >= MAX_HTML_BYTES or b"</head>" in data.lower():
-                    break
+            with session.get(url, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, stream=True,
+                             allow_redirects=False) as response:
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    url = urljoin(url, str(response.headers.get("location") or ""))
+                    continue
+                if response.status_code != 200:
+                    return ""
+                if "html" not in str(response.headers.get("content-type", "")).lower():
+                    return ""
+                data = b""
+                for chunk in response.iter_content(8 * 1024):
+                    data += chunk
+                    if len(data) >= MAX_HTML_BYTES or b"</head>" in data.lower() or time.monotonic() > deadline:
+                        break
+                encoding = response.encoding or "utf-8"
+            text = data[:MAX_HTML_BYTES].decode(encoding, errors="ignore")
+            end = text.lower().find("</head>")
+            return text[: end + 7] if end != -1 else text
     except Exception:
         return ""
-    text = data[:MAX_HTML_BYTES].decode(response.encoding or "utf-8", errors="ignore")
-    end = text.lower().find("</head>")
-    return text[: end + 7] if end != -1 else text
+    return ""  # too many redirects
 
 
 def meta_handles(html: str, host: str) -> list[dict[str, str]]:
@@ -150,7 +192,9 @@ def meta_handles(html: str, host: str) -> list[dict[str, str]]:
                 continue
             handle = clean_handle(tag.get("content"))
             if handle and all(h["handle"].lower() != handle.lower() for h in found):
-                found.append({"handle": handle, "via": VIA[name]})
+                # On Product Hunt the page's author is whoever posted it, not always the maker.
+                poster = name == "twitter:creator" and (host == "producthunt.com" or host.endswith(".producthunt.com"))
+                found.append({"handle": handle, "via": "Product Hunt poster" if poster else VIA[name]})
     return found
 
 
@@ -176,13 +220,23 @@ def _github(path: str, session: Any) -> dict[str, Any] | None:
 
 def github_repo(url: str) -> tuple[str, str] | None:
     """(owner, repo) for a github.com/<owner>/<repo> link."""
-    parts = urlsplit(str(url or ""))
-    if (parts.hostname or "").lower().removeprefix("www.") != "github.com":
+    try:
+        parts = urlsplit(str(url or ""))
+        host = (parts.hostname or "").lower().removeprefix("www.")
+    except ValueError:
+        return None
+    if host != "github.com":
         return None
     segments = [s for s in parts.path.split("/") if s]
     if len(segments) < 2 or segments[0].lower() in GITHUB_RESERVED:
         return None
-    return segments[0], segments[1].removesuffix(".git")
+    owner, repo = segments[0], segments[1].removesuffix(".git")
+    # GitHub's own rules for names: nothing else goes into an API path.
+    if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})", owner) or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}", repo):
+        return None
+    if repo in {".", ".."}:
+        return None
+    return owner, repo
 
 
 def github_handles(owner: str, repo: str, session: Any = requests) -> list[dict[str, str]]:
@@ -267,11 +321,12 @@ class HandleFinder:
         except Exception as exc:
             self.log(f"handle cache write failed: {exc}")
 
-    def lookup(self, url: str) -> list[dict[str, str]]:
-        """Handles for the people behind `url`, best first. [] when none are found."""
+    def lookup(self, url: str) -> list[dict[str, str]] | None:
+        """Handles for the people behind `url`, best first: [] when none were found,
+        None when the link wasn't checked (GitHub's rate limit, a malformed link)."""
         key = url_key(url)
         if not key:
-            return []
+            return None
         cached = self._cached(key)
         if cached is not None:
             self.cached += 1
@@ -279,13 +334,13 @@ class HandleFinder:
         repo = github_repo(url)
         if repo:
             if self.github_limited:
-                return []  # not remembered: tomorrow's run asks again
+                return None  # not remembered: tomorrow's run asks again
             try:
                 handles = github_handles(*repo, session=self.session)
             except GitHubRateLimited as exc:
                 self.github_limited = True
                 self.log(f"{exc}; skipping the remaining GitHub lookups (set GITHUB_TOKEN for more)")
-                return []
+                return None
         else:
             handles = meta_handles(fetch_head(url, self.session), _host(url))
         self.fetched += 1

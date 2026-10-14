@@ -177,11 +177,14 @@ time and emails the founder (`TRACE_KIT_TO`) everything ready to post:
 - An X post for the day's top story, linking the day's brief.
 - Featured makers: everything in today's Tools and Top articles with its share
   page (`/featured/{date}/{id}`), best-effort X handles (page meta, the GitHub
-  owner's profile, the HN submitter) and a short line to send them. Handles are
-  cached in `maker_handles` (30 days, misses 3 days). `GITHUB_TOKEN` raises the
-  GitHub API limit from 60 to 5000 requests an hour.
+  owner's profile) plus the HN submitter, and a short line to send them.
+  Handles are cached in `maker_handles` (30 days, misses 3 days); links not
+  checked (out of time, GitHub's rate limit) say so. `GITHUB_TOKEN` raises the
+  GitHub API limit from 60 to 5000 requests an hour (no permissions needed).
+  Page fetches only go to public hosts on ports 80/443, every redirect checked.
 - Once a day: `post_kits/{date}` is written before sending (`sending`, then
-  `sent`/`failed`); a failed send is retried by the service, at most 3 times.
+  `sent`/`failed`); a failed send is retried by the service, at most 3 tries in
+  all. A kit left at `sending` is never retried.
   Before that the featured items are copied to the day's feed doc
   (`featured_items`), so share pages keep working after the pulse replaces the
   lists. Without `TRACE_KIT_TO` a run does nothing.

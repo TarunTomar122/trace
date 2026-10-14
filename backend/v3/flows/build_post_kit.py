@@ -41,8 +41,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import quote
-from zoneinfo import ZoneInfo
+from urllib.parse import quote, urlsplit
 
 from dotenv import load_dotenv
 
@@ -60,7 +59,6 @@ from v3.lib.maker_handles import HandleFinder, github_repo  # noqa: E402
 BUCKET = "post_kit"
 MARKERS = "post_kits"
 MAX_ATTEMPTS = 3
-LONDON = ZoneInfo("Europe/London")
 IST = timezone(timedelta(hours=5, minutes=30))
 # Share pages and links in posts always use the canonical site, whatever TRACE_APP_URL says.
 SITE_URL = "https://www.yourtrace.online"
@@ -75,7 +73,10 @@ HN_SOURCES = {"hacker news", "show hn"}
 # Handle lookups stop after this long; the rest are tried tomorrow.
 LOOKUP_BUDGET_SECONDS = 240
 X_URL_LENGTH = 23  # X counts every link as 23 characters
-POST_MAX_CHARS = 240  # the post's own text; the link comes after it
+X_MAX = 280
+POST_LINK_LEAD = "\n\nMore in the free daily brief: "
+# The post's own text: what is left of 280 after the line with the link.
+POST_MAX_CHARS = X_MAX - len(POST_LINK_LEAD) - X_URL_LENGTH
 
 
 def _env_int(name: str, default: int, low: int, high: int) -> int:
@@ -96,8 +97,17 @@ LAUNCH_VERB = re.compile(
     re.I,
 )
 NOT_A_LAUNCH = re.compile(
-    r"\b(cancel\w*|delay\w*|halt\w*|scrap\w*|abandon\w*|lawsuits?|sued|sues|probes?|bans?|banned|"
-    r"leak\w*|outages?|recall\w*|before|ahead of)\b",
+    r"\b(cancel\w*|delay\w*|halt\w*|scrap\w*|abandon\w*|postpon\w*|lawsuits?|sued|sues|probes?|bans?|banned|"
+    r"leak\w*|outages?|recall\w*|funds?|funding|raises?|raised|ipo|nasdaq|nyse|shares|stocks?|valuation|"
+    r"bids?|acquir\w*|acquisition|invest\w*|prices?|report|reports|plans? to|"
+    r"(?:delay\w*|postpon\w*|pause\w*)\s+(?:\w+\s+){0,4}(?:before|ahead of))\b",
+    re.I,
+)
+# A product launch names the thing launched: a release name or a product noun.
+PRODUCT_NOUN = re.compile(
+    r"\b(apps?|models?|agents?|assistants?|apis?|sdks?|tools?|features?|browsers?|chatbots?|platforms?|"
+    r"plugins?|extensions?|editors?|ides?|cli|copilot|chatgpt|gemini|claude|codex|llama|grok|deepseek|qwen|"
+    r"mistral|sora|veo|cursor|devin)\b",
     re.I,
 )
 # "<verb> Qwen3.8", "<verb> GPT-5", "<verb> Claude Opus 5": the release's own name.
@@ -108,6 +118,12 @@ NAMED_LAUNCH = re.compile(
     r"(?:\s+(?:Pro|Mini|Flash|Ultra|Max|Turbo|Nano|Lite|Sonnet|Opus|Haiku))?)"
 )
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+# Spelled-out amounts are numbers too ("ten times faster", "two million tokens").
+NUMBER_WORD = re.compile(
+    r"\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundreds?|"
+    r"thousands?|millions?|billions?|trillions?|twice|double[sd]?|triple[sd]?|quadruple[sd]?|halve[sd]?)\b",
+    re.I,
+)
 
 
 def _log(message: str) -> None:
@@ -123,9 +139,15 @@ def _date_label(date: str, style: str = "long") -> str:
     return f"{day:%B} {day.day}" if style == "long" else f"{day:%b} {day.day}"
 
 
+def _x_weight(char: str) -> int:
+    """X's weighting: Latin and common punctuation count 1, everything else (CJK, emoji) 2."""
+    code = ord(char)
+    return 1 if code <= 4351 or 8192 <= code <= 8205 or 8208 <= code <= 8223 or 8242 <= code <= 8247 else 2
+
+
 def x_length(text: str) -> int:
-    """Length as X counts it: every link is 23 characters."""
-    return len(re.sub(r"https?://\S+", "x" * X_URL_LENGTH, text))
+    """Length as X counts it: every link is 23 characters, CJK and emoji 2 each."""
+    return sum(_x_weight(c) for c in re.sub(r"https?://\S+", "x" * X_URL_LENGTH, text))
 
 
 def _intent(text: str) -> str:
@@ -141,18 +163,37 @@ def _pulse(doc: dict[str, Any]) -> dict[str, Any]:
     return ((doc.get("daily_pulse_roles") or {}).get("developer") or {}) if isinstance(doc, dict) else {}
 
 
+def feed_today(now: datetime) -> str:
+    """The feed's date for `now`: the pipeline dates its docs in IST."""
+    return now.astimezone(IST).strftime("%Y-%m-%d")
+
+
 def load_day(load_feed: Callable[[str], dict[str, Any]], now: datetime, date: str = "") -> tuple[str, dict[str, Any]]:
-    """Today's feed doc (IST, like the pipeline), else yesterday's if today's is still empty."""
+    """Today's feed doc (IST, like the pipeline) once the pulse has filled its lists.
+
+    Until then (a new IST day starts at 18:30 UTC, before the next pulse)
+    yesterday's full doc is the kit; a doc with stories but no lists is the
+    last resort.
+    """
     if date:
         return date, load_feed(date) or {}
-    today = now.astimezone(IST).date()
-    for day in (today, today - timedelta(days=1)):
-        key = day.isoformat()
-        doc = load_feed(key) or {}
-        pulse = _pulse(doc)
-        if doc.get("trending_topics") or pulse.get("tools") or pulse.get("discussions"):
+    today = datetime.strptime(feed_today(now), "%Y-%m-%d").date()
+    docs = [(day.isoformat(), load_feed(day.isoformat()) or {}) for day in (today, today - timedelta(days=1))]
+    for key, doc in docs:
+        if _pulse(doc).get("tools") or _pulse(doc).get("discussions"):
+            return key, doc
+    for key, doc in docs:
+        if doc.get("trending_topics"):
             return key, doc
     return today.isoformat(), {}
+
+
+def _web_link(url: str) -> bool:
+    try:
+        parts = urlsplit(url)
+        return parts.scheme in {"http", "https"} and bool(parts.hostname)
+    except ValueError:
+        return False
 
 
 def featured_items(doc: dict[str, Any], date: str) -> list[dict[str, Any]]:
@@ -167,7 +208,7 @@ def featured_items(doc: dict[str, Any], date: str) -> list[dict[str, Any]]:
             item_id = str(raw.get("id") or "").strip()
             title = _clean(raw.get("title"))
             url = str(raw.get("url") or "").strip()
-            if not item_id or item_id in seen or not title or not url.startswith(("http://", "https://")):
+            if not item_id or item_id in seen or not title or not _web_link(url):
                 continue
             seen.add(item_id)
             summary = raw.get("summary") if isinstance(raw.get("summary"), dict) else {}
@@ -204,17 +245,25 @@ def suggested_line(item: dict[str, Any], date: str, today: str) -> str:
 
 def find_makers(items: list[dict[str, Any]], finder: HandleFinder, date: str, today: str,
                 budget: float = LOOKUP_BUDGET_SECONDS) -> list[dict[str, Any]]:
-    """Each item with its handles and line; those with a handle first, sections kept apart."""
+    """Each item with its handles and line; those with a handle first, sections kept apart.
+
+    `checked` is False when no lookup ran (out of time, GitHub's rate limit),
+    so the email says "not checked" rather than "no handle found".
+    """
     started = time.monotonic()
     makers = []
     skipped = 0
     for item in items:
+        handles: list[dict[str, str]] | None = None
         if time.monotonic() - started > budget:
-            handles: list[dict[str, str]] = []
             skipped += 1
         else:
-            handles = finder.lookup(item["url"])
-        makers.append({**item, "handles": handles, "line": suggested_line(item, date, today)})
+            try:
+                handles = finder.lookup(item["url"])
+            except Exception as exc:  # one odd link must not stop the kit
+                _log(f"handle lookup failed for {item['url']}: {exc}")
+        makers.append({**item, "handles": handles or [], "checked": handles is not None,
+                       "line": suggested_line(item, date, today)})
     if skipped:
         _log(f"handle lookups ran out of time; {skipped} link(s) left for the next run")
     order = {section: i for i, (section, _) in enumerate(SECTIONS)}
@@ -267,10 +316,18 @@ def _usable(topic: Any) -> bool:
 
 
 def is_release(story: dict[str, Any], interest: str) -> bool:
-    """A model launch (the pipeline's own test), or an AI product launch."""
-    if _looks_like_model_release(story["title"], story["lead_source"], story["summary"][:600]):
+    """A model launch (the pipeline's own test), or an AI product launch.
+
+    "Anthropic launches $100M fund", "CoreWeave debuts on Nasdaq" and "OpenAI
+    releases report on ..." are not releases worth a builders' article.
+    """
+    title = story["title"]
+    if NOT_A_LAUNCH.search(title):
+        return False
+    if _looks_like_model_release(title, story["lead_source"], story["summary"][:600]):
         return True
-    return interest == "ai" and bool(LAUNCH_VERB.search(story["title"])) and not NOT_A_LAUNCH.search(story["title"])
+    return (interest == "ai" and bool(LAUNCH_VERB.search(title))
+            and bool(release_name(title) or PRODUCT_NOUN.search(title)))
 
 
 def pick_releases(topics: list[Any]) -> list[dict[str, Any]]:
@@ -380,10 +437,10 @@ def _chat_json(prompt: str, name: str, schema: dict[str, Any]) -> dict[str, Any]
         _log(f"{name}: OPENAI_API_KEY is not set; using the template")
         return None
     try:
-        response = client.chat.completions.create(
+        response = client.with_options(max_retries=1).chat.completions.create(
             model=KIT_MODEL,
             temperature=0.4,
-            timeout=90,
+            timeout=60,
             messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
             response_format={"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
         )
@@ -402,9 +459,10 @@ def _material(story: dict[str, Any]) -> str:
 
 
 def invented_numbers(text: str, material: str) -> set[str]:
-    """Numbers in `text` that the source material never mentions."""
-    known = set(NUMBER.findall(material))
-    return {n for n in NUMBER.findall(text) if n not in known}
+    """Numbers (digits or words) in `text` that the source material never mentions."""
+    known = set(NUMBER.findall(material)) | {w.lower() for w in NUMBER_WORD.findall(material)}
+    found = set(NUMBER.findall(text)) | {w.lower() for w in NUMBER_WORD.findall(text)}
+    return found - known
 
 
 def release_name(title: str) -> str:
@@ -472,10 +530,13 @@ def write_article(story: dict[str, Any]) -> dict[str, Any]:
 
 def article_text(draft: dict[str, Any], story: dict[str, Any]) -> str:
     """The article as plain text, ready to paste into X's article editor."""
-    lines = [draft["title"], "", draft["intro"], "", "What's new"]
-    for detail in draft["details"]:
-        lines.append(f"- {detail['text']}" + (f" ({detail['source']})" if detail["source"] else ""))
-    lines += ["", "Why it matters for builders"]
+    lines = [draft["title"], "", draft["intro"], ""]
+    if draft["details"]:
+        lines.append("What's new")
+        for detail in draft["details"]:
+            lines.append(f"- {detail['text']}" + (f" ({detail['source']})" if detail["source"] else ""))
+        lines.append("")
+    lines.append("Why it matters for builders")
     for paragraph in draft["why_it_matters"]:
         lines += [paragraph, ""]
     lines.append("Sources")
@@ -507,16 +568,17 @@ def write_post(story: dict[str, Any], date: str) -> dict[str, Any]:
     )
     text = _clean((result or {}).get("post"))
     written_by = "model"
-    if (not 20 <= len(text) <= POST_MAX_CHARS or "#" in text or "http" in text
+    if (not 20 <= x_length(text) <= POST_MAX_CHARS or "#" in text or "http" in text
             or invented_numbers(text, _material(story))):
         if result:
             _log("top_story_post: the model's post broke the rules; using the template")
         title = story["title"] if story["title"][-1:] in ".!?" else f"{story['title']}."
         sentence = _first_sentence(story["summary"])
-        text = f"{title}\n\n{sentence}" if sentence and len(title) + len(sentence) + 2 <= POST_MAX_CHARS else title
-        text = _clip(text, POST_MAX_CHARS)
+        text = f"{title}\n\n{sentence}" if sentence and x_length(f"{title}\n\n{sentence}") <= POST_MAX_CHARS else title
+        while x_length(text) > POST_MAX_CHARS:  # CJK and emoji count double
+            text = _clip(text, len(text) - 1)
         written_by = "template"
-    post = f"{text}\n\nMore in today's free brief: {link}"
+    post = f"{text}{POST_LINK_LEAD}{link}"
     return {"text": post, "length": x_length(post), "written_by": written_by}
 
 
@@ -526,7 +588,7 @@ def write_post(story: dict[str, Any], date: str) -> dict[str, Any]:
 
 
 def build_kit(date: str, doc: dict[str, Any], finder: HandleFinder, now: datetime) -> dict[str, Any]:
-    today = now.astimezone(LONDON).strftime("%Y-%m-%d")
+    today = feed_today(now)
     topics = [t for t in doc.get("trending_topics") or [] if isinstance(t, dict)]
     drafts = []
     for i, story in enumerate(pick_releases(topics), 1):
@@ -579,10 +641,14 @@ def _kicker(text: str) -> str:
     return _p(_esc(text.upper()), size=11, color="#536471", margin="18px 0 4px 0", weight=700)
 
 
+def _no_handle(maker: dict[str, Any]) -> str:
+    return "no X handle found" if maker.get("checked", True) else "X handle not checked today"
+
+
 def _handles_text(maker: dict[str, Any]) -> str:
-    parts = [f"{h['handle']} ({h['via']})" for h in maker["handles"]] or ["no X handle found"]
+    parts = [f"{h['handle']} ({h['via']})" for h in maker["handles"]] or [_no_handle(maker)]
     if maker.get("by"):
-        parts.append(f"HN: {maker['by']}")
+        parts.append(f"HN submitter: {maker['by']}")
     return " · ".join(parts)
 
 
@@ -632,8 +698,10 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
         story = post["story"]
         body.append(_p(f"{_a(story['url'], story['title'])} · {story['source_count']} sources", size=14))
         body.append(_box(post["text"], size=15))
-        body.append(_p(f"{post['length']}/280 characters · {_a(_intent(post['text']), 'Open in X')}",
-                       size=13, color="#536471"))
+        count = f"{post['length']}/{X_MAX} characters"
+        if post["length"] > X_MAX:
+            count = f'<span style="color: #f4212e; font-weight: 700;">{count}: too long for one post</span>'
+        body.append(_p(f"{count} · {_a(_intent(post['text']), 'Open in X')}", size=13, color="#536471"))
         text += [f"{story['title']} ({story['url']})", "", post["text"], f"({post['length']}/280)", ""]
     else:
         body.append(_p("No stories in today's feed yet.", color="#536471"))
@@ -650,11 +718,14 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
     for maker in kit["makers"]:
         contacts = [f"{_a('https://x.com/' + h['handle'][1:], h['handle'])} ({_esc(h['via'])})" for h in maker["handles"]]
         if not contacts:
-            contacts = ["no X handle found"]
+            contacts = [_esc(_no_handle(maker))]
         if maker.get("by"):
-            contacts.append(f"HN: {_a('https://news.ycombinator.com/user?id=' + quote(maker['by']), maker['by'])}")
+            user = _a("https://news.ycombinator.com/user?id=" + quote(maker["by"]), maker["by"])
+            contacts.append(f"HN submitter: {user}")
         body.append(_kicker(" · ".join(filter(None, [maker["label"], maker["source"], maker["signal"]]))))
         body.append(_p(_a(maker["url"], maker["title"]), size=16, margin="0 0 4px 0", weight=700))
+        if maker["summary"]:
+            body.append(_p(_esc(maker["summary"]), size=13, color="#536471", margin="0 0 4px 0"))
         body.append(_p(" · ".join(contacts), size=13, color="#536471", margin="0 0 4px 0"))
         body.append(_p(f"Share page: {_a(maker['share_url'])}", size=13, color="#536471", margin="0 0 8px 0"))
         body.append(_box(maker["line"], size=13))
@@ -863,8 +934,11 @@ def main() -> None:
     args = parser.parse_args()
     if args.feed_json and not args.dry_run:
         parser.error("--feed-json only works with --dry-run")
-    if args.date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
-        parser.error("--date must be YYYY-MM-DD")
+    if args.date:
+        try:
+            datetime.strptime(args.date, "%Y-%m-%d")
+        except ValueError:
+            parser.error("--date must be a real date, YYYY-MM-DD")
     sys.exit(run(args))
 
 

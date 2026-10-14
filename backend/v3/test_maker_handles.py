@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -6,6 +7,25 @@ from unittest.mock import MagicMock, patch
 from v3.lib import maker_handles as M
 
 NOW = datetime(2026, 10, 14, 6, 30, tzinfo=timezone.utc)
+# Hosts the fake resolver maps to private addresses; everything else is public.
+PRIVATE = {"localhost": "127.0.0.1", "127.0.0.1.nip.io": "127.0.0.1", "2130706433": "127.0.0.1", "127.1": "127.0.0.1",
+           "intranet.dev": "10.0.0.5", "metadata.dev": "169.254.169.254", "v6.dev": "::1"}
+
+
+def fake_resolve(host):
+    """No DNS in tests: a fixed public address unless the host is listed as private."""
+    if host == "nxdomain.dev":
+        raise OSError("Name or service not known")
+    try:
+        return [str(ipaddress.ip_address(host))]  # literals resolve to themselves, as with getaddrinfo
+    except ValueError:
+        return [PRIVATE.get(host, "93.184.216.34")]
+
+
+def setUpModule():
+    patcher = patch.object(M, "_resolve", side_effect=fake_resolve)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
 
 
 class FakeResponse:
@@ -83,7 +103,8 @@ class HandleTests(unittest.TestCase):
         self.assertEqual(M.clean_handle("simonw"), "@simonw")
         self.assertEqual(M.clean_handle("https://twitter.com/simonw"), "@simonw")
         self.assertEqual(M.clean_handle("https://x.com/simonw?lang=en"), "@simonw")
-        for junk in ("@github", "@ProductHunt", "@username", "", None, "not a handle", "@sixteen_chars_xx", "@a-b"):
+        for junk in ("@github", "@ProductHunt", "@username", "", None, "not a handle", "@sixteen_chars_xx", "@a-b",
+                     "https://twitter.com/intent/user?screen_name=x", "https://x.com/i/flow/login"):
             self.assertEqual(M.clean_handle(junk), "", junk)
 
     def test_meta_handles_skip_platform_site_accounts(self):
@@ -93,6 +114,8 @@ class HandleTests(unittest.TestCase):
         # On Medium, twitter:site is Medium itself; the author's own tag still counts.
         self.assertEqual(M.meta_handles(html, "medium.com"), [{"handle": "@jane", "via": "page author tag"}])
         self.assertEqual(M.meta_handles(html, "jane.medium.com"), [{"handle": "@jane", "via": "page author tag"}])
+        # On Product Hunt the page's author tag is whoever posted it.
+        self.assertEqual(M.meta_handles(html, "producthunt.com"), [{"handle": "@jane", "via": "Product Hunt poster"}])
         same = page(("property", "twitter:creator", "@acme"), ("name", "twitter:site", "@Acme")).decode()
         self.assertEqual([h["handle"] for h in M.meta_handles(same, "acme.dev")], ["@acme"])
         self.assertEqual(M.meta_handles("", "acme.dev"), [])
@@ -118,15 +141,36 @@ class FetchTests(unittest.TestCase):
         session = FakeSession({
             "https://pdf.dev": FakeResponse(body=b"%PDF", headers={"content-type": "application/pdf"}),
             "https://down.dev": RuntimeError("timeout"),
-            "https://moved.dev": FakeResponse(body=page(("name", "twitter:site", "@x1")), url="http://127.0.0.1/admin"),
         })
         self.assertEqual(M.fetch_head("https://pdf.dev", session), "")
         self.assertEqual(M.fetch_head("https://down.dev", session), "")
-        self.assertEqual(M.fetch_head("https://moved.dev", session), "")
-        for url in ("http://localhost:8080/", "http://127.0.0.1/", "http://10.0.0.5/", "http://169.254.169.254/", "ftp://a.dev"):
-            self.assertEqual(M.fetch_head(url, session), "")
-        self.assertNotIn("http://localhost:8080/", session.calls)
-        self.assertNotIn("http://169.254.169.254/", session.calls)
+        private = ("http://localhost:8080/", "http://localhost./", "http://foo.localhost/", "http://127.0.0.1/",
+                   "http://127.1/", "http://2130706433/", "http://127.0.0.1.nip.io/", "http://10.0.0.5/",
+                   "http://intranet.dev/", "http://metadata.dev/latest", "http://v6.dev/", "http://nxdomain.dev/",
+                   "https://ok.dev:8443/", "ftp://a.dev", "https://[odd.dev/x", "")
+        for url in private:
+            self.assertEqual(M.fetch_head(url, session), "", url)
+        self.assertEqual(session.calls, ["https://pdf.dev", "https://down.dev"])
+
+    def test_every_redirect_hop_is_checked_before_it_is_fetched(self):
+        session = FakeSession({
+            "https://moved.dev/a": FakeResponse(301, headers={"location": "/b"}),
+            "https://moved.dev/b": FakeResponse(302, headers={"location": "https://new.dev/"}),
+            "https://new.dev/": FakeResponse(body=page(("name", "twitter:site", "@newdev"))),
+            "https://sneaky.dev/": FakeResponse(302, headers={"location": "http://127.0.0.1:8500/documents"}),
+            "https://loop.dev/": FakeResponse(302, headers={"location": "https://loop.dev/"}),
+        })
+        self.assertIn("@newdev", M.fetch_head("https://moved.dev/a", session))
+        self.assertEqual(M.fetch_head("https://sneaky.dev/", session), "")
+        self.assertNotIn("http://127.0.0.1:8500/documents", session.calls)
+        self.assertEqual(M.fetch_head("https://loop.dev/", session), "")
+        self.assertEqual(session.calls.count("https://loop.dev/"), M.MAX_REDIRECTS + 1)
+
+    def test_a_slow_page_is_cut_off_at_the_deadline(self):
+        response = FakeResponse(body=b"<html><head>" + b"x" * 200_000)
+        with patch.object(M, "FETCH_DEADLINE", -1):
+            self.assertEqual(M.fetch_head("https://slow.dev", FakeSession({"https://slow.dev": response})), "")
+        self.assertEqual(response.chunks_read, 0)
 
 
 class GitHubTests(unittest.TestCase):
@@ -189,10 +233,17 @@ class FinderTests(unittest.TestCase):
         session = MagicMock()
         session.get.return_value = FakeResponse(429, headers={}, data={"message": "rate limit"})
         finder = M.HandleFinder(db, session=session, now=NOW)
-        self.assertEqual(finder.lookup("https://github.com/a/b"), [])
+        self.assertIsNone(finder.lookup("https://github.com/a/b"))  # not checked, not "none found"
         self.assertTrue(finder.github_limited)
-        self.assertEqual(finder.lookup("https://github.com/c/d"), [])
+        self.assertIsNone(finder.lookup("https://github.com/c/d"))
         self.assertEqual((session.get.call_count, db.writes), (1, 0))
+
+    def test_cache_keys_keep_the_query_but_not_tracking(self):
+        self.assertEqual(M.url_key("https://www.youtube.com/watch?v=abc&utm_source=x"), "youtube.com/watch?v=abc")
+        self.assertNotEqual(M.url_key("https://youtube.com/watch?v=abc"), M.url_key("https://youtube.com/watch?v=xyz"))
+        self.assertEqual(M.url_key("https://a.dev/post/?ref=hn"), "a.dev/post")
+        self.assertEqual(M.url_key("https://[odd.dev/x"), "")
+        self.assertIsNone(M.HandleFinder(None).lookup("https://[odd.dev/x"))
 
     def test_cache_errors_never_stop_a_lookup(self):
         url = "https://acme.dev"
