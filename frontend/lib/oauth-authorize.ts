@@ -146,28 +146,35 @@ export async function validateAuthorizationRequest(
 }
 
 export type NewsletterState = 'will_subscribe' | 'subscribed' | 'unsubscribed';
+/** What Allow did: the profile's state, or 'declined' when the reader unticked the email. */
+export type NewsletterOutcome = NewsletterState | 'declined';
 
 /**
  * What Allow does to the daily email, by the sender's own rule
  * (`_email_enabled` in send_audience_newsletter.py): readers who already get
- * it keep it, readers who unsubscribed from an email stay unsubscribed, and
- * everyone else is subscribed with the app's usual opt-in.
+ * it keep it; readers who turned it off anywhere (an email's unsubscribe link,
+ * the brief builder's switch, onboarding) stay off; everyone else can opt in
+ * on the consent page, ticked by default.
  */
 export function agentNewsletterState(profile: Record<string, unknown>): NewsletterState {
   if (emailEnabled(profile) && (profile.dailyNewsletterEnabled === true || profile.onboarded === true)) return 'subscribed';
-  if (profile.newsletterUnsubscribedAt) return 'unsubscribed';
+  if (profile.newsletterUnsubscribedAt || profile.dailyNewsletterEnabled === false || profile.newsletterOptIn === false) {
+    return 'unsubscribed';
+  }
   return 'will_subscribe';
 }
 
 export async function subscribeConnectingReader(
   db: OAuthDb,
   uid: string,
+  optIn = true,
   now = Date.now(),
-): Promise<NewsletterState | 'no_profile'> {
+): Promise<NewsletterOutcome | 'no_profile'> {
   const ref = db.collection('user_profiles').doc(uid);
   const snapshot = await ref.get();
   if (!snapshot.exists) return 'no_profile';
   const state = agentNewsletterState(snapshot.data() || {});
+  if (state === 'will_subscribe' && !optIn) return 'declined';
   if (state === 'will_subscribe') {
     const result = profilePatchFromInput({ enabled: true });
     if ('patch' in result) {

@@ -57,9 +57,10 @@ URL: https://www.yourtrace.online (put the GitHub link in the first comment).
 **Ingest.** A systemd timer runs the pipeline every 20 minutes on one VPS. It
 pulls about 70 news and company feeds, Hacker News (front page, Show HN and
 Algolia search on a few discovery topics), YouTube for the same topics, and the
-role feeds (about 30 blogs and 20 subreddits). Items older than 12 hours are
-dropped, and keyword filters take out promos, deal posts and off-topic news
-before anything costs a model call.
+role feeds (about 30 blogs and 20 subreddits). Items older than 36 hours (72 at
+weekends, when startup and design feeds go quiet) are dropped, and keyword
+filters take out promos, deal posts and off-topic news before anything costs a
+model call.
 
 **Group.** For each candidate the pipeline builds a short "state" (title, source,
 summary), embeds it, and finds each item's nearest neighbours. Only pairs above

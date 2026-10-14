@@ -6,7 +6,7 @@ import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import DailySignup from '../../../brief/DailySignup';
 import ShareBar from '../../../brief/ShareBar';
-import { formatEditionDate, sourceHost } from '@/lib/daily-editions';
+import { formatEditionDate, getDailyEdition, sourceHost } from '@/lib/daily-editions';
 import { FEATURED_LABELS, featuredUrl, getFeaturedItem } from '@/lib/featured-items';
 import { metadataTitle } from '@/lib/seo';
 import { faviconUrl } from '@/lib/topic-icons';
@@ -27,7 +27,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!item) return { title: metadataTitle('Featured on Trace') };
 
   const title = `Featured on Trace: ${item.title}`;
-  const description = item.summary || `Picked for Trace's ${FEATURED_LABELS[item.section]} on ${formatEditionDate(date)}.`;
+  // Share cards and search snippets cut long text anyway; keep it to a sentence or two.
+  const summary = item.summary.length > 200 ? `${item.summary.slice(0, 197).trimEnd()}…` : item.summary;
+  const description = summary || `Picked for Trace's ${FEATURED_LABELS[item.section]} on ${formatEditionDate(date)}.`;
   const url = featuredUrl(date, item.id);
   return {
     title: metadataTitle(`Featured: ${item.title}`),
@@ -41,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function FeaturedItemPage({ params }: Props) {
   const { date, id } = await params;
-  const item = await getFeaturedItem(date, id);
+  const [item, edition] = await Promise.all([getFeaturedItem(date, id), getDailyEdition(date).catch(() => null)]);
   if (!item) notFound();
 
   const label = FEATURED_LABELS[item.section];
@@ -132,8 +134,9 @@ export default async function FeaturedItemPage({ params }: Props) {
               See the latest {label}
             </Link>
             , or the day&apos;s top stories in{' '}
-            <Link href={`/brief/${date}`} className={TEXT_LINK}>
-              the brief for {formatEditionDate(date, 'short')}
+            {/* A day's edition can be missing (a send that didn't run); then link the latest one. */}
+            <Link href={edition ? `/brief/${date}` : '/brief'} className={TEXT_LINK}>
+              {edition ? `the brief for ${formatEditionDate(date, 'short')}` : 'the latest brief'}
             </Link>
             .
           </p>

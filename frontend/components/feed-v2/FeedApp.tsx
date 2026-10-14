@@ -318,8 +318,9 @@ export default function FeedApp({
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
-  // Signed-out readers get one gentle email ask per fortnight: 15 seconds in, or
-  // sooner once they open a story or scroll past the first few; never once subscribed.
+  // Signed-out readers get one gentle email ask per fortnight: 30 seconds in, or
+  // sooner once they come back to the list from a story or scroll past the first
+  // few (never on top of a story they've just opened); never once subscribed.
   const [nlPrompt, setNlPrompt] = useState(false);
   const [nlEngaged, setNlEngaged] = useState(false);
   const nlPromptArmed = useRef(false);
@@ -345,7 +346,7 @@ export default function FeedApp({
       }
       trackNewsletterPrompt('shown');
       setNlPrompt(true);
-    }, nlEngaged ? 1500 : 15_000);
+    }, nlEngaged ? 1500 : 30_000);
     return () => {
       window.clearTimeout(timer);
       nlPromptArmed.current = false;
@@ -775,7 +776,6 @@ export default function FeedApp({
   function openStory(s: FeedStory) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
-    setNlEngaged(true);
     setReadIds((cur) => {
       if (cur.has(s.id)) return cur;
       const next = new Set(cur);
@@ -793,7 +793,6 @@ export default function FeedApp({
   function openPulseItem(t: PulseItem) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: null, pulse: t.id });
-    setNlEngaged(true);
     window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
     trackFeedItemClicked(t.id, 'pulse', t.source || '');
     trackSummaryOpened(t.id, false, {
@@ -802,6 +801,7 @@ export default function FeedApp({
   }
   function goBack() {
     setView({ story: null, pulse: null });
+    setNlEngaged(true); // back on the list after a story: a good moment for the email ask
     window.history.replaceState(null, '', base());
   }
   function go(t: string) {

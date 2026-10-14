@@ -8,15 +8,15 @@ import type { AuthorizationRequest, ConsentClient, NewsletterState } from '@/lib
 
 type ConsentInfo = { email: string | null; newsletter: NewsletterState; profileReady: boolean };
 
-const NEWSLETTER_COPY: Record<NewsletterState, string> = {
-  will_subscribe: "Connecting also sends you Trace's daily brief by email. Unsubscribe any time; your agent keeps access.",
+const NEWSLETTER_COPY: Record<Exclude<NewsletterState, 'will_subscribe'>, string> = {
   subscribed: "You already get Trace's daily brief by email. Unsubscribe any time; your agent keeps access.",
-  unsubscribed: "You unsubscribed from Trace's daily email, so connecting won't sign you up again. Your agent gets access either way.",
+  unsubscribed: "You turned off Trace's daily email, so connecting won't turn it back on. Your agent gets access either way.",
 };
 
-function requestBody(request: AuthorizationRequest, decision: 'allow' | 'deny') {
+function requestBody(request: AuthorizationRequest, decision: 'allow' | 'deny', newsletter: boolean) {
   return JSON.stringify({
     decision,
+    newsletter,
     client_id: request.clientId,
     redirect_uri: request.redirectUri,
     response_type: 'code',
@@ -60,6 +60,7 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
   const [busy, setBusy] = useState<'allow' | 'deny' | 'signin' | null>(null);
   const [error, setError] = useState('');
   const [done, setDone] = useState<'allowed' | 'denied' | null>(null);
+  const [wantsEmail, setWantsEmail] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -111,7 +112,7 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         credentials: 'same-origin',
-        body: requestBody(request, decision),
+        body: requestBody(request, decision, wantsEmail),
       });
       const body = await response.json().catch(() => ({})) as { redirect?: string; error?: string };
       if (!response.ok || !body.redirect) throw new Error(body.error || 'Could not finish connecting. Try again.');
@@ -157,7 +158,14 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
         <li><span className="oa-no" aria-hidden="true">✕</span>Change your account, post, or buy anything</li>
       </ul>
 
-      <p className={`oa-email${newsletter === 'unsubscribed' ? ' muted' : ''}`}>{NEWSLETTER_COPY[newsletter]}</p>
+      {newsletter === 'will_subscribe' ? (
+        <label className="oa-email oa-optin">
+          <input type="checkbox" checked={wantsEmail} onChange={(event) => setWantsEmail(event.target.checked)} disabled={busy !== null} />
+          <span>Also send me Trace&apos;s daily brief by email. Unsubscribe any time; your agent keeps access either way.</span>
+        </label>
+      ) : (
+        <p className={`oa-email${newsletter === 'unsubscribed' ? ' muted' : ''}`}>{NEWSLETTER_COPY[newsletter]}</p>
+      )}
 
       {error ? <p className="oa-error" role="alert">{error}</p> : null}
 
@@ -210,6 +218,8 @@ const css = `
 .oa-no { color: #71767b; }
 .oa-email { margin: 0 0 22px; padding: 14px 16px; border-radius: 16px; border: 1px solid #cfe8fb; background: #f0f9ff; font-size: 14px; line-height: 1.5; color: #0f1419; }
 .oa-email.muted { border-color: #eff3f4; background: #f7f9f9; color: #536471; }
+.oa-optin { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.oa-optin input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #1d9bf0; }
 .oa-account { margin: 0 0 14px; font-size: 14px; color: #536471; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; overflow-wrap: anywhere; }
 .oa-account strong { color: #0f1419; }
 .oa-link { border: none; background: none; padding: 0; color: #1d9bf0; font: inherit; font-weight: 600; cursor: pointer; }

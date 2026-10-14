@@ -105,10 +105,11 @@ on a minimal Docker install:
 | **Building the web image** | 3–4 GB RAM for the Next.js build. On a small server, build on another machine and copy the image over. |
 | **Disk** | A few GB. The hosted instance's database is under 1 GB after nine months. |
 
-To drop a source you don't trust, remove it from
-`backend/v3/config/trending_sources.json` (news) or
-`backend/v3/config/brief_sources.json` (blogs, subreddits, Top articles); the
-next pipeline run picks it up.
+To drop a source you don't trust, remove it from the config in
+`backend/v3/config/`: `trending_sources.json` for news (picked up on the next
+20-minute run), `pulse_sources.json` for Tools and builds, or
+`brief_sources.json` for blogs, subreddits and Top articles (both picked up on
+the next 3-hourly pulse).
 
 ```bash
 git clone <this repo> trace && cd trace

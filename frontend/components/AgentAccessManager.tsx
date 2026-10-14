@@ -154,7 +154,7 @@ Store the key securely as TRACE_AGENT_KEY. Never commit or print it. After setup
             {status?.configured ? 'Rotate key' : 'Create Agent Key'}
           </button>
           {status?.configured && (
-            <button type="button" onClick={revokeKey} disabled={busy} className="inline-flex items-center gap-2 border border-red-200 px-5 py-3 text-[13px] font-semibold text-red-600 disabled:opacity-50"><Trash2 size={14} />Revoke access</button>
+            <button type="button" onClick={revokeKey} disabled={busy} className="inline-flex items-center gap-2 border border-red-200 px-5 py-3 text-[13px] font-semibold text-red-600 disabled:opacity-50"><Trash2 size={14} />Revoke this key</button>
           )}
         </div>
       </div>

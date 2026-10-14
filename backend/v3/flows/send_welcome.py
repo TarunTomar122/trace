@@ -277,7 +277,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
     hi = f"Hi {first}," if first else "Hi there,"
     customize = "pick your topics, how many stories (5, 10 or 15) and whether you want images"
     intro = _para(
-        "You're in. Trace reads the internet so you don't have to: hundreds of tech sources, "
+        "You're in. Trace reads the internet so you don't have to: 100+ tech sources, "
         "boiled down to the stories that matter, each with a link to the original."
     )
     free = _para("It's all free and open source. No ads, no paywall, nothing to unlock.")

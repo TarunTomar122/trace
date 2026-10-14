@@ -339,3 +339,16 @@ test('registration is rate limited per address', async () => {
   assert.equal(last.status, 429);
   assert.ok(Number(last.headers.get('retry-after')) > 0);
 });
+
+test('unticking the email box on the consent page connects without subscribing', async () => {
+  const client = await registerCursorLikeClient();
+  await seedProfile('reader-quiet');
+  const before = (await db.collection('user_profiles').doc('reader-quiet').get()).data();
+
+  const allow = await consentPost(authorizeBody(client.client_id, { newsletter: false }), { uid: 'reader-quiet' });
+  assert.equal(allow.status, 200);
+  const allowed = await allow.json();
+  assert.equal(allowed.newsletter, 'declined');
+  assert.match(new URL(allowed.redirect).searchParams.get('code'), /^trace_code_/);
+  assert.deepEqual((await db.collection('user_profiles').doc('reader-quiet').get()).data(), before);
+});

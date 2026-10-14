@@ -1,5 +1,6 @@
 // A Claude Code style skill (SKILL.md) for personal agents. Install with:
-//   mkdir -p ~/.claude/skills/trace && curl -o ~/.claude/skills/trace/SKILL.md https://www.yourtrace.online/agents/skill.md
+//   mkdir -p ~/.claude/skills/trace-tech-brief && curl -fsSL -o ~/.claude/skills/trace-tech-brief/SKILL.md https://www.yourtrace.online/agents/skill.md
+// The folder name matches the skill's `name`, as the Agent Skills spec requires.
 const skill = `---
 name: trace-tech-brief
 description: Fetches today's tech and AI news brief from Trace - the biggest stories, notable builds and open-source releases, and practitioner conversations, each with sources. Use when the user asks what is happening in tech or AI today, wants a morning or daily brief, asks about recent launches, model releases or developer tools, or wants tech news posted to a chat channel.
@@ -15,7 +16,7 @@ Trace reads 100+ tech sources every morning, groups coverage of the same event i
    - General "what's new" questions: \`get_daily_tech_brief\` with \`limit\` 5 to 8.
    - Only news: \`get_top_tech_news\`. Launches and open source: \`get_latest_builds\`. Discussions: \`get_tech_conversations\`.
    - If you know what the user does, pass \`role\` (developer, founder, designer, product manager).
-2. **Not connected**: ask the user to add it once. There is no key: their client opens a Trace page, they sign in with Google and click Allow. Tell them connecting also sends Trace's daily brief by email (unsubscribe any time; access continues).
+2. **Not connected**: ask the user to add it once. There is no key: their client opens a Trace page, they sign in with Google and click Allow. Tell them the Allow page can also send Trace's daily brief by email (a box, ticked by default; unsubscribe any time; access continues).
    - Claude Code: \`claude mcp add --transport http trace https://www.yourtrace.online/api/mcp\`, then \`/mcp\` to sign in.
    - Any other MCP client: add the remote server URL \`https://www.yourtrace.online/api/mcp\`.
    - Setup for each app: https://www.yourtrace.online/agents

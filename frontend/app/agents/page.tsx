@@ -54,8 +54,8 @@ const headerConfig = `{
 const restExample = `curl "https://www.yourtrace.online/api/agents/brief?limit=8" \\
   -H "Authorization: Bearer $TRACE_AGENT_KEY"`;
 
-const skillInstall = `mkdir -p ~/.claude/skills/trace
-curl -o ~/.claude/skills/trace/SKILL.md \\
+const skillInstall = `mkdir -p ~/.claude/skills/trace-tech-brief
+curl -fsSL -o ~/.claude/skills/trace-tech-brief/SKILL.md \\
   https://www.yourtrace.online/agents/skill.md`;
 
 export default function AgentsPage() {
@@ -127,9 +127,9 @@ export default function AgentsPage() {
             </ol>
             <div className="mt-6 flex gap-3 rounded-[16px] p-5 ring-1 ring-accent/30">
               <Mail size={18} className="mt-0.5 shrink-0 text-accent" />
-              <p className="text-[14px] leading-[1.7] text-secondary"><strong className="text-foreground">You also get the daily brief by email.</strong> Connecting sends you Trace’s morning brief around 9:30am UK time. Unsubscribe from any email and your agent keeps access. If you unsubscribed before, connecting doesn’t sign you up again.</p>
+              <p className="text-[14px] leading-[1.7] text-secondary"><strong className="text-foreground">You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 9:30am UK time. Unsubscribe from any email and your agent keeps access. If you turned the email off before, connecting leaves it off.</p>
             </div>
-            <p className="mt-5 text-[13px] text-secondary">To disconnect, remove Trace from your app.</p>
+            <p className="mt-5 text-[13px] text-secondary">To disconnect, remove Trace from your app. Access tokens last an hour; a removed app&apos;s refresh token can&apos;t be used again and expires after 90 days.</p>
           </div>
         </section>
 

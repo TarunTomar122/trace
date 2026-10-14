@@ -403,12 +403,14 @@ test('revoking a refresh token ends the whole grant', async () => {
   await revokeToken(db, 'not-a-token', undefined); // silent no-op
 });
 
-test('connecting subscribes to the daily brief unless the reader unsubscribed', async () => {
+test('connecting can subscribe to the daily brief, but never turns an opted-out email back on', async () => {
   assert.equal(agentNewsletterState({}), 'will_subscribe');
-  assert.equal(agentNewsletterState({ dailyNewsletterEnabled: false, newsletterOptIn: false }), 'will_subscribe');
+  // Turned off in the brief builder or at onboarding: stays off, like an unsubscribe.
+  assert.equal(agentNewsletterState({ dailyNewsletterEnabled: false, newsletterOptIn: false }), 'unsubscribed');
+  assert.equal(agentNewsletterState({ newsletterOptIn: false }), 'unsubscribed');
   assert.equal(agentNewsletterState({ dailyNewsletterEnabled: true }), 'subscribed');
   assert.equal(agentNewsletterState({ onboarded: true }), 'subscribed');
-  assert.equal(agentNewsletterState({ onboarded: true, dailyNewsletterEnabled: false }), 'will_subscribe');
+  assert.equal(agentNewsletterState({ onboarded: true, dailyNewsletterEnabled: false }), 'unsubscribed');
   assert.equal(agentNewsletterState({ dailyNewsletterEnabled: false, newsletterOptIn: false, newsletterUnsubscribedAt: '2026-10-01T00:00:00Z' }), 'unsubscribed');
   // Turned back on after an unsubscribe: they get it again.
   assert.equal(agentNewsletterState({ dailyNewsletterEnabled: true, newsletterUnsubscribedAt: '2026-10-01T00:00:00Z' }), 'subscribed');
@@ -427,6 +429,12 @@ test('connecting subscribes to the daily brief unless the reader unsubscribed', 
   await db.collection('user_profiles').doc('gone').set(unsubscribed);
   assert.equal(await subscribeConnectingReader(db, 'gone'), 'unsubscribed');
   assert.deepEqual((await db.collection('user_profiles').doc('gone').get()).data(), unsubscribed);
+
+  // Unticking the consent page's box connects without subscribing.
+  const untouched = { uid: 'quiet', email: 'quiet@example.com', onboarded: false };
+  await db.collection('user_profiles').doc('quiet').set(untouched);
+  assert.equal(await subscribeConnectingReader(db, 'quiet', false), 'declined');
+  assert.deepEqual((await db.collection('user_profiles').doc('quiet').get()).data(), untouched);
 });
 
 test('metadata advertises S256-only PKCE, public clients and the MCP resource', () => {
