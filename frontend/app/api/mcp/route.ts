@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateAgentKey, bearerToken } from '@/lib/agent-access';
 import { buildAgentBrief } from '@/lib/agent-brief';
 import { getFeedForUid } from '@/lib/feed-server';
+import { authenticateMcpRequest } from '@/lib/mcp-auth';
+import { oauthOrigin, protectedResourceMetadataUrl } from '@/lib/oauth-config';
+import { corsPreflight, OAUTH_CORS_HEADERS } from '@/lib/oauth-http';
 
 const MCP_PROTOCOL_VERSION = '2025-06-18';
 
@@ -71,7 +73,7 @@ const tools = [
 ] as const;
 
 function rpc(id: JsonRpcRequest['id'], result: unknown, status = 200) {
-  return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, result }, { status });
+  return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, result }, { status, headers: OAUTH_CORS_HEADERS });
 }
 
 function rpcError(id: JsonRpcRequest['id'], code: number, message: string, status = 200) {
@@ -79,18 +81,19 @@ function rpcError(id: JsonRpcRequest['id'], code: number, message: string, statu
     jsonrpc: '2.0',
     id: id ?? null,
     error: { code, message },
-  }, { status });
+  }, { status, headers: OAUTH_CORS_HEADERS });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await authenticateAgentKey(bearerToken(request.headers.get('authorization')));
+    const origin = oauthOrigin(request.nextUrl.origin);
+    const access = await authenticateMcpRequest(request.headers.get('authorization'), origin);
     if (!access.ok) {
       return NextResponse.json(
         { error: access.error },
         {
           status: access.status,
-          headers: { 'WWW-Authenticate': 'Bearer realm="trace-agent", scope="trace:read"' },
+          headers: { ...OAUTH_CORS_HEADERS, 'WWW-Authenticate': access.wwwAuthenticate },
         },
       );
     }
@@ -109,7 +112,7 @@ export async function POST(request: NextRequest) {
       });
     }
     if (message.method === 'notifications/initialized') {
-      return new NextResponse(null, { status: 202 });
+      return new NextResponse(null, { status: 202, headers: OAUTH_CORS_HEADERS });
     }
     if (message.method === 'ping') return rpc(message.id, {});
     if (message.method === 'tools/list') return rpc(message.id, { tools });
@@ -144,11 +147,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Streamable HTTP clients GET for a server-sent event stream; Trace has
+  // nothing to push, which the transport spec says to answer with 405.
+  if ((request.headers.get('accept') || '').includes('text/event-stream')) {
+    return new NextResponse(null, { status: 405, headers: { ...OAUTH_CORS_HEADERS, Allow: 'POST, OPTIONS' } });
+  }
+  const origin = oauthOrigin(request.nextUrl.origin);
   return NextResponse.json({
     name: 'Trace MCP',
     transport: 'streamable-http',
-    authentication: 'Bearer Trace Agent Key',
-    documentation: 'https://www.yourtrace.online/agents',
-  });
+    authentication: 'OAuth 2.1: your MCP client opens a Trace sign-in page the first time it connects. A Trace Agent Key also works as a Bearer token.',
+    resource_metadata: protectedResourceMetadataUrl(origin),
+    documentation: `${origin}/agents`,
+  }, { headers: OAUTH_CORS_HEADERS });
+}
+
+export function OPTIONS() {
+  return corsPreflight();
 }
