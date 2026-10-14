@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
           '/auth/',
           '/profile',
           '/onboarding',
+          '/oauth/',
           '/bookmarks',
           '/dev',
         ],

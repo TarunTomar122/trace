@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateAgentKey, bearerToken } from '@/lib/agent-access';
 import { buildAgentBrief } from '@/lib/agent-brief';
 import { getFeedForUid } from '@/lib/feed-server';
+import { authenticateMcpRequest } from '@/lib/mcp-auth';
+import { oauthOrigin, protectedResourceMetadataUrl } from '@/lib/oauth-config';
+import { corsPreflight, OAUTH_CORS_HEADERS } from '@/lib/oauth-http';
 
 const MCP_PROTOCOL_VERSION = '2025-06-18';
 
@@ -18,6 +20,7 @@ type JsonRpcRequest = {
 const tools = [
   {
     name: 'get_daily_tech_brief',
+    title: 'Daily tech brief',
     description: 'Get one structured briefing containing today’s top tech news, notable builds, and practitioner conversations.',
     inputSchema: {
       type: 'object',
@@ -27,10 +30,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Daily tech brief', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_top_tech_news',
+    title: 'Top tech news',
     description: 'Get the top current technology and AI stories, grouped across sources with summaries and key takeaways.',
     inputSchema: {
       type: 'object',
@@ -40,10 +44,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Top tech news', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_latest_builds',
+    title: 'Latest builds',
     description: 'Get current open-source projects, product launches, and developer tools surfaced by Trace.',
     inputSchema: {
       type: 'object',
@@ -53,10 +58,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Latest builds', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_tech_conversations',
+    title: 'Tech conversations',
     description: 'Get current technical discussions and community conversations worth paying attention to.',
     inputSchema: {
       type: 'object',
@@ -66,12 +72,12 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Tech conversations', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
 ] as const;
 
 function rpc(id: JsonRpcRequest['id'], result: unknown, status = 200) {
-  return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, result }, { status });
+  return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, result }, { status, headers: OAUTH_CORS_HEADERS });
 }
 
 function rpcError(id: JsonRpcRequest['id'], code: number, message: string, status = 200) {
@@ -79,18 +85,19 @@ function rpcError(id: JsonRpcRequest['id'], code: number, message: string, statu
     jsonrpc: '2.0',
     id: id ?? null,
     error: { code, message },
-  }, { status });
+  }, { status, headers: OAUTH_CORS_HEADERS });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await authenticateAgentKey(bearerToken(request.headers.get('authorization')));
+    const origin = oauthOrigin(request.nextUrl.origin);
+    const access = await authenticateMcpRequest(request.headers.get('authorization'), origin);
     if (!access.ok) {
       return NextResponse.json(
         { error: access.error },
         {
           status: access.status,
-          headers: { 'WWW-Authenticate': 'Bearer realm="trace-agent", scope="trace:read"' },
+          headers: { ...OAUTH_CORS_HEADERS, 'WWW-Authenticate': access.wwwAuthenticate },
         },
       );
     }
@@ -109,7 +116,7 @@ export async function POST(request: NextRequest) {
       });
     }
     if (message.method === 'notifications/initialized') {
-      return new NextResponse(null, { status: 202 });
+      return new NextResponse(null, { status: 202, headers: OAUTH_CORS_HEADERS });
     }
     if (message.method === 'ping') return rpc(message.id, {});
     if (message.method === 'tools/list') return rpc(message.id, { tools });
@@ -144,11 +151,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Streamable HTTP clients GET for a server-sent event stream; Trace has
+  // nothing to push, which the transport spec says to answer with 405.
+  if ((request.headers.get('accept') || '').includes('text/event-stream')) {
+    return new NextResponse(null, { status: 405, headers: { ...OAUTH_CORS_HEADERS, Allow: 'POST, OPTIONS' } });
+  }
+  const origin = oauthOrigin(request.nextUrl.origin);
   return NextResponse.json({
     name: 'Trace MCP',
     transport: 'streamable-http',
-    authentication: 'Bearer Trace Agent Key',
-    documentation: 'https://www.yourtrace.online/agents',
-  });
+    authentication: 'OAuth 2.1: your MCP client opens a Trace sign-in page the first time it connects. A Trace Agent Key also works as a Bearer token.',
+    resource_metadata: protectedResourceMetadataUrl(origin),
+    documentation: `${origin}/agents`,
+  }, { headers: OAUTH_CORS_HEADERS });
+}
+
+export function OPTIONS() {
+  return corsPreflight();
 }

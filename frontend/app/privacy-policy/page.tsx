@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
       title="Privacy Policy"
       subtitle="How we collect, use, and protect your data."
     >
-      <p className="text-xs text-[#9ca3af] mb-8">Last Updated: February 17, 2026</p>
+      <p className="text-xs text-[#9ca3af] mb-8">Last Updated: October 14, 2026</p>
       <div className="mb-8 flex flex-wrap gap-2 text-sm">
         <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
           Research
@@ -87,10 +87,26 @@ export default function PrivacyPolicyPage() {
             <li>Improve our AI algorithms and content curation</li>
             <li>Understand your preferences and adapt to your interests</li>
             <li>Communicate with you about service updates</li>
+            <li>Send you the daily brief email while you are subscribed</li>
             <li>Analyze and improve our service</li>
             <li>Ensure security and prevent fraud</li>
             <li>Comply with legal obligations</li>
           </ul>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-[#111827] mb-3">AI Agent Connections</h2>
+          <p className="mb-3">
+            When you connect an AI app such as Claude, ChatGPT or Cursor to Trace&apos;s MCP server, you sign in
+            with Google and approve that app. We store the app&apos;s name and the addresses it registered, and a
+            one-way hash of each sign-in code and access token (never the tokens themselves), so we can check
+            its requests and end its access. The app can read your Trace brief; it cannot change your account.
+            What the app does with the brief is covered by that app&apos;s own privacy policy.
+          </p>
+          <p>
+            Connecting also subscribes you to Trace&apos;s daily brief email, unless you unsubscribed before.
+            Every email has a one-click unsubscribe link, and unsubscribing does not affect your agent&apos;s access.
+          </p>
         </section>
 
         <section>

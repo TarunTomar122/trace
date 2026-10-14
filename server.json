@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "online.yourtrace/trace",
+  "title": "Trace",
+  "description": "Today's top tech and AI stories, builds and developer conversations, grouped and summarised.",
+  "version": "1.0.0",
+  "websiteUrl": "https://www.yourtrace.online/agents",
+  "icons": [
+    {
+      "src": "https://www.yourtrace.online/trace-app-icon-v1-512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://www.yourtrace.online/api/mcp"
+    }
+  ]
+}

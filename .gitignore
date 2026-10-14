@@ -20,6 +20,8 @@ anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 !trace/eas.json
 !trace/**/*.json
 !trace-extension/**/*.json
+# MCP registry entry (mcp-publisher reads it from the repo root)
+!/server.json
 *-firebase-adminsdk-*.json
 trace_subscribers.csv
 v1/tools/trace_user_emails.csv
