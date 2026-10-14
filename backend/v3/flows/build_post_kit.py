@@ -62,7 +62,8 @@ MAX_ATTEMPTS = 3
 IST = timezone(timedelta(hours=5, minutes=30))
 # Share pages and links in posts always use the canonical site, whatever TRACE_APP_URL says.
 SITE_URL = "https://www.yourtrace.online"
-CTA_URL = f"{SITE_URL}/subscribe?utm_source=x&utm_medium=article"
+# The landing page leads with the email signup; /subscribe redirects to the feed, where the ask comes later.
+CTA_URL = f"{SITE_URL}/?utm_source=x&utm_medium=article"
 KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-4.1-mini")
 LOCK_FILE = BACKEND_ROOT.parent / ".postkit.lock"
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
