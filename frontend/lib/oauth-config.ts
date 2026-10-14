@@ -17,11 +17,14 @@ export const REVOKE_PATH = '/api/oauth/revoke';
 export const PROTECTED_RESOURCE_METADATA_PATH = '/.well-known/oauth-protected-resource';
 
 /**
- * The origin every OAuth URL is built from. Production always uses the
- * canonical www origin, so a forged Host header can't move the issuer; local
- * dev uses the request's own origin so a flow on localhost round-trips.
+ * The origin every OAuth URL is built from. Production uses the canonical www
+ * origin (or TRACE_OAUTH_ORIGIN on a self-hosted instance), never the Host
+ * header, so a forged header can't move the issuer. Local dev uses the
+ * request's own origin so a flow on localhost round-trips.
  */
 export function oauthOrigin(requestOrigin?: string | null): string {
+  const configured = process.env.TRACE_OAUTH_ORIGIN?.trim().replace(/\/+$/, '');
+  if (configured) return configured;
   if (process.env.NODE_ENV !== 'production' && requestOrigin) {
     return requestOrigin.replace(/\/+$/, '');
   }
@@ -31,6 +34,9 @@ export function oauthOrigin(requestOrigin?: string | null): string {
 export function mcpResource(origin: string): string {
   return `${origin}${MCP_PATH}`;
 }
+
+/** The URL readers paste into their MCP client. */
+export const TRACE_MCP_URL = mcpResource(SITE_BASE_URL);
 
 export function protectedResourceMetadataUrl(origin: string): string {
   return `${origin}${PROTECTED_RESOURCE_METADATA_PATH}${MCP_PATH}`;

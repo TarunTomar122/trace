@@ -148,6 +148,9 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
         {client.verifiedHost ? <>Verified app from <strong>{client.verifiedHost}</strong>. </> : null}
         After you choose, you go back to {client.destination}.
       </p>
+      {client.local ? (
+        <p className="oa-warn">Only allow this if you just asked an app on this computer to connect to Trace. Any program running here could open this page.</p>
+      ) : null}
 
       <ul className="oa-perms">
         <li><span className="oa-yes" aria-hidden="true">✓</span>Read today&apos;s top tech stories, builds and conversations, with sources</li>
@@ -199,6 +202,7 @@ const css = `
 .oa-title { margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.2rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.12; overflow-wrap: anywhere; }
 .oa-sub { margin: 0 0 24px; font-size: 15.5px; line-height: 1.6; color: #536471; overflow-wrap: anywhere; }
 .oa-sub strong { color: #0f1419; }
+.oa-warn { margin: -10px 0 22px; padding: 12px 14px; border-radius: 14px; background: #fff8e6; border: 1px solid #f5dfa0; font-size: 13.5px; line-height: 1.5; color: #5c4400; }
 .oa-perms { list-style: none; margin: 0 0 18px; padding: 16px; border: 1px solid #eff3f4; border-radius: 16px; display: grid; gap: 10px; }
 .oa-perms li { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.45; color: #0f1419; }
 .oa-yes, .oa-no { flex-shrink: 0; width: 20px; font-weight: 800; text-align: center; }

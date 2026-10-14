@@ -266,6 +266,23 @@ test('authorization requests: bad client or redirect URI never redirects', async
   assert.equal(ok.display.name, 'Claude');
   assert.equal(ok.display.verifiedHost, 'claude.ai');
   assert.equal(ok.display.destination, 'claude.ai');
+  assert.equal(ok.display.local, false);
+
+  // Claude Code's real metadata document: loopback on any port, flagged as local.
+  const claudeCodeId = 'https://claude.ai/oauth/claude-code-client-metadata';
+  const claudeCode = jsonFetch({
+    client_id: claudeCodeId,
+    client_name: 'Claude Code',
+    client_uri: 'https://claude.ai',
+    redirect_uris: ['http://localhost/callback', 'http://127.0.0.1/callback'],
+    grant_types: ['authorization_code', 'refresh_token'],
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+  });
+  const local = await validateAuthorizationRequest(db, { ...base, client_id: claudeCodeId, redirect_uri: 'http://localhost:3118/callback' }, ISSUER, { fetchImpl: claudeCode.fetchImpl });
+  assert.equal(local.status, 'ok');
+  assert.equal(local.display.local, true);
+  assert.equal(local.display.destination, 'an app on this computer');
   // No resource parameter at all is fine: the grant is still bound to /api/mcp.
   const noResource = await validateAuthorizationRequest(db, { ...base, resource: undefined }, ISSUER, { fetchImpl });
   assert.equal(noResource.status, 'ok');

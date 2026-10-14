@@ -22,7 +22,33 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 | **Public archive** | Every edition at `/brief/YYYY-MM-DD`, with share buttons and its own share image. |
 | **Mobile app** | Android app on Google Play; the Expo source lives in `trace/` in the main repo. |
 | **New tab** | Chrome extension in [`trace-extension/`](trace-extension): the latest stories on every new tab. |
-| **Agents** | Claude, Cursor and other MCP clients can read the feed ([`/agents`](https://www.yourtrace.online/agents)). |
+| **Agents** | Paste one URL into Claude, ChatGPT, Cursor, Claude Code, Codex or Gemini CLI, sign in with Google, and your agent reads the brief ([`/agents`](https://www.yourtrace.online/agents)). |
+
+## Connect your AI agent
+
+Trace is a read-only remote MCP server at `https://www.yourtrace.online/api/mcp`.
+There is no key to copy: the first time your client connects it opens a Trace
+page, you sign in with Google and click Allow. Connecting also sends you the
+daily brief by email (unsubscribe any time; your agent keeps access).
+
+```bash
+claude mcp add --transport http trace https://www.yourtrace.online/api/mcp   # Claude Code
+codex mcp add trace --url https://www.yourtrace.online/api/mcp               # Codex
+gemini mcp add --transport http trace https://www.yourtrace.online/api/mcp   # Gemini CLI
+```
+
+In Claude and ChatGPT, add it as a custom connector; in Cursor and most other
+clients, `{"mcpServers": {"trace": {"url": "https://www.yourtrace.online/api/mcp"}}}`.
+Step-by-step for each app, a skill file for personal agents and header-based
+Agent Keys for bots are on [`/agents`](https://www.yourtrace.online/agents).
+
+Under the hood it follows the MCP authorization spec: OAuth 2.1 with PKCE,
+protected resource and authorization server metadata under `/.well-known/`,
+Client ID Metadata Documents or Dynamic Client Registration, one-hour access
+tokens bound to `/api/mcp` and rotating refresh tokens. Only SHA-256 hashes of
+codes and tokens are stored (`frontend/lib/oauth-*.ts`). A self-hosted
+instance needs `oauth_clients,oauth_codes,oauth_tokens,oauth_grants` in
+`LOCALDB_ALLOWED_COLLECTIONS` and `TRACE_OAUTH_ORIGIN` set to its public URL.
 
 ## How it works
 

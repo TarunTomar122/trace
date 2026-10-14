@@ -34,6 +34,8 @@ export type ConsentClient = {
   // Host the client's metadata document was fetched from (verified), if any.
   verifiedHost: string | null;
   destination: string;
+  // A loopback redirect: any program on the reader's computer could be asking.
+  local: boolean;
 };
 
 export type AuthorizeValidation =
@@ -137,6 +139,8 @@ export async function validateAuthorizationRequest(
       name: client.clientName || 'An MCP client',
       verifiedHost: client.kind === 'metadata_document' ? parseClientIdUrl(client.clientId)?.hostname ?? null : null,
       destination: redirectDestination(redirectUri),
+      // http redirect URIs are only ever accepted on loopback hosts.
+      local: redirectUri.startsWith('http://'),
     },
   };
 }

@@ -20,6 +20,7 @@ type JsonRpcRequest = {
 const tools = [
   {
     name: 'get_daily_tech_brief',
+    title: 'Daily tech brief',
     description: 'Get one structured briefing containing today’s top tech news, notable builds, and practitioner conversations.',
     inputSchema: {
       type: 'object',
@@ -29,10 +30,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Daily tech brief', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_top_tech_news',
+    title: 'Top tech news',
     description: 'Get the top current technology and AI stories, grouped across sources with summaries and key takeaways.',
     inputSchema: {
       type: 'object',
@@ -42,10 +44,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Top tech news', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_latest_builds',
+    title: 'Latest builds',
     description: 'Get current open-source projects, product launches, and developer tools surfaced by Trace.',
     inputSchema: {
       type: 'object',
@@ -55,10 +58,11 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Latest builds', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'get_tech_conversations',
+    title: 'Tech conversations',
     description: 'Get current technical discussions and community conversations worth paying attention to.',
     inputSchema: {
       type: 'object',
@@ -68,7 +72,7 @@ const tools = [
       },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: 'Tech conversations', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
 ] as const;
 
