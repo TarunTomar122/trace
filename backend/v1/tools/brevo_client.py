@@ -38,6 +38,7 @@ def send_email(
     sender_name: str = DEFAULT_SENDER_NAME,
     reply_to_email: Optional[str] = None,
     tags: Optional[list[str]] = None,
+    attachments: Optional[list[tuple[str, bytes, str]]] = None,
 ) -> dict:
     """
     Send an email via Brevo API.
@@ -52,6 +53,7 @@ def send_email(
         sender_name: Sender display name
         reply_to_email: Reply-to address (optional)
         tags: List of tags for tracking (optional)
+        attachments: (filename, bytes, mime type) files to attach (optional)
 
     Returns:
         Dict with:
@@ -106,6 +108,14 @@ def send_email(
 
         if tags:
             send_smtp_email.tags = tags
+
+        if attachments:
+            import base64
+
+            send_smtp_email.attachment = [
+                sib_api_v3_sdk.SendSmtpEmailAttachment(content=base64.b64encode(data).decode("ascii"), name=name)
+                for name, data, _mime in attachments
+            ]
 
         # Send with retry
         last_error = None

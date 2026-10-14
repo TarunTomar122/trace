@@ -276,6 +276,7 @@ def _send_via_smtp(
     sender_name: str,
     list_unsubscribe: Optional[str],
     reply_to_email: str = "",
+    attachments: Optional[list[tuple[str, bytes, str]]] = None,
 ) -> dict[str, Any]:
     message = EmailMessage()
     message["From"] = formataddr((sender_name, sender_email))
@@ -290,6 +291,9 @@ def _send_via_smtp(
         message["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     message.set_content(text_content or _plain_text_from_html(html_content))
     message.add_alternative(html_content, subtype="html")
+    for name, data, mime in attachments or []:
+        maintype, _, subtype = (mime or "application/octet-stream").partition("/")
+        message.add_attachment(data, maintype=maintype, subtype=subtype or "octet-stream", filename=name)
 
     # SMTP policy gives CRLF line endings, which DKIM canonicalisation expects.
     raw = message.as_bytes(policy=email_policy.SMTP)
@@ -405,11 +409,13 @@ def send_email(
     list_unsubscribe: Optional[str] = None,
     track_id: Optional[str] = None,
     log: bool = True,
+    attachments: Optional[list[tuple[str, bytes, str]]] = None,
 ) -> dict[str, Any]:
     """Send one email, choosing the transport and falling back to Brevo.
 
-    Returns Brevo's result shape plus a ``transport`` key so callers can report
-    or assert which path carried the message.
+    ``attachments`` are ``(filename, bytes, mime type)`` files, sent by either
+    transport. Returns Brevo's result shape plus a ``transport`` key so callers
+    can report or assert which path carried the message.
     """
     track_id = track_id or uuid.uuid4().hex
 
@@ -462,6 +468,7 @@ def send_email(
                 sender_name=LOCAL_SENDER_NAME,
                 list_unsubscribe=list_unsubscribe,
                 reply_to_email=reply_to(),
+                attachments=attachments,
             )
             if log:
                 _record_send(
@@ -527,7 +534,8 @@ def send_email(
         sender_name=brevo_from_name,
         reply_to_email=reply_to() or None,
         # One-off emails get their own tag so Brevo's stats keep the daily apart.
-        tags=[bucket] if bucket in {"welcome", "supporter_thanks"} else ["newsletter", "daily"],
+        tags=[bucket] if bucket in {"welcome", "supporter_thanks", "post_kit"} else ["newsletter", "daily"],
+        attachments=attachments,
     )
     if log:
         _record_send(

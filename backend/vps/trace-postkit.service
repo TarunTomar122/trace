@@ -1,0 +1,20 @@
+[Unit]
+Description=Trace daily post kit email for the founder
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=2h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+TimeoutStartSec=20min
+WorkingDirectory=%h/trace/backend
+EnvironmentFile=%h/trace/.env
+# The job takes ~/trace/.postkit.lock itself and writes post_kits/{date}
+# before sending, so manual runs are covered and a day is never mailed twice.
+ExecStart=%h/trace/.venv/bin/python -u -m v3.flows.build_post_kit
+# A failed send retries; a kit that is sending or sent is skipped.
+Restart=on-failure
+RestartSec=15min
+StandardOutput=append:%h/trace/logs/postkit.log
+StandardError=append:%h/trace/logs/postkit.log

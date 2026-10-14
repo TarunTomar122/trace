@@ -1,0 +1,14 @@
+[Unit]
+Description=Build the Trace post kit at 07:30 UK time
+
+[Timer]
+# Europe/London follows BST and GMT. 07:30 is after the 06:00 UTC pulse
+# (trace-pulse.timer) has refreshed Tools and Top articles in either season.
+OnCalendar=*-*-* 07:30:00 Europe/London
+AccuracySec=1min
+# A missed run (VPS down) catches up at boot; post_kits/{date} stops doubles.
+Persistent=true
+Unit=trace-postkit.service
+
+[Install]
+WantedBy=timers.target

@@ -26,6 +26,8 @@ v1/tools/trace_user_emails.csv
 analysis/data/user_summary.csv
 data/localdb/
 localdb.sqlite3
+# Satoshi (post kit covers) may not be redistributed: installed by hand on the VPS
+backend/v3/assets/instagram/Satoshi-*
 
 # Not part of Trace: agent/editor state and side projects (kept locally only)
 .ai-memory.toml
