@@ -127,9 +127,9 @@ export default function AgentsPage() {
             </ol>
             <div className="mt-6 flex gap-3 rounded-[16px] p-5 ring-1 ring-accent/30">
               <Mail size={18} className="mt-0.5 shrink-0 text-accent" />
-              <p className="text-[14px] leading-[1.7] text-secondary"><strong className="text-foreground">You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 9:30am UK time. Unsubscribe from any email and your agent keeps access. If you turned the email off before, connecting leaves it off.</p>
+              <p className="text-[14px] leading-[1.7] text-secondary"><strong className="text-foreground">You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 9:30am UK time. Unsubscribe from any email and your agent keeps access. If your daily email is off, connecting leaves it off.</p>
             </div>
-            <p className="mt-5 text-[13px] text-secondary">To disconnect, remove Trace from your app. Access tokens last an hour; a removed app&apos;s refresh token can&apos;t be used again and expires after 90 days.</p>
+            <p className="mt-5 text-[13px] text-secondary">To disconnect, remove Trace from your app, which deletes its sign-in there. Access tokens last an hour, and a sign-in that goes unused for 90 days stops working.</p>
           </div>
         </section>
 

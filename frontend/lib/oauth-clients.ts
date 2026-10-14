@@ -62,6 +62,10 @@ export function validateRedirectUri(value: unknown): { ok: true; uri: string } |
   if (value.includes('#')) return { ok: false, reason: 'redirect URI must not contain a fragment' };
   if (url.username || url.password) return { ok: false, reason: 'redirect URI must not contain credentials' };
   const scheme = url.protocol.slice(0, -1).toLowerCase();
+  // "https:evil.com/cb" parses, but a browser resolves it relative to Trace: require the //.
+  if ((scheme === 'https' || scheme === 'http') && !/^https?:\/\//i.test(value)) {
+    return { ok: false, reason: `${scheme} redirect URI must start with ${scheme}://` };
+  }
   if (scheme === 'https') {
     return url.hostname ? { ok: true, uri: value } : { ok: false, reason: 'https redirect URI needs a host' };
   }
@@ -184,6 +188,31 @@ export async function registerClient(
   };
 }
 
+type LookupImpl = (host: string) => Promise<string[]>;
+
+async function defaultLookup(host: string): Promise<string[]> {
+  const { lookup } = await import('node:dns/promises');
+  return (await lookup(host, { all: true, verbatim: true })).map((entry) => entry.address);
+}
+
+/** Public unicast only: no loopback, private, link-local, CGNAT, multicast or IPv4 hidden in IPv6. */
+export function isPublicAddress(address: string): boolean {
+  let value = address.toLowerCase().split('%')[0];
+  const mapped = value.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/) || value.match(/^64:ff9b::(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) value = mapped[1];
+  const v4 = value.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127)
+      || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+      || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19)));
+  }
+  if (!value.includes(':')) return false;
+  if (value === '::' || value === '::1' || /^::(ffff:)?[0-9a-f]{1,4}:[0-9a-f]{1,4}$/.test(value)) return false;
+  // fc00::/7 unique local, fe80::/10 link-local, ff00::/8 multicast, 64:ff9b::/96 NAT64 (hex form)
+  return !/^(f[cd]|fe[89ab]|ff)/.test(value) && !value.startsWith('64:ff9b:');
+}
+
 /**
  * A client_id that is a metadata document URL: https, a real path, already
  * in normal form (no dot segments, default port, fragment or credentials) and
@@ -195,6 +224,7 @@ export function parseClientIdUrl(clientId: string): URL | null {
   if (!url || url.href !== clientId || url.protocol !== 'https:') return null;
   if (url.username || url.password || url.hash || url.pathname === '/') return null;
   const host = url.hostname;
+  if (url.port || host.endsWith('.')) return null; // default port only; "localhost." is localhost
   if (host.startsWith('[') || /^[\d.]+$/.test(host) || !host.includes('.')) return null;
   if (/(^|\.)(localhost|local|internal|localdomain|home\.arpa)$/.test(host)) return null;
   return url;
@@ -258,9 +288,23 @@ async function fetchMetadataClient(
   clientId: string,
   fetchImpl: typeof fetch,
   now: number,
+  lookupImpl: LookupImpl | null,
 ): Promise<{ ok: true; client: OAuthClient } | { ok: false; reason: string }> {
   const cached = metadataCache.get(clientId);
   if (cached && cached.expiresAt > now) return { ok: true, client: cached.client };
+
+  // The name must resolve only to public addresses (127.0.0.1.nip.io and friends are refused).
+  // This checks before connecting; it is a guard, not a pin against DNS rebinding.
+  if (lookupImpl) {
+    try {
+      const addresses = await lookupImpl(new URL(clientId).hostname);
+      if (!addresses.length || !addresses.every(isPublicAddress)) {
+        return { ok: false, reason: 'client metadata document could not be fetched' };
+      }
+    } catch {
+      return { ok: false, reason: 'client metadata document could not be fetched' };
+    }
+  }
 
   let document: unknown;
   try {
@@ -270,7 +314,8 @@ async function fetchMetadataClient(
       cache: 'no-store',
       signal: AbortSignal.timeout(METADATA_FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return { ok: false, reason: `client metadata document returned HTTP ${response.status}` };
+    // No upstream status on the page: it would let anyone probe hosts through Trace.
+    if (!response.ok) return { ok: false, reason: 'client metadata document could not be fetched' };
     document = JSON.parse(await readLimited(response, METADATA_MAX_BYTES));
   } catch (error) {
     const reason = error instanceof Error && error.message.includes('too large')
@@ -293,12 +338,14 @@ async function fetchMetadataClient(
 export async function resolveClient(
   db: OAuthDb,
   clientId: unknown,
-  options: { fetchImpl?: typeof fetch; now?: number } = {},
+  options: { fetchImpl?: typeof fetch; now?: number; lookupImpl?: LookupImpl | null } = {},
 ): Promise<{ ok: true; client: OAuthClient } | { ok: false; reason: string }> {
   if (typeof clientId !== 'string' || !clientId) return { ok: false, reason: 'client_id is required' };
   if (clientId.startsWith('https://')) {
     if (!parseClientIdUrl(clientId)) return { ok: false, reason: 'client_id is not a valid metadata document URL' };
-    return fetchMetadataClient(clientId, options.fetchImpl ?? fetch, options.now ?? Date.now());
+    // Real DNS checks unless a test injects its own fetch (and no lookup).
+    const lookupImpl = options.lookupImpl !== undefined ? options.lookupImpl : options.fetchImpl ? null : defaultLookup;
+    return fetchMetadataClient(clientId, options.fetchImpl ?? fetch, options.now ?? Date.now(), lookupImpl);
   }
   if (!DCR_CLIENT_ID.test(clientId)) return { ok: false, reason: 'Unknown client_id' };
   const snapshot = await db.collection(OAUTH_COLLECTIONS.clients).doc(clientId).get();

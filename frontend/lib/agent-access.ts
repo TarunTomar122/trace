@@ -74,5 +74,7 @@ export async function authenticateAgentKey(token: string): Promise<AgentAccessRe
 }
 
 export function bearerToken(authorization: string | null): string {
-  return authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  // The scheme is case-insensitive (RFC 7235).
+  const match = authorization?.match(/^bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
 }

@@ -174,12 +174,16 @@ export async function subscribeConnectingReader(
   const snapshot = await ref.get();
   if (!snapshot.exists) return 'no_profile';
   const state = agentNewsletterState(snapshot.data() || {});
-  if (state === 'will_subscribe' && !optIn) return 'declined';
-  if (state === 'will_subscribe') {
+  // Connecting is activity: the daily goes to members active in the last week, so a dormant
+  // reader who already "gets" it (or just opted in) would otherwise not.
+  const active = { lastActiveAt: new Date(now).toISOString(), updatedAt: new Date(now) };
+  if (state === 'will_subscribe' && optIn) {
     const result = profilePatchFromInput({ enabled: true });
     if ('patch' in result) {
-      await ref.set({ ...result.patch, newsletterOptInSource: 'agent_connect', updatedAt: new Date(now) }, { merge: true });
+      await ref.set({ ...result.patch, ...active, newsletterOptInSource: 'agent_connect' }, { merge: true });
     }
+    return state;
   }
-  return state;
+  if (state === 'subscribed') await ref.set(active, { merge: true });
+  return state === 'will_subscribe' ? 'declined' : state;
 }

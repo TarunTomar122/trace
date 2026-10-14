@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import OAuthConsent, { OAuthProblem } from '@/components/OAuthConsent';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { adminFirestore } from '@/lib/firebase-admin';
 import { validateAuthorizationRequest, type AuthorizeParams } from '@/lib/oauth-authorize';
+import { redirectDestination } from '@/lib/oauth-clients';
 import { oauthOrigin } from '@/lib/oauth-config';
 import { clientIp, rateLimit } from '@/lib/oauth-http';
 import type { OAuthDb } from '@/lib/oauth-tokens';
@@ -37,8 +37,22 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
     console.error('[oauth/authorize] validation failed:', error);
     return <OAuthProblem message="Trace couldn't check this sign-in link just now. Try again in a minute." />;
   }
-  // Outside the try: redirect() works by throwing.
-  if (validation.status === 'redirect') redirect(validation.redirectTo);
+  // Registration is open, so a redirect URI being registered doesn't make it trustworthy: never
+  // bounce a visitor there without a click. The app still gets its error once they press the link.
+  if (validation.status === 'redirect') {
+    let detail = '';
+    try {
+      detail = new URL(validation.redirectTo).searchParams.get('error_description') || '';
+    } catch {
+      /* not parseable: the generic message is enough */
+    }
+    return (
+      <OAuthProblem
+        message={`The app's sign-in request was incomplete${detail ? ` (${detail})` : ''}, so Trace stopped here.`}
+        returnTo={{ href: validation.redirectTo, destination: redirectDestination(validation.redirectTo) }}
+      />
+    );
+  }
   if (validation.status === 'invalid') return <OAuthProblem message={validation.message} />;
 
   return (

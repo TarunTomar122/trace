@@ -93,6 +93,7 @@ function authorizeBody(clientId, overrides = {}) {
     code_challenge_method: 'S256',
     state: 'state-123',
     resource: RESOURCE,
+    newsletter: true, // the consent page always sends the box's value
     ...overrides,
   };
 }
@@ -212,7 +213,9 @@ test('refresh rotation and reuse detection through the token endpoint', async ()
     client_id: client.client_id,
   });
   assert.equal(reused.status, 400);
-  assert.equal((await mcpCall(`Bearer ${second.access_token}`)).status, 401, 'reuse revoked the family');
+  // Straight away this is a retry, not a leak: refused, but the connection stays up.
+  // (Reuse after the grace window revoking the grant is covered in oauth.test.mjs.)
+  assert.equal((await mcpCall(`Bearer ${second.access_token}`)).status, 200, 'a quick retry keeps the connection');
 
   // JSON bodies and HTTP Basic client ids are accepted; disagreeing ids are not.
   const mismatch = await formPost(token, '/api/oauth/token', {

@@ -83,8 +83,9 @@ export async function POST(request: NextRequest) {
     const uid = await getSignedInUid(request);
     if (!uid) return NextResponse.json({ error: 'Sign in to continue' }, { status: 401, headers: NO_STORE });
 
-    // The consent page's "also send me the daily brief" box (ticked by default).
-    const newsletter = await subscribeConnectingReader(db, uid, body.newsletter !== false);
+    // The consent page's "also send me the daily brief" box (ticked by default). Only an explicit
+    // true opts in, so an old cached page or a malformed post never subscribes anyone.
+    const newsletter = await subscribeConnectingReader(db, uid, body.newsletter === true);
     if (newsletter === 'no_profile') {
       return NextResponse.json({ error: 'Your Trace account is still being set up. Try Allow again in a moment.' }, { status: 409, headers: NO_STORE });
     }

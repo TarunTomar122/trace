@@ -5,12 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AuthorizationRequest, ConsentClient, NewsletterState } from '@/lib/oauth-authorize';
+import { TRACE_MCP_URL } from '@/lib/oauth-config';
 
 type ConsentInfo = { email: string | null; newsletter: NewsletterState; profileReady: boolean };
 
 const NEWSLETTER_COPY: Record<Exclude<NewsletterState, 'will_subscribe'>, string> = {
   subscribed: "You already get Trace's daily brief by email. Unsubscribe any time; your agent keeps access.",
-  unsubscribed: "You turned off Trace's daily email, so connecting won't turn it back on. Your agent gets access either way.",
+  unsubscribed: "Your Trace daily email is off, so connecting won't turn it on. Your agent gets access either way.",
 };
 
 function requestBody(request: AuthorizationRequest, decision: 'allow' | 'deny', newsletter: boolean) {
@@ -43,13 +44,14 @@ export function OAuthShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function OAuthProblem({ message }: { message: string }) {
+export function OAuthProblem({ message, returnTo }: { message: string; returnTo?: { href: string; destination: string } }) {
   return (
     <OAuthShell>
       <p className="oa-kicker">Connect an agent</p>
       <h1 className="oa-title">This sign-in link doesn&apos;t work.</h1>
       <p className="oa-sub" role="alert">{message}</p>
-      <p className="oa-fine">Remove Trace from your app and add <code>https://www.yourtrace.online/api/mcp</code> again. Setup steps for each app are on <Link href="/agents">yourtrace.online/agents</Link>.</p>
+      {returnTo ? <a className="oa-secondary oa-return" href={returnTo.href}>Return to {returnTo.destination}</a> : null}
+      <p className="oa-fine">Remove Trace from your app and add <code>{TRACE_MCP_URL}</code> again. Setup steps for each app are on <Link href="/agents">yourtrace.online/agents</Link>.</p>
     </OAuthShell>
   );
 }
@@ -146,8 +148,10 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
       <p className="oa-kicker">Connect an agent</p>
       <h1 className="oa-title">{client.name} wants to read your Trace brief.</h1>
       <p className="oa-sub">
-        {client.verifiedHost ? <>Verified app from <strong>{client.verifiedHost}</strong>. </> : null}
-        After you choose, you go back to {client.destination}.
+        {client.verifiedHost
+          ? <>Verified app from <strong>{client.verifiedHost}</strong>. </>
+          : <>The app chose the name &ldquo;{client.name}&rdquo;; Trace can&apos;t verify it. </>}
+        After you choose, you go back to <strong>{client.destination}</strong>.
       </p>
       {client.local ? (
         <p className="oa-warn">Only allow this if you just asked an app on this computer to connect to Trace. Any program running here could open this page.</p>
@@ -155,7 +159,7 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
 
       <ul className="oa-perms">
         <li><span className="oa-yes" aria-hidden="true">✓</span>Read today&apos;s top tech stories, builds and conversations, with sources</li>
-        <li><span className="oa-no" aria-hidden="true">✕</span>Change your account, post, or buy anything</li>
+        <li><span className="oa-no" aria-hidden="true">✕</span>Can&apos;t change your account, post, or buy anything</li>
       </ul>
 
       {newsletter === 'will_subscribe' ? (
@@ -218,6 +222,7 @@ const css = `
 .oa-no { color: #71767b; }
 .oa-email { margin: 0 0 22px; padding: 14px 16px; border-radius: 16px; border: 1px solid #cfe8fb; background: #f0f9ff; font-size: 14px; line-height: 1.5; color: #0f1419; }
 .oa-email.muted { border-color: #eff3f4; background: #f7f9f9; color: #536471; }
+.oa-return { display: block; text-align: center; text-decoration: none; margin-bottom: 14px; }
 .oa-optin { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
 .oa-optin input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #1d9bf0; }
 .oa-account { margin: 0 0 14px; font-size: 14px; color: #536471; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; overflow-wrap: anywhere; }

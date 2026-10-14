@@ -100,13 +100,13 @@ export default function PrivacyPolicyPage() {
             When you connect an AI app such as Claude, ChatGPT or Cursor to Trace&apos;s MCP server, you sign in
             with Google and approve that app. We store the app&apos;s name and the addresses it registered, and a
             one-way hash of each sign-in code and access token (never the tokens themselves), so we can check
-            its requests. Access tokens last an hour; when you remove Trace from the app it can no longer refresh them, and
-            unused refresh tokens expire after 90 days. The app can read your Trace brief; it cannot change your account.
+            its requests. Access tokens last an hour. Removing Trace from the app deletes its sign-in there, and a
+            sign-in left unused for 90 days stops working. The app can read your Trace brief; it cannot change your account.
             What the app does with the brief is covered by that app&apos;s own privacy policy.
           </p>
           <p>
-            The approval page also offers Trace&apos;s daily brief email (a box, ticked by default). If you turned the email
-            off before, connecting leaves it off.
+            The approval page also offers Trace&apos;s daily brief email (a box, ticked by default). If your daily email is off,
+            connecting leaves it off.
             Every email has a one-click unsubscribe link, and unsubscribing does not affect your agent&apos;s access.
           </p>
         </section>

@@ -4,6 +4,7 @@ import { MemoryFirestore } from './test-support/memory-firestore.mjs';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   CODE_TTL_MS,
+  REFRESH_REUSE_GRACE_MS,
   REFRESH_TOKEN_TTL_MS,
   exchangeAuthorizationCode,
   exchangeRefreshToken,
@@ -16,6 +17,7 @@ import {
 import {
   clearClientMetadataCache,
   clientFromMetadataDocument,
+  isPublicAddress,
   parseClientIdUrl,
   redirectUriMatches,
   registerClient,
@@ -363,7 +365,13 @@ test('refresh tokens rotate, and reusing an old one revokes the family', async (
   assert.equal((await exchangeRefreshToken(db, { refreshToken: second.tokens.refresh_token, clientId: 'trace_client_bbbbbbbbbbbbbbbbbbbbbb' })).error, 'invalid_grant');
   assert.equal((await exchangeRefreshToken(db, { refreshToken: second.tokens.refresh_token, clientId, resource: 'https://evil.example/api/mcp' })).error, 'invalid_target');
 
-  const reuse = await exchangeRefreshToken(db, { refreshToken: first.tokens.refresh_token, clientId });
+  // A retry within the grace window is refused, but the connection stays up.
+  const retry = await exchangeRefreshToken(db, { refreshToken: first.tokens.refresh_token, clientId });
+  assert.equal(retry.error, 'invalid_grant');
+  assert.equal((await verifyAccessToken(db, second.tokens.access_token, RESOURCE)).ok, true);
+
+  // Later, the same old token means it leaked: the whole grant goes.
+  const reuse = await exchangeRefreshToken(db, { refreshToken: first.tokens.refresh_token, clientId }, Date.now() + REFRESH_REUSE_GRACE_MS + 1000);
   assert.equal(reuse.error, 'invalid_grant');
   assert.deepEqual(await verifyAccessToken(db, second.tokens.access_token, RESOURCE), { ok: false, reason: 'revoked' });
   assert.equal((await exchangeRefreshToken(db, { refreshToken: second.tokens.refresh_token, clientId })).ok, false);
@@ -447,4 +455,26 @@ test('metadata advertises S256-only PKCE, public clients and the MCP resource', 
   assert.deepEqual(server.token_endpoint_auth_methods_supported, ['none']);
   assert.equal(server.client_id_metadata_document_supported, true);
   assert.equal(server.authorization_endpoint, `${ISSUER}/oauth/authorize`);
+});
+
+
+test('client metadata documents: default port, no trailing dot, public addresses only', async () => {
+  assert.equal(parseClientIdUrl('https://client.example.com:8443/meta.json'), null);
+  assert.equal(parseClientIdUrl('https://localhost./meta.json'), null);
+  for (const address of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0',
+    '::1', 'fc00::1', 'fe80::1', '::ffff:127.0.0.1', '64:ff9b::a9fe:a9fe']) {
+    assert.equal(isPublicAddress(address), false, address);
+  }
+  assert.equal(isPublicAddress('8.8.8.8'), true);
+  assert.equal(isPublicAddress('2606:4700::6810:85e5'), true);
+  const db = new MemoryFirestore();
+  const fetchImpl = async () => { throw new Error('must not fetch'); };
+  const rebound = await resolveClient(db, 'https://127.0.0.1.nip.io/meta.json', { fetchImpl, lookupImpl: async () => ['127.0.0.1'] });
+  assert.equal(rebound.ok, false);
+  assert.equal(rebound.reason, 'client metadata document could not be fetched');
+});
+
+test('http(s) redirect URIs need the //', () => {
+  assert.equal(validateRedirectUri('https:evil.example/cb').ok, false);
+  assert.equal(validateRedirectUri('https://app.example/cb').ok, true);
 });

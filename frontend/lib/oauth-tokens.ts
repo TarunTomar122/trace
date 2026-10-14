@@ -21,6 +21,8 @@ export const OAUTH_COLLECTIONS = {
 export const CODE_TTL_MS = 5 * 60 * 1000;
 export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 export const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+/** A rotated refresh token shown again this soon is a retry or two calls racing, not a leak. */
+export const REFRESH_REUSE_GRACE_MS = 60 * 1000;
 
 const CODE_PREFIX = 'trace_code_';
 export const ACCESS_TOKEN_PREFIX = 'trace_at_';
@@ -254,7 +256,9 @@ export type RefreshExchange = { refreshToken: unknown; clientId: unknown; resour
 
 /**
  * refresh_token grant with rotation: each refresh token works once. Using a
- * rotated one again means it leaked, so the whole grant is revoked.
+ * rotated one again means it leaked, so the whole grant is revoked — unless it
+ * comes within REFRESH_REUSE_GRACE_MS, which is a client retrying or two calls
+ * racing: that one is refused and the connection stays up.
  */
 export async function exchangeRefreshToken(db: OAuthDb, input: RefreshExchange, now = Date.now()): Promise<TokenResult> {
   if (typeof input.clientId !== 'string' || !input.clientId) return fail('invalid_request', 'client_id is required');
@@ -274,6 +278,10 @@ export async function exchangeRefreshToken(db: OAuthDb, input: RefreshExchange, 
     const grantSnapshot = await transaction.get(grantRef);
     if (data.clientId !== clientId) return fail('invalid_grant', 'This refresh token was issued to another client');
     if (data.usedAt) {
+      const usedAt = toDateMaybe(data.usedAt);
+      if (usedAt && now - usedAt.getTime() <= REFRESH_REUSE_GRACE_MS) {
+        return fail('invalid_grant', 'This refresh token was just used; use the newest one');
+      }
       revokeGrant(db, transaction, data.grantId, 'refresh_token_reuse', now);
       return fail('invalid_grant', 'This refresh token was already used');
     }

@@ -6,7 +6,7 @@ Trace provides current structured tech news, builds, and practitioner conversati
 
 - MCP endpoint: https://www.yourtrace.online/api/mcp (Streamable HTTP)
 - Authentication: OAuth 2.1 with PKCE. No API key: the first time a client connects, it opens a Trace sign-in page; the reader signs in with Google and clicks Allow.
-- The approval page also offers Trace's daily brief email (ticked by default; unsubscribe any time; agent access continues). Readers who turned the email off before stay off.
+- The approval page also offers Trace's daily brief email (ticked by default; unsubscribe any time; agent access continues). If the reader's daily email is off, connecting leaves it off.
 - Scope: read-only (trace:read). Free for everyone.
 - Setup guide for each client: https://www.yourtrace.online/agents
 
