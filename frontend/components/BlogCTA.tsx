@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { trackBlogCtaClicked, trackNewsletterSignup } from "@/lib/posthog";
 import { isNewsletterSubscribed, markNewsletterSubscribed, onNewsletterSubscribed } from "@/lib/newsletter-local";
@@ -14,14 +14,15 @@ function feedHref(slug: string, location: string) {
 
 /**
  * The daily-email ask inside a post: one after the intro, one at the end (which also keeps
- * the old end-of-article link to the feed). Server-rendered for everyone, then hidden after
- * hydration for readers already subscribed on this device.
+ * the old end-of-article link to the feed). Server-rendered for everyone; after hydration,
+ * readers already subscribed on this device lose the ask (the end card keeps its feed link).
  */
 export function BlogEmailCard({ slug, placement }: { slug: string; placement: "intro" | "end" }) {
   const [hidden, setHidden] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
+  const errorId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
@@ -74,7 +75,26 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     }
   }
 
-  if (hidden) return null;
+  const feedLink = (label: string) => (
+    <Link
+      href={feedHref(slug, "article_end")}
+      onClick={() => trackBlogCtaClicked(slug, "article_end", "feed")}
+      className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300"
+    >
+      {label} <ArrowRight size={14} />
+    </Link>
+  );
+
+  if (hidden) {
+    // Already subscribed: no ask, but the end of the article still leads into the feed.
+    if (placement !== "end") return null;
+    return (
+      <div className="not-prose my-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/60 px-6 py-5 dark:border-blue-900/40 dark:bg-blue-950/20">
+        <div className="text-[15px] font-semibold text-gray-900 dark:text-white">You&apos;re on the daily brief.</div>
+        {feedLink("Open today's briefing")}
+      </div>
+    );
+  }
   return (
     <div
       ref={rootRef}
@@ -106,6 +126,8 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
             aria-label="Email address"
+            aria-invalid={status === "error" || undefined}
+            aria-describedby={status === "error" ? errorId : undefined}
             autoComplete="email"
             className="h-11 min-w-0 rounded-full border border-gray-300 bg-white px-5 text-[16px] text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-gray-700 dark:bg-gray-950 dark:text-white sm:flex-1 sm:text-[15px]"
           />
@@ -119,19 +141,11 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
         </form>
       )}
       {status === "error" && (
-        <div role="alert" className="mt-2 text-[14px] font-semibold text-red-600 dark:text-red-400">
+        <div id={errorId} role="alert" className="mt-2 text-[14px] font-semibold text-red-600 dark:text-red-400">
           {message}
         </div>
       )}
-      {placement === "end" && (
-        <Link
-          href={feedHref(slug, "article_end")}
-          onClick={() => trackBlogCtaClicked(slug, "article_end", "feed")}
-          className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300"
-        >
-          Or open today&apos;s briefing <ArrowRight size={14} />
-        </Link>
-      )}
+      {placement === "end" && <div className="mt-4">{feedLink("Or open today's briefing")}</div>}
     </div>
   );
 }
@@ -149,7 +163,7 @@ export function InlineTraceCTA({
   buttonLabel?: string;
 }) {
   return (
-    <div className="my-10 rounded-xl border border-blue-100 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-7">
+    <div className="not-prose my-10 rounded-xl border border-blue-100 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-7">
       <div className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
         Trace
       </div>

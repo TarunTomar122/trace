@@ -285,7 +285,7 @@ export function trackNewsletterSignup(
   source: "landing" | "feed_prompt" | "daily_page" | "blog_inline",
   props?: Record<string, unknown>,
 ) {
-  posthog.capture("newsletter_signup", { surface: "web", source, ...props });
+  posthog.capture("newsletter_signup", { ...props, surface: "web", source });
 }
 
 export function trackSummaryOpened(
