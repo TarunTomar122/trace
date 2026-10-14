@@ -276,6 +276,11 @@ export function trackSubscriptionCancelled(plan: string) {
 }
 
 // Conversion funnel events
+// The feed's corner email card: shown, then dismissed or a signup (newsletter_signup, source feed_prompt).
+export function trackNewsletterPrompt(action: "shown" | "dismissed") {
+  posthog.capture("newsletter_prompt", { surface: "web", action });
+}
+
 export function trackNewsletterSignup(source: "landing" | "feed_prompt" | "daily_page") {
   posthog.capture("newsletter_signup", { surface: "web", source });
 }

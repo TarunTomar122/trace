@@ -59,11 +59,13 @@ export async function POST(request: NextRequest) {
         );
         return NextResponse.json({
           ok: true,
+          status: 'resubscribed',
           message: "You're back in! Your daily brief starts again with the next edition.",
         });
       }
       return NextResponse.json({
         ok: true,
+        status: 'already',
         message: "You're already subscribed!",
       });
     }
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      status: 'subscribed',
       message: "You're in! Check your inbox for a welcome email.",
     });
   } catch (error) {

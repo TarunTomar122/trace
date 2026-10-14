@@ -1,45 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-
-const SEND_HOUR_BERLIN = 10;
-const SEND_MINUTE_BERLIN = 30;
-
-/** "10:30 Berlin" expressed in the reader's own clock, DST-safe. */
-function localSendTime(): string {
-  try {
-    const offsetHours = (date: Date) => {
-      const berlin = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-      const utc = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-      return Math.round((berlin.getTime() - utc.getTime()) / 3_600_000);
-    };
-    const now = new Date();
-    const berlinToday = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-    const utcTarget = new Date(
-      Date.UTC(
-        berlinToday.getFullYear(),
-        berlinToday.getMonth(),
-        berlinToday.getDate(),
-        SEND_HOUR_BERLIN,
-        SEND_MINUTE_BERLIN
-      )
-    );
-    const local = new Date(utcTarget.getTime() - offsetHours(utcTarget) * 3_600_000);
-    return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(local);
-  } catch {
-    return '10:30';
-  }
-}
 
 export default function SignupCelebration({ onClose }: { onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [hint, setHint] = useState('10:30');
-
-  useEffect(() => {
-    setHint(localSendTime());
-  }, []);
 
   useEffect(() => {
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -131,8 +97,8 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
           You&rsquo;re in.
         </h2>
         <p className="mx-auto mb-4 max-w-[360px] text-[15.5px] leading-relaxed text-[#536471]">
-          Your first email lands tomorrow at <strong className="text-[#0f1419]">{hint} your time</strong>{' '}
-          (10:30 Berlin), and every morning after.
+          Check your inbox for a welcome email. Your brief arrives every morning around{' '}
+          <strong className="text-[#0f1419]">9:30am UK time</strong>.
         </p>
 
         <ul className="mb-5 list-none rounded-2xl bg-[#f7f9f9] px-4 py-4 text-left">

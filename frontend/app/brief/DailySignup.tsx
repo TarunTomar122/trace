@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { trackNewsletterSignup } from '@/lib/posthog';
+import { markNewsletterSubscribed } from '@/lib/newsletter-local';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -22,12 +23,13 @@ export default function DailySignup({ compact = false }: { compact?: boolean }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source: 'daily_page' }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");
       setStatus('ok');
       setMessage(data.message || "You're in! Check your inbox for a welcome email.");
       setEmail('');
-      trackNewsletterSignup('daily_page');
+      if (data.status !== 'already') trackNewsletterSignup('daily_page');
+      markNewsletterSubscribed();
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : 'Something went wrong');

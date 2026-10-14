@@ -8,7 +8,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPaidSubscription } from '@/lib/subscription-access';
 import FeedSkeleton from './FeedSkeleton';
-import NewsletterPromptModal from './NewsletterPromptModal';
+import NewsletterPromptToast from './NewsletterPromptToast';
+import { isNewsletterSubscribed, markNewsletterSubscribed } from '@/lib/newsletter-local';
 import {
   trackCheckoutClicked,
   trackFeedFilterChanged,
@@ -33,6 +34,7 @@ import {
   trackRetentionExtensionClicked,
   trackRetentionMilestoneShown,
   trackRetentionThreadFollowed,
+  trackNewsletterPrompt,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
@@ -317,12 +319,13 @@ export default function FeedApp({
   const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
   // Signed-out readers get one gentle email ask per fortnight, after they have
-  // actually engaged (two stories opened), not on arrival.
+  // actually engaged (two stories opened), not on arrival; never once subscribed.
   const [nlPrompt, setNlPrompt] = useState(false);
   const nlPromptArmed = useRef(false);
   useEffect(() => {
-    if (user || nlPrompt || nlPromptArmed.current) return;
+    if (user || authLoading || nlPrompt || nlPromptArmed.current) return;
     try {
+      if (isNewsletterSubscribed()) return;
       const seen = Number(window.localStorage.getItem('trace_nl_prompt_at') || 0);
       if (Date.now() - seen < 14 * 24 * 60 * 60 * 1000) return;
     } catch {
@@ -330,19 +333,30 @@ export default function FeedApp({
     }
     nlPromptArmed.current = true;
     const delay = readIds.size >= 2 ? 1500 : 45_000;
-    const timer = window.setTimeout(() => setNlPrompt(true), delay);
+    const timer = window.setTimeout(() => {
+      // Stamp it as seen when it appears: the card doesn't block anything, so most readers
+      // simply ignore it, and it must not come back on every visit.
+      try {
+        window.localStorage.setItem('trace_nl_prompt_at', String(Date.now()));
+      } catch {
+        /* private mode: the card simply reappears next visit */
+      }
+      trackNewsletterPrompt('shown');
+      setNlPrompt(true);
+    }, delay);
     return () => {
       window.clearTimeout(timer);
       nlPromptArmed.current = false;
     };
-  }, [user, nlPrompt, readIds.size]);
+  }, [user, authLoading, nlPrompt, readIds.size]);
 
-  function dismissNewsletterPrompt() {
+  function dismissNewsletterPrompt(reason: 'dismissed' | 'subscribed') {
     try {
       window.localStorage.setItem('trace_nl_prompt_at', String(Date.now()));
     } catch {
-      /* private mode: the modal simply reappears next visit */
+      /* private mode: the card simply reappears next visit */
     }
+    if (reason === 'dismissed') trackNewsletterPrompt('dismissed');
     nlPromptArmed.current = true;
     setNlPrompt(false);
   }
@@ -473,6 +487,8 @@ export default function FeedApp({
 
   useEffect(() => {
     const from = params.get('from');
+    // Arriving from the daily email means they already get it: never ask them to sign up.
+    if (from === 'email') markNewsletterSubscribed();
     if (from) {
       try {
         const url = new URL(window.location.href);
@@ -1212,7 +1228,7 @@ export default function FeedApp({
   }
 
   return (
-    <div className="xw" data-feed-ui="editorial">
+    <div className={nlPrompt && !user ? 'xw nl-open' : 'xw'} data-feed-ui="editorial">
       <style>{css}</style>
 
       {/* mobile bottom nav */}
@@ -1823,9 +1839,7 @@ export default function FeedApp({
       )}
       {celebrate && <WelcomeModal kind={celebrate} onClose={() => setCelebrate(null)} />}
 
-      {nlPrompt && !user && (
-        <NewsletterPromptModal onClose={dismissNewsletterPrompt} />
-      )}
+      {nlPrompt && !user && <NewsletterPromptToast onClose={dismissNewsletterPrompt} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import SignupCelebration from '@/components/feed-v2/SignupCelebration';
 import { trackNewsletterSignup } from '@/lib/posthog';
+import { markNewsletterSubscribed } from '@/lib/newsletter-local';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -23,12 +24,13 @@ export default function LandingHeroSignup() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");
       setStatus('ok');
       setMessage(data.message || "You're in!");
       setEmail('');
-      trackNewsletterSignup('landing');
+      if (data.status !== 'already') trackNewsletterSignup('landing');
+      markNewsletterSubscribed();
       setCelebrating(true);
     } catch (err) {
       setStatus('error');
