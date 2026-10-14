@@ -98,9 +98,9 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-semibold text-[#111827] mb-3">AI Agent Connections</h2>
           <p className="mb-3">
             When you connect an AI app such as Claude, ChatGPT or Cursor to Trace&apos;s MCP server, you sign in
-            with Google and approve that app. We store the app&apos;s name and the addresses it registered, and a
-            one-way hash of each sign-in code and access token (never the tokens themselves), so we can check
-            its requests. Access tokens last an hour. Removing Trace from the app deletes its sign-in there, and a
+            with Google and approve that app. We store the app&apos;s name and the addresses it registered, a record
+            of your approval (which app and when), and a one-way hash of each sign-in code, access token and
+            refresh token (never the tokens themselves), so we can check its requests. Access tokens last an hour. Removing Trace from the app deletes its sign-in there, and a
             sign-in left unused for 90 days stops working. The app can read your Trace brief; it cannot change your account.
             What the app does with the brief is covered by that app&apos;s own privacy policy.
           </p>

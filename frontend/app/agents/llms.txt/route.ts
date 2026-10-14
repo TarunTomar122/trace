@@ -12,8 +12,8 @@ Trace provides current structured tech news, builds, and practitioner conversati
 
 ## Client setup
 
-- Claude (web and desktop): Customize > Connectors > + Add > Add custom connector, paste the URL.
-- ChatGPT (developer mode): Settings > Security and login > Developer mode on, then Plugins > +, paste the URL.
+- Claude (web and desktop): Customize > Connectors (or Settings > Connectors) > + Add > Add custom connector, paste the URL.
+- ChatGPT (developer mode): turn on Developer mode (Settings > Security and login, or Settings > Apps > Advanced settings), then Plugins/Apps > + or Create, paste the URL.
 - Claude Code: claude mcp add --transport http trace https://www.yourtrace.online/api/mcp (then /mcp to sign in)
 - Codex: codex mcp add trace --url https://www.yourtrace.online/api/mcp (codex mcp login trace if no browser opens)
 - Gemini CLI: gemini mcp add --transport http trace https://www.yourtrace.online/api/mcp

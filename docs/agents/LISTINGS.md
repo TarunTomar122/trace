@@ -1,9 +1,19 @@
 # Trace MCP server: directory listings
 
-> **The owner submits all of these.** Nothing below has been submitted,
-> registered or verified. Deploy the OAuth sign-in first (and add the
-> `oauth_*` collections to the VPS LocalDB allowlist), then connect the URL in
-> Claude yourself and call every tool once: most directories check that.
+> **Status (2026-10-14).** The OAuth sign-in is live and was tested end to end
+> in production (register, consent, token, every MCP call, refresh, revoke).
+> Production LocalDB has no collection allowlist, so the `oauth_*` collections
+> needed no change there.
+>
+> | Listing | Status |
+> | --- | --- |
+> | Official MCP Registry | Published as `io.github.TarunTomar122/trace` (active) |
+> | punkpeye/awesome-mcp-servers | PR https://github.com/punkpeye/awesome-mcp-servers/pull/16430 |
+> | mcpservers.org | Free form submitted; confirmation not seen (review up to 2 weeks, replies to support@) |
+> | punkpeye/awesome-remote-mcp-servers | Waiting for a Glama connector listing (Glama may import it from the registry) |
+> | Claude Connectors Directory | Owner: needs a paid claude.ai account login |
+> | ChatGPT app directory | Owner: needs an OpenAI developer account login |
+> | appcypher/awesome-mcp-servers | Skipped: archived |
 
 ## Shared details
 

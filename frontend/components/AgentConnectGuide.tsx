@@ -29,7 +29,7 @@ const guides: ClientGuide[] = [
     name: 'Claude',
     note: 'Web and desktop',
     steps: [
-      'Click Customize in the sidebar, then open Connectors.',
+      'Open Connectors: Customize in the sidebar, or Settings → Connectors on some versions.',
       'Click + Add, then “Add custom connector”.',
       'Name it Trace, paste the URL and click Continue.',
     ],
@@ -39,8 +39,8 @@ const guides: ClientGuide[] = [
     name: 'ChatGPT',
     note: 'Paid plans, developer mode',
     steps: [
-      'Open Settings → Security and login and turn on Developer mode.',
-      'Open Plugins in the sidebar and click +.',
+      'Turn on Developer mode: Settings → Security and login (older versions: Settings → Apps → Advanced settings).',
+      'Open Plugins (or Apps) and click + or Create.',
       'Name it Trace, paste the URL and click Create.',
     ],
     code: TRACE_MCP_URL,
