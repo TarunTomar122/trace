@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
-import { InlineTraceCTA } from "@/components/BlogCTA";
+import { BlogEmailCard, InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -148,6 +148,8 @@ export default function BlogPost() {
             in less time, these six options are worth trying.
           </p>
 
+          <BlogEmailCard slug="newsbreak-alternatives" placement="intro" />
+
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Look for NewsBreak Alternatives?
           </h2>
@@ -284,6 +286,8 @@ export default function BlogPost() {
             and <strong>Google News</strong> cover free basics, while <strong>Feedly </strong>
             and <strong>Inoreader</strong> give you source control.
           </p>
+
+          <BlogEmailCard slug="newsbreak-alternatives" placement="end" />
 
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">

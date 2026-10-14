@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
-import { InlineTraceCTA } from "@/components/BlogCTA";
+import { BlogEmailCard, InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -152,6 +152,8 @@ export default function BlogPost() {
             too broad, too consumer-focused, and lacks the AI-powered features that modern
             news tools provide.
           </p>
+
+          <BlogEmailCard slug="google-news-alternatives" placement="intro" />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Look for Google News Alternatives?
@@ -320,6 +322,8 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             Try one for a week. You&apos;ll wonder why you ever used Google News for tech.
           </p>
+
+          <BlogEmailCard slug="google-news-alternatives" placement="end" />
 
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">

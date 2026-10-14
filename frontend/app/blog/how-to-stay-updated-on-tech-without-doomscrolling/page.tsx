@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -164,6 +165,8 @@ export default function BlogPost() {
             apps. Here&apos;s how to cut that to 30 minutes.
           </p>
 
+          <BlogEmailCard slug="how-to-stay-updated-on-tech-without-doomscrolling" placement="intro" />
+
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             The Problem
           </h2>
@@ -245,6 +248,8 @@ export default function BlogPost() {
             use AI summaries, curate your sources, and build a reading habit.
             Your time is worth more than infinite scroll.
           </p>
+
+          <BlogEmailCard slug="how-to-stay-updated-on-tech-without-doomscrolling" placement="end" />
 
           {/* Internal cross-linking */}
           <hr className="my-10 border-gray-200 dark:border-gray-800" />

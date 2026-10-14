@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * POST /api/newsletter-subscribe
- * Body: { email: string, source?: 'landing_page' | 'daily_page' }
+ * Body: { email: string, source?: 'landing_page' | 'daily_page' | 'blog' }
  *
  * Adds an email to the free_newsletter_subscribers collection.
  * No auth required — this is for anonymous visitors.
@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
   try {
     const { email, source: rawSource } = await request.json();
     // Where the signup came from, so the dashboard can credit the public
-    // /brief pages. Allowlisted: this is an anonymous endpoint.
-    const source = rawSource === 'daily_page' ? 'daily_page' : 'landing_page';
+    // /brief pages and the blog. Allowlisted: this is an anonymous endpoint.
+    const source = rawSource === 'daily_page' || rawSource === 'blog' ? rawSource : 'landing_page';
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json(

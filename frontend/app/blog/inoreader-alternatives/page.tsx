@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -156,6 +157,8 @@ export default function BlogPost() {
             comes with complexity — and for many users, simpler alternatives deliver 90%
             of the value at 10% of the learning curve.
           </p>
+
+          <BlogEmailCard slug="inoreader-alternatives" placement="intro" />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Look for Inoreader Alternatives?
@@ -410,6 +413,8 @@ export default function BlogPost() {
             The best part: all of these tools have free tiers. Export your Inoreader OPML,
             import it into 2-3 alternatives, and test each for a week.
           </p>
+
+          <BlogEmailCard slug="inoreader-alternatives" placement="end" />
 
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">

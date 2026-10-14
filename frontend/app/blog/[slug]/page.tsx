@@ -5,7 +5,7 @@ import { ArrowLeft, ExternalLink, Clock, Calendar } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
-import { InlineTraceCTA, StickyBlogBar } from "@/components/BlogCTA";
+import { BlogEmailCard, InlineTraceCTA, StickyBlogBar } from "@/components/BlogCTA";
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../content";
 import {
@@ -154,6 +154,8 @@ export default async function BlogPostPage({ params }: PageProps) {
   )
     .filter((p, index, all) => all.findIndex((candidate) => candidate.slug === p.slug) === index)
     .slice(0, 3);
+  // The email ask follows the intro; the feed pitch waits until mid-article so the two don't stack.
+  const feedCtaIndex = Math.max(1, Math.floor(post.sections.length / 2));
 
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
@@ -264,7 +266,8 @@ export default async function BlogPostPage({ params }: PageProps) {
                     ))}
                   </ul>
                 )}
-                {index === 1 && (
+                {index === 0 && <BlogEmailCard slug={post.slug} placement="intro" />}
+                {index === feedCtaIndex && (
                   <InlineTraceCTA
                     slug={post.slug}
                     heading={post.ctaHeading}
@@ -314,24 +317,8 @@ export default async function BlogPostPage({ params }: PageProps) {
             </section>
           )}
 
-          {/* CTA */}
-          <section className="public-cta mt-14 p-8 sm:p-10">
-            <p className="public-kicker">Trace</p>
-            <h2 className="mt-3 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
-              Skip X, LinkedIn, and the newsletter pile
-            </h2>
-            <p className="public-body mt-4 max-w-xl">
-              Open today&apos;s briefing for model releases, company news, and what actually changed — grouped from 100+ sources. Every story included, free for everyone.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={`/feed?utm_source=blog&utm_medium=article_end&utm_campaign=${post.slug}`}
-                className="landing-btn landing-btn-primary landing-btn-sm"
-              >
-                Open today&apos;s briefing
-              </Link>
-            </div>
-          </section>
+          {/* CTA: the daily email, with the feed link underneath */}
+          <BlogEmailCard slug={post.slug} placement="end" />
 
           {/* Related posts */}
           {relatedPosts.length > 0 && (

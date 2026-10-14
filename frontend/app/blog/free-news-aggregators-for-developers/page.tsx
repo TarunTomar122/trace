@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -164,6 +165,8 @@ export default function BlogPost() {
             summaries.
           </p>
 
+          <BlogEmailCard slug="free-news-aggregators-for-developers" placement="intro" />
+
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Free Tools Work
           </h2>
@@ -270,6 +273,8 @@ export default function BlogPost() {
             AI-powered summaries, use Feedly for RSS, and add Techmeme for
             tech-specific coverage. That&apos;s everything you need, for free.
           </p>
+
+          <BlogEmailCard slug="free-news-aggregators-for-developers" placement="end" />
 
           {/* Internal cross-linking */}
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
