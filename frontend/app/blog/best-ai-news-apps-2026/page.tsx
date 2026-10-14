@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -164,6 +165,8 @@ export default function BlogPost() {
             holes. We tested 10 AI news apps to find the ones that actually
             respect your time.
           </p>
+
+          <BlogEmailCard slug="best-ai-news-apps-2026" placement="intro" />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Quick Comparison Table
@@ -364,6 +367,8 @@ export default function BlogPost() {
               Download Trace free on Android →
             </a>
           </p>
+
+          <BlogEmailCard slug="best-ai-news-apps-2026" placement="end" />
 
           {/* Internal cross-linking */}
           <hr className="my-10 border-gray-200 dark:border-gray-800" />

@@ -956,7 +956,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   line-height: 1.7;
 }
 
-.editorial-static-article a {
+/* article links only: the CTA cards (not-prose) keep their own colours, e.g. white button text */
+.editorial-static-article a:not(.not-prose a) {
   color: var(--accent);
 }
 

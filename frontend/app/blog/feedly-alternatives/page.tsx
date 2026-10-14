@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
-import { InlineTraceCTA } from "@/components/BlogCTA";
+import { BlogEmailCard, InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -165,6 +165,8 @@ export default function BlogPost() {
             actually works. Here are 7 Feedly alternatives that are worth
             trying.
           </p>
+
+          <BlogEmailCard slug="feedly-alternatives" placement="intro" />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Look for Feedly Alternatives?
@@ -361,6 +363,8 @@ export default function BlogPost() {
             The best RSS reader is the one you actually use. Try a few and see
             what sticks.
           </p>
+
+          <BlogEmailCard slug="feedly-alternatives" placement="end" />
 
           {/* Internal cross-linking */}
           <hr className="my-10 border-gray-200 dark:border-gray-800" />

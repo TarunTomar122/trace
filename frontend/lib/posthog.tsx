@@ -281,8 +281,11 @@ export function trackNewsletterPrompt(action: "shown" | "dismissed") {
   posthog.capture("newsletter_prompt", { surface: "web", action });
 }
 
-export function trackNewsletterSignup(source: "landing" | "feed_prompt" | "daily_page" | "featured_page") {
-  posthog.capture("newsletter_signup", { surface: "web", source });
+export function trackNewsletterSignup(
+  source: "landing" | "feed_prompt" | "daily_page" | "blog_inline" | "featured_page",
+  props?: Record<string, unknown>,
+) {
+  posthog.capture("newsletter_signup", { ...props, surface: "web", source });
 }
 
 export function trackSummaryOpened(

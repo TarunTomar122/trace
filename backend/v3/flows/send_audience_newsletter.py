@@ -867,13 +867,8 @@ def _u16(value: str) -> int:
     return len(value.encode("utf-16-le")) // 2
 
 
-def _paragraphs(text: str) -> list[str]:
-    """Split a summary into short paragraphs, like the feed's story view.
-
-    Port of bodyParagraphs (frontend/lib/body-text.ts): sentences grouped up
-    to ~38 words / 230 chars, abbreviations (U.S., 5.1, initials) never split.
-    Keep the two in step so the builder preview matches the email.
-    """
+def _sentences(text: str) -> list[str]:
+    """A summary's sentences; abbreviations (U.S., 5.1, initials) never split."""
     clean = re.sub(r"\s+", " ", text or "").strip()
     if not clean:
         return []
@@ -883,37 +878,46 @@ def _paragraphs(text: str) -> list[str]:
     )
     clean = re.sub(r"\b([A-Z])\.", lambda m: m.group(1) + _ABBR_DOT, clean)
     clean = re.sub(r"(\d)\.(\d)", lambda m: m.group(1) + _ABBR_DOT + m.group(2), clean)
+    found = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", clean) or [clean]
+    return [s.strip().replace(_ABBR_DOT, ".") for s in found if s.strip()]
 
-    def un(value: str) -> str:
-        return value.replace(_ABBR_DOT, ".")
 
-    sentences = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", clean) or [clean]
+def _paragraphs(text: str) -> list[str]:
+    """Split a summary into short paragraphs, like the feed's story view.
+
+    Port of bodyParagraphs (frontend/lib/body-text.ts): sentences grouped up
+    to ~38 words / 230 chars, abbreviations (U.S., 5.1, initials) never split.
+    Keep the two in step so the builder preview matches the email.
+    """
     paras: list[str] = []
     cur = ""
-    for sentence in sentences:
-        t = sentence.strip()
-        if not t:
-            continue
+    for t in _sentences(text):
         cur_words = len(cur.split()) if cur else 0
         # Lengths in UTF-16 units, as JavaScript counts them (emoji count twice).
         if cur and (cur_words + len(t.split()) > 38 or _u16(cur) + _u16(t) > 230):
-            paras.append(un(cur.strip()))
+            paras.append(cur)
             cur = t
         else:
             cur = (cur + " " + t).strip()
     if cur:
-        paras.append(un(cur.strip()))
-    return paras if len(paras) > 1 else [un(clean)]
+        paras.append(cur)
+    whole = re.sub(r"\s+", " ", text or "").strip()
+    return paras if len(paras) > 1 else ([whole] if whole else [])
+
+
+def _app_link(story: dict) -> str:
+    """Where an emailed story's title points: the story in the app.
+
+    Topic ids are recomputed on every trending rebuild (sha of cluster urls),
+    so an emailed tt_… link is dead within half an hour. The article URL is
+    stable and the app resolves stories by it.
+    """
+    return f"{APP_URL}/feed?from=email&story={quote(story['url'], safe='')}"
 
 
 def _story_html(story: dict, show_summary: bool = True, show_image: bool = False) -> str:
     title = escape(story["title"])
-    # Topic ids are recomputed on every trending rebuild (sha of cluster urls),
-    # so an emailed tt_… link is dead within half an hour. The article URL is
-    # stable and the app resolves stories by it.
-    app_link = (
-        f"{APP_URL}/feed?from=email&story={quote(story['url'], safe='')}"
-    )
+    app_link = _app_link(story)
     image_url = str(story.get("image") or "") if show_image else ""
     original = escape(story["url"])
     # The feed's story layout: byline, title, full summary, inset image.

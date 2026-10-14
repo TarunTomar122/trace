@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -123,6 +124,8 @@ export default function BlogPost() {
             tech professionals need.
           </p>
 
+          <BlogEmailCard slug="smartnews-alternatives" placement="intro" />
+
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Why Look for SmartNews Alternatives?
           </h2>
@@ -229,6 +232,8 @@ export default function BlogPost() {
             minutes. For RSS control, <strong>Feedly</strong> or <strong>Inoreader</strong>{" "}
             are better choices. All are free to try.
           </p>
+
+          <BlogEmailCard slug="smartnews-alternatives" placement="end" />
 
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
