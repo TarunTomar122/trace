@@ -56,6 +56,25 @@ def subscriber(email, minutes_ago=5, active=True):
     return {email: {"email": email, "subscribedAt": iso(minutes_ago), "active": active}}
 
 
+def feed(minutes_ago=10, rows=None):
+    """The global daily feed doc, as the pipeline writes it."""
+    if rows is None:
+        rows = [
+            ("https://a.example/1", "ai", "Anthropic names a new CFO",
+             "The U.S. company hired J. Smith from Stripe. She starts in May."),
+            ("https://a.example/2", "ai", "Google halves Gemini API prices", "Developers pay less from today. The free tier stays."),
+            ("https://m.example/3", "markets", "Stocks slide on rate fears", "The Nasdaq fell 2.1% on Tuesday. Yields rose."),
+            ("https://t.example/4", "tech", "Apple delays its smart glasses", "They slip to 2027. Suppliers heard this week."),
+            ("https://s.example/5", "startups", "Mistral raises $2 billion", "The round values it at $14 billion."),
+            ("https://s.example/6", "startups", "A sixth story", "One more than the welcome shows."),
+        ]
+    return {
+        "trending_generated_at": iso(minutes_ago),
+        "trending": [{"url": url, "interest_id": lane, "title": title, "summary": summary}
+                     for url, lane, title, summary in rows],
+    }
+
+
 class WhoTests(unittest.TestCase):
     def test_new_signups_in_the_window_only(self):
         store = FakeStore(
@@ -164,6 +183,76 @@ class WhatTests(unittest.TestCase):
         self.assertIn("Hi &lt;b&gt;Eve&lt;/b&gt;,", page)
 
 
+class StoriesTests(unittest.TestCase):
+    def stories(self, doc):
+        loader = doc if callable(doc) else MagicMock(return_value=doc)
+        with patch.object(welcome, "_load_global_feed", loader):
+            return welcome.todays_stories(NOW, store=MagicMock())
+
+    def test_todays_top_five_as_the_daily_picks_and_links_them(self):
+        stories = self.stories(feed())
+        self.assertEqual([s["title"] for s in stories], [
+            "Anthropic names a new CFO", "Google halves Gemini API prices", "Stocks slide on rate fears",
+            "Apple delays its smart glasses", "Mistral raises $2 billion",
+        ])
+        # One line each: the first sentence, abbreviations intact.
+        self.assertEqual(stories[0]["line"], "The U.S. company hired J. Smith from Stripe.")
+        self.assertEqual(stories[0]["url"], f"{welcome.APP_URL}/feed?from=email&story=https%3A%2F%2Fa.example%2F1")
+
+    def test_no_stories_when_the_feed_is_empty_stale_or_unreadable(self):
+        self.assertEqual(self.stories({}), [])
+        self.assertEqual(self.stories(feed(rows=[])), [])
+        self.assertEqual(self.stories(feed(minutes_ago=13 * 60)), [])
+        self.assertEqual(self.stories({**feed(), "trending_generated_at": None}), [])
+        self.assertEqual(self.stories(MagicMock(side_effect=RuntimeError("database is locked"))), [])
+
+    def test_long_first_sentences_are_cut_at_a_word(self):
+        line = welcome._lede("word " * 80 + "end. Second sentence.")
+        self.assertTrue(line.endswith("word…"))
+        self.assertLessEqual(len(line), 201)
+        self.assertEqual(welcome._lede(""), "")
+
+    def test_newsletter_welcome_with_stories(self):
+        reader = {"email": "a@x.com", "name": "", "kind": "newsletter", "joined": NOW - timedelta(minutes=5)}
+        stories = self.stories(feed())
+        _, page, text = welcome.render(reader, NOW, stories)
+        self.assertIn("Can't wait? Here are today's top stories:", text)
+        self.assertNotIn("The latest brief is already up", text)
+        self.assertIn("Anthropic names a new CFO\nThe U.S. company hired J. Smith from Stripe.\n"
+                      f"{welcome.APP_URL}/feed?from=email&story=https%3A%2F%2Fa.example%2F1", text)
+        # Same stories, same order, in both versions.
+        positions = [text.index(s["title"]) for s in stories]
+        self.assertEqual(positions, sorted(positions))
+        for story in stories:
+            self.assertIn(story["title"], page)
+            self.assertIn(story["url"].replace("&", "&amp;"), page)
+        self.assertIn("Read the latest brief", page)
+
+    def test_newsletter_welcome_without_stories_keeps_the_brief_link(self):
+        reader = {"email": "a@x.com", "name": "", "kind": "newsletter", "joined": NOW - timedelta(minutes=5)}
+        _, _, text = welcome.render(reader, NOW, [])
+        self.assertIn(f"Can't wait? The latest brief is already up: {welcome.APP_URL}/brief", text)
+        self.assertNotIn("top stories", text)
+        self.assertEqual(welcome.render(reader, NOW), welcome.render(reader, NOW, []))
+
+    def test_account_welcome_with_stories(self):
+        reader = {"email": "a@x.com", "name": "Bea", "kind": "account", "joined": NOW, "daily": True}
+        _, _, text = welcome.render(reader, NOW, self.stories(feed()))
+        self.assertIn("Today's top stories:\n\nAnthropic names a new CFO", text)
+        self.assertIn("Your daily brief lands every morning", text)
+        _, _, without = welcome.render(reader, NOW, [])
+        self.assertNotIn("top stories", without)
+
+    def test_story_text_is_escaped_in_html(self):
+        reader = {"email": "a@x.com", "name": "", "kind": "newsletter", "joined": NOW}
+        story = {"title": "<script>x</script>", "line": "A & B", "url": "https://yourtrace.online/feed?a=1&b=2"}
+        _, page, _ = welcome.render(reader, NOW, [story])
+        self.assertIn("&lt;script&gt;x&lt;/script&gt;", page)
+        self.assertIn("A &amp; B", page)
+        self.assertIn('href="https://yourtrace.online/feed?a=1&amp;b=2"', page)
+        self.assertNotIn("<script>", page)
+
+
 class SendTests(unittest.TestCase):
     def args(self, **overrides):
         self.lock = tempfile.NamedTemporaryFile()
@@ -176,8 +265,9 @@ class SendTests(unittest.TestCase):
             subscribers.update(subscriber(f"r{i}@x.com", minutes_ago=5 + i))
         return FakeStore(subscribers=subscribers, **kwargs)
 
-    def run_job(self, store, send, **kwargs):
+    def run_job(self, store, send, doc=None, **kwargs):
         with patch.object(welcome, "FirestoreStore", return_value=store), \
+                patch.object(welcome, "_load_global_feed", return_value=doc or {}) as self.loader, \
                 patch("v1.tools.email_sender.send_email", side_effect=send) as mock:
             return welcome.run(self.args(**kwargs), NOW), mock
 
@@ -194,6 +284,23 @@ class SendTests(unittest.TestCase):
         code, mock = self.run_job(store, self.ok)
         mock.assert_not_called()
         self.assertEqual({m["status"] for m in store.tables[welcome.MARKERS].values()}, {"sent"})
+
+    def test_every_welcome_in_a_run_carries_the_same_stories(self):
+        code, mock = self.run_job(self.store(3), self.ok, doc=feed())
+        self.assertEqual((code, mock.call_count, self.loader.call_count), (0, 3, 1))
+        for call in mock.call_args_list:
+            _, _, _, page, text = call.args
+            self.assertIn("Anthropic names a new CFO", page)
+            self.assertIn("Anthropic names a new CFO", text)
+
+    def test_a_feed_that_cannot_be_read_still_sends_the_welcome(self):
+        store = self.store(1)
+        with patch.object(welcome, "_select", side_effect=KeyError("trending")):
+            code, mock = self.run_job(store, self.ok, doc=feed())
+        self.assertEqual((code, mock.call_count), (0, 1))
+        self.assertIn("The latest brief is already up", mock.call_args.args[4])
+        [marker] = store.tables[welcome.MARKERS].values()
+        self.assertEqual(marker["status"], "sent")
 
     def test_failures_back_off_then_stop(self):
         store = self.store(1)

@@ -16,6 +16,10 @@ Only signups since WELCOME_SINCE (the day this shipped) and within the last
 LOOKBACK_DAYS count, so older readers are never mailed and a stopped timer
 never sends a stale welcome. Mobile-app accounts live in Firebase, not LocalDB,
 so they aren't seen here.
+
+Both versions carry today's top stories, so signing up pays off at once: the
+daily's own picks for a new subscriber, with the daily's links. When the feed
+has none, or hasn't been rebuilt lately, the welcome goes out without them.
 """
 
 from __future__ import annotations
@@ -40,7 +44,14 @@ if str(BACKEND_ROOT) not in sys.path:
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
 from v1.storage import FirestoreStore  # noqa: E402
-from v3.flows.send_audience_newsletter import _email_enabled  # noqa: E402  (the daily's own opt-in rule)
+from v3.flows.send_audience_newsletter import (  # noqa: E402  (the daily's own opt-in rule, picks and links)
+    _app_link,
+    _email_enabled,
+    _load_global_feed,
+    _select,
+    _sentences,
+    _today_ist,
+)
 
 BUCKET = "welcome"
 MARKERS = "welcome_sends"
@@ -61,6 +72,10 @@ FRESH = timedelta(hours=1)
 # which is 9:30 in the UK all year: both switch clocks on the same days.
 BRIEF_ZONE, BRIEF_HOUR, BRIEF_MINUTE = ZoneInfo("Europe/Berlin"), 10, 30
 BRIEF_TIME_UK = "9:30am UK time"
+STORY_COUNT = 5
+# The pipeline rebuilds the feed every 20 minutes; stories older than this
+# aren't "today's" any more, so the welcome leaves them out.
+STORIES_MAX_AGE = timedelta(hours=12)
 LOCK_FILE = BACKEND_ROOT.parent / ".welcome.lock"
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
@@ -187,19 +202,66 @@ def first_brief_day(joined: datetime) -> str:
     return send.strftime("%A")
 
 
+def _lede(summary: str, limit: int = 200) -> str:
+    """A summary's first sentence: the one line under a story's title."""
+    first = next(iter(_sentences(summary)), "")
+    if len(first) <= limit:
+        return first
+    return first[:limit].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+
+
+def todays_stories(now: datetime, store: FirestoreStore | None = None) -> list[dict[str, str]]:
+    """Today's top stories as the daily picks them for a new subscriber, or [].
+
+    Never raises: the welcome goes out with or without them.
+    """
+    try:
+        feed = _load_global_feed(store or FirestoreStore(), _today_ist())
+        built = _when(feed.get("trending_generated_at"))
+        if not built or now - built > STORIES_MAX_AGE:
+            return []
+        picks = [story for _, group in _select(feed, [], STORY_COUNT, "landing") for story in group]
+        return [
+            {"title": story["title"], "line": _lede(story.get("summary", "")), "url": _app_link(story)}
+            for story in picks[:STORY_COUNT]
+        ]
+    except Exception as exc:
+        _log(f"no stories for the welcome: {exc}")
+        return []
+
+
 def _link(path: str) -> str:
     url = f"{APP_URL}{path}"
     text = url.replace("https://", "").replace("http://", "")
     return f'<a href="{html.escape(url)}" style="color: #1d9bf0; font-weight: 700; text-decoration: none;">{html.escape(text)}</a>'
 
 
+def _p(inner: str) -> str:
+    return f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 25px; color: #0f1419; font-family: {FONT};">{inner}</p>'
+
+
 def _para(text: str, *paths: str) -> tuple[str, str]:
     """(plain, html) for a paragraph whose {} slots are app paths, shown as links in HTML."""
-    return text.format(*(f"{APP_URL}{path}" for path in paths)), html.escape(text).format(*map(_link, paths))
+    return text.format(*(f"{APP_URL}{path}" for path in paths)), _p(html.escape(text).format(*map(_link, paths)))
 
 
-def render(reader: dict[str, Any], now: datetime) -> tuple[str, str, str]:
-    """(subject, html, text) for this reader's version of the welcome."""
+def _top_stories(lead: str, stories: list[dict[str, str]]) -> tuple[str, str]:
+    """(plain, html) for a lead-in line with today's top stories under it."""
+    plain = "\n\n".join([lead, *("\n".join(filter(None, (s["title"], s["line"], s["url"]))) for s in stories)])
+    rich = _p(html.escape(lead)) + "".join(
+        f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 23px; color: #0f1419; font-family: {FONT};">'
+        f'<a href="{html.escape(s["url"])}" style="color: #0f1419; font-weight: 700; text-decoration: none;">'
+        f'{html.escape(s["title"])}</a>'
+        + (f'<br><span style="font-size: 15px; line-height: 22px; color: #536471;">{html.escape(s["line"])}</span>'
+           if s["line"] else "")
+        + "</p>"
+        for s in stories
+    )
+    return plain, rich
+
+
+def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] | None = None) -> tuple[str, str, str]:
+    """(subject, html, text) for this reader's version of the welcome, with `stories` from todays_stories()."""
     first = _first_name(reader.get("name", ""))
     hi = f"Hi {first}," if first else "Hi there,"
     customize = "pick your topics, how many stories (5, 10 or 15) and whether you want images"
@@ -228,7 +290,8 @@ def render(reader: dict[str, Any], now: datetime) -> tuple[str, str, str]:
         paragraphs = [
             intro,
             when,
-            _para("Can't wait? The latest brief is already up: {}", "/brief"),
+            _top_stories("Can't wait? Here are today's top stories:", stories) if stories
+            else _para("Can't wait? The latest brief is already up: {}", "/brief"),
             _para("Want it your way? Sign in at {} to " + customize + ".", "/brief/customize"),
             free,
             reply,
@@ -261,6 +324,7 @@ def render(reader: dict[str, Any], now: datetime) -> tuple[str, str, str]:
                 "however many outlets cover it.",
                 "/feed",
             ),
+            *([_top_stories("Today's top stories:", stories)] if stories else []),
             inbox,
             free,
             reply,
@@ -270,10 +334,7 @@ def render(reader: dict[str, Any], now: datetime) -> tuple[str, str, str]:
         footer_html = html.escape(footer_text)
 
     text = "\n\n".join([hi, *(plain for plain, _ in paragraphs), "Tarat, founder of Trace", footer_text])
-    body = "".join(
-        f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 25px; color: #0f1419; font-family: {FONT};">{part}</p>'
-        for part in [html.escape(hi), *(rich for _, rich in paragraphs)]
-    )
+    body = _p(html.escape(hi)) + "".join(rich for _, rich in paragraphs)
     # A table-cell button: Outlook ignores padding and radius on a bare link.
     cta = (
         '<table cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 24px 0;"><tr>'
@@ -306,10 +367,11 @@ def render(reader: dict[str, Any], now: datetime) -> tuple[str, str, str]:
 # ---------------------------------------------------------------------------
 
 
-def _send(reader: dict[str, Any], now: datetime, *, to: str | None = None, bucket: str = BUCKET) -> dict[str, Any]:
+def _send(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]], *,
+          to: str | None = None, bucket: str = BUCKET) -> dict[str, Any]:
     from v1.tools.email_sender import send_email
 
-    subject, page, text = render(reader, now)
+    subject, page, text = render(reader, now, stories)
     unsubscribe = (
         f"{APP_URL}/api/unsubscribe?email={quote(reader['email'], safe='')}" if reader["kind"] == "newsletter" else None
     )
@@ -337,11 +399,12 @@ def _welcome_all(store: FirestoreStore, args: argparse.Namespace, now: datetime)
     if not todo:
         return 0
     _log(f"{len(todo)} new reader(s) to welcome")
+    stories = todays_stories(now, store)
 
     failed = 0
     for reader in todo:
         if args.dry_run:
-            subject, page, _ = render(reader, now)
+            subject, page, _ = render(reader, now, stories)
             preview = Path(args.out) / f"welcome-{reader['kind']}.html"
             preview.parent.mkdir(parents=True, exist_ok=True)
             preview.write_text(page)
@@ -365,7 +428,7 @@ def _welcome_all(store: FirestoreStore, args: argparse.Namespace, now: datetime)
             _log(f"cannot record welcomes, stopping: {exc}")
             return 1
         try:
-            result = _send(reader, now)
+            result = _send(reader, now, stories)
         except Exception as exc:
             result = {"success": False, "error": str(exc)}
         ok = result.get("success") is not False
@@ -388,12 +451,13 @@ def _welcome_all(store: FirestoreStore, args: argparse.Namespace, now: datetime)
 def run(args: argparse.Namespace, now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
     if args.test_to:
+        stories = todays_stories(now)
         for reader in (
             {"email": args.test_to, "name": "", "kind": "newsletter", "joined": now},
             {"email": args.test_to, "name": "Tarat Tomar", "kind": "account", "joined": now, "daily": True},
             {"email": args.test_to, "name": "Tarat Tomar", "kind": "account", "joined": now, "daily": False},
         ):
-            result = _send(reader, now, to=args.test_to, bucket="test")
+            result = _send(reader, now, stories, to=args.test_to, bucket="test")
             _log(f"test {reader['kind']} welcome to {args.test_to}: {result.get('transport')} success={result.get('success', True)}")
         return 0
 
