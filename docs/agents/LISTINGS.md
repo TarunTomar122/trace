@@ -59,32 +59,18 @@ Long description (≤ 2,000 chars, for the Claude directory and ChatGPT):
 
 ## Official MCP Registry (registry.modelcontextprotocol.io)
 
-`server.json` is at the repo root, written against the 2025-12-11 schema and
-validated against it. The name `online.yourtrace/trace` is the reverse-DNS
-namespace of the domain, so the registry shows a name that matches the URL.
+`server.json` is at the repo root, written against the 2025-12-11 schema. It is
+published as `io.github.TarunTomar122/trace` by the **Publish to MCP Registry**
+workflow (`.github/workflows/mcp-registry.yml`), which logs in with GitHub
+Actions OIDC: no secret and no DNS change. It runs when `server.json` changes
+on main, or by hand: `gh workflow run mcp-registry.yml`.
 
-1. Install the publisher: `brew install mcp-publisher`.
-2. Prove you own `yourtrace.online` with DNS (the HTTP method fetches
-   `https://yourtrace.online/.well-known/mcp-registry-auth`, and the bare
-   domain redirects to www, so DNS is the safer choice):
-   ```bash
-   openssl genpkey -algorithm Ed25519 -out key.pem   # macOS: use OpenSSL 3 (brew install openssl@3)
-   PUBLIC_KEY="$(openssl pkey -in key.pem -pubout -outform DER | tail -c 32 | base64)"
-   echo "yourtrace.online. IN TXT \"v=MCPv1; k=ed25519; p=${PUBLIC_KEY}\""
-   ```
-   Add that TXT record on the **apex** (`yourtrace.online`, not a subdomain),
-   wait for it to propagate, then:
-   ```bash
-   PRIVATE_KEY="$(openssl pkey -in key.pem -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
-   mcp-publisher login dns --domain yourtrace.online --private-key "${PRIVATE_KEY}"
-   ```
-   Keep `key.pem` out of the repo.
-3. From the repo root: `mcp-publisher validate`, then `mcp-publisher publish`.
-4. Check: `curl "https://registry.modelcontextprotocol.io/v0/servers?search=online.yourtrace/trace"`.
-
-No DNS access? Use GitHub instead: rename to `io.github.<your-github-username>/trace`
-in `server.json` and run `mcp-publisher login github`. Bump `version` (and
-`serverInfo.version` in `frontend/app/api/mcp/route.ts`) on each publish.
+- Bump `version` (and `serverInfo.version` in `frontend/app/api/mcp/route.ts`)
+  for each new listing; the registry refuses a version it already has.
+- Check: `curl "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.TarunTomar122/trace"`.
+- To list under the domain instead (`online.yourtrace/trace`), prove ownership
+  with a DNS TXT record on the apex (`mcp-publisher login dns`); the HTTP method
+  doesn't work because the bare domain redirects to www.
 
 ## punkpeye/awesome-remote-mcp-servers
 

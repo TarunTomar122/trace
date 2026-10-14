@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "online.yourtrace/trace",
+  "name": "io.github.TarunTomar122/trace",
   "title": "Trace",
   "description": "Today's top tech and AI stories, builds and developer conversations, grouped and summarised.",
   "version": "1.0.0",
@@ -9,7 +9,9 @@
     {
       "src": "https://www.yourtrace.online/trace-app-icon-v1-512.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"]
+      "sizes": [
+        "512x512"
+      ]
     }
   ],
   "remotes": [
