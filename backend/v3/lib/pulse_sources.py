@@ -458,18 +458,19 @@ def _fetch_hn_items(
             points = hit.get("points") or 0
             comment_text = _strip_html(str(hit.get("story_text", "") or hit.get("comment_text", "")))
             created_at = str(hit.get("created_at", "") or "").strip()
-            articles.append(
-                make_pool_article(
-                    title=title,
-                    url=url or hn_url,
-                    source=source,
-                    signal=f"{points} points",
-                    role_hints=role_hints,
-                    source_kind=source_kind,
-                    snippet=comment_text,
-                    published_date=created_at,
-                )
+            article = make_pool_article(
+                title=title,
+                url=url or hn_url,
+                source=source,
+                signal=f"{points} points",
+                role_hints=role_hints,
+                source_kind=source_kind,
+                snippet=comment_text,
+                published_date=created_at,
             )
+            # Who posted it: the post kit suggests telling them they were featured.
+            article["by"] = str(hit.get("author", "") or "").strip()
+            articles.append(article)
     log_fn(f"HN: fetched {len(articles)} items")
     return articles
 

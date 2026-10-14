@@ -281,7 +281,7 @@ export function trackNewsletterPrompt(action: "shown" | "dismissed") {
   posthog.capture("newsletter_prompt", { surface: "web", action });
 }
 
-export function trackNewsletterSignup(source: "landing" | "feed_prompt" | "daily_page") {
+export function trackNewsletterSignup(source: "landing" | "feed_prompt" | "daily_page" | "featured_page") {
   posthog.capture("newsletter_signup", { surface: "web", source });
 }
 

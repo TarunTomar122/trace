@@ -9,6 +9,7 @@ from v3.build_daily_pulse import (
     ROLE_ORDER,
     _builder_focus_score,
     _freshness_score,
+    _item_payload,
     _normalize_item_summary,
     _normalize_summary_payload,
     _summarize_item,
@@ -164,6 +165,13 @@ class DailyPulseSummaryTest(unittest.TestCase):
         self.assertIn("Article text excerpt: Concrete source fact.", prompt)
         schema = openai.return_value.chat.completions.create.call_args.kwargs["response_format"]["json_schema"]["schema"]
         self.assertEqual(schema["properties"]["key_takeaways"]["minItems"], 2)
+
+    @patch("v3.build_daily_pulse._summarize_item", return_value={"body": "One line.", "key_takeaways": []})
+    def test_items_keep_the_hacker_news_submitter(self, _summarize) -> None:
+        article = {"title": "A post", "url": "https://a.dev/post", "source": "Hacker News", "signal": "300 points",
+                   "thumbnail": "https://a.dev/img.png", "by": "jane"}
+        self.assertEqual(_item_payload(None, "2026-10-14", "developer", "discussions", article)["by"], "jane")
+        self.assertEqual(_item_payload(None, "2026-10-14", "developer", "discussions", {**article, "by": None})["by"], "")
 
     def test_shared_pulse_keeps_legacy_mobile_role_buckets(self) -> None:
         writes = []

@@ -22,8 +22,9 @@ Actions keeps push notifications plus manual/replay workflows.
 | `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_audience_newsletter` |
 | `trace-instagram.service/.timer` | 09:00 and 20:00 Europe/London | `v3.flows.post_instagram` |
 | `trace-welcome.service/.timer` | every 5 min | `v3.flows.send_welcome` |
+| `trace-postkit.service/.timer` | daily 07:30 Europe/London | `v3.flows.build_post_kit` |
 
-Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}` and `trace-welcome.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
+Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}`, `trace-welcome.{service,timer}` and `trace-postkit.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
 
@@ -160,6 +161,52 @@ tail -50 ~/trace/logs/instagram.log
 # a live run by hand: go through the service so it takes the lock. It uses the
 # current slot (before 14:00 London is "am"), so a run after 14:00 is tonight's post.
 systemctl --user start trace-instagram.service
+```
+
+## Post kit
+
+`trace-postkit.timer` runs `backend/v3/flows/build_post_kit.py` at 07:30 UK
+time and emails the founder (`TRACE_KIT_TO`) everything ready to post:
+
+- Release day: today's biggest AI model or product release, if at least
+  `TRACE_KIT_MIN_SOURCES` (default 3) outlets cover it (a second one only if it
+  has two thirds of the first's coverage), drafted as a long-form X article
+  with a 1600x900 JPEG cover attached. The model (`TRACE_KIT_MODEL`, default
+  gpt-4.1-mini) writes the draft; if it can't, or invents a number the sources
+  don't have, the draft is built from the story's own summary and key points.
+- An X post for the day's top story, linking the day's brief.
+- Featured makers: everything in today's Tools and Top articles with its share
+  page (`/featured/{date}/{id}`), best-effort X handles (page meta, the GitHub
+  owner's profile) plus the HN submitter, and a short line to send them.
+  Handles are cached in `maker_handles` (30 days, misses 3 days); links not
+  checked (out of time, GitHub's rate limit) say so. `GITHUB_TOKEN` raises the
+  GitHub API limit from 60 to 5000 requests an hour (no permissions needed).
+  Page fetches only go to public hosts on ports 80/443, every redirect checked.
+- Once a day: `post_kits/{date}` is written before sending (`sending`, then
+  `sent`/`failed`); a failed send is retried by the service, at most 3 tries in
+  all. A kit left at `sending` is never retried.
+  Before that the featured items are copied to the day's feed doc
+  (`featured_items`), so share pages keep working after the pulse replaces the
+  lists. Without `TRACE_KIT_TO` a run does nothing.
+- The cover headline is Satoshi Black, which may not be redistributed, so it is
+  not in the repo: copy `Satoshi-Black.otf` (Fontshare) to
+  `~/trace/backend/v3/assets/instagram/` or set `TRACE_KIT_FONT`. Without it
+  the cover uses Inter Bold, and the email says so.
+
+Setup (once):
+
+```bash
+# add TRACE_KIT_TO (and GITHUB_TOKEN) to ~/trace/.env; copy Satoshi-Black.otf as above
+cp ~/trace/backend/vps/trace-postkit.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now trace-postkit.timer
+```
+
+Day to day (the job takes `~/trace/.postkit.lock`, so a manual run can't race the timer):
+
+```bash
+cd ~/trace/backend && ../.venv/bin/python -m v3.flows.build_post_kit --dry-run   # preview in /tmp/trace-postkit, writes nothing
+../.venv/bin/python -m v3.flows.build_post_kit --test-to you@example.com         # one copy, no marker
+tail -50 ~/trace/logs/postkit.log
 ```
 
 ## Story grouping

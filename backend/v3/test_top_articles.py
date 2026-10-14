@@ -100,5 +100,20 @@ class TopArticlesEdgeTests(unittest.TestCase):
         self.assertIn("Apple HomeView", titles)
 
 
+class HnSubmitterTests(unittest.TestCase):
+    def test_hn_items_carry_the_submitter(self):
+        from unittest.mock import MagicMock, patch
+
+        from v3.lib import pulse_sources as S
+
+        response = MagicMock()
+        response.json.return_value = {"hits": [{"title": "A post", "url": "https://a.dev", "objectID": "1",
+                                                "points": 300, "author": "jane", "created_at": "2026-10-14T00:00:00Z"}]}
+        with patch.object(S.requests, "get", return_value=response):
+            [hn] = S._fetch_hn_items(["https://hn.algolia.com/api/v1/search"], ["developer"],
+                                     source_kind="community", log_fn=lambda _m: None)
+        self.assertEqual((hn["by"], hn["source"]), ("jane", "Hacker News"))
+
+
 if __name__ == "__main__":
     unittest.main()
