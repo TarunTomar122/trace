@@ -534,7 +534,7 @@ def send_email(
         sender_name=brevo_from_name,
         reply_to_email=reply_to() or None,
         # One-off emails get their own tag so Brevo's stats keep the daily apart.
-        tags=[bucket] if bucket in {"welcome", "supporter_thanks", "post_kit"} else ["newsletter", "daily"],
+        tags=[bucket] if bucket in {"welcome", "supporter_thanks", "post_kit", "test"} else ["newsletter", "daily"],
         attachments=attachments,
     )
     if log:

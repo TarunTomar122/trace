@@ -6,20 +6,26 @@ Three places to look, all cheap:
   the repo's homepage meta if the owner has none;
 - for a Hacker News item, the submitter (`by`), which the pipeline stores.
 
-Fetches are short (FETCH_DEADLINE seconds at most), read at most MAX_HTML_BYTES
-of a page, only go to public hosts on ports 80/443 (every redirect hop is
-checked: this runs on the VPS next to LocalDB), and are remembered in
-`maker_handles` so a link is looked up once, not every day. Nothing here
-raises: a lookup that fails just finds no handle.
+Fetches are short (a hard FETCH_DEADLINE-second wall clock), read at most
+MAX_HTML_BYTES of a page, only go to public hosts on ports 80/443 (every
+redirect hop's host is checked before it is asked for anything: this runs on
+the VPS next to LocalDB; names are resolved again on connect, so this is a
+guard rather than a sandbox, and only <head> meta tags are ever read), and are
+remembered in `maker_handles` so a link is looked up once, not every day.
+Nothing here raises: a lookup that errors is reported as not checked (None)
+and isn't remembered, so the next run asks again.
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import ipaddress
 import os
 import re
+import signal
 import socket
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -64,6 +70,7 @@ PLATFORM_HOSTS = {
 GITHUB_RESERVED = {
     "about", "apps", "collections", "customer-stories", "enterprise", "events", "explore", "features",
     "login", "marketplace", "orgs", "pricing", "security", "settings", "site", "sponsors", "topics", "trending",
+    "users", "codespaces", "issues", "pulls", "notifications", "new", "solutions",
 }
 
 
@@ -122,15 +129,55 @@ def _public_http(url: str) -> bool:
         return False
     try:
         addresses = _resolve(host)
-        return bool(addresses) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in addresses)
+        return bool(addresses) and all(_is_public(a) for a in addresses)
     except (OSError, ValueError, UnicodeError):
         return False
+
+
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _is_public(address: str) -> bool:
+    """Global, after unwrapping IPv4 hidden inside IPv6 (mapped, NAT64, ::a.b.c.d)."""
+    ip = ipaddress.ip_address(address.split("%")[0])
+    if ip.version == 6:
+        if ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        elif ip in NAT64 or int(ip) >> 32 == 0:
+            ip = ipaddress.ip_address(int(ip) & 0xFFFFFFFF)
+    return ip.is_global
+
+
+class _Deadline(Exception):
+    """A fetch ran past its wall clock."""
+
+
+@contextlib.contextmanager
+def _wall_clock(seconds: float):
+    """A hard stop after `seconds`. Per-read socket timeouts restart with every
+    byte, so a server that drips its headers or body could otherwise hold the
+    run for minutes. SIGALRM works on Unix main threads (the kit is a CLI);
+    elsewhere only the soft checks in fetch_head apply."""
+    if seconds <= 0 or not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _expire(_signum, _frame):
+        raise _Deadline()
+
+    previous = signal.signal(signal.SIGALRM, _expire)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def clean_handle(value: Any) -> str:
     """"@Name", "Name" or "https://x.com/Name" as "@Name"; "" for generic or malformed ones."""
     text = str(value or "").strip()
-    text = re.sub(r"^https?://(www\.)?(x|twitter)\.com/", "", text, flags=re.I).split("/")[0].split("?")[0]
+    text = re.sub(r"^https?://((www|mobile)\.)?(x|twitter)\.com/", "", text, flags=re.I).split("/")[0].split("?")[0]
     text = text.lstrip("@").strip()
     if not HANDLE_RE.match(text) or text.lower() in GENERIC_HANDLES:
         return ""
@@ -142,38 +189,45 @@ def clean_handle(value: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def fetch_head(url: str, session: Any = requests) -> str:
-    """The start of a page's HTML (up to MAX_HTML_BYTES, cut at </head>), or "".
+def fetch_head(url: str, session: Any = requests) -> str | None:
+    """The start of a page's HTML (up to MAX_HTML_BYTES, cut at </head>).
 
-    Redirects are followed by hand so every hop's host is checked before it is
-    asked for anything, and the whole fetch stops after FETCH_DEADLINE seconds
-    (a server that drips bytes can't hold the run).
+    "" when the page answered but has nothing to read (not public, not HTML, a
+    4xx, a redirect loop); None when it couldn't be fetched (network error,
+    5xx, the deadline), so the caller can try again another day. Redirects are
+    followed by hand so every hop's host is checked before it is asked for
+    anything, and the whole fetch has a hard FETCH_DEADLINE-second wall clock.
     """
     deadline = time.monotonic() + FETCH_DEADLINE
     try:
-        for _hop in range(MAX_REDIRECTS + 1):
-            if not _public_http(url) or time.monotonic() > deadline:
-                return ""
-            with session.get(url, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, stream=True,
-                             allow_redirects=False) as response:
-                if response.status_code in {301, 302, 303, 307, 308}:
-                    url = urljoin(url, str(response.headers.get("location") or ""))
-                    continue
-                if response.status_code != 200:
+        with _wall_clock(FETCH_DEADLINE):
+            for _hop in range(MAX_REDIRECTS + 1):
+                if not _public_http(url):
                     return ""
-                if "html" not in str(response.headers.get("content-type", "")).lower():
-                    return ""
-                data = b""
-                for chunk in response.iter_content(8 * 1024):
-                    data += chunk
-                    if len(data) >= MAX_HTML_BYTES or b"</head>" in data.lower() or time.monotonic() > deadline:
-                        break
-                encoding = response.encoding or "utf-8"
-            text = data[:MAX_HTML_BYTES].decode(encoding, errors="ignore")
-            end = text.lower().find("</head>")
-            return text[: end + 7] if end != -1 else text
-    except Exception:
-        return ""
+                if time.monotonic() > deadline:
+                    return None
+                with session.get(url, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, stream=True,
+                                 allow_redirects=False) as response:
+                    if response.status_code in {301, 302, 303, 307, 308}:
+                        url = urljoin(url, str(response.headers.get("location") or ""))
+                        continue
+                    if response.status_code >= 500:
+                        return None
+                    if response.status_code != 200:
+                        return ""
+                    if "html" not in str(response.headers.get("content-type", "")).lower():
+                        return ""
+                    data = b""
+                    for chunk in response.iter_content(8 * 1024):
+                        data += chunk
+                        if len(data) >= MAX_HTML_BYTES or b"</head>" in data.lower() or time.monotonic() > deadline:
+                            break
+                    encoding = response.encoding or "utf-8"
+                text = data[:MAX_HTML_BYTES].decode(encoding, errors="ignore")
+                end = text.lower().find("</head>")
+                return text[: end + 7] if end != -1 else text
+    except Exception:  # _Deadline included
+        return None
     return ""  # too many redirects
 
 
@@ -202,19 +256,33 @@ class GitHubRateLimited(RuntimeError):
     """GitHub said no more requests for now: stop asking for the rest of the run."""
 
 
+class LookupFailed(RuntimeError):
+    """A lookup that errored (bad token, 5xx, network, timeout), as opposed to a
+    clean "nothing there": it is reported as not checked and not remembered."""
+
+
 def _github(path: str, session: Any) -> dict[str, Any] | None:
+    """The API's JSON, None for a 404; raises GitHubRateLimited or LookupFailed."""
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": USER_AGENT}
     token = os.getenv("GITHUB_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    response = session.get(f"{GITHUB_API}{path}", headers=headers, timeout=TIMEOUT)
-    if response.status_code in {403, 429} and (
-        str(response.headers.get("x-ratelimit-remaining", "")) == "0" or "rate limit" in response.text.lower()
-    ):
-        raise GitHubRateLimited(f"GitHub rate limit ({response.status_code})")
-    if response.status_code != 200:
-        return None
-    data = response.json()
+    try:
+        with _wall_clock(FETCH_DEADLINE):
+            response = session.get(f"{GITHUB_API}{path}", headers=headers, timeout=TIMEOUT)
+            if response.status_code in {403, 429} and (
+                str(response.headers.get("x-ratelimit-remaining", "")) == "0" or "rate limit" in response.text.lower()
+            ):
+                raise GitHubRateLimited(f"GitHub rate limit ({response.status_code})")
+            if response.status_code == 404:
+                return None
+            if response.status_code != 200:
+                raise LookupFailed(f"GitHub {response.status_code}")
+            data = response.json()
+    except (GitHubRateLimited, LookupFailed):
+        raise
+    except Exception as exc:  # network, bad JSON, _Deadline
+        raise LookupFailed(f"GitHub unreachable ({type(exc).__name__})") from exc
     return data if isinstance(data, dict) else None
 
 
@@ -242,29 +310,23 @@ def github_repo(url: str) -> tuple[str, str] | None:
 def github_handles(owner: str, repo: str, session: Any = requests) -> list[dict[str, str]]:
     """The owner's X handle from their GitHub profile, else the repo homepage's meta.
 
-    Raises GitHubRateLimited; any other failure finds nothing.
+    Raises GitHubRateLimited, or LookupFailed when GitHub or the homepage
+    couldn't be reached; [] means it looked and there was nothing.
     """
-    try:
-        user = _github(f"/users/{owner}", session) or {}
-    except GitHubRateLimited:
-        raise
-    except Exception:
-        return []
+    user = _github(f"/users/{owner}", session) or {}
     handle = clean_handle(user.get("twitter_username"))
     if handle:
         return [{"handle": handle, "via": "GitHub profile"}]
-    try:
-        homepage = str((_github(f"/repos/{owner}/{repo}", session) or {}).get("homepage") or "").strip()
-    except GitHubRateLimited:
-        raise
-    except Exception:
-        homepage = ""
+    homepage = str((_github(f"/repos/{owner}/{repo}", session) or {}).get("homepage") or "").strip()
     homepage = homepage or str(user.get("blog") or "").strip()
     if homepage and not homepage.startswith(("http://", "https://")):
         homepage = f"https://{homepage}"
     if not homepage or _host(homepage) == "github.com":
         return []
-    return [{**h, "via": "project homepage"} for h in meta_handles(fetch_head(homepage, session), _host(homepage))]
+    html = fetch_head(homepage, session)
+    if html is None:
+        raise LookupFailed("project homepage unreachable")
+    return [{**h, "via": "project homepage"} for h in meta_handles(html, _host(homepage))]
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +347,7 @@ class HandleFinder:
         self.now = now or _now()
         self.memory: dict[str, dict[str, Any]] = {}
         self.github_limited = False
+        self.github_auth_warned = False
         self.fetched = 0
         self.cached = 0
 
@@ -323,7 +386,8 @@ class HandleFinder:
 
     def lookup(self, url: str) -> list[dict[str, str]] | None:
         """Handles for the people behind `url`, best first: [] when none were found,
-        None when the link wasn't checked (GitHub's rate limit, a malformed link)."""
+        None when the link wasn't checked (GitHub's rate limit, an error, a malformed
+        link). Only clean answers are remembered, so errors are retried next run."""
         key = url_key(url)
         if not key:
             return None
@@ -341,8 +405,16 @@ class HandleFinder:
                 self.github_limited = True
                 self.log(f"{exc}; skipping the remaining GitHub lookups (set GITHUB_TOKEN for more)")
                 return None
+            except LookupFailed as exc:
+                if str(exc) == "GitHub 401" and not self.github_auth_warned:
+                    self.github_auth_warned = True
+                    self.log("GitHub said 401: GITHUB_TOKEN is wrong or expired, so GitHub makers aren't checked")
+                return None  # not remembered: tomorrow's run asks again
         else:
-            handles = meta_handles(fetch_head(url, self.session), _host(url))
+            html = fetch_head(url, self.session)
+            if html is None:
+                return None  # couldn't reach it today: not remembered, the next run asks again
+            handles = meta_handles(html, _host(url))
         self.fetched += 1
         self._remember(key, url, handles)
         return handles

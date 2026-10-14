@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -143,7 +144,7 @@ class FetchTests(unittest.TestCase):
             "https://down.dev": RuntimeError("timeout"),
         })
         self.assertEqual(M.fetch_head("https://pdf.dev", session), "")
-        self.assertEqual(M.fetch_head("https://down.dev", session), "")
+        self.assertIsNone(M.fetch_head("https://down.dev", session))  # an error is "not checked", not "nothing there"
         private = ("http://localhost:8080/", "http://localhost./", "http://foo.localhost/", "http://127.0.0.1/",
                    "http://127.1/", "http://2130706433/", "http://127.0.0.1.nip.io/", "http://10.0.0.5/",
                    "http://intranet.dev/", "http://metadata.dev/latest", "http://v6.dev/", "http://nxdomain.dev/",
@@ -169,7 +170,7 @@ class FetchTests(unittest.TestCase):
     def test_a_slow_page_is_cut_off_at_the_deadline(self):
         response = FakeResponse(body=b"<html><head>" + b"x" * 200_000)
         with patch.object(M, "FETCH_DEADLINE", -1):
-            self.assertEqual(M.fetch_head("https://slow.dev", FakeSession({"https://slow.dev": response})), "")
+            self.assertIsNone(M.fetch_head("https://slow.dev", FakeSession({"https://slow.dev": response})))
         self.assertEqual(response.chunks_read, 0)
 
 
@@ -255,3 +256,40 @@ class FinderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ErrorsAreNotRemembered(unittest.TestCase):
+    def test_a_dripping_server_is_cut_off_by_the_wall_clock(self):
+        class Drip(FakeResponse):
+            def iter_content(self, _size):
+                while True:
+                    time.sleep(0.05)
+                    yield b"x"
+        with patch.object(M, "FETCH_DEADLINE", 0.3), patch.object(M, "_public_http", lambda _u: True):
+            started = time.monotonic()
+            self.assertIsNone(M.fetch_head("https://drip.dev", FakeSession({"https://drip.dev": Drip(body=b"")})))
+            self.assertLess(time.monotonic() - started, 2)
+
+    def test_page_errors_are_not_cached(self):
+        db = FakeDB()
+        session = FakeSession({"https://flaky.dev/": FakeResponse(503)})
+        self.assertIsNone(M.HandleFinder(db, session=session, now=NOW).lookup("https://flaky.dev/"))
+        self.assertEqual(db.writes, 0)
+
+    def test_a_bad_github_token_is_not_cached_and_is_logged_once(self):
+        db, logs = FakeDB(), []
+        session = FakeSession({f"{M.GITHUB_API}/users/a": FakeResponse(401), f"{M.GITHUB_API}/users/c": FakeResponse(401)})
+        finder = M.HandleFinder(db, session=session, now=NOW, log=logs.append)
+        self.assertIsNone(finder.lookup("https://github.com/a/b"))
+        self.assertIsNone(finder.lookup("https://github.com/c/d"))
+        self.assertEqual(db.writes, 0)
+        self.assertEqual(sum("401" in line for line in logs), 1)
+
+    def test_ipv4_hidden_in_ipv6_is_unwrapped(self):
+        for address in ("::127.0.0.1", "64:ff9b::a9fe:a9fe", "::ffff:10.0.0.1"):
+            self.assertFalse(M._is_public(address), address)
+        self.assertTrue(M._is_public("2606:4700::6810:85e5"))
+
+    def test_mobile_twitter_links_and_github_user_pages(self):
+        self.assertEqual(M.clean_handle("https://mobile.twitter.com/jane"), "@jane")
+        self.assertIsNone(M.github_repo("https://github.com/users/x/projects"))

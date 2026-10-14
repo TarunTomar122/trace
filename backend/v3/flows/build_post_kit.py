@@ -135,6 +135,13 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip(" ,.;:") + "…"
 
 
+def _int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _date_label(date: str, style: str = "long") -> str:
     day = datetime.strptime(date, "%Y-%m-%d")
     return f"{day:%B} {day.day}" if style == "long" else f"{day:%b} {day.day}"
@@ -304,7 +311,7 @@ def _story(topic: dict[str, Any], rank: int) -> dict[str, Any]:
         "url": str(articles[0]["url"]) if articles else "",
         "lead_source": sources[0]["name"] if sources else "",
         "sources": sources[:8],
-        "source_count": max(int(topic.get("source_count") or 0), len(domains - {""})),
+        "source_count": max(_int(topic.get("source_count")), len(domains - {""})),
         "rank": rank,
     }
 
@@ -589,20 +596,42 @@ def write_post(story: dict[str, Any], date: str) -> dict[str, Any]:
 
 
 def build_kit(date: str, doc: dict[str, Any], finder: HandleFinder, now: datetime) -> dict[str, Any]:
+    """Each part is built on its own: one bad draft, cover or list never costs the day's kit."""
     today = feed_today(now)
     topics = [t for t in doc.get("trending_topics") or [] if isinstance(t, dict)]
     drafts = []
-    for i, story in enumerate(pick_releases(topics), 1):
-        draft = write_article(story)
-        cover = render_cover(draft["cover_kicker"], draft["cover_headline"], _date_label(date))
-        buffer = io.BytesIO()
-        # JPEG, like the Instagram slides: the grain makes a PNG ten times bigger.
-        cover.save(buffer, "JPEG", quality=92, optimize=True, progressive=True)
-        drafts.append({**draft, "story": story, "text": article_text(draft, story),
-                       "cover_name": f"cover-{i}.jpg", "cover_bytes": buffer.getvalue()})
-    story = top_story(topics)
-    post = {**write_post(story, date), "story": story} if story else None
-    makers = find_makers(featured_items(doc, date), finder, date, today)
+    try:
+        releases = pick_releases(topics)
+    except Exception as exc:
+        _log(f"release picking failed: {exc}")
+        releases = []
+    for i, story in enumerate(releases, 1):
+        try:
+            draft = write_article(story)
+            entry = {**draft, "story": story, "text": article_text(draft, story)}
+        except Exception as exc:
+            _log(f"release draft {i} failed: {exc}")
+            continue
+        try:
+            cover = render_cover(draft["cover_kicker"], draft["cover_headline"], _date_label(date))
+            buffer = io.BytesIO()
+            # JPEG, like the Instagram slides: the grain makes a PNG ten times bigger.
+            cover.save(buffer, "JPEG", quality=92, optimize=True, progressive=True)
+            entry.update(cover_name=f"cover-{len(drafts) + 1}.jpg", cover_bytes=buffer.getvalue())
+        except Exception as exc:
+            _log(f"cover for draft {i} failed, sending the draft without one: {exc}")
+        drafts.append(entry)
+    try:
+        story = top_story(topics)
+        post = {**write_post(story, date), "story": story} if story else None
+    except Exception as exc:
+        _log(f"top-story post failed: {exc}")
+        post = None
+    try:
+        makers = find_makers(featured_items(doc, date), finder, date, today)
+    except Exception as exc:
+        _log(f"featured makers failed: {exc}")
+        makers = []
     return {"date": date, "today": today, "drafts": drafts, "post": post, "makers": makers,
             "font": headline_font_name(), "topics": len(topics)}
 
@@ -657,6 +686,8 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
     """(subject, html, text). `preview` shows the covers inline (the email attaches them)."""
     subject = subject_for(kit)
     date_long = _date_label(kit["date"])
+    # On a fallback day (yesterday's doc) say which day, not "today".
+    day = "today's" if kit["date"] == kit["today"] else f"{date_long}'s"
     found = sum(1 for m in kit["makers"] if m["handles"])
     drafts = len(kit["drafts"])
     summary = " · ".join(filter(None, [
@@ -683,17 +714,17 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
                else "built from the story's own summary (the model was unavailable); fill in your take before posting")
         body.append(_kicker(f"Draft {i} · {story['source_count']} sources"))
         body.append(_p(f"Story: {_a(story['url'], story['title'])}"))
-        body.append(_p(_esc(f"Cover attached: {draft['cover_name']} (1600x900). This draft was {who}."),
-                       size=13, color="#536471"))
-        if preview:
+        cover_note = f"Cover attached: {draft['cover_name']} (1600x900)." if draft.get("cover_name") else "No cover today (rendering failed)."
+        body.append(_p(_esc(f"{cover_note} This draft was {who}."), size=13, color="#536471"))
+        if preview and draft.get("cover_name"):
             body.append(f'<img src="{_esc(draft["cover_name"])}" width="560" alt="" '
                         'style="display: block; width: 100%; max-width: 560px; border-radius: 12px; margin: 0 0 12px 0;">')
         body.append(_box(draft["text"]))
         text += [f"Draft {i} ({story['source_count']} sources): {story['title']}", story["url"],
-                 f"Cover attached: {draft['cover_name']}. This draft was {who}.", "", draft["text"], ""]
+                 f"{cover_note} This draft was {who}.", "", draft["text"], ""]
 
-    body.append(_heading("X post for today's top story"))
-    text += ["X POST FOR TODAY'S TOP STORY", ""]
+    body.append(_heading(f"X post for {day} top story"))
+    text += [f"X POST FOR {day.upper()} TOP STORY", ""]
     post = kit["post"]
     if post:
         story = post["story"]
@@ -705,14 +736,15 @@ def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, 
         body.append(_p(f"{count} · {_a(_intent(post['text']), 'Open in X')}", size=13, color="#536471"))
         text += [f"{story['title']} ({story['url']})", "", post["text"], f"({post['length']}/280)", ""]
     else:
-        body.append(_p("No stories in today's feed yet.", color="#536471"))
-        text += ["No stories in today's feed yet.", ""]
+        body.append(_p(f"No stories in {day} feed yet.", color="#536471"))
+        text += [f"No stories in {day} feed yet.", ""]
 
-    body.append(_heading("Featured today: tell the makers"))
-    intro = ("Everything in today's Tools and Top articles, each with a share page. "
+    featured = "Featured today" if kit["date"] == kit["today"] else f"Featured {date_long}"
+    body.append(_heading(f"{featured}: tell the makers"))
+    intro = (f"Everything in {day} Tools and Top articles, each with a share page. "
              "Handles are best-effort, so check the profile before you tag anyone.")
     body.append(_p(_esc(intro), size=14, color="#536471"))
-    text += ["FEATURED TODAY: TELL THE MAKERS", intro, ""]
+    text += [f"{featured.upper()}: TELL THE MAKERS", intro, ""]
     if not kit["makers"]:
         body.append(_p("Nothing in Tools or Top articles today.", color="#536471"))
         text += ["Nothing in Tools or Top articles today.", ""]
@@ -793,7 +825,7 @@ def send_kit(kit: dict[str, Any], to: str, bucket: str = BUCKET) -> dict[str, An
     subject, page, text = render_email(kit)
     if bucket == "test":
         subject = f"[test] {subject}"
-    attachments = [(d["cover_name"], d["cover_bytes"], "image/jpeg") for d in kit["drafts"]]
+    attachments = [(d["cover_name"], d["cover_bytes"], "image/jpeg") for d in kit["drafts"] if d.get("cover_name")]
     return send_email(to, None, subject, page, text, bucket=bucket, attachments=attachments)
 
 
@@ -878,7 +910,8 @@ def _dry_run(args: argparse.Namespace, now: datetime, store: Any = None) -> int:
     (out / "post-kit.html").write_text(page)
     (out / "post-kit.txt").write_text(f"Subject: {subject}\n\n{text}")
     for draft in kit["drafts"]:
-        (out / draft["cover_name"]).write_bytes(draft["cover_bytes"])
+        if draft.get("cover_name"):
+            (out / draft["cover_name"]).write_bytes(draft["cover_bytes"])
     for line in _summary(kit):
         _log(f"[dry-run] {line}")
     to = os.getenv("TRACE_KIT_TO", "").strip()

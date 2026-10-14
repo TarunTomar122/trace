@@ -662,8 +662,8 @@ def _recent_daily_recipients(store: FirestoreStore, since: str) -> set[str]:
     docs = store.db.collection("email_sends").where("date", ">=", since).stream()
     for doc in docs:
         data = doc.to_dict() or {}
-        # One-off emails (welcome, supporter thanks) are not the daily.
-        if data.get("status") != "sent" or data.get("bucket") in ("winback", "test", "welcome", "supporter_thanks"):
+        # One-off emails (welcome, supporter thanks, the founder's post kit) are not the daily.
+        if data.get("status") != "sent" or data.get("bucket") in ("winback", "test", "welcome", "supporter_thanks", "post_kit"):
             continue
         email = str(data.get("to", "")).strip().lower()
         if email:
