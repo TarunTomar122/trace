@@ -202,6 +202,14 @@ class StoriesTests(unittest.TestCase):
     def test_no_stories_when_the_feed_is_empty_stale_or_unreadable(self):
         self.assertEqual(self.stories({}), [])
         self.assertEqual(self.stories(feed(rows=[])), [])
+        # Two stories is a thin list: the plain copy reads better. Three will do.
+        rows = [
+            ("https://a.example/1", "ai", "Anthropic names a new CFO", "One line."),
+            ("https://t.example/4", "tech", "Apple delays its smart glasses", "One line."),
+            ("https://m.example/3", "markets", "Stocks slide on rate fears", "One line."),
+        ]
+        self.assertEqual(self.stories(feed(rows=rows[:2])), [])
+        self.assertEqual(len(self.stories(feed(rows=rows))), 3)
         self.assertEqual(self.stories(feed(minutes_ago=13 * 60)), [])
         self.assertEqual(self.stories({**feed(), "trending_generated_at": None}), [])
         self.assertEqual(self.stories(MagicMock(side_effect=RuntimeError("database is locked"))), [])

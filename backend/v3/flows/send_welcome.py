@@ -17,9 +17,14 @@ LOOKBACK_DAYS count, so older readers are never mailed and a stopped timer
 never sends a stale welcome. Mobile-app accounts live in Firebase, not LocalDB,
 so they aren't seen here.
 
-Both versions carry today's top stories, so signing up pays off at once: the
-daily's own picks for a new subscriber, with the daily's links. When the feed
-has none, or hasn't been rebuilt lately, the welcome goes out without them.
+Both versions carry today's top stories, so signing up pays off at once,
+chosen by the daily's selection for a new subscriber and linked the way the
+daily links them. The daily also asks the model for fresh quality verdicts to
+rank by; the welcome runs every 5 minutes, so it makes no model call and only
+uses the verdicts the pipeline stored in the feed (which drop worthless
+stories), so its picks and order can differ a little. With fewer than
+MIN_STORIES, or a feed that hasn't been rebuilt lately, the welcome goes out
+without them.
 """
 
 from __future__ import annotations
@@ -73,6 +78,8 @@ FRESH = timedelta(hours=1)
 BRIEF_ZONE, BRIEF_HOUR, BRIEF_MINUTE = ZoneInfo("Europe/Berlin"), 10, 30
 BRIEF_TIME_UK = "9:30am UK time"
 STORY_COUNT = 5
+# Fewer than this reads as a thin list; the plain copy is better.
+MIN_STORIES = 3
 # The pipeline rebuilds the feed every 20 minutes; stories older than this
 # aren't "today's" any more, so the welcome leaves them out.
 STORIES_MAX_AGE = timedelta(hours=12)
@@ -211,9 +218,11 @@ def _lede(summary: str, limit: int = 200) -> str:
 
 
 def todays_stories(now: datetime, store: FirestoreStore | None = None) -> list[dict[str, str]]:
-    """Today's top stories as the daily picks them for a new subscriber, or [].
+    """Today's top stories by the daily's selection for a new subscriber, or [].
 
-    Never raises: the welcome goes out with or without them.
+    No model call: verdicts are only the ones the pipeline stored in the feed
+    (see the module docstring). Never raises: the welcome goes out with or
+    without them.
     """
     try:
         feed = _load_global_feed(store or FirestoreStore(), _today_ist())
@@ -221,6 +230,8 @@ def todays_stories(now: datetime, store: FirestoreStore | None = None) -> list[d
         if not built or now - built > STORIES_MAX_AGE:
             return []
         picks = [story for _, group in _select(feed, [], STORY_COUNT, "landing") for story in group]
+        if len(picks) < MIN_STORIES:
+            return []
         return [
             {"title": story["title"], "line": _lede(story.get("summary", "")), "url": _app_link(story)}
             for story in picks[:STORY_COUNT]
