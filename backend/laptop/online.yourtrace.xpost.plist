@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The morning X post job (trace_xpost.py). install.sh fills in __HOME__ and loads it. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>online.yourtrace.xpost</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__HOME__/.trace-xpost/venv/bin/python</string>
+    <string>__HOME__/.trace-xpost/trace_xpost.py</string>
+  </array>
+  <!-- Calendar times rather than StartInterval: launchd runs a calendar job that was due
+       while the Mac slept as soon as it wakes. The script does nothing before 05:00 or
+       once today's post is done, so these runs cost nothing. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Minute</key><integer>20</integer></dict>
+    <dict><key>Minute</key><integer>40</integer></dict>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/trace-xpost.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/trace-xpost.log</string>
+  <key>Nice</key>
+  <integer>5</integer>
+</dict>
+</plist>

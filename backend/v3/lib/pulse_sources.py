@@ -468,7 +468,7 @@ def _fetch_hn_items(
                 snippet=comment_text,
                 published_date=created_at,
             )
-            # Who posted it: the post kit suggests telling them they were featured.
+            # Who posted it (kept with the item; share pages and the feed can show it).
             article["by"] = str(hit.get("author", "") or "").strip()
             articles.append(article)
     log_fn(f"HN: fetched {len(articles)} items")

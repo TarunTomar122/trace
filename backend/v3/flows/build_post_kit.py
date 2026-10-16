@@ -1,49 +1,56 @@
-"""Daily post kit: one email to the founder with everything ready to post.
+"""Daily X post for the founder: written on the server, finished on the laptop.
 
   cd backend
-  ../.venv/bin/python -m v3.flows.build_post_kit --dry-run                      # preview files in /tmp/trace-postkit; no email, no writes
+  ../.venv/bin/python -m v3.flows.build_post_kit --dry-run                      # today's post, image and videos in /tmp/trace-postkit; nothing written
   ../.venv/bin/python -m v3.flows.build_post_kit --dry-run --feed-json day.json # same, from a saved daily doc (no database at all)
-  ../.venv/bin/python -m v3.flows.build_post_kit --test-to you@example.com      # one copy to this address only
-  ../.venv/bin/python -m v3.flows.build_post_kit                                # send today's kit to TRACE_KIT_TO
+  ../.venv/bin/python -m v3.flows.build_post_kit                                # write today's post (trace-postkit.timer, 07:30 UK)
+  ../.venv/bin/python -m v3.flows.build_post_kit --json                         # the same, then print it with its image and videos for the laptop
 
-trace-postkit.timer runs it at 07:30 Europe/London, after the morning pulse.
-The kit has three parts:
+The post opens "Biggest updates in tech in the last 24 hours:", has 3-6
+short, plain lines ("- ..."), and ends "Did I miss anything??". The model picks the stories from the feed's last 24 hours
+(today's and yesterday's topics, plus recent articles no topic covers yet), by
+how interesting they are rather than how many outlets covered them. Every fact
+and figure has to come from the stories, and the tone stays calm: a line with a
+number its story never mentions, or with hype ("insane", "!"), is dropped.
+Without the model the lines are the widest-covered stories' titles.
+TRACE_KIT_X_MAX sets the length (360 by default: X Premium, but still short).
 
-- Release day: today's biggest AI model or product release (at least
-  MIN_SOURCES outlets covering it; a second one only if it is nearly as big),
-  drafted as a long-form X article with a 1600x900 cover attached. The model
-  writes the draft; if it can't (no key, bad key, bad output) the draft is
-  built from the story's own summary and key points.
-- A ready-to-post X post for the day's top story.
-- Featured makers (off unless TRACE_KIT_MAKERS=1; the founder found tagging
-  strangers spammy): everything in today's Tools and Top articles, with its
-  share page (/featured/{date}/{id}), any X handles found for the people
-  behind it (v3/lib/maker_handles.py) and a short line to send them.
+Nothing is emailed or posted. The founder's laptop runs
+backend/laptop/trace_xpost.py the first time it wakes each morning: it calls
+this with --json over SSH, downloads a short clip of the first story (YouTube
+blocks the VPS, not a home connection), puts the post, the image and the clip
+in ~/x-posts/{date}/ and shows a notification. Posts with a picture
+or a video travel much further, so the image is the best one from the first
+story's articles (a JPEG X accepts) and the videos are this week's YouTube
+uploads about it: titles that name what the line says first, then short clips.
 
-One kit per day: `post_kits/{date}` is written before the email goes out and
-a kit that is sending or sent is never sent again (a failed send is retried,
-up to MAX_ATTEMPTS). The job takes ~/trace/.postkit.lock itself. Before
-sending, the featured items are copied to the day's feed doc
+The post is written once per feed day and kept in `post_kits/{date}`, so the
+07:30 run and the laptop get the same one (--fresh writes a new one; a
+template post, written when the model failed, is retried on the next run). Every
+run also copies the day's Tools and Top articles to the feed doc
 (`featured_items`), so share pages keep working after the 3-hourly pulse
-replaces the lists. Without TRACE_KIT_TO a live run does nothing.
+replaces the lists.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import contextlib
 import fcntl
-import html
 import io
 import json
 import os
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import quote, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 
+import requests
 from dotenv import load_dotenv
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -51,36 +58,23 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
-from v3.build_trending import _looks_like_model_release, _looks_promotional  # noqa: E402
+from v3.build_trending import _looks_promotional  # noqa: E402
 from v3.flows.post_instagram import _clean, _similar  # noqa: E402
-from v3.flows.send_audience_newsletter import _paragraphs  # noqa: E402  (the feed's paragraph split)
-from v3.lib.article_cover import headline_font_name, render_cover  # noqa: E402
-from v3.lib.maker_handles import HandleFinder, github_repo  # noqa: E402
+# The handle finder's guarded fetching: public hosts only, every redirect hop checked, a hard deadline.
+from v3.lib.maker_handles import TIMEOUT, USER_AGENT, _public_http, _wall_clock  # noqa: E402
+from v3.lib.store import TRENDING_POOL  # noqa: E402
 
-BUCKET = "post_kit"
 MARKERS = "post_kits"
-MAX_ATTEMPTS = 3
 IST = timezone(timedelta(hours=5, minutes=30))
-# Share pages and links in posts always use the canonical site, whatever TRACE_APP_URL says.
+
 SITE_URL = "https://www.yourtrace.online"
-# The landing page leads with the email signup; /subscribe redirects to the feed, where the ask comes later.
-CTA_URL = f"{SITE_URL}/?utm_source=x&utm_medium=article"
-KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-4.1-mini")
-# The "tell the makers" list (and its handle lookups) only runs when asked for.
-TELL_MAKERS = os.getenv("TRACE_KIT_MAKERS", "").strip() == "1"
+REPLY_URL = f"{SITE_URL}/?utm_source=x&utm_medium=post"
+REPLY_TEXT = f"I send the biggest tech stories every morning, free: {REPLY_URL}"
+# One call a day, and picking what goes viral needs taste: the strongest model, not the cheapest.
+KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-6.1-sol")
 LOCK_FILE = BACKEND_ROOT.parent / ".postkit.lock"
-FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-SECTIONS = (("tools", "Tools"), ("discussions", "Top articles"))
-# How the suggested line names each list.
-LIST_NAMES = {"tools": "Tools picks", "discussions": "Top articles"}
-HN_SOURCES = {"hacker news", "show hn"}
-# Handle lookups stop after this long; the rest are tried tomorrow.
-LOOKUP_BUDGET_SECONDS = 240
+SECTIONS = ("tools", "discussions")  # the pulse lists whose items get share pages
 X_URL_LENGTH = 23  # X counts every link as 23 characters
-X_MAX = 280
-POST_LINK_LEAD = "\n\nMore in the free daily brief: "
-# The post's own text: what is left of 280 after the line with the link.
-POST_MAX_CHARS = X_MAX - len(POST_LINK_LEAD) - X_URL_LENGTH
 
 
 def _env_int(name: str, default: int, low: int, high: int) -> int:
@@ -91,36 +85,51 @@ def _env_int(name: str, default: int, low: int, high: int) -> int:
     return max(low, min(high, value))
 
 
-# A release needs this many outlets covering it to be worth an article.
-MIN_SOURCES = _env_int("TRACE_KIT_MIN_SOURCES", 3, 1, 20)
-MAX_DRAFTS = 2
+# X Premium allows long posts, but a short one reads better: room for a hook and 4-5 lines.
+X_MAX = _env_int("TRACE_KIT_X_MAX", 360, 240, 25000)
+MIN_BULLETS = 3
+MAX_BULLETS = 6
+BULLET_MAX = 75  # X characters, emoji included
+MAX_CANDIDATES = 60  # feed topics
+MAX_POOL = 100  # recent single articles the feed has not grouped (yet)
+WINDOW = timedelta(hours=24)
+# Fixed and plain: the founder found the model's own openers ("Tech just went completely off-script") overhyped.
+DEFAULT_HOOK = "Biggest updates in tech in the last 24 hours:"
+CLOSER = "Did I miss anything??"  # the founder's own sign-off: replies help the post travel
+MODEL_ATTEMPTS = 3  # a template post is replaced on the next run, up to this many tries a day
+# Fillers are cut from a bullet; a bullet with real hype words or "!" is dropped.
+# Lowercase only, so names stay: "Just Eat", "Epic Games", "Wild Rift", "Chaos Computer Club".
+FILLER = re.compile(r"\b(just|literally|actually|basically)\s+")
+HYPE_WORDS = (r"insane|insanely|wild|unhinged|crazy|craziest|completely|totally|mind[- ]?blowing|game[- ]?chang\w*|"
+              r"huge|shocking|off[- ]script|jaw[- ]?dropping|unbelievable|incredible|epic|bonkers|chaos|chaotic|"
+              r"madness|breaking")
+HYPE = re.compile(
+    rf"!\s*$|!!|\b({HYPE_WORDS})\b|\b(WTF|OMG|LOL)\b"
+    # Sentence case puts hype first ("Huge outage hits AWS"); a name goes on capitalised ("Epic Games").
+    rf"|^(?i:{HYPE_WORDS})\b(?!\s+[A-Z])"
+)
+# Ordinary tech phrases that contain a hype word.
+NOT_HYPE = re.compile(r"in the wild|breaking changes?|record[- ]breaking|chaos engineering", re.I)
+# X turns "x.ai" or "Booking.com" into a link (and counts it as 23): the only link belongs in the reply.
+BARE_DOMAIN = re.compile(r"\b[\w-]+\.(com|ai|io|net|org|co|dev|app|xyz|tv|gg|me|so|sh|news|tech)\b", re.I)
+# Emoji, dashes or arrows the model puts in front of a line: the post adds its own "- ".
+EMOJI = ("[0-9#*]\ufe0f?\u20e3|[\u00a9\u00ae\u200b\u200d\u203c\u2049\u2122\u2139\u2190-\u21ff\u2300-\u27bf"
+         "\u2b00-\u2bff\ufe0f\U0001F000-\U0001FAFF\U000E0020-\U000E007F]")
+LEADING = re.compile(f"^(?:{EMOJI}|[\\s\\-–—•·*>])+")
+TRAILING = re.compile(f"(?:{EMOJI}|\\s)+$")
 
-LAUNCH_VERB = re.compile(
-    r"\b(launch(?:es|ed)?|releas(?:es|ed)|unveil(?:s|ed)?|ship(?:s|ped)?|introduc(?:es|ed)|"
-    r"rolls? out|rolled out|debuts?|debuted)\b",
-    re.I,
-)
-NOT_A_LAUNCH = re.compile(
-    r"\b(cancel\w*|delay\w*|halt\w*|scrap\w*|abandon\w*|postpon\w*|lawsuits?|sued|sues|probes?|bans?|banned|"
-    r"leak\w*|outages?|recall\w*|funds?|funding|raises?|raised|ipo|nasdaq|nyse|shares|stocks?|valuation|"
-    r"bids?|acquir\w*|acquisition|invest\w*|prices?|report|reports|plans? to|"
-    r"(?:delay\w*|postpon\w*|pause\w*)\s+(?:\w+\s+){0,4}(?:before|ahead of))\b",
-    re.I,
-)
-# A product launch names the thing launched: a release name or a product noun.
-PRODUCT_NOUN = re.compile(
-    r"\b(apps?|models?|agents?|assistants?|apis?|sdks?|tools?|features?|browsers?|chatbots?|platforms?|"
-    r"plugins?|extensions?|editors?|ides?|cli|copilot|chatgpt|gemini|claude|codex|llama|grok|deepseek|qwen|"
-    r"mistral|sora|veo|cursor|devin)\b",
-    re.I,
-)
-# "<verb> Qwen3.8", "<verb> GPT-5", "<verb> Claude Opus 5": the release's own name.
-NAMED_LAUNCH = re.compile(
-    r"\b(?:releases?|released|launch(?:es|ed)?|unveils?|unveiled|ships?|shipped|introduces?|introduced|"
-    r"debuts?|rolls out)\s+(?:its\s+|new\s+)?"
-    r"((?:[A-Z][\w.-]*\d[\w.-]*|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)"
-    r"(?:\s+(?:Pro|Mini|Flash|Ultra|Max|Turbo|Nano|Lite|Sonnet|Opus|Haiku))?)"
-)
+IMAGE_NAME = "x-post.jpg"
+IMAGE_TRIES = 4
+IMAGE_MAX_BYTES = 10 * 1024 * 1024
+IMAGE_MIN_WIDTH = 600
+IMAGE_MAX_SIDE = 2048
+IMAGE_DEADLINE = 15  # seconds per image, redirects included
+MAX_REDIRECTS = 3
+VIDEO_RESULTS = 5  # the laptop tries them in order until one downloads
+LOCK_WAIT = 600  # seconds: the laptop waits for a 07:30 run that is still writing
+VIDEO_DEADLINE = 45
+SHORT_CLIP = 240  # seconds: easy to post as is
+
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 # Spelled-out amounts are numbers too ("ten times faster", "two million tokens").
 NUMBER_WORD = re.compile(
@@ -145,24 +154,37 @@ def _int(value: Any) -> int:
         return 0
 
 
-def _date_label(date: str, style: str = "long") -> str:
-    day = datetime.strptime(date, "%Y-%m-%d")
-    return f"{day:%B} {day.day}" if style == "long" else f"{day:%b} {day.day}"
-
-
 def _x_weight(char: str) -> int:
     """X's weighting: Latin and common punctuation count 1, everything else (CJK, emoji) 2."""
     code = ord(char)
     return 1 if code <= 4351 or 8192 <= code <= 8205 or 8208 <= code <= 8223 or 8242 <= code <= 8247 else 2
 
 
+ZWJ = "\u200d"
+# Variation selectors and skin tones change how an emoji looks, not how long it is.
+EMOJI_MODIFIER = re.compile("[\ufe0e\ufe0f\U0001f3fb-\U0001f3ff]")
+
+
 def x_length(text: str) -> int:
-    """Length as X counts it: every link is 23 characters, CJK and emoji 2 each."""
-    return sum(_x_weight(c) for c in re.sub(r"https?://\S+", "x" * X_URL_LENGTH, text))
+    """Length as X counts it: every link is 23 characters, CJK and each emoji 2 ("🕵️‍♂️" is one emoji)."""
+    text = EMOJI_MODIFIER.sub("", re.sub(r"https?://\S+", "x" * X_URL_LENGTH, text))
+    total, joined = 0, False
+    for char in text:
+        if char == ZWJ:
+            joined = True
+            continue
+        if not joined:
+            total += _x_weight(char)
+        joined = False
+    return total
 
 
-def _intent(text: str) -> str:
-    return f"https://x.com/intent/tweet?text={quote(text, safe='')}"
+def _time(value: Any) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +221,16 @@ def load_day(load_feed: Callable[[str], dict[str, Any]], now: datetime, date: st
     return today.isoformat(), {}
 
 
+def day_before(load_feed: Callable[[str], dict[str, Any]], date: str) -> dict[str, Any]:
+    """The previous day's doc: an IST day starts at 18:30 UTC, so 24 hours spans two."""
+    previous = (datetime.strptime(date, "%Y-%m-%d").date() - timedelta(days=1)).isoformat()
+    try:
+        return load_feed(previous) or {}
+    except Exception as exc:
+        _log(f"could not load {previous}'s feed, using one day: {exc}")
+        return {}
+
+
 def _web_link(url: str) -> bool:
     try:
         parts = urlsplit(url)
@@ -207,12 +239,12 @@ def _web_link(url: str) -> bool:
         return False
 
 
-def featured_items(doc: dict[str, Any], date: str) -> list[dict[str, Any]]:
-    """Today's Tools, then Top articles, each with its share page."""
+def featured_items(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """Today's Tools, then Top articles: copied to the feed doc so their share pages keep working."""
     pulse = _pulse(doc)
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for section, label in SECTIONS:
+    for section in SECTIONS:
         for raw in pulse.get(section) or []:
             if not isinstance(raw, dict):
                 continue
@@ -226,63 +258,18 @@ def featured_items(doc: dict[str, Any], date: str) -> list[dict[str, Any]]:
             items.append({
                 "id": item_id,
                 "section": section,
-                "label": label,
                 "title": title,
                 "url": url,
                 "source": _clean(raw.get("source")),
                 "signal": _clean(raw.get("signal")),
                 "thumbnail": str(raw.get("thumbnail") or "").strip(),
                 "summary": _clean((summary.get("short_article") or {}).get("body") or summary.get("body")),
-                "by": _clean(raw.get("by")) if _clean(raw.get("source")).lower() in HN_SOURCES else "",
-                "share_url": f"{SITE_URL}/featured/{date}/{quote(item_id, safe='')}",
             })
     return items
 
 
-def suggested_line(item: dict[str, Any], date: str, today: str) -> str:
-    """A short, friendly note for the maker. No hype."""
-    if github_repo(item["url"]):
-        kind = "repo"
-    elif item["section"] == "tools":
-        kind = "project"
-    else:
-        kind = "post"
-    title = _clip(item["title"], 80)
-    where = LIST_NAMES.get(item["section"], item["label"])
-    if date == today:
-        return f'Your {kind} "{title}" is in today\'s {where} on Trace: {item["share_url"]}'
-    return f'Your {kind} "{title}" was in Trace\'s {where} on {_date_label(date, "short")}: {item["share_url"]}'
-
-
-def find_makers(items: list[dict[str, Any]], finder: HandleFinder, date: str, today: str,
-                budget: float = LOOKUP_BUDGET_SECONDS) -> list[dict[str, Any]]:
-    """Each item with its handles and line; those with a handle first, sections kept apart.
-
-    `checked` is False when no lookup ran (out of time, GitHub's rate limit),
-    so the email says "not checked" rather than "no handle found".
-    """
-    started = time.monotonic()
-    makers = []
-    skipped = 0
-    for item in items:
-        handles: list[dict[str, str]] | None = None
-        if time.monotonic() - started > budget:
-            skipped += 1
-        else:
-            try:
-                handles = finder.lookup(item["url"])
-            except Exception as exc:  # one odd link must not stop the kit
-                _log(f"handle lookup failed for {item['url']}: {exc}")
-        makers.append({**item, "handles": handles or [], "checked": handles is not None,
-                       "line": suggested_line(item, date, today)})
-    if skipped:
-        _log(f"handle lookups ran out of time; {skipped} link(s) left for the next run")
-    order = {section: i for i, (section, _) in enumerate(SECTIONS)}
-    return sorted(makers, key=lambda m: (order.get(m["section"], 9), not m["handles"]))
-
-
 # ---------------------------------------------------------------------------
-# Stories: the release and the top story
+# Stories: everything in the last 24 hours
 # ---------------------------------------------------------------------------
 
 
@@ -294,29 +281,7 @@ def _source_name(article: dict[str, Any]) -> str:
     name = _clean(article.get("source_name") or article.get("source"))
     if name:
         return name
-    host = re.sub(r"^https?://(www\.)?", "", str(article.get("url") or "")).split("/")[0]
-    return host
-
-
-def _story(topic: dict[str, Any], rank: int) -> dict[str, Any]:
-    articles = _articles(topic)
-    domains = {re.sub(r"^https?://(www\.)?", "", str(a["url"])).split("/")[0].lower() for a in articles}
-    sources: list[dict[str, str]] = []
-    for article in articles:
-        name = _source_name(article)
-        if name and all(s["name"] != name for s in sources):
-            sources.append({"name": name, "title": _clean(article.get("title")), "url": str(article["url"])})
-    return {
-        "topic_id": str(topic.get("id") or ""),
-        "title": _clean(topic.get("title")),
-        "summary": _clean(topic.get("summary")),
-        "key_points": [_clean(p) for p in topic.get("key_points") or [] if _clean(p)],
-        "url": str(articles[0]["url"]) if articles else "",
-        "lead_source": sources[0]["name"] if sources else "",
-        "sources": sources[:8],
-        "source_count": max(_int(topic.get("source_count")), len(domains - {""})),
-        "rank": rank,
-    }
+    return re.sub(r"^https?://(www\.)?", "", str(article.get("url") or "")).split("/")[0]
 
 
 def _usable(topic: Any) -> bool:
@@ -326,120 +291,180 @@ def _usable(topic: Any) -> bool:
     return bool(title and _articles(topic) and not _looks_promotional(title))
 
 
-def is_release(story: dict[str, Any], interest: str) -> bool:
-    """A model launch (the pipeline's own test), or an AI product launch.
+def _topic_time(topic: dict[str, Any]) -> datetime | None:
+    """When the story last moved: its own stamps or its newest article."""
+    stamps = [_time(topic.get("last_updated_at")), _time(topic.get("first_seen_at"))]
+    stamps += [_time(a.get("published_date")) for a in _articles(topic)]
+    stamps = [s for s in stamps if s]
+    return max(stamps) if stamps else None
 
-    "Anthropic launches $100M fund", "CoreWeave debuts on Nasdaq" and "OpenAI
-    releases report on ..." are not releases worth a builders' article.
+
+def _candidate(topic: dict[str, Any]) -> dict[str, Any]:
+    articles = _articles(topic)
+    domains = {re.sub(r"^https?://(www\.)?", "", str(a["url"])).split("/")[0].lower() for a in articles}
+    sources: list[dict[str, str]] = []
+    for article in articles:
+        name = _source_name(article)
+        if name and all(s["name"] != name for s in sources):
+            sources.append({"name": name, "title": _clean(article.get("title")), "url": str(article["url"])})
+    # The outlets' own headlines carry the surprise ("The Tesla Roadster flew, drove
+    # upside down..."); the topic title is a flat summary of them.
+    headlines: list[str] = []
+    for source in sources:
+        if source["title"] and source["title"] not in headlines:
+            headlines.append(source["title"])
+    images: list[str] = []
+    image_sources: dict[str, str] = {}
+    for url, source in [*((a.get("thumbnail"), _source_name(a)) for a in articles), (topic.get("thumbnail"), "")]:
+        url = str(url or "").strip()
+        if _web_link(url) and url not in images:
+            images.append(url)
+            image_sources[url] = source
+    return {
+        "topic_id": str(topic.get("id") or ""),
+        "title": _clean(topic.get("title")),
+        "summary": _clip(_clean(topic.get("summary")), 600),
+        "key_points": [_clean(p) for p in topic.get("key_points") or [] if _clean(p)][:4],
+        "headlines": headlines[:4],
+        "url": str(articles[0]["url"]) if articles else "",
+        "lead_source": sources[0]["name"] if sources else "",
+        "sources": sources[:5],
+        "source_count": max(_int(topic.get("source_count")), len(domains - {""})),
+        "images": images,
+        "image_sources": image_sources,
+    }
+
+
+def _pool_story(item: dict[str, Any]) -> dict[str, Any]:
+    """A single article as a story: the feed sometimes keeps a stale version of a topic and
+    drops the newest coverage (the Roadster's reveal, a day after "Tesla plans a reveal")."""
+    title = _clean(item.get("title"))
+    url = str(item.get("url") or "").strip()
+    source = _clean(item.get("source_name")) or re.sub(r"^https?://(www\.)?", "", url).split("/")[0]
+    image = str(item.get("og_image") or "").strip()
+    return {
+        "topic_id": "",
+        "title": title,
+        "summary": _clip(_clean(item.get("content")), 600),
+        "key_points": [],
+        "headlines": [title],
+        "url": url,
+        "lead_source": source,
+        "sources": [{"name": source, "title": title, "url": url}],
+        "source_count": 1,
+        "images": [image] if _web_link(image) else [],
+        "image_sources": {image: source} if _web_link(image) else {},
+    }
+
+
+def candidates(docs: list[dict[str, Any]], now: datetime, pool: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Every usable story from the last 24 hours, each event once: the feed's topics (newest
+    doc first), then recent articles from the trending pool that no topic covers.
+
+    "Now" is the newest story's time (never later than the clock), so a saved
+    or older day still has its own 24 hours.
     """
-    title = story["title"]
-    if NOT_A_LAUNCH.search(title):
-        return False
-    if _looks_like_model_release(title, story["lead_source"], story["summary"][:600]):
-        return True
-    return (interest == "ai" and bool(LAUNCH_VERB.search(title))
-            and bool(release_name(title) or PRODUCT_NOUN.search(title)))
-
-
-def pick_releases(topics: list[Any]) -> list[dict[str, Any]]:
-    """The biggest release by coverage; a second only if it has 2/3 of the first's sources."""
-    found = []
-    for rank, topic in enumerate(topics):
-        if not _usable(topic):
-            continue
-        story = _story(topic, rank)
-        if story["source_count"] >= MIN_SOURCES and is_release(story, str(topic.get("interest_id") or "").lower()):
-            found.append(story)
-    found.sort(key=lambda s: (-s["source_count"], s["rank"]))
+    found: list[tuple[dict[str, Any], datetime | None, bool]] = []
+    ids: set[str] = set()
+    for i, doc in enumerate(docs):
+        for topic in (doc or {}).get("trending_topics") or []:
+            if not _usable(topic):
+                continue
+            topic_id = str(topic.get("id") or "")
+            if topic_id and topic_id in ids:
+                continue
+            ids.add(topic_id)
+            found.append((topic, _topic_time(topic), i == 0))
+    articles = [(item, _time(item.get("published_date") or item.get("fetched_at"))) for item in pool or []
+                if isinstance(item, dict) and _clean(item.get("title")) and _web_link(str(item.get("url") or ""))
+                and not _looks_promotional(_clean(item.get("title")))]
+    stamps = [when for _, when, _ in found if when] + [when for _, when in articles if when]
+    reference = min(now, max(stamps)) if stamps else now
     picked: list[dict[str, Any]] = []
-    for story in found:
-        if any(_similar(story["title"], p["title"]) for p in picked):
+    for topic, when, newest_doc in found:
+        # A story with no times at all only counts if it is in the newest doc.
+        if (when and when < reference - WINDOW) or (not when and not newest_doc):
             continue
-        if picked and story["source_count"] * 3 < picked[0]["source_count"] * 2:
-            break
+        story = _candidate(topic)
+        if any(_similar(story["title"], other["title"]) for other in picked):
+            continue
         picked.append(story)
-        if len(picked) >= MAX_DRAFTS:
+        if len(picked) >= MAX_CANDIDATES:
             break
-    return picked
+    covered = {source["url"] for story in picked for source in story["sources"]}
+    extra: list[dict[str, Any]] = []
+    for item, when in sorted(articles, key=lambda pair: pair[1] or reference, reverse=True):
+        if not when or when < reference - WINDOW or str(item.get("url")) in covered:
+            continue
+        story = _pool_story(item)
+        if any(_similar(story["title"], other["title"]) for other in picked + extra):
+            continue
+        extra.append(story)
+        if len(extra) >= MAX_POOL:
+            break
+    return picked + extra
 
 
-def top_story(topics: list[Any]) -> dict[str, Any] | None:
-    """The day's #1: the first usable topic in the feed's ranked order."""
-    for rank, topic in enumerate(topics):
-        if _usable(topic):
-            return _story(topic, rank)
-    return None
+def load_pool(store: Any) -> list[dict[str, Any]]:
+    """The trending pool's last two days ([] if it can't be read: the feed's topics still work)."""
+    try:
+        return store.load_pool(TRENDING_POOL, max_age_days=2)
+    except Exception as exc:
+        _log(f"could not read the trending pool, using the feed's topics only: {exc}")
+        return []
 
 
 # ---------------------------------------------------------------------------
-# Writing: the model when it can, the story's own words when it can't
+# Writing: the model when it can, the stories' own titles when it can't
 # ---------------------------------------------------------------------------
 
-SYSTEM = (
-    "You write for Trace, a free daily tech and AI brief, in the founder's voice. "
-    "Plain, specific and honest: only facts from the material given, no hype, no emoji, no hashtags."
+X_SYSTEM = (
+    "You write X posts about tech news for the founder of Trace, a free daily tech and AI brief. "
+    "Calm, plain and specific: the facts are interesting enough, so never hype them. "
+    "Every fact must come from the stories you are given."
 )
 
-ARTICLE_PROMPT = """Draft a long-form X article about a release that many outlets are covering today. Readers are builders: developers, founders, designers.
+X_POST_PROMPT = """Pick the stories for one X post: the most interesting things that happened in tech in the last 24 hours. It opens with "Biggest updates in tech in the last 24 hours:", then one line per story (the post puts "- " in front), then "Did I miss anything??".
 
-Rules:
-- Use only facts in the material below. No numbers, benchmarks, prices or dates that are not in it. Do not state guesses as facts; say when something is unclear.
-- Plain words. No hype words (game-changer, revolutionary, insane, huge), no emoji, no hashtags, no rhetorical questions.
-- title: an outcome-style title in plain words, 5-12 words, about what this changes or lets builders do. No clickbait and no numbers that are not in the material.
-- cover_kicker: the release's name, 1-4 words (the product or model name).
-- cover_headline: 3-7 words that finish the cover, like "What changes for builders".
-- intro: 2-3 sentences: who released what, and the one thing that matters most.
-- details: 3-6 key details, each one or two sentences, each with the name of the source it comes from (one of the source names below).
-- why_it_matters: 2-3 short paragraphs on why it matters for people building products: what they can try, what it may replace, what to watch.
+Picking: choose 4-5 stories (at least {low}, at most {high}) that people in tech would find genuinely surprising and want to share: things you can see (demos, launches, robots, vehicles, rockets), scientific firsts, records and striking numbers, notable failures and mishaps. Substance over drama: skip gossip, routine business news (funding rounds, earnings, hires), policy fine print, lawsuits that are only paperwork, and opinion pieces. How many outlets covered a story does not matter.
 
-Material:
-Title: {title}
-Summary: {summary}
-Key points:
-{points}
-Sources:
-{sources}"""
+Writing each line:
+- A plain, specific sentence of 5-12 words, under {bullet} characters: no emoji, no dash (the post adds "- "), no full stop at the end. Say what happened, with the concrete detail that makes it interesting, and let that detail do the work.
+- Calm and factual, like a well-informed friend. No hype: no "insane", "wild", "crazy", "unhinged", "completely", "literally", "just", "huge", "shocking", "game-changer", no exclamation marks, no jokes about the industry.
+- Good: "Tesla showed a Roadster that jumps and flips on thrusters", "Human brain tissue classified letters of the Braille alphabet", "Online ads delivered spyware to 45 Al Jazeera devices".
+- Bad: "Tesla's Roadster LITERALLY flew", "Tech just went completely off-script", "Eight states sue OpenAI alleging ChatGPT harms kids and lies to parents about safety risks." (too long).
+- Every fact, name and number must be in that story's text below. No numbers that are not there, and nothing stronger than what the story says.
+- No hashtags, no links or web addresses (say "xAI", not "x.ai"), no @mentions, no questions.
 
-ARTICLE_SCHEMA = {
+Also:
+- media_pick: the story people would most want to watch (a demo, a launch event, a robot, a car, a rocket); it must be marked [image]. It becomes the first line and gets a video clip, so a story with footage beats one without.
+- video_query: a short YouTube search that finds a video of that story (company, product, event).
+- All the lines together must fit in {limit} characters.
+
+Stories (feed topics first, then single articles the feed has not grouped yet; a newer article can update an older topic):
+{stories}"""
+
+X_POST_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["title", "cover_kicker", "cover_headline", "intro", "details", "why_it_matters"],
+    "required": ["bullets", "media_pick", "video_query"],
     "properties": {
-        "title": {"type": "string"},
-        "cover_kicker": {"type": "string"},
-        "cover_headline": {"type": "string"},
-        "intro": {"type": "string"},
-        "details": {
+        "bullets": {
             "type": "array",
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["text", "source"],
-                "properties": {"text": {"type": "string"}, "source": {"type": "string"}},
+                "required": ["pick", "text"],
+                "properties": {"pick": {"type": "integer"}, "text": {"type": "string"}},
             },
         },
-        "why_it_matters": {"type": "array", "items": {"type": "string"}},
+        "media_pick": {"type": "integer"},
+        "video_query": {"type": "string"},
     },
 }
 
-POST_PROMPT = """Write one X post about this story for the founder of Trace to post today.
 
-Rules: at most {limit} characters (a link to the brief is added after it). One or two plain sentences that lead with the most concrete fact in the text. No hype, no emoji, no hashtags, no questions, no links, nothing that is not in the text.
-
-Title: {title}
-Summary: {summary}
-Key points:
-{points}"""
-
-POST_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["post"],
-    "properties": {"post": {"type": "string"}},
-}
-
-
-def _chat_json(prompt: str, name: str, schema: dict[str, Any]) -> dict[str, Any] | None:
+def _chat_json(prompt: str, name: str, schema: dict[str, Any], system: str = X_SYSTEM) -> dict[str, Any] | None:
     """The model's JSON answer, or None (no key, bad key, timeout, bad JSON): callers use a template."""
     from v3.lib.summarizer import _get_client
 
@@ -449,10 +474,9 @@ def _chat_json(prompt: str, name: str, schema: dict[str, Any]) -> dict[str, Any]
         return None
     try:
         response = client.with_options(max_retries=1).chat.completions.create(
-            model=KIT_MODEL,
-            temperature=0.4,
-            timeout=60,
-            messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
+            model=KIT_MODEL,  # no temperature: the GPT-5 and 6 models only take the default
+            timeout=240,  # a ~20k-token prompt for a reasoning model
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
             response_format={"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
         )
         result = json.loads(response.choices[0].message.content or "{}")
@@ -465,8 +489,7 @@ def _chat_json(prompt: str, name: str, schema: dict[str, Any]) -> dict[str, Any]
 
 
 def _material(story: dict[str, Any]) -> str:
-    parts = [story["title"], story["summary"], *story["key_points"], *(s["title"] for s in story["sources"])]
-    return " ".join(parts)
+    return " ".join([story["title"], story["summary"], *story["key_points"], *story["headlines"]])
 
 
 def invented_numbers(text: str, material: str) -> set[str]:
@@ -476,121 +499,251 @@ def invented_numbers(text: str, material: str) -> set[str]:
     return found - known
 
 
-def release_name(title: str) -> str:
-    match = NAMED_LAUNCH.search(title)
-    return match.group(1).strip(" .,:;") if match else ""
+def _breaks_rules(text: str) -> bool:
+    """A hashtag, a link, a mention or a bare domain ("C#" and "HTTP/3" are fine)."""
+    return bool(re.search(r"(^|\s)[#@]\w|https?://|www\.", text, re.I) or BARE_DOMAIN.search(text))
 
 
-def template_article(story: dict[str, Any]) -> dict[str, Any]:
-    """The draft from the story's own summary and key points, for when the model can't help."""
-    name = release_name(story["title"])
-    title = story["title"].rstrip(".")
-    paragraphs = _paragraphs(story["summary"])
-    details = story["key_points"][:5] or paragraphs[1:4]
-    return {
-        "title": f"{title}: what it means for builders" if len(title) <= 80 else title,
-        "cover_kicker": name or "Out today",
-        "cover_headline": "What it means for builders" if name else _clip(title, 90),
-        "intro": paragraphs[0] if paragraphs else title,
-        "details": [{"text": text, "source": ""} for text in details],
-        "why_it_matters": ["[Your take: who should try this first, what it changes for them, and what is still unclear.]"],
-        "written_by": "template",
-    }
+def _hype(text: str) -> str:
+    match = HYPE.search(NOT_HYPE.sub("", text))
+    return match.group(0) if match else ""
 
 
-def write_article(story: dict[str, Any]) -> dict[str, Any]:
-    """The model's draft if it follows the rules; the template otherwise (or field by field)."""
-    fallback = template_article(story)
-    points = "\n".join(f"- {p}" for p in story["key_points"][:8]) or "- (none)"
-    sources = "\n".join(f"[{i}] {s['name']}: {s['title']} ({s['url']})" for i, s in enumerate(story["sources"], 1))
-    result = _chat_json(
-        ARTICLE_PROMPT.format(title=story["title"], summary=story["summary"], points=points, sources=sources),
-        "release_article",
-        ARTICLE_SCHEMA,
-    )
-    if not result:
-        return fallback
-    names = {s["name"] for s in story["sources"]}
-    material = _material(story)
-    # Anything with a number the material never mentions is dropped: no made-up figures.
-    details = [
-        {"text": _clean(d.get("text")), "source": _clean(d.get("source")) if _clean(d.get("source")) in names else ""}
-        for d in result.get("details") or []
-        if isinstance(d, dict) and _clean(d.get("text")) and not invented_numbers(_clean(d.get("text")), material)
-    ][:6]
-    why = [_clean(p) for p in result.get("why_it_matters") or [] if _clean(p) and not invented_numbers(_clean(p), material)][:3]
-    intro = _clean(result.get("intro"))
-    if invented_numbers(intro, material):
-        intro = ""
-    if len(details) < 2 or not why or not intro:
-        _log("release_article: the model's draft was incomplete or had numbers not in the sources; using the template")
-        return fallback
-    title = _clean(result.get("title")).rstrip(".")
-    if not 3 <= len(title.split()) <= 16 or len(title) > 110 or invented_numbers(title, material):
-        _log(f"release_article: title {title!r} broke the rules; using the story's")
-        title = fallback["title"]
-    kicker = _clean(result.get("cover_kicker"))
-    headline = _clean(result.get("cover_headline"))
-    if not kicker or len(kicker) > 28 or invented_numbers(kicker, material):
-        kicker = fallback["cover_kicker"]
-    if not headline or len(headline) > 60 or invented_numbers(headline, material):
-        headline = fallback["cover_headline"]
-    return {"title": title, "cover_kicker": kicker, "cover_headline": headline, "intro": intro,
-            "details": details, "why_it_matters": why, "written_by": "model"}
-
-
-def article_text(draft: dict[str, Any], story: dict[str, Any]) -> str:
-    """The article as plain text, ready to paste into X's article editor."""
-    lines = [draft["title"], "", draft["intro"], ""]
-    if draft["details"]:
-        lines.append("What's new")
-        for detail in draft["details"]:
-            lines.append(f"- {detail['text']}" + (f" ({detail['source']})" if detail["source"] else ""))
-        lines.append("")
-    lines.append("Why it matters for builders")
-    for paragraph in draft["why_it_matters"]:
-        lines += [paragraph, ""]
-    lines.append("Sources")
-    lines += [f"- {s['name']}: {s['url']}" for s in story["sources"][:6]]
-    lines += [
-        "",
-        "I write Trace, a free daily brief with the tech and AI stories that matter, in about five minutes. "
-        f"Get it in your inbox: {CTA_URL}",
-    ]
+def _story_lines(stories: list[dict[str, Any]]) -> str:
+    lines = []
+    for i, story in enumerate(stories):
+        image = "[image] " if story["images"] else ""
+        outlets = f"{story['source_count']} outlet{'s' if story['source_count'] != 1 else ''}"
+        lines.append(f"[{i}] {image}{outlets} · {story['title']}")
+        if story["headlines"] and story["headlines"] != [story["title"]]:
+            lines.append(f"    Headlines: {' | '.join(story['headlines'])}")
+        if story["summary"]:
+            # A single article's opening is enough to judge it; topics get their whole summary.
+            lines.append(f"    {'Summary' if story['topic_id'] else 'Text'}: "
+                         f"{_clip(story['summary'], 360 if story['topic_id'] else 220)}")
+        if story["key_points"]:
+            lines.append(f"    Key points: {' | '.join(story['key_points'][:2])}")
     return "\n".join(lines)
 
 
-def _first_sentence(text: str) -> str:
-    paragraphs = _paragraphs(text)
-    if not paragraphs:
-        return ""
-    match = re.match(r"(.+?[.!?])(\s|$)", paragraphs[0])
-    return (match.group(1) if match else paragraphs[0]).strip()
+def _assemble(hook: str, bullets: list[dict[str, Any]]) -> str:
+    return f"{hook}\n\n" + "\n".join(f"- {b['text']}" for b in bullets) + f"\n\n{CLOSER}"
 
 
-def write_post(story: dict[str, Any], date: str) -> dict[str, Any]:
-    """A post for the day's #1 story, with a link to the day's brief."""
-    link = f"{SITE_URL}/brief/{date}?utm_source=x&utm_medium=post"
-    points = "\n".join(f"- {p}" for p in story["key_points"][:5]) or "- (none)"
+def _line_budget(limit: int) -> int:
+    """What the model may spend on its lines: the limit less the opener, sign-off and dashes."""
+    return limit - x_length(_assemble(DEFAULT_HOOK, [])) - 3 * MAX_BULLETS
+
+
+def _lead_with_image(bullets: list[dict[str, Any]], stories: list[dict[str, Any]], pick: int = -1) -> list[dict[str, Any]]:
+    """The story with the picture goes first: the model's choice if it has one, else the first that does."""
+    with_image = [b for b in bullets if stories[b["pick"]]["images"]]
+    lead = next((b for b in with_image if b["pick"] == pick), with_image[0] if with_image else None)
+    return [lead, *(b for b in bullets if b is not lead)] if lead else bullets
+
+
+def _fit(hook: str, bullets: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """Drop bullets from the end (never the lead) until the post fits."""
+    bullets = list(bullets)
+    while len(bullets) > MIN_BULLETS and x_length(_assemble(hook, bullets)) > limit:
+        bullets.pop()
+    return bullets
+
+
+def template_post(stories: list[dict[str, Any]], limit: int = X_MAX) -> dict[str, Any] | None:
+    """The widest-covered stories' own titles, for when the model can't help."""
+    if not stories:
+        return None
+    order = sorted(range(len(stories)), key=lambda i: (-stories[i]["source_count"], i))
+    usable = [i for i in order if not _breaks_rules(stories[i]["title"]) and not _hype(stories[i]["title"])]
+    bullets = [{"pick": i, "text": _clip(stories[i]["title"], BULLET_MAX)} for i in (usable or order)[:MAX_BULLETS]]
+    bullets = _fit(DEFAULT_HOOK, _lead_with_image(bullets, stories), limit)
+    while bullets and x_length(_assemble(DEFAULT_HOOK, bullets)) > limit:
+        bullets.pop()
+    lead = stories[bullets[0]["pick"]] if bullets else stories[order[0]]
+    return _post(DEFAULT_HOOK, bullets, stories, lead["title"], "template")
+
+
+def _post(hook: str, bullets: list[dict[str, Any]], stories: list[dict[str, Any]], video_query: str,
+          written_by: str) -> dict[str, Any]:
+    text = _assemble(hook, bullets)
+    picked = [{"text": b["text"], "story": stories[b["pick"]]} for b in bullets]
+    return {"text": text, "length": x_length(text), "hook": hook, "bullets": picked,
+            "lead": picked[0]["story"] if picked else None, "video_query": video_query, "written_by": written_by}
+
+
+def write_x_post(stories: list[dict[str, Any]], limit: int = X_MAX) -> dict[str, Any] | None:
+    """The model's post if it follows the rules (bullet by bullet); the template otherwise."""
+    if not stories:
+        return None
     result = _chat_json(
-        POST_PROMPT.format(limit=POST_MAX_CHARS, title=story["title"], summary=story["summary"], points=points),
-        "top_story_post",
-        POST_SCHEMA,
+        X_POST_PROMPT.format(low=MIN_BULLETS, high=MAX_BULLETS, bullet=BULLET_MAX, limit=_line_budget(limit),
+                             stories=_story_lines(stories)),
+        "x_post",
+        X_POST_SCHEMA,
     )
-    text = _clean((result or {}).get("post"))
-    written_by = "model"
-    if (not 20 <= x_length(text) <= POST_MAX_CHARS or "#" in text or "http" in text
-            or invented_numbers(text, _material(story))):
-        if result:
-            _log("top_story_post: the model's post broke the rules; using the template")
-        title = story["title"] if story["title"][-1:] in ".!?" else f"{story['title']}."
-        sentence = _first_sentence(story["summary"])
-        text = f"{title}\n\n{sentence}" if sentence and x_length(f"{title}\n\n{sentence}") <= POST_MAX_CHARS else title
-        while x_length(text) > POST_MAX_CHARS:  # CJK and emoji count double
-            text = _clip(text, len(text) - 1)
-        written_by = "template"
-    post = f"{text}{POST_LINK_LEAD}{link}"
-    return {"text": post, "length": x_length(post), "written_by": written_by}
+    if not result:
+        return template_post(stories, limit)
+    bullets: list[dict[str, Any]] = []
+    for raw in result.get("bullets") or []:
+        if not isinstance(raw, dict):
+            continue
+        text = TRAILING.sub("", LEADING.sub("", _clean(raw.get("text")))).rstrip(" .")
+        pick, text = _int(raw.get("pick")), _clean(FILLER.sub("", text))
+        if not 0 <= pick < len(stories) or any(b["pick"] == pick for b in bullets) or not text:
+            continue
+        # A bullet with a figure its story never mentions is dropped: no made-up numbers.
+        bad = invented_numbers(text, _material(stories[pick]))
+        hype = _hype(text)
+        if bad or hype or _breaks_rules(text) or not 8 <= x_length(text) <= BULLET_MAX:
+            why = f"numbers {', '.join(sorted(bad))}" if bad else f"hype {hype!r}" if hype else "rules"
+            _log(f"x_post: dropped a bullet ({why}): {text!r}")
+            continue
+        bullets.append({"pick": pick, "text": text})
+    hook = DEFAULT_HOOK
+    bullets = _fit(hook, _lead_with_image(bullets[:MAX_BULLETS], stories, _int(result.get("media_pick"))), limit)
+    if len(bullets) < MIN_BULLETS or x_length(_assemble(hook, bullets)) > limit:
+        _log(f"x_post: {len(bullets)} usable bullet(s) or too long; using the template")
+        return template_post(stories, limit)
+    media_pick = _int(result.get("media_pick"))
+    lead = stories[bullets[0]["pick"]]
+    # The model's search is for its own pick: if that line was dropped, search for the line that leads.
+    query = _clip(_clean(result.get("video_query")), 100) if bullets[0]["pick"] == media_pick else ""
+    return _post(hook, bullets, stories, query or _clip(lead["title"], 100), "model")
+
+
+# ---------------------------------------------------------------------------
+# Media: an image to attach, videos to consider
+# ---------------------------------------------------------------------------
+
+
+def fetch_bytes(url: str, max_bytes: int = IMAGE_MAX_BYTES, session: Any = requests) -> bytes | None:
+    """The body at `url` (up to `max_bytes`), or None: public hosts only, each redirect hop checked."""
+    deadline = time.monotonic() + IMAGE_DEADLINE
+    try:
+        with _wall_clock(IMAGE_DEADLINE):
+            for _hop in range(MAX_REDIRECTS + 1):
+                if not _public_http(url) or time.monotonic() > deadline:
+                    return None
+                with session.get(url, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, stream=True,
+                                 allow_redirects=False) as response:
+                    if response.status_code in {301, 302, 303, 307, 308}:
+                        url = urljoin(url, str(response.headers.get("location") or ""))
+                        continue
+                    if response.status_code != 200 or _int(response.headers.get("content-length")) > max_bytes:
+                        return None
+                    data = b""
+                    for chunk in response.iter_content(64 * 1024):
+                        data += chunk
+                        if len(data) > max_bytes or time.monotonic() > deadline:
+                            return None
+                    return data
+    except Exception:  # the deadline included
+        return None
+    return None  # too many redirects
+
+
+def pick_image(urls: list[str], fetch: Callable[[str], bytes | None] = fetch_bytes) -> dict[str, Any] | None:
+    """The biggest usable picture among the first few, as a JPEG X accepts (AVIF and WebP converted)."""
+    from PIL import Image
+
+    best = None
+    for url in urls[:IMAGE_TRIES]:
+        data = fetch(url)
+        if not data:
+            continue
+        try:
+            image = Image.open(io.BytesIO(data))
+            image.load()
+        except Exception:  # not an image, truncated, a decompression bomb
+            continue
+        if image.width < IMAGE_MIN_WIDTH:
+            continue
+        if best is None or image.width * image.height > best[0].width * best[0].height:
+            best = (image, url)
+    if best is None:
+        return None
+    image, url = best
+    if image.mode in {"RGBA", "LA", "P"}:
+        image = image.convert("RGBA")
+        backed = Image.new("RGB", image.size, (255, 255, 255))
+        backed.paste(image, mask=image.getchannel("A"))
+        image = backed
+    image = image.convert("RGB")
+    image.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE))
+    buffer = io.BytesIO()
+    image.save(buffer, "JPEG", quality=90, optimize=True, progressive=True)
+    return {"name": IMAGE_NAME, "bytes": buffer.getvalue(), "source_url": url, "size": image.size}
+
+
+def _youtube_search(query: str) -> list[dict[str, Any]]:
+    import yt_dlp
+
+    # Uploaded this week, in YouTube's relevance order: last year's launch videos stay out.
+    url = "https://www.youtube.com/results?" + urlencode({"search_query": query, "sp": "EgIIAw=="})
+    options = {"quiet": True, "no_warnings": True, "skip_download": True, "extract_flat": True,
+               "playlistend": 12, "socket_timeout": 15}
+    with yt_dlp.YoutubeDL(options) as ydl:
+        info = ydl.extract_info(url, download=False) or {}
+    return [e for e in info.get("entries") or [] if isinstance(e, dict)]
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) >= 3}
+
+
+def _stem(word: str) -> str:
+    return word[:-1] if len(word) > 4 and word.endswith("s") else word
+
+
+def rank_videos(entries: list[dict[str, Any]], story: dict[str, Any], line: str = "",
+                limit: int = VIDEO_RESULTS) -> list[dict[str, Any]]:
+    """The videos most likely to show what the post says: matching titles, short clips, then views.
+
+    A title that names what happened ("riding walls and doing backflips") beats
+    the company's own polished ad: words every title shares (the brand, the
+    product) count for nothing, and "flips" matches "backflips".
+    """
+    videos = []
+    for entry in entries:
+        link = str(entry.get("url") or "")
+        if not link.startswith(("https://www.youtube.com/watch?v=", "https://www.youtube.com/shorts/")):
+            continue  # channels and playlists come back from search too
+        channel = _clean(entry.get("channel") or entry.get("uploader"))
+        videos.append({
+            "title": _clean(entry.get("title")),
+            "channel": channel,
+            "duration": _int(entry.get("duration")),
+            "views": _int(entry.get("view_count")),
+            "url": link,
+            "official": bool(_words(channel)) and _words(channel) <= _words(" ".join([story["title"], *story["headlines"]])),
+        })
+    story_words = {_stem(w) for w in _words(" ".join([line, story["title"], *story["headlines"]])) if len(w) >= 4}
+    titles = [v["title"].lower() for v in videos]
+    shared = {w for w in story_words if len(titles) >= 3 and sum(w in t for t in titles) >= len(titles) * 0.8}
+    for video, title in zip(videos, titles):
+        video["match"] = sum(1 for w in story_words - shared if w in title)
+    # Any match first; then short clips, which news desks cut down to the moment itself.
+    videos.sort(key=lambda v: (not v["match"], not 0 < v["duration"] <= SHORT_CLIP, -v["match"], not v["official"],
+                               -v["views"]))
+    return videos[:limit]
+
+
+def find_videos(query: str, story: dict[str, Any], search: Callable[[str], list[dict[str, Any]]] = _youtube_search,
+                deadline: float = VIDEO_DEADLINE, line: str = "") -> list[dict[str, Any]]:
+    """Up to VIDEO_RESULTS YouTube videos of the lead story; [] when search is slow or unavailable."""
+    if not query:
+        return []
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        return rank_videos(pool.submit(search, query).result(timeout=deadline), story, line)
+    except FutureTimeout:
+        _log(f"video search took over {deadline}s; no videos today")
+    except Exception as exc:  # yt-dlp missing, YouTube blocking the server, a changed page
+        _log(f"video search failed ({type(exc).__name__}: {str(exc)[:120]}); no videos today")
+    finally:
+        pool.shutdown(wait=False)
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -598,213 +751,63 @@ def write_post(story: dict[str, Any], date: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def build_kit(date: str, doc: dict[str, Any], finder: HandleFinder, now: datetime) -> dict[str, Any]:
-    """Each part is built on its own: one bad draft, cover or list never costs the day's kit."""
-    today = feed_today(now)
-    topics = [t for t in doc.get("trending_topics") or [] if isinstance(t, dict)]
-    drafts = []
+def _image_for(post: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not post or not post["lead"]:
+        return None
     try:
-        releases = pick_releases(topics)
+        return pick_image(post["lead"]["images"])
     except Exception as exc:
-        _log(f"release picking failed: {exc}")
-        releases = []
-    for i, story in enumerate(releases, 1):
+        _log(f"image failed, going on without one: {exc}")
+        return None
+
+
+def build_kit(date: str, doc: dict[str, Any], now: datetime, earlier: dict[str, Any] | None = None, *,
+              pool: list[dict[str, Any]] | None = None, stored: dict[str, Any] | None = None,
+              with_media: bool = True) -> dict[str, Any]:
+    """Each part is built on its own: a failed image or video search never costs the day's post.
+
+    `stored` is the day's post_kits doc: a post already written today is kept,
+    so the model is asked once per day.
+    """
+    stories = _int((stored or {}).get("stories"))
+    post = (stored or {}).get("post")  # a model post written earlier today
+    if not post:
         try:
-            draft = write_article(story)
-            entry = {**draft, "story": story, "text": article_text(draft, story)}
+            found = candidates([doc, earlier or {}], now, pool)
+            stories = len(found)
+            post = write_x_post(found)
         except Exception as exc:
-            _log(f"release draft {i} failed: {exc}")
-            continue
-        try:
-            cover = render_cover(draft["cover_kicker"], draft["cover_headline"], _date_label(date))
-            buffer = io.BytesIO()
-            # JPEG, like the Instagram slides: the grain makes a PNG ten times bigger.
-            cover.save(buffer, "JPEG", quality=92, optimize=True, progressive=True)
-            entry.update(cover_name=f"cover-{len(drafts) + 1}.jpg", cover_bytes=buffer.getvalue())
-        except Exception as exc:
-            _log(f"cover for draft {i} failed, sending the draft without one: {exc}")
-        drafts.append(entry)
-    try:
-        story = top_story(topics)
-        post = {**write_post(story, date), "story": story} if story else None
-    except Exception as exc:
-        _log(f"top-story post failed: {exc}")
-        post = None
-    # The featured items are always kept (share pages need them); finding their makers is optional.
+            _log(f"post failed: {exc}")
+    image = _image_for(post) if with_media else None
+    videos = (find_videos(post["video_query"], post["lead"], line=post["bullets"][0]["text"])
+              if with_media and post and post["lead"] else [])
+    # The featured items are always kept: share pages need them.
     featured: list[dict[str, Any]] = []
-    makers: list[dict[str, Any]] = []
     try:
-        featured = featured_items(doc, date)
-        if TELL_MAKERS:
-            makers = find_makers(featured, finder, date, today)
+        featured = featured_items(doc)
     except Exception as exc:
         _log(f"featured items failed: {exc}")
-    return {"date": date, "today": today, "drafts": drafts, "post": post, "featured": featured, "makers": makers,
-            "font": headline_font_name(), "topics": len(topics)}
+    return {"date": date, "today": feed_today(now), "post": post, "image": image, "videos": videos,
+            "featured": featured, "stories": stories}
 
 
-def subject_for(kit: dict[str, Any]) -> str:
-    count = len(kit["drafts"])
-    drafts = f"{count} release draft{'s' if count != 1 else ''}" if count else "no big release"
-    tail = f", {len(kit['makers'])} featured to tell" if TELL_MAKERS else ""
-    return f"Post kit for {_date_label(kit['date'], 'short')}: {drafts}{tail}"
-
-
-def _esc(text: Any) -> str:
-    return html.escape(str(text or ""))
-
-
-def _a(url: str, text: str = "") -> str:
-    return f'<a href="{_esc(url)}" style="color: #1d9bf0; text-decoration: none;">{_esc(text or url)}</a>'
-
-
-def _p(inner: str, size: int = 15, color: str = "#0f1419", margin: str = "0 0 10px 0", weight: int = 400) -> str:
-    return (f'<p style="margin: {margin}; font-size: {size}px; line-height: 1.5; color: {color}; '
-            f'font-weight: {weight}; font-family: {FONT};">{inner}</p>')
-
-
-def _box(text: str, size: int = 14) -> str:
-    """Copy-ready text: line breaks kept, nothing to clean up after pasting."""
-    return (f'<div style="margin: 0 0 12px 0; padding: 14px 16px; background: #f7f9f9; border: 1px solid #eff3f4; '
-            f'border-radius: 12px; white-space: pre-wrap; font-size: {size}px; line-height: 1.55; color: #0f1419; '
-            f'font-family: {FONT};">{_esc(text)}</div>')
-
-
-def _heading(text: str) -> str:
-    return (f'<p style="margin: 32px 0 12px 0; padding-top: 20px; border-top: 1px solid #eff3f4; font-size: 19px; '
-            f'font-weight: 800; color: #0f1419; font-family: {FONT};">{_esc(text)}</p>')
-
-
-def _kicker(text: str) -> str:
-    return _p(_esc(text.upper()), size=11, color="#536471", margin="18px 0 4px 0", weight=700)
-
-
-def _no_handle(maker: dict[str, Any]) -> str:
-    return "no X handle found" if maker.get("checked", True) else "X handle not checked today"
-
-
-def _handles_text(maker: dict[str, Any]) -> str:
-    parts = [f"{h['handle']} ({h['via']})" for h in maker["handles"]] or [_no_handle(maker)]
-    if maker.get("by"):
-        parts.append(f"HN submitter: {maker['by']}")
-    return " · ".join(parts)
-
-
-def render_email(kit: dict[str, Any], preview: bool = False) -> tuple[str, str, str]:
-    """(subject, html, text). `preview` shows the covers inline (the email attaches them)."""
-    subject = subject_for(kit)
-    date_long = _date_label(kit["date"])
-    # On a fallback day (yesterday's doc) say which day, not "today".
-    day = "today's" if kit["date"] == kit["today"] else f"{date_long}'s"
-    found = sum(1 for m in kit["makers"] if m["handles"])
-    drafts = len(kit["drafts"])
-    summary = " · ".join(filter(None, [
-        f"{drafts} release draft{'s' if drafts != 1 else ''}" if drafts else "no release draft",
-        "a post for the top story" if kit["post"] else "",
-        f"{len(kit['makers'])} featured ({found} with an X handle)" if TELL_MAKERS else "",
-    ]))
-    body: list[str] = [
-        _p("TRACE · POST KIT", size=12, color="#1d9bf0", margin="0 0 6px 0", weight=800),
-        _p(_esc(date_long), size=24, margin="0 0 6px 0", weight=800),
-        _p(_esc(summary), color="#536471", margin="0 0 8px 0"),
-    ]
-    text: list[str] = [f"Trace post kit · {date_long}", summary, ""]
-
-    body.append(_heading("Release-day article"))
-    text += ["RELEASE-DAY ARTICLE", ""]
-    if not kit["drafts"]:
-        note = f"No AI release with wide coverage today (needs {MIN_SOURCES}+ sources), so no article to draft."
-        body.append(_p(_esc(note), color="#536471"))
-        text += [note, ""]
-    for i, draft in enumerate(kit["drafts"], 1):
-        story = draft["story"]
-        who = ("drafted by the model; check every detail before posting" if draft["written_by"] == "model"
-               else "built from the story's own summary (the model was unavailable); fill in your take before posting")
-        body.append(_kicker(f"Draft {i} · {story['source_count']} sources"))
-        body.append(_p(f"Story: {_a(story['url'], story['title'])}"))
-        cover_note = f"Cover attached: {draft['cover_name']} (1600x900)." if draft.get("cover_name") else "No cover today (rendering failed)."
-        body.append(_p(_esc(f"{cover_note} This draft was {who}."), size=13, color="#536471"))
-        if preview and draft.get("cover_name"):
-            body.append(f'<img src="{_esc(draft["cover_name"])}" width="560" alt="" '
-                        'style="display: block; width: 100%; max-width: 560px; border-radius: 12px; margin: 0 0 12px 0;">')
-        body.append(_box(draft["text"]))
-        text += [f"Draft {i} ({story['source_count']} sources): {story['title']}", story["url"],
-                 f"{cover_note} This draft was {who}.", "", draft["text"], ""]
-
-    body.append(_heading(f"X post for {day} top story"))
-    text += [f"X POST FOR {day.upper()} TOP STORY", ""]
-    post = kit["post"]
-    if post:
-        story = post["story"]
-        body.append(_p(f"{_a(story['url'], story['title'])} · {story['source_count']} sources", size=14))
-        body.append(_box(post["text"], size=15))
-        count = f"{post['length']}/{X_MAX} characters"
-        if post["length"] > X_MAX:
-            count = f'<span style="color: #f4212e; font-weight: 700;">{count}: too long for one post</span>'
-        body.append(_p(f"{count} · {_a(_intent(post['text']), 'Open in X')}", size=13, color="#536471"))
-        text += [f"{story['title']} ({story['url']})", "", post["text"], f"({post['length']}/280)", ""]
-    else:
-        body.append(_p(f"No stories in {day} feed yet.", color="#536471"))
-        text += [f"No stories in {day} feed yet.", ""]
-
-    if TELL_MAKERS:
-        featured = "Featured today" if kit["date"] == kit["today"] else f"Featured {date_long}"
-        body.append(_heading(f"{featured}: tell the makers"))
-        intro = (f"Everything in {day} Tools and Top articles, each with a share page. "
-                 "Handles are best-effort, so check the profile before you tag anyone.")
-        body.append(_p(_esc(intro), size=14, color="#536471"))
-        text += [f"{featured.upper()}: TELL THE MAKERS", intro, ""]
-        if not kit["makers"]:
-            body.append(_p("Nothing in Tools or Top articles today.", color="#536471"))
-            text += ["Nothing in Tools or Top articles today.", ""]
-        for maker in kit["makers"]:
-            contacts = [f"{_a('https://x.com/' + h['handle'][1:], h['handle'])} ({_esc(h['via'])})" for h in maker["handles"]]
-            if not contacts:
-                contacts = [_esc(_no_handle(maker))]
-            if maker.get("by"):
-                user = _a("https://news.ycombinator.com/user?id=" + quote(maker["by"]), maker["by"])
-                contacts.append(f"HN submitter: {user}")
-            body.append(_kicker(" · ".join(filter(None, [maker["label"], maker["source"], maker["signal"]]))))
-            body.append(_p(_a(maker["url"], maker["title"]), size=16, margin="0 0 4px 0", weight=700))
-            if maker["summary"]:
-                body.append(_p(_esc(maker["summary"]), size=13, color="#536471", margin="0 0 4px 0"))
-            body.append(_p(" · ".join(contacts), size=13, color="#536471", margin="0 0 4px 0"))
-            body.append(_p(f"Share page: {_a(maker['share_url'])}", size=13, color="#536471", margin="0 0 8px 0"))
-            body.append(_box(maker["line"], size=13))
-            if maker["handles"]:
-                tagged = f"{' '.join(h['handle'] for h in maker['handles'][:2])} {maker['line']}"
-                body.append(_p(_a(_intent(tagged), "Post it on X, tagged"), size=13, margin="0 0 12px 0"))
-            text += [f"[{maker['label']}] {maker['title']}", maker["url"], f"Contacts: {_handles_text(maker)}",
-                     f"Share page: {maker['share_url']}", f"Line: {maker['line']}", ""]
-
-    footer = f"Cover headline font: {kit['font']}. Sent by trace-postkit (backend/v3/flows/build_post_kit.py)."
-    body.append(_p(_esc(footer), size=12, color="#536471", margin="32px 0 0 0"))
-    text.append(footer)
-    page = (
-        "<!doctype html><html><head>"
-        '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">'
-        f"<title>{_esc(subject)}</title></head>"
-        '<body style="margin: 0; padding: 0; background: #ffffff;">'
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"><tr>'
-        '<td align="center" style="padding: 32px 16px;">'
-        '<table width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;"><tr><td>'
-        + "".join(body)
-        + "</td></tr></table></td></tr></table></body></html>"
-    )
-    return subject, page, "\n".join(text)
-
-
-# ---------------------------------------------------------------------------
-# Send
-# ---------------------------------------------------------------------------
-
-
-def due(marker: dict[str, Any] | None) -> bool:
-    """No kit yet today, or a failed send to try again ("sending" may have gone out: never again)."""
-    if not marker:
-        return True
-    return marker.get("status") == "failed" and int(marker.get("attempts") or 0) < MAX_ATTEMPTS
+def kit_json(kit: dict[str, Any]) -> dict[str, Any]:
+    """What the laptop needs, as JSON: the post, the reply, the image (base64) and the videos to try."""
+    image = kit["image"]
+    lead = (kit["post"] or {}).get("lead") or {}
+    return {
+        "date": kit["date"],
+        "post": kit["post"],
+        "reply": REPLY_TEXT,
+        "image": {"name": image["name"], "size": list(image["size"]),
+                  "from": (lead.get("image_sources") or {}).get(image["source_url"]) or lead.get("lead_source") or "",
+                  "base64": base64.b64encode(image["bytes"]).decode()} if image else None,
+        "limit": X_MAX,
+        # A template post is retried by the next run: the laptop waits for a final one.
+        "final": bool(kit["post"]) and (kit["post"]["written_by"] == "model" or kit.get("final", False)),
+        "videos": kit["videos"],
+        "stories": kit["stories"],
+    }
 
 
 def save_featured(store: Any, date: str, doc: dict[str, Any], items: list[dict[str, Any]], now: datetime) -> None:
@@ -828,108 +831,127 @@ def save_featured(store: Any, date: str, doc: dict[str, Any], items: list[dict[s
      .set({"featured_items": list(kept.values())}, merge=True))
 
 
-def send_kit(kit: dict[str, Any], to: str, bucket: str = BUCKET) -> dict[str, Any]:
-    from v1.tools.email_sender import send_email
-
-    subject, page, text = render_email(kit)
-    if bucket == "test":
-        subject = f"[test] {subject}"
-    attachments = [(d["cover_name"], d["cover_bytes"], "image/jpeg") for d in kit["drafts"] if d.get("cover_name")]
-    return send_email(to, None, subject, page, text, bucket=bucket, attachments=attachments)
-
-
-def _send_daily(store: Any, to: str, args: argparse.Namespace, now: datetime) -> int:
-    date, doc = load_day(store.load_global_feed, now, args.date or "")
-    if not doc:
-        _log(f"no feed for {date} yet; nothing to send")
-        return 1
-    ref = store.db.collection(MARKERS).document(date)
-    snap = ref.get()
-    marker = (snap.to_dict() or {}) if snap.exists else None
-    if not due(marker):
-        _log(f"kit for {date} already {marker.get('status')} (attempts {marker.get('attempts')}); nothing to do")
-        return 0
-
-    kit = build_kit(date, doc, HandleFinder(store.db, log=_log), now)
-    stamp = now.isoformat()
-    attempts = int((marker or {}).get("attempts") or 0) + 1
-    # Both writes go down before the email: if either fails, stop. A send we
-    # can't record would be repeated, and share links would stop working.
-    try:
-        save_featured(store, date, doc, kit["featured"], now)
-        ref.set({"date": date, "to": to, "status": "sending", "attempts": attempts, "updated_at": stamp,
-                 "created_at": (marker or {}).get("created_at") or stamp}, merge=True)
-    except Exception as exc:
-        _log(f"cannot record the kit, stopping: {exc}")
-        return 1
-    try:
-        result = send_kit(kit, to)
-    except Exception as exc:
-        result = {"success": False, "error": str(exc)}
-    ok = result.get("success") is not False
-    try:
-        ref.set({"status": "sent" if ok else "failed", "transport": result.get("transport") or "",
-                 "error": "" if ok else str(result.get("error") or "")[:300],
-                 "drafts": len(kit["drafts"]), "featured": len(kit["featured"]),
-                 "updated_at": datetime.now(timezone.utc).isoformat()}, merge=True)
-    except Exception as exc:
-        # Left at "sending": never retried, so never sent twice.
-        _log(f"cannot record the result, stopping: {exc}")
-        return 1
-    if ok:
-        _log(f"sent the {date} kit to {to} via {result.get('transport')}: {subject_for(kit)}")
-        return 0
-    _log(f"FAILED to send the {date} kit (attempt {attempts}/{MAX_ATTEMPTS}): {result.get('error')}")
-    return 1
+@contextlib.contextmanager
+def _locked(path: Path, wait: float = LOCK_WAIT):
+    """One writer at a time: the laptop waits for a 07:30 run that is still asking the model."""
+    with open(path, "a") as lock:
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"another run held {path} for {wait:.0f}s")
+                time.sleep(2)
+        yield
 
 
 def _summary(kit: dict[str, Any]) -> list[str]:
-    lines = [f"kit for {kit['date']} ({kit['topics']} topics in the feed): {subject_for(kit)}"]
-    for draft in kit["drafts"]:
-        story = draft["story"]
-        lines.append(f"  draft ({draft['written_by']}, {story['source_count']} sources): {draft['title']}")
-    if not kit["drafts"]:
-        lines.append(f"  no release with {MIN_SOURCES}+ sources")
-    if kit["post"]:
-        lines.append(f"  post ({kit['post']['written_by']}, {kit['post']['length']}/280): {kit['post']['story']['title']}")
-    if TELL_MAKERS:
-        found = [m for m in kit["makers"] if m["handles"]]
-        lines.append(f"  featured: {len(kit['makers'])}, with an X handle: {len(found)}")
-        for maker in found:
-            lines.append(f"    {maker['title'][:60]}: {', '.join(h['handle'] for h in maker['handles'])}")
+    post = kit["post"]
+    lines = [f"post for {kit['date']} from {kit['stories']} stories in the last 24 hours"]
+    if post:
+        lines.append(f"  written by the {post['written_by']}, {post['length']}/{X_MAX} characters")
+        lines += [f"    {line}" for line in post["text"].splitlines()]
     else:
-        lines.append(f"  featured items kept for share pages: {len(kit['featured'])} (maker list off)")
-    lines.append(f"  cover font: {kit['font']}")
+        lines.append("  no post: no stories in the last 24 hours")
+    image = kit["image"]
+    if image:
+        lines.append(f"  image: {image['size'][0]}x{image['size'][1]} from {image['source_url']}")
+    lines += [f"  video: {v['channel']} · {v['duration']}s · {v['url']}" for v in kit["videos"]]
+    lines.append(f"  featured items kept for share pages: {len(kit['featured'])}")
     return lines
+
+
+def _emit(kit: dict[str, Any], as_json: bool) -> None:
+    for line in _summary(kit):
+        _log(line)
+    if as_json:
+        # The laptop reads the one line that starts with this; the log lines above are for people.
+        print("POSTKIT_JSON " + json.dumps(kit_json(kit), ensure_ascii=False), flush=True)
+
+
+def stored_post(marker: dict[str, Any]) -> dict[str, Any] | None:
+    """Today's post if it is final: written by the model, or the template after MODEL_ATTEMPTS tries."""
+    try:
+        post = json.loads(marker.get("post_json") or "null")
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(post, dict) or not post.get("text"):
+        return None
+    final = post.get("written_by") == "model" or _int(marker.get("attempts")) >= MODEL_ATTEMPTS
+    return post if final else None
+
+
+def _write(store: Any, args: argparse.Namespace, now: datetime) -> int:
+    date, doc = load_day(store.load_global_feed, now, args.date or "")
+    if not doc:
+        _log(f"no feed for {date} yet; nothing to write")
+        return 1
+    if getattr(args, "day", None) and date != args.day:
+        # The laptop asks for its own day: before the pulse fills today, or after India's day
+        # turns over in the evening, there is nothing to write for it (and nothing is written).
+        _log(f"the feed is on {date}, not {args.day}; nothing to write yet")
+        if args.json:
+            print("POSTKIT_JSON " + json.dumps({"date": date, "post": None, "final": False}), flush=True)
+        return 1
+    with _locked(getattr(args, "lock", None) or LOCK_FILE):
+        ref = store.db.collection(MARKERS).document(date)
+        snap = ref.get()
+        marker = (snap.to_dict() or {}) if snap.exists else {}
+        earlier_post = stored_post(marker)
+        kept = None if args.fresh else earlier_post
+        # An older day's own 24 hours: today's pool articles would push its stories out of the window.
+        pool = None if kept or args.date else load_pool(store)
+        kit = build_kit(date, doc, now, day_before(store.load_global_feed, date), pool=pool,
+                        stored={"post": kept, "stories": marker.get("stories")} if kept else None, with_media=args.json)
+        if args.fresh and kit["post"] and kit["post"]["written_by"] != "model" and earlier_post \
+                and earlier_post.get("written_by") == "model":
+            _log("--fresh: the model failed, so today's earlier post stays")
+            kit = {**kit, "post": earlier_post}
+            kept = earlier_post
+        # Email-era docs (the old kit) counted sends in "attempts": only this job's tries count.
+        attempts = (_int(marker.get("attempts")) if marker.get("post_json") else 0) + (0 if kept else 1)
+        kit["final"] = attempts >= MODEL_ATTEMPTS
+        try:
+            save_featured(store, date, doc, kit["featured"], now)
+        except Exception as exc:
+            _log(f"could not keep the featured items: {exc}")
+        if kit["post"] and not kept:
+            try:
+                ref.set({"date": date, "post_json": json.dumps(kit["post"], ensure_ascii=False),
+                         "stories": kit["stories"], "attempts": attempts, "written_at": now.isoformat()}, merge=True)
+            except Exception as exc:  # the laptop still gets today's post; a later run writes another
+                _log(f"could not keep today's post: {exc}")
+    _emit(kit, args.json)
+    return 0 if kit["post"] else 1
 
 
 def _dry_run(args: argparse.Namespace, now: datetime, store: Any = None) -> int:
     if args.feed_json:
         saved = json.loads(Path(args.feed_json).read_text())
         date, doc = load_day(lambda _date: saved, now, args.date or "")
-        finder = HandleFinder(None, log=_log, now=now)
+        earlier: dict[str, Any] = {}
+        pool: list[dict[str, Any]] = []
     else:
         store = store or _store()
         date, doc = load_day(store.load_global_feed, now, args.date or "")
-        finder = HandleFinder(store.db, read_only=True, log=_log, now=now)
+        earlier = day_before(store.load_global_feed, date) if doc else {}
+        pool = load_pool(store) if doc and not args.date else []
     if not doc:
         _log(f"no feed for {date}; nothing to preview")
         return 1
-    kit = build_kit(date, doc, finder, now)
+    kit = build_kit(date, doc, now, earlier, pool=pool)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    subject, page, text = render_email(kit, preview=True)
-    (out / "post-kit.html").write_text(page)
-    (out / "post-kit.txt").write_text(f"Subject: {subject}\n\n{text}")
-    for draft in kit["drafts"]:
-        if draft.get("cover_name"):
-            (out / draft["cover_name"]).write_bytes(draft["cover_bytes"])
-    for line in _summary(kit):
-        _log(f"[dry-run] {line}")
-    to = os.getenv("TRACE_KIT_TO", "").strip()
-    _log(f"[dry-run] would send to {to}" if to else "[dry-run] TRACE_KIT_TO is not set: a live run would send nothing")
-    _log(f"[dry-run] preview: {out / 'post-kit.html'} ({len(kit['drafts'])} cover(s) beside it); handle lookups "
-         f"{finder.fetched} fetched, {finder.cached} cached, nothing written")
+    data = kit_json(kit)
+    if kit["image"]:
+        (out / kit["image"]["name"]).write_bytes(kit["image"]["bytes"])
+        data["image"].pop("base64")
+    (out / "post.txt").write_text(f"{kit['post']['text']}\n\n---\n{REPLY_TEXT}\n" if kit["post"] else "No post today.\n")
+    (out / "kit.json").write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    _emit(kit, args.json)
+    _log(f"[dry-run] preview in {out}; nothing written to the database")
     return 0
 
 
@@ -943,48 +965,28 @@ def run(args: argparse.Namespace, now: datetime | None = None, store: Any = None
     now = now or datetime.now(timezone.utc)
     if args.dry_run:
         return _dry_run(args, now, store)
-    if args.test_to:
-        store = store or _store()
-        date, doc = load_day(store.load_global_feed, now, args.date or "")
-        if not doc:
-            _log(f"no feed for {date}; nothing to send")
-            return 1
-        kit = build_kit(date, doc, HandleFinder(store.db, log=_log, now=now), now)
-        result = send_kit(kit, args.test_to, bucket="test")
-        ok = result.get("success") is not False
-        _log(f"test kit for {date} to {args.test_to}: {result.get('transport')} success={ok} {result.get('error') or ''}")
-        return 0 if ok else 1
-
-    to = os.getenv("TRACE_KIT_TO", "").strip()
-    if not to:
-        _log("TRACE_KIT_TO is not set; no kit to send")
-        return 0
-    # One run at a time, whether from the timer or by hand.
-    with open(getattr(args, "lock", None) or LOCK_FILE, "a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            _log("another post kit run is going; skipping")
-            return 0
-        return _send_daily(store or _store(), to, args, now)
+    return _write(store or _store(), args, now)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="build the kit and write an HTML preview; no email, no writes")
-    parser.add_argument("--out", default="/tmp/trace-postkit", help="where --dry-run writes the preview and covers")
+    parser.add_argument("--dry-run", action="store_true", help="write a preview to --out; nothing written to the database")
+    parser.add_argument("--out", default="/tmp/trace-postkit", help="where --dry-run writes the post, the image and kit.json")
     parser.add_argument("--feed-json", help="with --dry-run: read the day's feed doc from this JSON file, not the database")
     parser.add_argument("--date", help="feed date (YYYY-MM-DD); default today in IST, else yesterday")
-    parser.add_argument("--test-to", help="send one copy to this address only (no marker, no featured copy)")
+    parser.add_argument("--json", action="store_true", help="also fetch the image and videos and print them as JSON")
+    parser.add_argument("--fresh", action="store_true", help="write a new post even if today's is already written")
+    parser.add_argument("--day", help="only for this feed day (YYYY-MM-DD): the laptop's own date")
     parser.add_argument("--lock", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.feed_json and not args.dry_run:
         parser.error("--feed-json only works with --dry-run")
-    if args.date:
-        try:
-            datetime.strptime(args.date, "%Y-%m-%d")
-        except ValueError:
-            parser.error("--date must be a real date, YYYY-MM-DD")
+    for name in ("date", "day"):
+        if getattr(args, name):
+            try:
+                datetime.strptime(getattr(args, name), "%Y-%m-%d")
+            except ValueError:
+                parser.error(f"--{name} must be a real date, YYYY-MM-DD")
     sys.exit(run(args))
 
 

@@ -9,9 +9,9 @@ import { SITE_BASE_URL } from '@/lib/seo';
  * "Featured on Trace" share pages: one per item in a day's Tools and Top
  * articles (`v3_user_feeds/_global/daily/{date}` → `daily_pulse_roles.developer`,
  * built by backend/v3/build_daily_pulse.py). The pulse rewrites those lists
- * every 3 hours, so the founder's post kit (backend/v3/flows/build_post_kit.py)
- * copies what it featured to the same doc's `featured_items`: a link sent to a
- * maker keeps working after the item leaves the list. Read-only.
+ * every 3 hours, so the founder's daily post job (backend/v3/flows/build_post_kit.py)
+ * copies what it featured to the same doc's `featured_items`: a shared link
+ * keeps working after the item leaves the list. Read-only.
  */
 
 export type FeaturedSection = 'tools' | 'discussions';

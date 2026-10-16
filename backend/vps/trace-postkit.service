@@ -1,5 +1,5 @@
 [Unit]
-Description=Trace daily post kit email for the founder
+Description=Trace daily X post for the founder (written here, finished on the laptop)
 Wants=network-online.target
 After=network-online.target
 StartLimitIntervalSec=2h
@@ -10,10 +10,10 @@ Type=oneshot
 TimeoutStartSec=30min
 WorkingDirectory=%h/trace/backend
 EnvironmentFile=%h/trace/.env
-# The job takes ~/trace/.postkit.lock itself and writes post_kits/{date}
-# before sending, so manual runs are covered and a day is never mailed twice.
+# The job takes ~/trace/.postkit.lock itself and keeps the day's post in
+# post_kits/{date}, so the laptop's run gets the same post and the model is asked once.
 ExecStart=%h/trace/.venv/bin/python -u -m v3.flows.build_post_kit
-# A failed send retries; a kit that is sending or sent is skipped.
+# A failed run (no feed yet, the database down) retries.
 Restart=on-failure
 RestartSec=15min
 StandardOutput=append:%h/trace/logs/postkit.log

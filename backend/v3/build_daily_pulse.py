@@ -415,7 +415,7 @@ def _item_payload(
         "source": _safe_text(article.get("source", "")),
         "source_kind": _safe_text(article.get("source_kind", "")),
         "signal": _safe_text(article.get("signal", "")),
-        # Hacker News submitter, when known (post kit: who to tell they were featured)
+        # Hacker News submitter, when known
         "by": _safe_text(article.get("by", "")),
         "published_date": _safe_text(article.get("published_date", "")),
         "thumbnail": thumbnail,

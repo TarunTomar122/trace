@@ -163,49 +163,47 @@ tail -50 ~/trace/logs/instagram.log
 systemctl --user start trace-instagram.service
 ```
 
-## Post kit
+## Daily X post
 
 `trace-postkit.timer` runs `backend/v3/flows/build_post_kit.py` at 07:30 UK
-time and emails the founder (`TRACE_KIT_TO`) everything ready to post:
+time. It writes one X post for the founder and sends nothing: the founder's
+laptop picks it up the first time it wakes and posts it by hand
+(`backend/laptop/README.md`).
 
-- Release day: today's biggest AI model or product release, if at least
-  `TRACE_KIT_MIN_SOURCES` (default 3) outlets cover it (a second one only if it
-  has two thirds of the first's coverage), drafted as a long-form X article
-  with a 1600x900 JPEG cover attached. The model (`TRACE_KIT_MODEL`, default
-  gpt-4.1-mini) writes the draft; if it can't, or invents a number the sources
-  don't have, the draft is built from the story's own summary and key points.
-- An X post for the day's top story, linking the day's brief.
-- Featured makers: everything in today's Tools and Top articles with its share
-  page (`/featured/{date}/{id}`), best-effort X handles (page meta, the GitHub
-  owner's profile) plus the HN submitter, and a short line to send them.
-  Handles are cached in `maker_handles` (30 days, misses 3 days); links not
-  checked (out of time, GitHub's rate limit) say so. `GITHUB_TOKEN` raises the
-  GitHub API limit from 60 to 5000 requests an hour (no permissions needed).
-  Page fetches only go to public hosts on ports 80/443, every redirect checked.
-- Once a day: `post_kits/{date}` is written before sending (`sending`, then
-  `sent`/`failed`); a failed send is retried by the service, at most 3 tries in
-  all. A kit left at `sending` is never retried.
-  Before that the featured items are copied to the day's feed doc
-  (`featured_items`), so share pages keep working after the pulse replaces the
-  lists. Without `TRACE_KIT_TO` a run does nothing.
-- The cover headline is Satoshi Black, which may not be redistributed, so it is
-  not in the repo: copy `Satoshi-Black.otf` (Fontshare) to
-  `~/trace/backend/v3/assets/instagram/` or set `TRACE_KIT_FONT`. Without it
-  the cover uses Inter Bold, and the email says so.
+- The post opens "Biggest updates in tech in the last 24 hours:", has 3-6
+  short, plain lines and ends "Did I miss anything??". The model
+  (`TRACE_KIT_MODEL`, default gpt-6.1-sol) picks them from the feed's last 24
+  hours: today's and yesterday's topics, plus recent trending-pool articles no
+  topic covers yet. It picks by how interesting a story is, not by coverage.
+- A line with a number its story never mentions, hype ("insane", "!"), a
+  link or a bare domain ("x.ai") is dropped. If the model fails, the lines
+  are the widest-covered stories' titles.
+- `TRACE_KIT_X_MAX` sets the length: 360 by default, for X Premium but still
+  short.
+- One post per feed day, kept in `post_kits/{date}` (`post_json`), so the
+  07:30 run and the laptop get the same one. A template post is replaced on
+  the next run, up to 3 tries a day, and `--fresh` writes a new one.
+- With `--json` (the laptop's call) the run also fetches the best image of
+  the first story and searches YouTube for this week's videos of it, then
+  prints one `POSTKIT_JSON {...}` line. Image fetches only go to public
+  hosts on ports 80/443, with every redirect checked. YouTube blocks
+  downloads from the VPS, so the laptop cuts the clip.
+- Every run copies the day's Tools and Top articles to the feed doc
+  (`featured_items`), so share pages keep working after the pulse replaces
+  the lists.
 
 Setup (once):
 
 ```bash
-# add TRACE_KIT_TO (and GITHUB_TOKEN) to ~/trace/.env; copy Satoshi-Black.otf as above
 cp ~/trace/backend/vps/trace-postkit.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload && systemctl --user enable --now trace-postkit.timer
 ```
 
-Day to day (the job takes `~/trace/.postkit.lock`, so a manual run can't race the timer):
+Day to day (the job takes `~/trace/.postkit.lock`; the laptop's run waits for a 07:30 run still writing):
 
 ```bash
-cd ~/trace/backend && ../.venv/bin/python -m v3.flows.build_post_kit --dry-run   # preview in /tmp/trace-postkit, writes nothing
-../.venv/bin/python -m v3.flows.build_post_kit --test-to you@example.com         # one copy, no marker
+cd ~/trace/backend && ../.venv/bin/python -m v3.flows.build_post_kit --dry-run   # post, image and kit.json in /tmp/trace-postkit; writes nothing
+../.venv/bin/python -m v3.flows.build_post_kit --fresh                           # replace today's post
 tail -50 ~/trace/logs/postkit.log
 ```
 

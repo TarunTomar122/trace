@@ -1,14 +1,15 @@
 [Unit]
-Description=Build the Trace post kit at 07:30 UK time
+Description=Write the Trace X post at 07:30 UK time
 
 [Timer]
-# Europe/London follows BST and GMT. The kit uses whatever Tools and Top
-# articles the latest finished pulse wrote (trace-pulse.timer, every 3 hours
-# from 00:00 UTC); its featured_items copy keeps those share pages working
+# Europe/London follows BST and GMT. Writes the day's X post (the founder's
+# laptop picks it up when it wakes: backend/laptop/) and copies whatever Tools
+# and Top articles the latest finished pulse wrote (trace-pulse.timer, every 3
+# hours from 00:00 UTC) to featured_items, so those share pages keep working
 # when a later pulse replaces the lists.
 OnCalendar=*-*-* 07:30:00 Europe/London
 AccuracySec=1min
-# A missed run (VPS down) catches up at boot; post_kits/{date} stops doubles.
+# A missed run (VPS down) catches up at boot; post_kits/{date} keeps one post a day.
 Persistent=true
 Unit=trace-postkit.service
 
