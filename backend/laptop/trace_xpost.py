@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Any
 
 SSH_HOST = os.getenv("TRACE_XPOST_SSH", "vps")
-REMOTE = os.getenv("TRACE_XPOST_REMOTE", "cd ~/trace/backend && ../.venv/bin/python -u -m v3.flows.build_post_kit --json")
+REMOTE = os.getenv("TRACE_XPOST_REMOTE", "cd ~/trace/backend && ~/trace/.venv/bin/python -u -m v3.flows.build_post_kit --json")
 HOME = Path.home()
 OUT_ROOT = Path(os.getenv("TRACE_XPOST_DIR", str(HOME / "x-posts")))
 STATE_DIR = HOME / ".trace-xpost"
