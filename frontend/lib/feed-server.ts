@@ -612,24 +612,6 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
   return result;
 }
 
-/**
- * Opening the feed is the activity signal DAU/WAU/MAU and email routing are
- * built from. Callers run this through `after()`: a bare fire-and-forget write
- * is dropped when the serverless function freezes after responding, which is
- * why lastActiveAt stopped moving in early September.
- */
-export async function stampLastActive(uid: string): Promise<void> {
-  if (!uid || !adminFirestore) return;
-  try {
-    await adminFirestore
-      .collection('user_profiles')
-      .doc(uid)
-      .set({ lastActiveAt: new Date() }, { merge: true });
-  } catch (error) {
-    console.error('[feed-server] lastActiveAt stamp failed:', error);
-  }
-}
-
 export async function getPulseFeedForUid(uid: string, roleFromQuery = ''): Promise<Pick<
   V3UserFeed,
   'pulse' | 'daily_pulse' | 'community_pulse' | 'build_pulse'

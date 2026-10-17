@@ -3,7 +3,8 @@
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, Suspense } from "react";
+import { useEffect, useRef, Suspense } from "react";
+import { EMAIL_VISIT_PARAM } from "@/lib/email-visit";
 import {
   FEED_EVENTS,
   dailyBriefPreferenceProperties,
@@ -38,13 +39,19 @@ if (typeof window !== "undefined") {
 function PostHogPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lastUrl = useRef("");
 
   useEffect(() => {
     if (pathname) {
-      let url = window.origin + pathname;
-      if (searchParams && searchParams.toString()) {
-        url = url + `?${searchParams.toString()}`;
-      }
+      // The email visit id is the send's own id: never send it to analytics.
+      // Dropping it from the address bar then repeats the same URL, which
+      // is not a second page view.
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      params.delete(EMAIL_VISIT_PARAM);
+      const query = params.toString();
+      const url = window.origin + pathname + (query ? `?${query}` : "");
+      if (url === lastUrl.current) return;
+      lastUrl.current = url;
       posthog.capture("$pageview", { $current_url: url });
     }
   }, [pathname, searchParams]);

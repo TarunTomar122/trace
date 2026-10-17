@@ -174,7 +174,8 @@ python -m v3.scheduler --jobs newsletter                  # build + send
   Brevo for the buckets/domains you list.
 - Readers fall into `member` (daily), `winback` (dormant: at most 3 emails, 4
   days apart, opt-in with `NEWSLETTER_WINBACK=1`, Brevo only) and `landing`
-  (email-only signups).
+  (email-only signups). A dormant reader who opens the feed signed in, or
+  clicks through from any of the emails, becomes a `member` the next morning.
 
 Every variable is documented in [`.env.example`](.env.example).
 

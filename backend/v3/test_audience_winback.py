@@ -95,8 +95,9 @@ def _emails(rows: list[dict]) -> list[str]:
 class AudienceTests(unittest.TestCase):
     def setUp(self):
         self.writes: list = []
+        self.collections = {name: list(rows) for name, rows in COLLECTIONS.items()}
         self.store = types.SimpleNamespace(db=types.SimpleNamespace(
-            collection=lambda name: _Query(name, COLLECTIONS.get(name, []), self.writes)
+            collection=lambda name: _Query(name, self.collections.get(name, []), self.writes)
         ))
         self.v3 = types.SimpleNamespace(
             get_onboarded_users=lambda audience, max_inactive_days=7: [dict(p) for p in PROFILES]
@@ -125,6 +126,44 @@ class AudienceTests(unittest.TestCase):
         self.assertEqual([r["email"] for r in buckets["winback"]],
                          ["dormant1@x.com", "wbonly@x.com", "dormant2@x.com"])
         self.assertEqual(_emails(buckets["landing"]), ["dormant-landing@x.com", "landing@x.com"])
+
+    def test_a_visit_from_an_email_moves_a_dormant_reader_onto_the_daily(self):
+        self.collections["email_events"] = [
+            {"kind": "visit", "email": "Dormant1@X.com", "date": TODAY},
+            # Only browser-reported visits count, and only inside the window.
+            {"kind": "click", "email": "dormant2@x.com", "date": TODAY},
+            {"kind": "visit", "email": "wbonly@x.com", "date": _ago(30)[:10]},
+        ]
+        buckets = self.resolve(NEWSLETTER_WINBACK="1", EMAIL_BREVO_BUCKETS="winback")
+        self.assertIn("dormant1@x.com", _emails(buckets["member"]))
+        self.assertEqual(_emails(buckets["winback"]), ["dormant-landing@x.com", "dormant2@x.com", "wbonly@x.com"])
+
+    def test_a_visit_never_overrides_opt_out_or_deletion(self):
+        self.collections["email_events"] = [
+            {"kind": "visit", "email": "optout@x.com", "date": TODAY},
+            {"kind": "visit", "email": "deleted@x.com", "date": TODAY},
+        ]
+        buckets = self.resolve(NEWSLETTER_WINBACK="1", EMAIL_BREVO_BUCKETS="winback")
+        everyone = _emails(buckets["member"] + buckets["winback"] + buckets["landing"])
+        self.assertNotIn("optout@x.com", everyone)
+        self.assertNotIn("deleted@x.com", everyone)
+
+    def test_a_maxed_out_winback_reader_who_came_back_still_joins(self):
+        self.collections["email_events"] = [{"kind": "visit", "email": "maxed@x.com", "date": TODAY}]
+        buckets = self.resolve()
+        self.assertIn("maxed@x.com", _emails(buckets["member"]))
+
+    def test_an_unreadable_visit_log_does_not_stop_the_send(self):
+        real = self.store.db.collection
+
+        def collection(name):
+            if name == "email_events":
+                raise RuntimeError("down")
+            return real(name)
+
+        self.store.db.collection = collection
+        buckets = self.resolve()
+        self.assertIn("active@x.com", _emails(buckets["member"]))
 
     def test_winback_send_is_counted(self):
         N._record_winback(self.store, {"uid": "d", "winback_sends": 1})
@@ -178,6 +217,44 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(everything["interests"], [])
         # Lanes the pipeline does not publish are dropped.
         self.assertEqual(N.newsletter_prefs({"newsletterTopics": ["engineering", "ai"]})["interests"], ["ai"])
+
+    def test_come_read_links_carry_the_send_id_but_share_and_unsubscribe_do_not(self):
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "0"}):
+            _, html, text = self.render("winback")
+        self.assertIn("/feed?from=email&story=https%3A%2F%2Fe.com%2Fa&et=tid", html)
+        self.assertIn("/feed?from=email&et=tid", html)
+        self.assertIn("/brief/customize?from=email&et=tid", html)
+        self.assertIn(f"/brief/{TODAY}?from=email-share\"", html)
+        self.assertNotIn("from=email-share&et=", html)
+        self.assertNotIn("unsubscribe?email=r%40x.com&et=", html)
+        self.assertIn('href="https://e.com/a"', html)  # the source link is untouched
+        self.assertIn("/brief/customize?from=email&et=tid", text)
+        self.assertNotIn("&et=", N._render("member", [("ai", [dict(STORY)])], TODAY, "r@x.com", "")[1])
+
+    def test_publisher_links_never_get_the_send_id(self):
+        story = dict(STORY, url="https://pub.example/a?from=email&x=1")
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "0"}):
+            html = N._render("member", [("ai", [story])], TODAY, "r@x.com", "tid")[1]
+        self.assertNotIn("pub.example/a?from=email&x=1&et=", html)
+        self.assertNotIn("pub.example/a?from=email&amp;x=1&amp;et=", html)
+        # Our own story link for the same article still carries it.
+        self.assertIn("&et=tid", html)
+        tagged = N._tag_visit_links(
+            '<a href="https://www.yourtrace.online/feed?from=email">'
+            '<a href="https://evil-yourtrace.online/feed?from=email">', "tid")
+        self.assertIn("www.yourtrace.online/feed?from=email&et=tid", tagged)
+        self.assertIn('evil-yourtrace.online/feed?from=email"', tagged)
+
+    def test_visit_url_keeps_fragments_and_escaping(self):
+        self.assertEqual(N._visit_url("https://t.co/a", "x"), "https://t.co/a?et=x")
+        self.assertEqual(N._visit_url("https://t.co/a?from=email#top", "x"), "https://t.co/a?from=email&et=x#top")
+        self.assertEqual(N._visit_url("https://t.co/a?from=email&amp;b=1", "x"),
+                         "https://t.co/a?from=email&amp;b=1&amp;et=x")
+
+    def test_tracking_redirect_keeps_the_send_id_in_the_destination(self):
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "1"}):
+            _, html, _ = self.render("member")
+        self.assertIn("from%3Demail%26et%3Dtid", html)
 
     def test_members_manage_settings_in_the_app(self):
         _, html, _ = self.render("member")

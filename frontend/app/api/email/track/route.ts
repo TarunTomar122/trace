@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { EMAIL_VISIT_PARAM } from '@/lib/email-visit';
 
 /**
  * Open and click tracking for the daily email.
@@ -10,6 +11,9 @@ import { adminDb } from '@/lib/firebase-admin';
  * `<trackId>` is a per-send UUID minted by backend/v1/tools/email_sender.py. It is
  * unguessable rather than signed, which is enough for aggregate stats and
  * avoids putting a secret in every email.
+ *
+ * Visits from the email's own links are reported separately, by the browser,
+ * to /api/email/visit.
  */
 
 const PIXEL = Buffer.from(
@@ -60,12 +64,24 @@ export async function GET(request: NextRequest) {
     }
     // after(): a bare fire-and-forget write is dropped when the function
     // freezes after responding, which is why no events landed after Sep 22.
-    after(() => record(trackId, 'click', destination));
+    after(() => record(trackId, 'click', withoutVisitId(destination)));
     return NextResponse.redirect(destination, 302);
   }
 
   after(() => record(trackId, 'open'));
   return pixel();
+}
+
+// The destination carries the send's id for /api/email/visit; the recorded
+// target drops it so click targets still group by link.
+function withoutVisitId(destination: string): string {
+  try {
+    const url = new URL(destination);
+    url.searchParams.delete(EMAIL_VISIT_PARAM);
+    return url.toString();
+  } catch {
+    return destination;
+  }
 }
 
 async function record(trackId: string, kind: 'open' | 'click', target = '') {

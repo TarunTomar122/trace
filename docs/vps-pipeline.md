@@ -49,7 +49,9 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   lanes in their existing relative order. Markets prefers macro stories.
 - Delivery goes through our own Postfix on the VPS with Brevo as the per-message
   fallback (`EMAIL_TRANSPORT=auto`), and every attempt lands in `email_sends`.
-  Opens and clicks land in `email_events`. `/dev/analytics` renders both: volume
+  Opens, clicks and visits from the email (`kind: 'visit'`, which make a
+  win-back reader a member) land in `email_events`. `/dev/analytics` renders
+  sends and opens/clicks: volume
   per day, transport split, failures, DKIM status, openers and clickers per
   bucket, top clicked targets, and the last 25 sends. See
   `docs/self-hosted-email.md`.

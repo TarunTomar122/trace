@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { adminFirestore } from '@/lib/firebase-admin';
+import { stampLastActive } from '@/lib/last-active';
 import { getSignedInUid } from '@/lib/request-auth';
 
 interface ReadingStreak {
@@ -70,6 +71,10 @@ export async function GET(request: NextRequest) {
     }
     const uid = await getSignedInUid(request);
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // The signed-in web feed asks for the streak on every load, and this is
+    // its only request that knows who is reading: count it as activity.
+    after(() => stampLastActive(uid));
 
     const snap = await adminFirestore.collection('user_streaks').doc(uid).get();
     const streak = snap.exists ? normalize(snap.data() as Partial<ReadingStreak>) : defaults();

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
-import { getBootstrapFeedForUid, stampLastActive } from '@/lib/feed-server';
+import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import { stampLastActive } from '@/lib/last-active';
 import { filterSendWorthyTopics, rejectedStoryUrls } from '@/lib/feed-value';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 

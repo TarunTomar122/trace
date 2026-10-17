@@ -73,8 +73,14 @@ WINBACK_MAX_SENDS = 3
 WINBACK_GAP_DAYS = 4
 WINBACK_DAILY_CAP_DEFAULT = 250
 # Someone who got the daily inside this window stays on it, even if the app
-# never stamped them active (lastActiveAt was not written Sep 4 – Oct 12).
+# never stamped them active (the web feed wrote no lastActiveAt Sep 4 – Oct 17).
+# The same window counts a visit from one of our emails as activity.
 MEMBER_CONTINUITY_DAYS = 7
+# Our own "come read" links carry the send's track id in this query param
+# (`?from=email&et=<id>`). The site reports the visit from the browser
+# (frontend/components/EmailVisitTracker.tsx -> POST /api/email/visit), which
+# writes email_events/visit-<id>; _recent_email_visitors reads it back.
+EMAIL_VISIT_PARAM = "et"
 
 # Selection priority: AI, markets, tech, design, startups, then other lanes.
 # Per-bucket slots give the leading lanes the biggest shares.
@@ -671,6 +677,27 @@ def _recent_daily_recipients(store: FirestoreStore, since: str) -> set[str]:
     return recipients
 
 
+def _recent_email_visitors(store: FirestoreStore, since: str) -> set[str]:
+    """Emails whose reader came to the site from one of our emails on or after `since`.
+
+    Recorded by the browser, so a link scanner that only fetches the URL does
+    not count (one that runs the page in a real browser, or a friend the email
+    was forwarded to, still can). Best effort: the daily must still go out if
+    this read fails.
+    """
+    visitors: set[str] = set()
+    try:
+        docs = store.db.collection("email_events").where("date", ">=", since).stream()
+        for doc in docs:
+            data = doc.to_dict() or {}
+            email = str(data.get("email", "")).strip().lower()
+            if data.get("kind") == "visit" and email:
+                visitors.add(email)
+    except Exception as exc:  # noqa: BLE001 - audience must still resolve
+        _log(f"email visits skipped: {exc}")
+    return visitors
+
+
 # The lanes the pipeline publishes and the builder offers (newsletter-prefs.ts).
 PICKABLE_LANES = ("ai", "markets", "tech", "ux-design", "startups")
 
@@ -770,15 +797,17 @@ def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
     free never silently drops a current reader). Everyone else with email on
     is dormant and, when enabled, gets at most WINBACK_MAX_SENDS win-back
     emails, most recently active first, capped per day. Opening the feed
-    stamps lastActiveAt, which makes them a member the next morning.
+    signed in (lastActiveAt) or coming to the site from one of our emails
+    makes them a member the next morning.
     """
     buckets: dict[str, list[dict]] = {"member": [], "winback": [], "landing": []}
     profile_emails: set[str] = set()
     now = datetime.now(timezone.utc)
     active_cutoff = now - timedelta(days=MEMBER_CONTINUITY_DAYS)
-    continuing = _recent_daily_recipients(
-        store, (now - timedelta(days=MEMBER_CONTINUITY_DAYS)).strftime("%Y-%m-%d")
-    )
+    since = active_cutoff.strftime("%Y-%m-%d")
+    continuing = _recent_daily_recipients(store, since)
+    visitors = _recent_email_visitors(store, since)
+    came_back = 0
     winback_on, winback_reason = winback_enabled()
     if not winback_on:
         _log(f"win-back off: {winback_reason}")
@@ -812,10 +841,15 @@ def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
             or (last is not None and last >= active_cutoff)
         ):
             buckets["member"].append(recipient)
+        elif email in visitors:
+            buckets["member"].append(recipient)
+            came_back += 1
         elif winback_on and _winback_due(profile, now):
             recipient["winback_sends"] = int(profile.get("winbackSends") or 0)
             dormant.append((last or datetime.min.replace(tzinfo=timezone.utc), recipient))
 
+    if came_back:
+        _log(f"{came_back} dormant account(s) came back from an email and join the daily")
     dormant.sort(key=lambda item: item[0], reverse=True)
     buckets["winback"] = [recipient for _, recipient in dormant[:max(cap, 0)]]
     # A dormant account that also joined from the landing page and was not
@@ -1107,6 +1141,50 @@ def _daily_emoji(date: str) -> str:
 
 
 
+def _visit_url(url: str, track_id: str) -> str:
+    """`url` with the send's track id added (see EMAIL_VISIT_PARAM)."""
+    if not track_id:
+        return url
+    base, hash_mark, fragment = url.partition("#")
+    sep = ("&amp;" if "&amp;" in base else "&") if "?" in base else "?"
+    return f"{base}{sep}{EMAIL_VISIT_PARAM}={track_id}{hash_mark}{fragment}"
+
+
+# Our own "come read" links: `from=email` exactly. Not the share link
+# (from=email-share: it gets forwarded, and a friend's visit is not this
+# reader's), unsubscribe, settings or source links.
+_VISIT_LINK = re.compile(r'href="([^"]*[?&](?:amp;)?from=email(?=[&#"])[^"]*)"')
+
+
+def _own_hosts() -> set[str]:
+    """APP_URL's host, plus the hosted site (the template's logo links the bare domain)."""
+    hosts = {"yourtrace.online", "www.yourtrace.online"}
+    app_host = (urlparse(APP_URL).hostname or "").lower()
+    if app_host:
+        hosts.add(app_host)
+    return hosts
+
+
+def _tag_visit_links(html: str, track_id: str) -> str:
+    """Add the send's track id to the email's own "come read" links.
+
+    Independent of EMAIL_TRACKING: this is a query param on links that already
+    point at our site, not a redirect hop or a pixel. A publisher URL that
+    happens to contain from=email is left alone: the id is not theirs to see.
+    """
+    if not track_id:
+        return html
+    hosts = _own_hosts()
+
+    def _tag(match: "re.Match[str]") -> str:
+        url = match.group(1)
+        if (urlparse(url.replace("&amp;", "&")).hostname or "").lower() not in hosts:
+            return match.group(0)
+        return f'href="{_visit_url(url, track_id)}"'
+
+    return _VISIT_LINK.sub(_tag, html)
+
+
 def _instrument_tracking(html: str, track_id: str) -> str:
     """Route our own links through the tracker and append the open pixel.
 
@@ -1187,8 +1265,9 @@ def _render(
             "Email settings</a>"
         )
     html = html.replace("{{FOOTER_LINKS}}", footer)
+    html = _tag_visit_links(html, track_id)
     html = _instrument_tracking(html, track_id)
-    text = _text_version(_headline(story_count), sections, date, show_summary)
+    text = _text_version(_headline(story_count), sections, date, show_summary, track_id)
     return subject, html, text
 
 
@@ -1202,6 +1281,7 @@ def _text_version(
     sections: list[tuple[str, list[dict]]],
     date: str = "",
     show_summary: bool = True,
+    track_id: str = "",
 ) -> str:
     lines = ["TRACE", headline, ""]
     for _, stories in sections:
@@ -1218,7 +1298,9 @@ def _text_version(
             lines.append("")
     if date:
         lines.append(f"Share today's brief: {_share_url(date)}")
-    lines.append(f"Customize your brief: {APP_URL}/brief/customize?from=email")
+    lines.append(
+        f"Customize your brief: {_visit_url(f'{APP_URL}/brief/customize?from=email', track_id)}"
+    )
     return "\n".join(lines)
 
 

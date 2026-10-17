@@ -5,7 +5,8 @@ import {
   TRACE_SESSION_COOKIE_NAME,
   verifyTraceSession,
 } from '@/lib/server-session';
-import { getBootstrapFeedForUid, getBootstrapFeedFromProfile, stampLastActive } from '@/lib/feed-server';
+import { getBootstrapFeedForUid, getBootstrapFeedFromProfile } from '@/lib/feed-server';
+import { stampLastActive } from '@/lib/last-active';
 
 export async function GET(request: NextRequest) {
   const requestStartedAt = performance.now();

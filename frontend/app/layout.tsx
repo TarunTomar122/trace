@@ -5,6 +5,7 @@ import { PostHogProvider } from "@/lib/posthog";
 import { APPLE_TOUCH_ICON, WEB_APP_ICONS } from "@/lib/app-icons";
 import ThemeProvider from "@/components/ThemeProvider";
 import AffiliateTracker from "@/components/AffiliateTracker";
+import EmailVisitTracker from "@/components/EmailVisitTracker";
 import "./globals.css";
 import Script from "next/script";
 
@@ -158,6 +159,7 @@ export default function RootLayout({
           <PostHogProvider>
             <Suspense fallback={null}>
               <AffiliateTracker />
+              <EmailVisitTracker />
             </Suspense>
             {children}
           </PostHogProvider>

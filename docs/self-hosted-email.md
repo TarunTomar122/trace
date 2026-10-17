@@ -85,7 +85,9 @@ Two related warm-up settings:
   as bulk.
 - `EMAIL_TRACKING=0` drops the open pixel and the redirect-wrapped links. Both
   are bulk-sender tells that a domain with no history cannot afford yet. The
-  dashboard's open and click columns read zero while it is off.
+  dashboard's open and click columns read zero while it is off. The email's own
+  links still carry `et=<track id>` either way: a plain query param on our own
+  links, not a redirect hop or a pixel.
 
 ## DNS (do this before warming — it is the part that cannot be rushed)
 
@@ -144,7 +146,12 @@ Every attempt is written to `email_sends` (recipient, bucket, transport, status,
 message id, tracking id) by `email_sender.py`. Opens and clicks are recorded in
 `email_events` by `frontend/app/api/email/track/route.ts`, and the email's own
 links are wrapped through that endpoint when `EMAIL_TRACKING` is on (`0` turns
-it off; unsubscribe and profile links are never wrapped).
+it off; unsubscribe and profile links are never wrapped). Visits are recorded
+whatever `EMAIL_TRACKING` says: the email's own links (`from=email`, not the
+share link) carry `et=<track id>`, the browser reports it to
+`frontend/app/api/email/visit/route.ts`, and that writes one
+`email_events/visit-<track id>` doc (`kind: 'visit'`) per send. The morning run
+counts those readers as active, which is how a win-back reader joins the daily.
 
 That feeds the dashboard at **`/dev/analytics`** (signed in, dev only): sends
 per day, transport split while ramping, failures and Brevo fallbacks, DKIM

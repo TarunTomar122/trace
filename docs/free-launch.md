@@ -32,10 +32,14 @@ Nothing here has been deployed, pushed, sent, or cancelled.
 | `NEWSLETTER_WINBACK` | `1` when ready | Off by default. The run refuses unless `winback` is in `EMAIL_BREVO_BUCKETS`. |
 | `NEWSLETTER_WINBACK_DAILY_CAP` | `250` | Stays inside Brevo's free 300/day. |
 
-Members: anyone active in the last 7 days, still on a paid plan, or who got
-the daily in the last 7 days (so nobody on today's list is dropped).
+Members: anyone active in the last 7 days (opened the feed signed in, or came
+to the site from one of our emails), still on a paid plan, or who got the
+daily in the last 7 days (so nobody on today's list is dropped).
 Win-back: dormant accounts, at most 3 emails, 4 days apart, most recently
-active first. Opening the feed makes them a member the next morning.
+active first. Opening the feed signed in, or clicking through from any of
+our emails, makes them a member the next morning. The email's own links carry
+the send's id (`?from=email&et=<track id>`); the browser reports the visit to
+`/api/email/visit`, which writes `email_events/visit-<track id>`.
 
 ### Publishing the open-source repo (when you are ready)
 
@@ -65,7 +69,11 @@ the public repo is generated from it.
 ## 2. What changed
 
 - **Measurement**: open/click tracking and `lastActiveAt` were silently
-  dropped on Vercel (fire-and-forget writes); both now use `after()`.
+  dropped on Vercel (fire-and-forget writes); both now use `after()`. The web
+  feed still never stamped `lastActiveAt` (the `/feed` page stopped calling
+  `/api/feed`) until Oct 17: the signed-in feed's streak request
+  (`GET /api/retention/streak`) now stamps it, and visits from the email
+  count as activity too (see Win-back above).
 - **Free for everyone**: paywall, Pro, checkout and `/subscribe` removed
   (redirects to `/feed`). Sponsored tool purchases still work.
 - **Email**: 10 stories for everyone; readers pick topics, 5/10/15 stories,
