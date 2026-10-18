@@ -8,7 +8,7 @@ const story = (over) => ({
   title: over.title || over.id,
   cat: over.cat || 'ai',
   sources: over.sources || ['a.com'],
-  ts: over.ts || 1,
+  ts: over.ts ?? Date.now(),
   tags: over.tags,
   body: over.body,
   sendWorthy: over.sendWorthy === undefined ? 1 : over.sendWorthy,
@@ -88,4 +88,27 @@ test('prefers broader coverage when verdicts tie', () => {
     { count: 1, lanes: ['markets'] },
   );
   assert.equal(picked[0].id, 'wide');
+});
+
+test('a launch whose newest coverage is over 36 hours old competes in its lane', () => {
+  const now = Date.parse('2026-10-18T06:00:00Z');
+  const hours = (h) => now - h * 3_600_000;
+  const list = [
+    story({ id: 'flux', cat: 'ai', title: 'Black Forest Labs unveils FLUX 3 Klein, a 5.6B open-weights image model',
+      sources: ['a.com', 'b.com', 'c.com', 'd.com', 'e.com', 'f.com'], ts: hours(51), sendWorthy: 2 }),
+    story({ id: 'nemotron', cat: 'ai', title: 'NVIDIA releases Nemotron 3.5, an open 120B vision model', ts: hours(6), sendWorthy: 2 }),
+    story({ id: 'ai-1', cat: 'ai', sendWorthy: 1, ts: hours(2) }),
+    story({ id: 'mk-1', cat: 'markets', sendWorthy: 1, ts: hours(2) }),
+    story({ id: 'tech-1', cat: 'tech', sendWorthy: 1, ts: hours(2) }),
+    story({ id: 'tech-2', cat: 'tech', sendWorthy: 1, ts: hours(2) }),
+  ];
+  const picked = selectBigThings(list, { count: 5, now });
+  assert.equal(picked[0].id, 'nemotron');
+  // Still in the edition, as the AI lane's strongest story.
+  assert.equal(picked[1].id, 'flux');
+
+  // Inside the window it still leads; an undated launch is never treated as stale.
+  assert.equal(selectBigThings(list, { count: 5, now: hours(51 - 35) })[0].id, 'flux');
+  const undated = list.map((s) => (s.id === 'flux' ? { ...s, ts: 0 } : s));
+  assert.equal(selectBigThings(undated, { count: 5, now })[0].id, 'flux');
 });

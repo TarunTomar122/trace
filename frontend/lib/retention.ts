@@ -1,5 +1,7 @@
 /** Client-side retention helpers: thread follows, milestones, streak UI. */
 
+import { isStaleStory } from './feed-ranking.ts';
+
 export const CHROME_EXTENSION_URL =
   'https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk';
 
@@ -30,14 +32,21 @@ function storageKey(base: string, uid?: string | null): string {
   return `${base}:${uid || 'guest'}`;
 }
 
-/** Top-ranked story with multi-source coverage — editorial "story of the day". */
-export function pickStoryOfDay<T extends { id: string; rank: number; sources?: string[]; threadId?: string }>(
+/**
+ * Top-ranked story with multi-source coverage — editorial "story of the day".
+ * Only stories with coverage in the last FRESH_STORY_HOURS qualify while any
+ * exist, so a well-covered launch from two days ago does not keep the top spot.
+ */
+export function pickStoryOfDay<T extends { id: string; rank: number; sources?: string[]; threadId?: string; ts?: number }>(
   stories: T[],
+  now: number = Date.now(),
 ): T | null {
   if (!stories.length) return null;
   const sorted = [...stories].sort((a, b) => a.rank - b.rank);
-  const multi = sorted.find((s) => (s.sources?.length || 0) >= 2);
-  return multi || sorted[0] || null;
+  const fresh = sorted.filter((s) => !isStaleStory(s.ts, now));
+  const pool = fresh.length ? fresh : sorted;
+  const multi = pool.find((s) => (s.sources?.length || 0) >= 2);
+  return multi || pool[0] || null;
 }
 
 /** Newest story in the pool — hero for the Recent sort. */

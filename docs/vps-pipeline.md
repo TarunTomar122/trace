@@ -43,8 +43,10 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   `dailyNewsletterEnabled`/`newsletterOptIn = false` on matching profiles.
 - Selection priority is AI → markets → tech → design → startups, with up to
   3/2/2/1/1/1 slots on Pro and 2/1/1 on the 5-story emails. Model releases
-  take up to two Pro slots or one free/landing slot first; unused slots are
-  filled from the remaining lanes. Pro displays the selected sections as model
+  take up to two Pro slots or one free/landing slot first, but only while
+  their newest coverage is under 36 hours old (`RELEASE_FRESH_HOURS`; the
+  pool spans about three days); older launches compete in their lane. Unused
+  slots are filled from the remaining lanes. Pro displays the selected sections as model
   releases → AI → markets → startups → tech → design, then any other selected
   lanes in their existing relative order. Markets prefers macro stories.
 - Delivery goes through our own Postfix on the VPS with Brevo as the per-message

@@ -223,11 +223,15 @@ export function mapTrendingToStories(
     if (!topic?.title && articles.length === 0) return null;
 
     const first = articles[0] || {};
+    // Newest dated article (an undated first one must not hide the rest), else
+    // the topic's last update: the same age the email measures.
     const newest = articles.reduce(
       (best: { published_date?: string }, a: { published_date?: string }) =>
-        (Date.parse(a?.published_date || '') > Date.parse(best?.published_date || '') ? a : best),
+        (Date.parse(a?.published_date || '') > (Date.parse(best?.published_date || '') || 0) ? a : best),
       first,
     );
+    const newestDate = newest?.published_date || first.published_date
+      || (typeof topic.last_updated_at === 'string' ? topic.last_updated_at : '');
     const sources: string[] = [];
     for (const a of articles) {
       const d = domainOf(a.url);
@@ -263,8 +267,8 @@ export function mapTrendingToStories(
       sources,
       sourceNames: source ? [source] : [],
       coverage,
-      time: timeAgo(newest?.published_date || first.published_date),
-      ts: Date.parse(newest?.published_date || first.published_date || '') || 0,
+      time: timeAgo(newestDate),
+      ts: Date.parse(newestDate) || 0,
       cat: topic.interest_id || first.interest_id || 'tech',
       url: first.url || '#',
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],

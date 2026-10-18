@@ -8,10 +8,13 @@ import {
   storyBoost,
 } from './feed-ranking.ts';
 
+// Fresh by default: launches older than FRESH_STORY_HOURS lose their bump.
+const NOW = Date.now();
+
 function story(overrides = {}) {
   return {
     cat: 'tech',
-    ts: 1_700_000_000_000,
+    ts: NOW,
     sources: ['a.com'],
     ...overrides,
   };
@@ -192,6 +195,16 @@ test('signed-out Top floats a model launch above backend rank', () => {
     { interests: [], role: null },
   );
   assert.equal(ranked[0].title, 'Bonsai 2 27B');
+});
+
+test('a launch whose newest coverage is over 36 hours old loses its bump', () => {
+  const now = Date.parse('2026-10-18T06:00:00Z');
+  const input = [
+    story({ cat: 'ai', title: 'Eight states sue OpenAI', sources: ['a', 'b', 'c'], ts: now - 3_600_000 }),
+    story({ cat: 'ai', title: 'Bonsai 2 27B', sources: ['a'], ts: now - 50 * 3_600_000 }),
+  ];
+  assert.equal(rankStoriesForProfile(input, { interests: ['ai'] }, { diversify: false, now })[0].title, 'Eight states sue OpenAI');
+  assert.equal(rankStoriesForProfile(input, { interests: ['ai'] }, { diversify: false, now: now - 20 * 3_600_000 })[0].title, 'Bonsai 2 27B');
 });
 
 test('isModelRelease accepts param-size launches and skips incident coverage', () => {

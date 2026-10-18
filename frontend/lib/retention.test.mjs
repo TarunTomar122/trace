@@ -15,6 +15,21 @@ test('pickStoryOfDay prefers multi-source top rank', () => {
   assert.equal(pickStoryOfDay(stories)?.id, 'b');
 });
 
+test('pickStoryOfDay leads with fresh coverage over a two-day-old story', () => {
+  const now = Date.parse('2026-10-18T06:00:00Z');
+  const hours = (h) => now - h * 3_600_000;
+  const flux = { id: 'flux', rank: 1, sources: ['a.com', 'b.com', 'c.com'], ts: hours(51) };
+  const single = { id: 'single', rank: 2, sources: ['a.com'], ts: hours(6) };
+  const muse = { id: 'muse', rank: 3, sources: ['a.com', 'b.com'], ts: hours(10) };
+  assert.equal(pickStoryOfDay([flux, single, muse], now)?.id, 'muse');
+  // Fresh but single-source still beats stale.
+  assert.equal(pickStoryOfDay([flux, single], now)?.id, 'single');
+  // Nothing fresh (a stalled pipeline): fall back to the top multi-source story.
+  assert.equal(pickStoryOfDay([flux, { ...muse, ts: hours(40) }], now)?.id, 'flux');
+  // Undated stories are not treated as stale.
+  assert.equal(pickStoryOfDay([{ ...flux, ts: 0 }, muse], now)?.id, 'flux');
+});
+
 test('pickLatestStory returns the newest by timestamp', () => {
   const stories = [
     { id: 'old', ts: 100 },

@@ -68,7 +68,9 @@ instance needs `oauth_clients,oauth_codes,oauth_tokens,oauth_grants` in
 - **Grouping.** Articles about the same event are merged into one story, so
   you see "1 story · 5 sources" instead of five near-identical links.
 - **Ranking.** Coverage, source weight, recency and an LLM editor (OpenAI
-  structured outputs) decide what makes the cut and what is worth an email. Model releases get their own slot.
+  structured outputs) decide what makes the cut and what is worth an email.
+  Model releases get their own slot while their newest coverage is under 36
+  hours old; Story of the day follows the same rule.
 - **Cost.** Summaries are cached per article, so LLM cost scales with the
   number of articles, not the number of readers.
 - **The brief.** `backend/v3/flows/send_audience_newsletter.py` picks each

@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { adminFirestore } from '@/lib/firebase-admin';
 import { sameEvent } from '@/lib/same-event';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
-import { isModelRelease } from '@/lib/feed-ranking';
+import { isModelRelease, isStaleStory } from '@/lib/feed-ranking';
 
 /**
  * Public daily editions: the non-personalised brief the email pipeline
@@ -242,6 +242,10 @@ function topicToPool(raw: unknown): PoolStory[] {
   const url = asText(lead.url);
   const sources = [...new Set(articles.map((article) => asText(article?.source) || domainOf(asText(article?.url))).filter(Boolean))];
   const verdict = topic.jev_send_worthy;
+  // Newest coverage, as the email measures it: a launch older than that
+  // window no longer takes the release slot.
+  const newest = Math.max(0, ...articles.map((article) => Date.parse(asText(article?.published_date)) || 0))
+    || Date.parse(asText(topic.last_updated_at)) || 0;
   return [{
     topic_id: id,
     title,
@@ -254,7 +258,8 @@ function topicToPool(raw: unknown): PoolStory[] {
     coverage: Math.max(1, Number(topic.article_count) || articles.length || 1),
     interest_id: asText(topic.interest_id).toLowerCase(),
     macro: false,
-    model_release: isModelRelease({ title, tags: Array.isArray(topic.tags) ? topic.tags.map(asText) : [] }),
+    model_release: isModelRelease({ title, tags: Array.isArray(topic.tags) ? topic.tags.map(asText) : [] })
+      && !isStaleStory(newest),
     send_worthy: typeof verdict === 'number' ? verdict : null,
   }];
 }

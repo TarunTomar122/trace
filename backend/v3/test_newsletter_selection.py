@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from v3.flows.send_audience_newsletter import _select, _story_groups
@@ -138,6 +139,53 @@ class NewsletterSelectionTests(unittest.TestCase):
             "trending": [],
         }
         self.assertEqual(len(_story_groups(feed)), 2)
+
+    def test_only_fresh_launches_take_a_release_slot(self):
+        now = datetime(2026, 10, 18, 8, 31, tzinfo=timezone.utc)
+
+        def launch(title, url, published, sources=1):
+            articles = [
+                {"title": title, "url": f"{url}/{i}", "source": f"S{i}", "published_date": published if i == 0 else ""}
+                for i in range(sources)
+            ]
+            return {"id": url, "title": title, "interest_id": "ai", "summary": "", "source_count": sources,
+                    "articles": articles}
+
+        feed = {
+            "trending_topics": [
+                # Two days old with wide coverage: yesterday's lead, not today's.
+                launch("Black Forest Labs unveils FLUX 3 Image Klein, a 5.6B open-weights image model",
+                       "https://a.com/flux", "2026-10-16T02:46:31.792000+00:00", sources=6),
+                launch("NVIDIA releases Nemotron 3.5 Super VL, an open 120B vision model",
+                       "https://b.com/nemotron", "2026-10-17T23:53:40+00:00"),
+                # Undated launch: keep the flag rather than guess.
+                launch("Mistral releases Magistral 3, a 24B reasoning model", "https://c.com/magistral", ""),
+            ],
+            "trending": [],
+        }
+        groups = {g["topic_id"]: g for g in _story_groups(feed, now=now)}
+        self.assertFalse(groups["https://a.com/flux"]["model_release"])
+        self.assertTrue(groups["https://b.com/nemotron"]["model_release"])
+        self.assertTrue(groups["https://c.com/magistral"]["model_release"])
+
+        with patch("v3.flows.send_audience_newsletter._story_groups",
+                   return_value=list(groups.values())):
+            sections = dict(_select({}, [], 5, "landing"))
+        self.assertEqual([g["topic_id"] for g in sections["model-releases"]], ["https://b.com/nemotron"])
+        # The old launch still makes the email, in its lane.
+        self.assertIn("https://a.com/flux", [g["topic_id"] for g in sections["ai"]])
+
+        # 35 hours later the same launch still leads.
+        self.assertTrue(_story_groups(feed, now=datetime(2026, 10, 17, 13, 46, tzinfo=timezone.utc))[0]["model_release"])
+
+        # A merged group is as old as its newest dated story, even when the
+        # story it was built from has no date.
+        undated_lead = launch("Qwen releases Qwen 4, a 72B open model", "https://d.com/qwen", "", sources=3)
+        dated_twin = launch("Qwen releases Qwen 4, a 72B open model", "https://e.com/qwen",
+                            "2026-10-16T01:00:00+00:00")
+        merged = _story_groups({"trending_topics": [undated_lead, dated_twin], "trending": []}, now=now)
+        self.assertEqual(len(merged), 1)
+        self.assertFalse(merged[0]["model_release"])
 
     def test_pro_reorders_finished_sections_only(self):
         groups = [

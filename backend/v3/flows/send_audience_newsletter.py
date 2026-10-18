@@ -12,9 +12,9 @@ Trace is free for everyone; there are no paid tiers.
 - landing: email-only subscribers from the homepage form -> the day's
   biggest stories (global, not personalized).
 
-Stories come from the 24h trending pool (v3_user_feeds/_global). Topics that
-Jev flagged send_worthy=0 are dropped whenever verdicts exist. Story links
-point at the app, never the publisher.
+Stories come from the trending pool (v3_user_feeds/_global, about three days
+of coverage). Topics that Jev flagged send_worthy=0 are dropped whenever
+verdicts exist. Story links point at the app, never the publisher.
 """
 
 from __future__ import annotations
@@ -105,6 +105,11 @@ SUBJECT_EMOJIS = ("\U0001f62e", "\U0001f525", "\U0001f680", "\U0001f440", "\U000
 # pattern. Slots come out of the same total story count.
 MODEL_RELEASE_LANE = "model-releases"
 MODEL_RELEASE_SLOTS = {"member": 2, "winback": 2, "landing": 1}
+# A launch leads only while its newest coverage is this fresh. The pool spans
+# about three days, so a well-covered launch would otherwise lead every email
+# until it ages out; after the window it competes in its lane like any story.
+# Same window as FRESH_STORY_HOURS in frontend/lib/feed-ranking.ts.
+RELEASE_FRESH_HOURS = 36
 
 # Sort only the finished full-edition sections; LANE_ORDER controls selection.
 FULL_DISPLAY_ORDER = (
@@ -146,8 +151,8 @@ BUCKETS = {
     "member": {
         "count": MEMBER_COUNT,
         "intro": (
-            "The complete picture for your interests, ranked from everything "
-            "that moved in the last 24 hours."
+            "The complete picture for your interests, ranked by how much "
+            "each story matters."
         ),
     },
     "winback": {
@@ -324,6 +329,10 @@ def _candidates(feed: dict) -> list[dict]:
         seen_urls.add(url)
         for a in articles:
             seen_urls.add(str(a.get("url", "")).strip())
+        newest = max(
+            (ts for ts in (_parse_ts(a.get("published_date")) for a in articles) if ts),
+            default=None,
+        ) or _parse_ts(topic.get("last_updated_at"))
         candidates.append({
             "topic_id": str(topic.get("id", "")),
             "url": url,
@@ -341,6 +350,7 @@ def _candidates(feed: dict) -> list[dict]:
             "model_release": _looks_like_model_release(
                 title, _source_name(hero), summary
             ),
+            "newest_at": newest,
         })
 
     # Raw trending rows not already covered by a topic (singleton lanes).
@@ -370,6 +380,7 @@ def _candidates(feed: dict) -> list[dict]:
             "model_release": _looks_like_model_release(
                 title, _source_name(row), summary
             ),
+            "newest_at": _parse_ts(row.get("published_date")),
         })
     return candidates
 
@@ -462,13 +473,20 @@ def _same_event_summary(a: dict, b: dict) -> bool:
     return len(shared) >= 6 and len(shared) / min(len(tokens_a), len(tokens_b)) >= 0.25
 
 
-def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[dict]:
+def _story_groups(
+    feed: dict,
+    verdicts: dict[str, int] | None = None,
+    now: datetime | None = None,
+) -> list[dict]:
     """Merge candidates covering the same event into one story group.
 
     Uses exact titles plus a conservative named-event check for paraphrased
     headlines before allocating email slots. Verdict score 0 drops the group.
+    A launch whose newest coverage is older than RELEASE_FRESH_HOURS loses
+    its release flag, so it no longer takes a release slot.
     """
     verdicts = verdicts or {}
+    stale_before = (now or datetime.now(timezone.utc)) - timedelta(hours=RELEASE_FRESH_HOURS)
     candidates = _candidates(feed)
     ranked = _ranked(candidates)
 
@@ -492,6 +510,10 @@ def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[di
             target["source_count"], len(target["sources"]), cand["source_count"]
         )
         target["coverage"] = max(target["coverage"], cand["coverage"])
+        if cand["newest_at"] and (
+            not target["newest_at"] or cand["newest_at"] > target["newest_at"]
+        ):
+            target["newest_at"] = cand["newest_at"]
 
     kept: list[dict] = []
     for group in groups:
@@ -501,6 +523,9 @@ def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[di
         if scores and max(scores) == 0:
             continue
         group["send_worthy"] = max(scores) if scores else None
+        # No date at all: keep the flag rather than guess.
+        if group["model_release"] and group["newest_at"] and group["newest_at"] < stale_before:
+            group["model_release"] = False
         kept.append(group)
     return kept
 
@@ -511,6 +536,7 @@ def _select(
     count: int,
     bucket: str,
     verdicts: dict[str, int] | None = None,
+    now: datetime | None = None,
 ) -> list[tuple[str, list[dict]]]:
     """Return (lane, stories) sections following lane priority + slot shape.
 
@@ -518,7 +544,7 @@ def _select(
     available story from the other lanes behind it. Signed-in users only get
     lanes they actually follow, in the same priority order.
     """
-    return _select_from_groups(_story_groups(feed, verdicts), interests, count, bucket)
+    return _select_from_groups(_story_groups(feed, verdicts, now), interests, count, bucket)
 
 
 def _select_from_groups(
@@ -1379,6 +1405,7 @@ def _publish_edition(
     feed: dict,
     date: str,
     verdicts: dict[str, int] | None,
+    now: datetime | None = None,
 ) -> int:
     """Save the day's brief for the public /brief pages and the builder.
 
@@ -1388,7 +1415,7 @@ def _publish_edition(
     lanes and counts with the same allocation (newsletter-select.ts).
     Returns the story count.
     """
-    groups = _story_groups(feed, verdicts)
+    groups = _story_groups(feed, verdicts, now)
     sections = _select_from_groups(groups, [], BUCKETS["landing"]["count"], "landing")
     stories = [_web_story(story, lane) for lane, group in sections for story in group]
     if not stories:
@@ -1423,12 +1450,13 @@ def _send_one(
     dry_run: bool,
     cache: dict,
     verdicts: dict[str, int] | None = None,
+    now: datetime | None = None,
 ) -> dict:
     interests = tuple(recipient.get("interests") or [])
     count = int(recipient.get("count") or BUCKETS[bucket]["count"])
     key = (bucket, interests, count)
     if key not in cache:
-        cache[key] = _select(feed, list(interests), count, bucket, verdicts)
+        cache[key] = _select(feed, list(interests), count, bucket, verdicts, now)
     sections = cache[key]
     stories = [s for _, group in sections for s in group]
     if not stories:
@@ -1491,6 +1519,9 @@ def send_audience_newsletter(
         return {"success": False, "error": "no global feed found", "date": target_date}
 
     verdicts = _send_worthy_verdicts(v3_store, _candidates(feed))
+    # One clock for the whole run: a launch crossing RELEASE_FRESH_HOURS
+    # mid-run must not lead the edition but not the later emails.
+    run_now = datetime.now(timezone.utc)
 
     if preview:
         interests = [
@@ -1498,7 +1529,7 @@ def send_audience_newsletter(
         ]
         for bucket in ([preview_bucket] if preview_bucket else ["member", "winback", "landing"]):
             sections = _select(
-                feed, interests, BUCKETS[bucket]["count"], bucket, verdicts
+                feed, interests, BUCKETS[bucket]["count"], bucket, verdicts, run_now
             )
             print(f"\n=== {bucket.upper()} ({BUCKETS[bucket]['count']} stories) ===")
             for lane, stories in sections:
@@ -1556,7 +1587,7 @@ def send_audience_newsletter(
             }
         _log(f"demo send: bucket={bucket} email={recipient['email']} interests={interests}")
         result = _send_one(
-            store, feed, target_date, bucket, recipient, dry_run, {}, verdicts
+            store, feed, target_date, bucket, recipient, dry_run, {}, verdicts, run_now
         )
         return {
             "success": result["ok"],
@@ -1571,7 +1602,7 @@ def send_audience_newsletter(
         # Publish before sending so every "Share today's brief" link resolves
         # the moment the first email lands. A failure here must not cost the send.
         try:
-            published = _publish_edition(store, feed, target_date, verdicts)
+            published = _publish_edition(store, feed, target_date, verdicts, run_now)
             _log(f"published {EDITIONS_COLLECTION}/{target_date} ({published} stories)")
         except Exception as exc:  # noqa: BLE001
             published = 0
@@ -1595,7 +1626,7 @@ def send_audience_newsletter(
     for bucket in ("member", "winback", "landing"):
         for recipient in buckets[bucket]:
             res = _send_one(
-                store, feed, target_date, bucket, recipient, dry_run, cache, verdicts
+                store, feed, target_date, bucket, recipient, dry_run, cache, verdicts, run_now
             )
             if res["ok"] and bucket == "winback" and not dry_run:
                 _record_winback(store, recipient)

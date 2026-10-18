@@ -1,4 +1,4 @@
-import { isModelRelease } from './feed-ranking.ts';
+import { isFreshRelease } from './feed-ranking.ts';
 
 /**
  * The feed's "big things" edition — the same selection the daily email makes:
@@ -56,9 +56,9 @@ function byStrength<T extends BigThingCandidate>(a: T, b: T): number {
 
 export function selectBigThings<T extends BigThingCandidate>(
   stories: T[],
-  options: { count: number; lanes?: string[] },
+  options: { count: number; lanes?: string[]; now?: number },
 ): T[] {
-  const { count } = options;
+  const { count, now = Date.now() } = options;
   const laneFilter = (options.lanes || []).filter((lane) => lane);
   const eligible = stories
     .filter((story) => story.sendWorthy !== 0)
@@ -70,11 +70,12 @@ export function selectBigThings<T extends BigThingCandidate>(
   const picked: T[] = [];
   const used = new Set<T>();
 
-  // New model releases lead the edition, like the email's own section.
+  // New model releases lead the edition, like the email's own section. One
+  // whose newest coverage is older than FRESH_STORY_HOURS competes in its lane.
   const releaseSlots = count >= BIG_THINGS_PRO ? 2 : 1;
   for (const story of eligible) {
     if (picked.length >= releaseSlots) break;
-    if (!isModelRelease(story)) continue;
+    if (!isFreshRelease(story, now)) continue;
     picked.push(story);
     used.add(story);
   }

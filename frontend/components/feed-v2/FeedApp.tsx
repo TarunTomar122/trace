@@ -39,7 +39,7 @@ import {
 import { bodyParagraphs } from '@/lib/body-text';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { selectBigThings } from '@/lib/big-things';
-import { isModelRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
+import { isFreshRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
 import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
 import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
 import {
@@ -1077,22 +1077,6 @@ export default function FeedApp({
     [rankedForTab, tabHeadlines, pulsePool, storyCap],
   );
   const visible = useMemo(() => flattenRows(feedRows), [feedRows]);
-  // Launches lead the feed, so they get their own tinted panel with everything
-  // else under a "More stories today" divider. Boundaries are story ids
-  // because the rendered rows are not 1:1 with `visible` (headline blocks
-  // group several stories).
-  const releaseHeadings = useMemo(() => {
-    const isRelease = (story: FeedStory) => isModelRelease(story);
-    const firstRelease = visible.find(isRelease);
-    if (!firstRelease) return { firstId: null, afterId: null, ids: new Set<string>() };
-    const rest = visible.slice(visible.indexOf(firstRelease) + 1);
-    const firstOther = rest.find((story) => !isRelease(story));
-    return {
-      firstId: firstRelease.id,
-      afterId: firstOther ? firstOther.id : null,
-      ids: new Set(visible.filter(isRelease).map((story) => story.id)),
-    };
-  }, [visible]);
   // Older batches shown after the ranked list, narrowed to the active tab
   // (and to the reader's lanes on Home, matching the fresh list).
   const olderForTab = tab === 'all'
@@ -1201,6 +1185,25 @@ export default function FeedApp({
     feedRows,
     pinnedStories.flatMap((story) => [story.id, ...(story.mergedIds || [])]),
   );
+  // Launches lead the feed, so they get their own tinted panel with everything
+  // else under a "More stories today" divider. Boundaries are story ids
+  // because the rendered rows are not 1:1 with the stories (headline blocks
+  // group several). Built from the listed rows, so a pinned launch (Story of
+  // the day) neither hides the panel nor shows twice. A launch older than
+  // FRESH_STORY_HOURS is listed as an ordinary story.
+  const listedStories = flattenRows(listRows);
+  const releaseHeadings = (() => {
+    const now = Date.now();
+    const isRelease = (story: FeedStory) => isFreshRelease(story, now);
+    const firstIndex = listedStories.findIndex(isRelease);
+    if (firstIndex === -1) return { firstId: null, afterId: null, ids: new Set<string>() };
+    const firstOther = listedStories.slice(firstIndex + 1).find((story) => !isRelease(story));
+    return {
+      firstId: listedStories[firstIndex].id,
+      afterId: firstOther ? firstOther.id : null,
+      ids: new Set(listedStories.filter(isRelease).map((story) => story.id)),
+    };
+  })();
   const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
   const homeSponsors = promoted.slice(0, 3);
 
@@ -1639,35 +1642,48 @@ export default function FeedApp({
                       />
                     );
                   };
+                  // The launch run renders once, as a tinted panel, where its
+                  // first story would have been.
+                  const releasePanel = () => (
+                    <HeadlineSection key="model-releases" label="Model releases" tone={0}>
+                      {listedStories
+                        .filter((s) => releaseHeadings.ids.has(s.id))
+                        .map((s) => renderCard(s, true, true))}
+                    </HeadlineSection>
+                  );
+                  const divider = (
+                    <div className="older-sep"><span>More stories today</span></div>
+                  );
                   if (row.kind === 'story') {
                     const story = row.story;
-                    // The launch run renders once, as a tinted panel.
                     if (releaseHeadings.ids.has(story.id)) {
-                      if (story.id !== releaseHeadings.firstId) return null;
-                      return (
-                        <HeadlineSection key="model-releases" label="Model releases" tone={0}>
-                          {visible
-                            .filter((s) => releaseHeadings.ids.has(s.id))
-                            .map((s) => renderCard(s, true, true))}
-                        </HeadlineSection>
-                      );
+                      return story.id === releaseHeadings.firstId ? releasePanel() : null;
                     }
                     return (
                       <Fragment key={story.id}>
-                        {story.id === releaseHeadings.afterId && (
-                          <div className="older-sep"><span>More stories today</span></div>
-                        )}
+                        {story.id === releaseHeadings.afterId && divider}
                         {renderCard(story, false)}
                       </Fragment>
                     );
                   }
                   const members = row.stories.filter((s) => !releaseHeadings.ids.has(s.id));
+                  const panelHere = row.stories.some((s) => s.id === releaseHeadings.firstId);
+                  const dividerHere = members.some((s) => s.id === releaseHeadings.afterId);
                   if (members.length < 2) {
-                    return <Fragment key={row.id}>{members.map((s) => renderCard(s, false))}</Fragment>;
+                    return (
+                      <Fragment key={row.id}>
+                        {panelHere && releasePanel()}
+                        {dividerHere && divider}
+                        {members.map((s) => renderCard(s, false))}
+                      </Fragment>
+                    );
                   }
                   const tone = listRows.slice(0, rowIndex).filter((entry) => entry.kind === 'headline').length % 4;
                   return (
-                    <HeadlineSection key={row.id} label={row.label} tone={tone}>
+                    <Fragment key={row.id}>
+                    {panelHere && releasePanel()}
+                    {dividerHere && divider}
+                    <HeadlineSection label={row.label} tone={tone}>
                       {members.map((s) => renderCard(s, true, true))}
                       {row.related.map((item) => {
                         const pulseItem = pulsePool.find((entry) => entry.id === item.id);
@@ -1706,6 +1722,7 @@ export default function FeedApp({
                         );
                       })}
                     </HeadlineSection>
+                    </Fragment>
                   );
                 })
               )}

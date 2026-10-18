@@ -16,6 +16,17 @@ export type SortableStory = {
   body?: string;
 };
 
+// The pool spans about three days. A story whose newest coverage is older than
+// this can stay in the list but no longer leads it: not Story of the day, not
+// a release slot. Same window as RELEASE_FRESH_HOURS in
+// backend/v3/flows/send_audience_newsletter.py.
+export const FRESH_STORY_HOURS = 36;
+
+/** `ts` is the newest coverage in ms; 0 means undated, which never counts as stale. */
+export function isStaleStory(ts: number | undefined, now: number = Date.now()): boolean {
+  return Boolean(ts) && now - (ts as number) > FRESH_STORY_HOURS * 3_600_000;
+}
+
 const MODEL_RELEASE_SKIP = /\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b/i;
 // Parameter counts ("70B model") only — never dollar amounts ("$9.2B project").
 const MODEL_PARAM_SIZE = /(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
@@ -47,9 +58,19 @@ export function isModelRelease(story: {
   return textual && AI_CONTEXT.test(haystack);
 }
 
+/** A launch that still leads: a model release with coverage inside FRESH_STORY_HOURS. */
+export function isFreshRelease(
+  story: Parameters<typeof isModelRelease>[0] & { ts?: number },
+  now: number = Date.now(),
+): boolean {
+  return isModelRelease(story) && !isStaleStory(story.ts, now);
+}
+
 export type RankOptions = {
   /** Set false to skip lane interleaving. */
   diversify?: boolean;
+  /** Clock for the launch freshness check (tests). */
+  now?: number;
 };
 
 export const ROLE_PRIMARY_INTERESTS: Record<string, string[]> = {
@@ -90,7 +111,7 @@ export function rankStoriesForProfile<T extends SortableStory>(
     index,
     lane: story.cat || 'other',
     personal: storyBoost(story.cat, interests, roleInterests),
-    model: isModelRelease(story) ? 1 : 0,
+    model: isFreshRelease(story, options.now) ? 1 : 0,
     coverage: story.sources?.length || 0,
     score:
       (story.sources?.length || 0) +
