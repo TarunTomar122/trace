@@ -47,6 +47,14 @@ const nextConfig: NextConfig = {
       { source: '/feed/article', destination: '/feed', permanent: true },
       // Trace is free for everyone; old pricing/checkout links land in the feed.
       { source: '/subscribe', destination: '/feed', permanent: true },
+      // Compare pages that duplicated a blog roundup: the roundup is the one
+      // that ranks, so fold the compare page into it.
+      { source: '/compare/feedly-alternative', destination: '/blog/feedly-alternatives', permanent: true },
+      { source: '/compare/trace-vs-flipboard', destination: '/blog/flipboard-alternatives', permanent: true },
+      { source: '/compare/techmeme-alternative', destination: '/blog/techmeme-alternatives', permanent: true },
+      { source: '/compare/daily-dev-alternative', destination: '/blog/daily-dev-alternatives', permanent: true },
+      { source: '/compare/tldr-newsletter-alternative', destination: '/blog/tldr-newsletter-alternatives', permanent: true },
+      { source: '/compare/ground-news-alternative-for-tech', destination: '/blog/ground-news-alternatives-for-tech', permanent: true },
       {
         source: "/:path+/",
         destination: "/:path+",

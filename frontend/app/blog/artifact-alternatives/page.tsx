@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-06-22T00:00:00Z",
-    modifiedTime: "2026-06-22T00:00:00Z",
+    modifiedTime: "2026-10-19T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [{ url: `${SITE_BASE_URL}/opengraph-image`, width: 1200, height: 630, alt: "Artifact Alternatives — Trace" }],
   },
@@ -62,7 +62,7 @@ export default function BlogPost() {
     description: "Comprehensive comparison of the best Artifact news alternatives for 2026. Covers Trace, Feedly, Particle, Perplexity, Inoreader, and Ground News.",
     url: `${SITE_BASE_URL}/blog/artifact-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
-    dateModified: "2026-06-22T00:00:00Z",
+    dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -76,19 +76,19 @@ export default function BlogPost() {
   const faqSchema = generateFAQSchema([
     {
       question: "What happened to the Artifact news app?",
-      answer: "Artifact was originally built by Instagram's co-founders as an AI-driven news app. It shut down in 2024 and was later revived by the community with continued development. It remains one of the most ambitious AI-native news products.",
+      answer: "Artifact was an AI news app built by Instagram's co-founders, Kevin Systrom and Mike Krieger. They announced in January 2024 that it would shut down, and in April 2024 Yahoo bought it and folded its personalization technology into Yahoo News.",
     },
     {
       question: "What is the best alternative to Artifact?",
-      answer: "Trace is the best Artifact alternative for tech news — it offers multi-source AI summaries and topic grouping that Artifact lacks. For personalization, Particle News is a strong choice. For on-demand research, Perplexity excels.",
+      answer: "Trace is the best Artifact alternative for tech news — it offers multi-source AI summaries and topic grouping that Artifact never had. For personalization, Particle News is a strong choice. For on-demand research, Perplexity excels.",
     },
     {
       question: "Is Artifact news app still available?",
-      answer: "Yes, Artifact was revived by the community after its original shutdown in 2024. It continues development but with a smaller team and slower feature pace than competitors.",
+      answer: "No. Its founders announced in January 2024 that it would close, and Yahoo bought it that April and folded its technology into Yahoo News. There is no standalone Artifact app, so former users need a different one.",
     },
     {
       question: "Which AI news app has the best summaries?",
-      answer: "Trace has the best AI news summaries because they're multi-source — synthesizing coverage from 50+ publications rather than summarizing articles one at a time. This gives you consensus, disagreements, and multiple perspectives in one summary.",
+      answer: "Trace has the best AI news summaries because they're multi-source — synthesizing coverage from 100+ publications rather than summarizing articles one at a time. This gives you consensus, disagreements, and multiple perspectives in one summary.",
     },
   ]);
 
@@ -122,22 +122,22 @@ export default function BlogPost() {
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
             Artifact was one of the most ambitious AI news apps — built by Instagram&apos;s
-            co-founders with headline rewriting, personalization, and AI summaries. After
-            shutting down in 2024 and being revived by the community, it&apos;s still
-            developing but has lost momentum. Here are 6 alternatives that do AI news better.
+            co-founders with headline rewriting, personalization, and AI summaries. It closed in
+            2024: its founders announced the shutdown in January, and Yahoo bought it that
+            April and folded its technology into Yahoo News. Here are 6 apps that do the same job today.
           </p>
 
           <BlogEmailCard slug="artifact-alternatives" placement="intro" />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            Why Look for Artifact Alternatives?
+            What Artifact Did Well, and What It Lacked
           </h2>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li><strong>Smaller development team:</strong> Recovering from the original shutdown — slower feature development</li>
-            <li><strong>No story grouping:</strong> Each article is treated independently — no multi-source comparison</li>
-            <li><strong>Filter bubble risk:</strong> Aggressive personalization can create echo chambers</li>
-            <li><strong>Weak community integration:</strong> No Reddit or Hacker News discussion links</li>
-            <li><strong>Single-source summaries:</strong> AI summarizes one article at a time, not across publications</li>
+            <li><strong>It is gone:</strong> the standalone app closed in 2024, so you need a replacement either way</li>
+            <li><strong>No story grouping:</strong> each article was treated on its own, with no multi-source comparison</li>
+            <li><strong>Filter bubble risk:</strong> aggressive personalization could turn into an echo chamber</li>
+            <li><strong>Weak community integration:</strong> no Reddit or Hacker News discussion links</li>
+            <li><strong>Single-source summaries:</strong> the AI summarized one article at a time, not across publications</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -169,8 +169,8 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Trace does what Artifact doesn&apos;t: multi-source synthesis. Instead of
-            summarizing one article at a time, Trace reads coverage from 50+ publications
+            Trace does what Artifact didn&apos;t: multi-source synthesis. Instead of
+            summarizing one article at a time, Trace reads coverage from 100+ publications
             and gives you a balanced picture — what sources agree on, where they diverge,
             and what the community is saying.
           </p>
@@ -199,7 +199,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             Perplexity is a research assistant, not a news feed. Ask it about any topic
             and get a cited, multi-source summary. Great for deep dives on specific
-            stories that Artifact would only summarize from one angle.
+            stories that Artifact only summarized from one angle.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -226,7 +226,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> From $9.99/year</p>
           <p className="text-gray-600 dark:text-gray-400">
             Ground News shows you how different outlets across the political spectrum
-            cover the same story. Unique perspective that Artifact doesn&apos;t offer.
+            cover the same story, a view Artifact never offered.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -234,7 +234,7 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Artifact&apos;s headline rewriting was innovative, but its single-source approach
-            limits its value. <strong>Trace</strong> gives you multi-source AI summaries
+            limited its value. <strong>Trace</strong> gives you multi-source AI summaries
             that show the full picture. <strong>Particle</strong> gives you the personalization
             Artifact was known for. Both are free to try.
           </p>

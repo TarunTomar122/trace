@@ -6,6 +6,8 @@ export type StandaloneBlogPost = {
   excerpt: string;
   readTime: string;
   date: string;
+  /** Last substantial edit; drives the sitemap's lastmod. */
+  updated?: string;
   image: string;
 };
 
@@ -28,16 +30,18 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
     excerpt: "Google News is too noisy for AI and startups. Compare six alternatives with grouped stories, AI summaries, and a free 5-minute briefing.",
     readTime: "12 min read",
     date: "June 22, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200&h=630&fit=crop&auto=format",
   },
   {
     slug: "flipboard-alternatives",
-    title: "Flipboard alternatives for faster tech news (2026)",
+    title: "Flipboard alternatives: 6 faster news apps (2026)",
     tag: "Comparisons",
     category: "comparisons",
-    excerpt: "Skip Flipboard's magazine cards. Compare six faster tech-news apps — Trace, Feedly, Inoreader — with AI summaries and a 5-minute catch-up.",
-    readTime: "10 min read",
+    excerpt: "Quicker than Flipboard's magazine: Google News, Apple News, SmartNews, Ground News, Feedly and Trace compared, with who each one suits and what it costs.",
+    readTime: "8 min read",
     date: "June 22, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=630&fit=crop&auto=format",
   },
   {
@@ -48,6 +52,7 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
     excerpt: "Compare six SmartNews alternatives with stronger tech coverage, less noise, and more useful context.",
     readTime: "10 min read",
     date: "June 22, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&h=630&fit=crop&auto=format",
   },
   {
@@ -68,6 +73,7 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
     excerpt: "Compare six Artifact alternatives, including Trace, Feedly, and Particle, for AI-assisted news discovery.",
     readTime: "11 min read",
     date: "June 22, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
   },
   {

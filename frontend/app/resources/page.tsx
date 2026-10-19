@@ -46,11 +46,13 @@ const RESOURCE_SECTIONS = [
   },
   {
     title: "Comparisons",
-    description: "Head-to-head breakdowns of Trace vs other tools and workflows.",
+    description: "Alternatives to the apps you use now, and Trace side by side with other tools and workflows.",
     links: [
-      { label: "Trace vs daily.dev", href: "/compare/daily-dev-alternative" },
-      { label: "Trace vs TLDR", href: "/compare/tldr-newsletter-alternative" },
-      { label: "Trace vs Feedly", href: "/compare/feedly-alternative" },
+      { label: "Feedly alternatives", href: "/blog/feedly-alternatives" },
+      { label: "Flipboard alternatives", href: "/blog/flipboard-alternatives" },
+      { label: "Google News alternatives", href: "/blog/google-news-alternatives" },
+      { label: "daily.dev alternatives", href: "/blog/daily-dev-alternatives" },
+      { label: "TLDR newsletter alternatives", href: "/blog/tldr-newsletter-alternatives" },
       { label: "Trace vs Inoreader", href: "/compare/trace-vs-inoreader" },
       { label: "Trace vs Manual Reading", href: "/compare/trace-vs-manual-reading" },
       { label: "Trace vs Readwise Reader", href: "/compare/trace-vs-readwise-reader" },

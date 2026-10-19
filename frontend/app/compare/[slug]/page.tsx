@@ -73,9 +73,16 @@ export default async function CompareDetailPage({ params }: PageProps) {
     { name: page.heroTitle, url: canonical },
   ]);
   const faqSchema = generateFAQSchema(page.faq);
-  const relatedPages = comparePages
+  // Closest comparisons first; without a list, the next pages in order (so
+  // every page doesn't link the same first four).
+  const index = comparePages.findIndex((candidate) => candidate.slug === page.slug);
+  const relatedPages = (
+    page.related?.length
+      ? page.related.map(getComparePage).filter((candidate) => candidate !== undefined)
+      : [1, 2, 3].map((step) => comparePages[(index + step) % comparePages.length])
+  )
     .filter((candidate) => candidate.slug !== page.slug)
-    .slice(0, 4);
+    .slice(0, 3);
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -213,7 +220,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
             <div className="mt-5 flex flex-wrap gap-2 text-sm">
               <Link href="/compare" className="public-chip">More comparisons</Link>
               <Link href="/blog" className="public-chip">Blog</Link>
-              <Link href="/feed" className="public-chip">Today's briefing</Link>
+              <Link href="/feed" className="public-chip">Today&apos;s briefing</Link>
             </div>
           </section>
         </article>

@@ -2,7 +2,10 @@ export type ComparePage = {
   slug: string;
   title: string;
   description: string;
+  /** The blog post that ranks for this topic; shown first under Related. */
   relatedRoundup?: { href: string; label: string };
+  /** Slugs of the closest other comparisons. */
+  related?: string[];
   heroTitle: string;
   heroDescription: string;
   intro: string;
@@ -24,64 +27,9 @@ export type ComparePage = {
 
 export const comparePages: ComparePage[] = [
   {
-    slug: "feedly-alternative",
-    title: "Trace vs Feedly | Daily briefing vs RSS | Trace",
-    description:
-      "Trace vs Feedly: a finishable daily briefing versus an RSS unread queue. For the full roundup, see Feedly alternatives for tech news.",
-    relatedRoundup: {
-      href: "/blog/feedly-alternatives",
-      label: "Best Feedly alternatives for tech news",
-    },
-    heroTitle: "A Feedly alternative for people who do not want another reading backlog",
-    heroDescription:
-      "Feedly is great if you want to manage sources. Trace is better if you want grouped story context, fast summaries, and fewer tabs.",
-    intro:
-      "Most people do not have an RSS problem. They have a time problem. Feedly helps you collect more sources. Trace helps you understand what actually matters across them.",
-    comparisonTitle: "Trace vs Feedly",
-    comparisonRows: [
-      {
-        label: "What you open each morning",
-        trace: "A topic page with grouped coverage",
-        alternative: "A stream of raw unread articles",
-      },
-      {
-        label: "How duplicate coverage is handled",
-        trace: "Related stories are grouped into one topic page",
-        alternative: "You still scan multiple items yourself",
-      },
-      {
-        label: "Best for",
-        trace: "Busy readers who want signal fast",
-        alternative: "Power users who want source control",
-      },
-    ],
-    sections: [
-      {
-        title: "Why Trace is a better fit for most people",
-        body:
-          "If your real goal is keeping up with AI, tech, startups, or product news without losing an hour every day, Trace gives you a better default. It starts from the grouped story, not the feed.",
-      },
-      {
-        title: "What Feedly still does better",
-        body:
-          "If you care deeply about custom source management, foldering, or reading every post from a specific set of blogs, Feedly is still stronger. Trace is intentionally lighter and more opinionated.",
-      },
-    ],
-    faq: [
-      {
-        question: "Is Trace an RSS reader?",
-        answer:
-          "Not really. Trace is closer to a daily signal layer built on top of many sources. The point is not collecting feeds. The point is understanding them faster.",
-      },
-      {
-        question: "Will Trace replace Feedly for everyone?",
-        answer:
-          "No. Heavy RSS users may still prefer Feedly. Trace is a better fit for people who want less inbox energy and more editorial clarity.",
-      },
-    ],
-  },
-  {
     slug: "rss-reader-alternative",
+    relatedRoundup: { href: "/blog/best-rss-reader-apps", label: "5 RSS readers compared" },
+    related: ["trace-vs-inoreader", "best-tech-news-app", "trace-vs-manual-reading"],
     title: "RSS Reader Alternative That Does The Reading For You | Trace",
     description:
       "Trace is an RSS reader alternative for people who want grouped story summaries instead of another endless unread list.",
@@ -135,6 +83,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "best-tech-news-app",
+    relatedRoundup: { href: "/blog/best-tech-news-aggregator-apps", label: "7 tech news aggregators compared" },
+    related: ["rss-reader-alternative", "ai-news-aggregator", "hacker-news-digest"],
     title: "Best Tech News App For People Who Are Busy | Trace",
     description:
       "Trace helps busy people keep up with tech news using grouped topics, summaries, and source links instead of endless scrolling.",
@@ -188,6 +138,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "hacker-news-digest",
+    relatedRoundup: { href: "/blog/hacker-news-alternatives", label: "Beyond Hacker News: 6 better ways to follow developer news" },
+    related: ["best-tech-news-app", "ai-news-aggregator", "trace-vs-manual-reading"],
     title: "Hacker News Digest Without The Noise | Trace",
     description:
       "Trace surfaces the best Hacker News discussions alongside related coverage so you get the signal without refreshing the front page all day.",
@@ -240,60 +192,9 @@ export const comparePages: ComparePage[] = [
     ],
   },
   {
-    slug: "techmeme-alternative",
-    title: "Techmeme Alternative With Grouped Context | Trace",
-    description:
-      "Trace is a Techmeme alternative that groups stories with community discussion and product launches instead of just headlines and source links.",
-    heroTitle: "A Techmeme alternative that shows you the conversation, not just the headline",
-    heroDescription:
-      "Techmeme is fast for headlines. Trace adds what people are saying and what shipped alongside the story — so you get context, not just links.",
-    intro:
-      "Techmeme does one thing very well: surface the lead story fast. But if you also want to know what developers think, what products launched, and how the conversation is evolving, you need more than a headline aggregator.",
-    comparisonTitle: "Trace vs Techmeme",
-    comparisonRows: [
-      {
-        label: "Coverage scope",
-        trace: "Stories + community reactions + product launches",
-        alternative: "Headlines and related source links",
-      },
-      {
-        label: "Personalization",
-        trace: "Tailored to your interests",
-        alternative: "One feed for everyone",
-      },
-      {
-        label: "Best for",
-        trace: "Professionals who want the full picture",
-        alternative: "People who just need the headline fast",
-      },
-    ],
-    sections: [
-      {
-        title: "What Trace does differently",
-        body:
-          "Trace groups the same story from multiple angles: the original reporting, the Reddit and HN threads reacting to it, and any products or tools that shipped alongside it. You get one topic page instead of ten tabs.",
-      },
-      {
-        title: "What Techmeme still does well",
-        body:
-          "If you want a pure headline river with zero friction, Techmeme is still strong. It has been doing that longer than almost anyone. Trace is for the reader who wants more depth in fewer clicks.",
-      },
-    ],
-    faq: [
-      {
-        question: "Is Trace a news aggregator like Techmeme?",
-        answer:
-          "Trace is closer to a daily briefing tool. It aggregates and groups, but adds AI summaries, community signal, and launch tracking — not just links.",
-      },
-      {
-        question: "Does Trace cover the same stories as Techmeme?",
-        answer:
-          "There is significant overlap on big tech stories. Trace also covers product launches and community discussions that Techmeme does not typically surface.",
-      },
-    ],
-  },
-  {
     slug: "morning-brew-tech-alternative",
+    relatedRoundup: { href: "/blog/tldr-newsletter-alternatives", label: "The best TLDR newsletter alternatives" },
+    related: ["trace-vs-substack-reader", "trace-vs-meco", "trace-vs-email-filters"],
     title: "Morning Brew For Tech People | Trace",
     description:
       "Trace is a tech-focused alternative to Morning Brew — deeper coverage, community signal, and product launches instead of general business headlines.",
@@ -347,6 +248,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "ai-news-aggregator",
+    relatedRoundup: { href: "/blog/best-ai-news-apps-2026", label: "Best AI news apps in 2026: 10 tools compared" },
+    related: ["best-tech-news-app", "hacker-news-digest", "trace-vs-google-news"],
     title: "AI News Aggregator With Real Context | Trace",
     description:
       "Trace aggregates AI news from research papers, product launches, and community discussions into grouped daily topics instead of an endless link feed.",
@@ -400,6 +303,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-readwise-reader",
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    related: ["trace-vs-matter", "trace-vs-pocket", "trace-vs-substack-reader"],
     title: "Trace vs Readwise Reader | Comparison & Alternative | Trace",
     description:
       "Comparing Trace and Readwise Reader for busy tech readers. Readwise Reader is a reading later powerhouse, Trace is a daily brief — see which fits your workflow.",
@@ -463,6 +368,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-inoreader",
+    relatedRoundup: { href: "/blog/inoreader-alternatives", label: "Inoreader alternatives: 6 options for every use case" },
+    related: ["rss-reader-alternative", "trace-vs-readwise-reader", "trace-vs-google-news"],
     title: "Trace vs Inoreader | Comparison & Alternative | Trace",
     description:
       "Comparing Trace and Inoreader — an RSS powerhouse vs a daily briefing tool. Find which matches how you actually read tech news.",
@@ -526,6 +433,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-substack-reader",
+    relatedRoundup: { href: "/blog/replace-tech-newsletters-with-a-5-minute-briefing", label: "Replace tech newsletters with a 5-minute briefing" },
+    related: ["trace-vs-meco", "morning-brew-tech-alternative", "trace-vs-email-filters"],
     title: "Trace vs Substack Reader | Comparison & Alternative | Trace",
     description:
       "Trace vs Substack's reader — a newsletter-first reading app vs a daily tech briefing. See which keeps you better informed with less time.",
@@ -589,6 +498,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-matter",
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    related: ["trace-vs-readwise-reader", "trace-vs-pocket", "trace-vs-substack-reader"],
     title: "Trace vs Matter | Comparison & Alternative | Trace",
     description:
       "Trace vs Matter — a read-it-later app with social features vs a daily briefing tool. Which matches your reading style?",
@@ -652,6 +563,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-meco",
+    relatedRoundup: { href: "/blog/replace-tech-newsletters-with-a-5-minute-briefing", label: "Replace tech newsletters with a 5-minute briefing" },
+    related: ["trace-vs-substack-reader", "morning-brew-tech-alternative", "trace-vs-email-filters"],
     title: "Trace vs Meco | Comparison & Alternative | Trace",
     description:
       "Trace vs Meco — a newsletter aggregator vs a daily tech briefing. See which fits your morning reading habit better.",
@@ -715,6 +628,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-manual-reading",
+    relatedRoundup: { href: "/blog/how-to-stay-updated-with-tech-news", label: "How to stay updated with tech news without drowning in tabs" },
+    related: ["best-tech-news-app", "rss-reader-alternative", "trace-vs-email-filters"],
     title: "Trace vs Manual Reading | Save Hours Weekly | Trace",
     description:
       "Trace vs opening 15 tabs every morning. How a daily briefing compares to the manual reading habit most tech professionals use.",
@@ -778,6 +693,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-email-filters",
+    relatedRoundup: { href: "/blog/replace-tech-newsletters-with-a-5-minute-briefing", label: "Replace tech newsletters with a 5-minute briefing" },
+    related: ["trace-vs-meco", "trace-vs-substack-reader", "trace-vs-manual-reading"],
     title: "Trace vs Email Filters | Automated Briefing | Trace",
     description:
       "Trace vs setting up email filters and alerts for tech news. Which gives you better signal with less maintenance?",
@@ -841,6 +758,8 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-pocket",
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    related: ["trace-vs-readwise-reader", "trace-vs-matter", "rss-reader-alternative"],
     title: "Trace vs Pocket | Comparison & Alternative | Trace",
     description:
       "Trace vs Pocket — save for later or know now? Compare Pocket's read-it-later approach with Trace's daily briefing model.",
@@ -903,74 +822,9 @@ export const comparePages: ComparePage[] = [
     ],
   },
   {
-    slug: "trace-vs-flipboard",
-    title: "Trace vs Flipboard | Daily briefing vs magazine | Trace",
-    description:
-      "Trace vs Flipboard: a 5-minute tech briefing versus magazine cards. For every option, see Flipboard alternatives for tech news.",
-    relatedRoundup: {
-      href: "/blog/flipboard-alternatives",
-      label: "Flipboard alternatives for faster tech news",
-    },
-    heroTitle: "Trace vs Flipboard: beautiful magazine or fast briefing?",
-    heroDescription:
-      "Flipboard turns news into a beautiful magazine-like experience. Trace turns news into a fast daily brief. Different aesthetics, different speeds.",
-    intro:
-      "Flipboard is a visual delight — curated magazines, beautiful layouts, and a tactile reading experience. Trace strips away the design and focuses on one thing: helping you know what happened in tech today as fast as possible.",
-    comparisonTitle: "Trace vs Flipboard",
-    comparisonRows: [
-      {
-        label: "Reading experience",
-        trace: "Text-first briefs optimized for speed",
-        alternative: "Magazine-style layouts optimized for visual appeal",
-      },
-      {
-        label: "Content model",
-        trace: "Grouped stories with AI summaries",
-        alternative: "Individual articles arranged in magazine format",
-      },
-      {
-        label: "Time to catch up",
-        trace: "Under 10 minutes",
-        alternative: "Varies — designed for browsing, not rushing",
-      },
-      {
-        label: "Best for",
-        trace: "People who want the fastest path to being informed",
-        alternative: "People who enjoy the reading experience itself",
-      },
-      {
-        label: "Community signal",
-        trace: "Built into every story — what people are saying",
-        alternative: "Not a core feature",
-      },
-    ],
-    sections: [
-      {
-        title: "Speed vs experience",
-        body:
-          "Flipboard is for when you want to enjoy reading tech news. Trace is for when you need to know what happened so you can get back to building. Both are valid — they serve different moments and different personalities.",
-      },
-      {
-        title: "When Flipboard wins",
-        body:
-          "If you read tech news as a leisure activity — something you enjoy doing over coffee on a Sunday — Flipboard's magazine format is genuinely delightful. For the weekday 'what happened since yesterday' question, Trace is faster. If you are still comparing the whole category, the Flipboard alternatives roundup covers Feedly, Inoreader, and the rest.",
-      },
-    ],
-    faq: [
-      {
-        question: "Is Trace just a text-only Flipboard?",
-        answer:
-          "No. Flipboard shows you articles. Trace groups and summarizes stories — it's a different product category. Trace is a briefing tool; Flipboard is a reading experience.",
-      },
-      {
-        question: "Does Trace have any visual elements?",
-        answer:
-          "Trace is text-first and optimized for speed. The focus is on summary quality, key points, and timelines — not visual layout.",
-      },
-    ],
-  },
-  {
     slug: "trace-vs-google-news",
+    relatedRoundup: { href: "/blog/google-news-alternatives", label: "Google News alternatives for tech news" },
+    related: ["ai-news-aggregator", "best-tech-news-app", "trace-vs-inoreader"],
     title: "Trace vs Google News | Comparison & Alternative | Trace",
     description:
       "Trace vs Google News for tech readers. Algorithmic aggregation vs curated daily briefing — which gives you better tech signal?",
@@ -1029,175 +883,6 @@ export const comparePages: ComparePage[] = [
         question: "Does Trace cover international tech news?",
         answer:
           "Trace covers global tech news with an emphasis on the English-language tech conversation. Major international stories are included when they enter the global discussion.",
-      },
-    ],
-  },
-  {
-    slug: "daily-dev-alternative",
-    title: "daily.dev Alternative for a Finite Daily Tech Brief | Trace",
-    description:
-      "Compare Trace and daily.dev for developer news: a finite grouped daily edition versus a continuously refreshed personalized discovery feed.",
-    heroTitle: "A daily.dev alternative for developers who want a stopping point",
-    heroDescription:
-      "daily.dev is strong at continuous developer discovery. Trace is built for a finite daily catch-up that groups reporting, community reactions, and launches.",
-    intro:
-      "Both products reduce the need to visit many sources, but they create different habits. daily.dev turns the browser into a personalized stream of developer content. Trace assembles a daily edition with a clear beginning and end.",
-    comparisonTitle: "Trace vs daily.dev",
-    comparisonRows: [
-      {
-        label: "Primary job",
-        trace: "Understand the important tech stories of the day",
-        alternative: "Continuously discover developer articles and discussions",
-      },
-      {
-        label: "Reading model",
-        trace: "Finite daily edition",
-        alternative: "Personalized, continuously refreshed feed",
-      },
-      {
-        label: "Story handling",
-        trace: "Related reporting and reactions are grouped",
-        alternative: "Individual posts are ranked in a stream",
-      },
-      {
-        label: "Best for",
-        trace: "Developers who want broad awareness in one sitting",
-        alternative: "Developers who want ongoing stack-specific discovery",
-      },
-    ],
-    sections: [
-      {
-        title: "Choose daily.dev for discovery",
-        body:
-          "If you want a personalized developer homepage, frequent new material, and community-driven discovery tied to your stack, daily.dev is a strong fit.",
-      },
-      {
-        title: "Choose Trace for daily orientation",
-        body:
-          "If you want to know what changed across tech, why it matters, and where the original reporting and community discussion live, Trace provides a shorter and more deliberate reading loop.",
-      },
-    ],
-    faq: [
-      {
-        question: "Is Trace a direct replacement for the daily.dev browser extension?",
-        answer:
-          "No. Trace does not replace the new-tab discovery experience. It replaces the broader daily catch-up across reporting, discussion, and launches.",
-      },
-      {
-        question: "Can developers use both?",
-        answer:
-          "Yes. Use Trace for a bounded daily scan and daily.dev for occasional stack-specific discovery. The overlap becomes wasteful only if both are treated as feeds that must be cleared.",
-      },
-    ],
-  },
-  {
-    slug: "tldr-newsletter-alternative",
-    title: "TLDR Newsletter Alternative With Sources and Context | Trace",
-    description:
-      "Compare Trace and TLDR for daily tech news: a grouped web edition with source trails and community context versus a concise email newsletter.",
-    heroTitle: "A TLDR alternative for readers who want the sources behind the summary",
-    heroDescription:
-      "TLDR is a fast daily email. Trace turns the day into grouped stories with source links, community reactions, and product launches attached.",
-    intro:
-      "TLDR and Trace both aim to compress a busy technology day. The difference is the unit of reading: TLDR sends a list of concise items, while Trace reconciles related coverage into a structured edition you can scan and investigate.",
-    comparisonTitle: "Trace vs TLDR",
-    comparisonRows: [
-      {
-        label: "Delivery",
-        trace: "Web and Android daily edition",
-        alternative: "Email newsletter",
-      },
-      {
-        label: "Context",
-        trace: "Grouped sources, key points, discussions, and launches",
-        alternative: "Short editorial summaries with outbound links",
-      },
-      {
-        label: "Personalization",
-        trace: "Explicit interests shape the edition",
-        alternative: "A consistent editorial package for subscribers",
-      },
-      {
-        label: "Best for",
-        trace: "Readers who want a source-backed view of connected stories",
-        alternative: "Readers who want the fastest fixed email scan",
-      },
-    ],
-    sections: [
-      {
-        title: "Choose TLDR for inbox convenience",
-        body:
-          "TLDR works well when email is already your trusted daily queue and you want a broad selection without configuring topics or learning another product.",
-      },
-      {
-        title: "Choose Trace for connected coverage",
-        body:
-          "Trace is stronger when a short summary raises follow-up questions. The reporting, community reaction, and related launches stay attached, so you can verify and go deeper without reconstructing the story across tabs.",
-      },
-    ],
-    faq: [
-      {
-        question: "Does Trace send a daily email?",
-        answer:
-          "Trace supports a daily briefing workflow, but its core experience is the edition itself, where grouped context and source links have room to stay together.",
-      },
-      {
-        question: "Is TLDR better if I only want headlines?",
-        answer:
-          "Usually, yes. TLDR is optimized for a fast fixed scan. Trace is the better fit when you want fewer disconnected items and more context around each important story.",
-      },
-    ],
-  },
-  {
-    slug: "ground-news-alternative-for-tech",
-    title: "Ground News Alternative Focused on Technology | Trace",
-    description:
-      "Compare Trace and Ground News for technology coverage: a tech-focused daily edition with community context versus broad news with media-bias comparison.",
-    heroTitle: "A Ground News alternative built specifically for technology",
-    heroDescription:
-      "Ground News helps readers compare political and media perspectives across general news. Trace focuses on technology, pairing reporting with practitioner discussion and product signals.",
-    intro:
-      "The products solve different trust problems. Ground News shows how outlets frame the same general-news event. Trace shows how a technology story connects across reporting, developer communities, repositories, and launches.",
-    comparisonTitle: "Trace vs Ground News",
-    comparisonRows: [
-      {
-        label: "Coverage",
-        trace: "Technology, AI, startups, products, and developer communities",
-        alternative: "Broad global news across politics, business, and culture",
-      },
-      {
-        label: "Context layer",
-        trace: "Source grouping, key points, practitioner reactions, launches",
-        alternative: "Outlet comparison, ownership, and media-bias context",
-      },
-      {
-        label: "Best for",
-        trace: "Technology professionals",
-        alternative: "General-news readers comparing media coverage",
-      },
-    ],
-    sections: [
-      {
-        title: "Choose Ground News for media-literacy tools",
-        body:
-          "If your priority is comparing political framing, ownership, and blind spots across general-news outlets, Ground News is purpose-built for that work.",
-      },
-      {
-        title: "Choose Trace for practitioner context",
-        body:
-          "If your priority is understanding what a technology announcement means in practice, Trace adds developer discussion, product work, and related coverage to the source trail.",
-      },
-    ],
-    faq: [
-      {
-        question: "Does Trace assign political bias ratings to sources?",
-        answer:
-          "No. Trace preserves source links and groups related technology coverage, but it does not replace Ground News's media-bias and ownership analysis.",
-      },
-      {
-        question: "Does Ground News cover technology?",
-        answer:
-          "Yes, as part of its broader general-news product. Trace is narrower and designed around the information needs of people working in technology.",
       },
     ],
   },

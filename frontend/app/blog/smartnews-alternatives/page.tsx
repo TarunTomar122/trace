@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-06-22T00:00:00Z",
-    modifiedTime: "2026-06-22T00:00:00Z",
+    modifiedTime: "2026-10-19T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [{ url: `${SITE_BASE_URL}/opengraph-image`, width: 1200, height: 630, alt: "SmartNews Alternatives — Trace" }],
   },
@@ -60,10 +60,10 @@ export const metadata: Metadata = {
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
     headline: "SmartNews Alternatives: 6 Better News Apps for 2026",
-    description: "Comprehensive comparison of the best SmartNews alternatives for 2026. Covers Trace, Feedly, Inoreader, Flipboard, Artifact, and Google News.",
+    description: "Comprehensive comparison of the best SmartNews alternatives for 2026. Covers Trace, Feedly, Inoreader, Flipboard, Apple News, and Google News.",
     url: `${SITE_BASE_URL}/blog/smartnews-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
-    dateModified: "2026-06-22T00:00:00Z",
+    dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -77,7 +77,7 @@ export default function BlogPost() {
   const faqSchema = generateFAQSchema([
     {
       question: "What is the best alternative to SmartNews?",
-      answer: "Trace is the best SmartNews alternative for tech professionals. It offers AI-powered multi-source summaries from 50+ tech sources with zero setup. Feedly is best for RSS control, and Flipboard is best for casual visual browsing.",
+      answer: "Trace is the best SmartNews alternative for tech professionals. It offers AI-powered multi-source summaries from 100+ tech sources with zero setup. Feedly is best for RSS control, and Flipboard is best for casual visual browsing.",
     },
     {
       question: "Why would I switch from SmartNews?",
@@ -155,7 +155,7 @@ export default function BlogPost() {
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Flipboard</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Visual Browsing</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Artifact</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Personalization</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Yes</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Apple News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid Apple News+</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">iPhone, iPad and Mac</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Google News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">General News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
               </tbody>
             </table>
@@ -166,12 +166,12 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Trace is purpose-built for tech news. It scans 50+ sources, groups related
+            Trace is purpose-built for tech news. It scans 100+ sources, groups related
             coverage into topic pages, and generates multi-source AI summaries. Where
             SmartNews shows you everything, Trace shows you what matters for your career.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>50+ curated tech sources (TechCrunch, Verge, HN, Reddit, GitHub)</li>
+            <li>100+ curated tech sources (TechCrunch, Verge, HN, Reddit, GitHub)</li>
             <li>Multi-source AI summaries with source attribution</li>
             <li>Topic grouping — one story, multiple perspectives</li>
             <li>10-minute morning catch-up workflow</li>
@@ -202,16 +202,19 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free</p>
           <p className="text-gray-600 dark:text-gray-400">
             If you like SmartNews&apos;s visual approach but want better content discovery,
-            Flipboard&apos;s magazine-style layout is a solid alternative.
+            Flipboard&apos;s magazine-style layout is a solid alternative. If Flipboard is
+            what you are leaving, see our{" "}
+            <Link href="/blog/flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Flipboard alternatives</Link>.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            5. Artifact — Best for AI Personalization
+            5. Apple News — Best on iPhone, iPad and Mac
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free; Apple News+ is a paid subscription</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Artifact&apos;s headline rewriting and AI personalization offer a smarter
-            reading experience than SmartNews. Clickbait becomes factual descriptions.
+            Already on your Apple devices, with editors picking the top stories and a
+            cleaner layout than SmartNews. It is only available in some countries,
+            including the US, UK, Canada and Australia, and there is no Android app.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -239,9 +242,9 @@ export default function BlogPost() {
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
             <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-3 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>Read Next</h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The 7 Best Tech News Aggregator Apps in 2026 →</Link></li>
-              <li><Link href="/blog/flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Flipboard Alternatives: 6 Better News Apps →</Link></li>
-              <li><Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">Best AI News Apps in 2026 →</Link></li>
+              <li><Link href="/blog/flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Flipboard alternatives →</Link></li>
+              <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News alternatives →</Link></li>
+              <li><Link href="/blog/newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">NewsBreak alternatives →</Link></li>
             </ul>
           </div>
         </div>

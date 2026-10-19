@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import { BlogEmailCard, InlineTraceCTA, StickyBlogBar } from "@/components/BlogCTA";
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../content";
+import { standaloneBlogPosts } from "../standalone-content";
 import {
   DEFAULT_OG_IMAGE,
   DEFAULT_OPEN_GRAPH,
@@ -108,10 +109,12 @@ export default async function BlogPostPage({ params }: PageProps) {
   }
 
   const canonicalUrl = `https://www.yourtrace.online/blog/${post.slug}`;
-  const publishedIso = (() => {
-    const parsed = new Date(post.date);
+  const toIso = (value: string) => {
+    const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-  })();
+  };
+  const publishedIso = toIso(post.date);
+  const modifiedIso = post.updated ? toIso(post.updated) ?? publishedIso : publishedIso;
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Trace", url: SITE_BASE_URL },
     { name: "Blog", url: `${SITE_BASE_URL}/blog` },
@@ -125,7 +128,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     "description": post.excerpt,
     "image": DEFAULT_OG_IMAGE.url,
     "datePublished": publishedIso,
-    "dateModified": publishedIso,
+    "dateModified": modifiedIso,
     "author": {
       "@type": "Organization",
       "name": post.author,
@@ -142,11 +145,15 @@ export default async function BlogPostPage({ params }: PageProps) {
     "url": canonicalUrl,
   };
 
-  const relatedPosts = (
+  // relatedSlugs can name standalone posts too (e.g. best-ai-news-apps-2026).
+  const relatedPosts: Array<{ slug: string; tag: string; title: string; excerpt: string }> = (
     post.relatedSlugs?.length
       ? post.relatedSlugs
-          .map((slug) => blogPosts.find((candidate) => candidate.slug === slug))
-          .filter((candidate): candidate is (typeof blogPosts)[number] => Boolean(candidate))
+          .map((slug) =>
+            blogPosts.find((candidate) => candidate.slug === slug) ??
+            standaloneBlogPosts.find((candidate) => candidate.slug === slug),
+          )
+          .filter((candidate) => candidate !== undefined)
       : [
           ...blogPosts.filter((p) => p.slug !== post.slug && p.tag === post.tag),
           ...blogPosts.filter((p) => p.slug !== post.slug && p.tag !== post.tag && p.category === post.category),

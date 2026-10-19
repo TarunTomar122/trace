@@ -377,21 +377,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Feedly Alternatives: 7 Free Options That Are Actually Better →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/free-news-aggregators-for-developers" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Free News Aggregators for Developers: The Complete Guide →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/how-to-stay-updated-on-tech-without-doomscrolling" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  How to Stay Updated on Tech Without Doomscrolling →
-                </Link>
-              </li>
+              <li><Link href="/blog/ai-news-digest-tools" className="text-blue-600 dark:text-blue-400 hover:underline">Best AI news digest tools →</Link></li>
+              <li><Link href="/blog/artifact-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Artifact alternatives: apps that do AI news →</Link></li>
+              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">7 tech news aggregators compared →</Link></li>
             </ul>
           </div>
         </div>

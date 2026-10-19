@@ -166,7 +166,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
             Where NewsBlur filters your feeds with AI, Trace goes further — it scans
-            50+ sources automatically, groups related coverage, and generates multi-source
+            100+ sources automatically, groups related coverage, and generates multi-source
             AI summaries. No feed management required.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">

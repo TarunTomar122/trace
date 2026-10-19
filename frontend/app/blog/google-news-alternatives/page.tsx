@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-06-22T00:00:00Z",
-    modifiedTime: "2026-06-22T00:00:00Z",
+    modifiedTime: "2026-10-19T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [
       {
@@ -69,10 +69,10 @@ export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
     headline: "Google News Alternatives: 6 Better Options for Tech News (2026)",
     description:
-      "Comprehensive comparison of the best Google News alternatives for 2026. Covers Trace, Feedly, Techmeme, Inoreader, Artifact, and Ground News with feature comparisons for tech professionals.",
+      "Comprehensive comparison of the best Google News alternatives for 2026. Covers Trace, Feedly, Techmeme, Inoreader, Ground News, and Hacker News with feature comparisons for tech professionals.",
     url: `${SITE_BASE_URL}/blog/google-news-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
-    dateModified: "2026-06-22T00:00:00Z",
+    dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -92,7 +92,7 @@ export default function BlogPost() {
     {
       question: "Why would I switch from Google News?",
       answer:
-        "Google News is too broad and consumer-focused for tech professionals. It lacks AI summaries, has no story grouping across sources, and its algorithm optimizes for engagement over relevance. Specialized alternatives like Trace deliver tech-specific coverage with multi-source synthesis.",
+        "Google News is too broad and consumer-focused for tech professionals. It groups coverage under Full Coverage but does not summarize it, tech stories sit among general news, and its algorithm optimizes for engagement over relevance. Specialized alternatives like Trace deliver tech-specific coverage with multi-source synthesis.",
     },
     {
       question: "Is Google News free?",
@@ -161,7 +161,7 @@ export default function BlogPost() {
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
             <li><strong>Too broad:</strong> Google News covers everything from celebrity gossip to local sports. Tech news is buried under general interest content.</li>
             <li><strong>No AI summaries:</strong> You still have to read full articles to understand what&apos;s happening. No one-click TLDR.</li>
-            <li><strong>No story grouping:</strong> When five publications cover the same launch, you see five separate entries.</li>
+            <li><strong>Grouping without a summary:</strong> Full Coverage collects every outlet&apos;s version of a launch, but you still read them one by one to find out what happened.</li>
             <li><strong>Algorithm-driven:</strong> The feed optimizes for engagement, not relevance to your work.</li>
             <li><strong>No developer focus:</strong> No coverage of GitHub trending, Hacker News, Dev.to, or niche developer blogs.</li>
           </ul>
@@ -211,10 +211,10 @@ export default function BlogPost() {
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td>
                 </tr>
                 <tr>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Artifact</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Hacker News</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Personalization</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Yes</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Community Picks</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td>
                 </tr>
               </tbody>
             </table>
@@ -227,13 +227,13 @@ export default function BlogPost() {
             <strong>Price:</strong> Free
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Trace is purpose-built for tech news. It scans 50+ sources — TechCrunch,
+            Trace is purpose-built for tech news. It scans 100+ sources — TechCrunch,
             The Verge, Ars Technica, Hacker News, Reddit, GitHub trending, and niche
             developer blogs — and groups related coverage into topic pages with
             multi-source AI summaries.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>50+ curated tech sources (vs Google News&apos;s general coverage)</li>
+            <li>100+ curated tech sources (vs Google News&apos;s general coverage)</li>
             <li>Multi-source AI summaries — what different publications agree on</li>
             <li>Topic grouping shows all perspectives on one story</li>
             <li>Community discussion links (Reddit, Hacker News)</li>
@@ -299,15 +299,17 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            6. Artifact — Best for Personalized AI Experience
+            6. Hacker News — Best for Community-Picked Tech Links
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Artifact (revived by the community) offers AI-driven personalization and
-            unique headline rewriting — clickbait gets rewritten into factual descriptions.
-            It learns your preferences over time.
+            Hacker News ranks links by votes from a large developer and founder
+            community, and the comment threads often add context the articles leave
+            out. It is fast and text-only, but the front page leans toward a few
+            topics and changes through the day. If that is too noisy, see our{" "}
+            <Link href="/blog/hacker-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Hacker News alternatives</Link>.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -316,7 +318,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             Google News is fine for general browsing. But if you work in tech, you need
             a tool designed for tech news. <strong>Trace</strong> gives you AI-curated
-            multi-source summaries from 50+ tech sources in 10 minutes. <strong>Techmeme</strong>{" "}
+            multi-source summaries from 100+ tech sources in 10 minutes. <strong>Techmeme</strong>{" "}
             gives you human-curated industry headlines in 3 minutes. Both are free.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
@@ -331,21 +333,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  How founders stay on top of AI news without Twitter →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Replace tech newsletters with a 5-minute briefing →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best AI News Apps in 2026 →
-                </Link>
-              </li>
+              <li><Link href="/blog/flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Flipboard alternatives →</Link></li>
+              <li><Link href="/blog/smartnews-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">SmartNews alternatives →</Link></li>
+              <li><Link href="/blog/ground-news-alternatives-for-tech" className="text-blue-600 dark:text-blue-400 hover:underline">Ground News alternatives for tech news →</Link></li>
             </ul>
           </div>
         </div>

@@ -87,7 +87,7 @@ export default function BlogPost() {
     {
       question: "What is the best NewsBreak alternative?",
       answer:
-        "For tech readers, Trace is the best NewsBreak alternative. It provides a ranked AI briefing from 50+ tech sources with multi-source summaries and topic grouping, without clickbait. For bias comparison, Ground News is strong. For simple free reading, SmartNews or Google News work well.",
+        "For tech readers, Trace is the best NewsBreak alternative. It provides a ranked AI briefing from 100+ tech sources with multi-source summaries and topic grouping, without clickbait. For bias comparison, Ground News is strong. For simple free reading, SmartNews or Google News work well.",
     },
     {
       question: "Why switch from NewsBreak?",
@@ -102,7 +102,7 @@ export default function BlogPost() {
     {
       question: "How is Trace different from NewsBreak?",
       answer:
-        "NewsBreak focuses on broad local and national aggregation with an ad-heavy feed. Trace focuses on tech news, scans 50+ tech sources, groups related coverage into single stories, and generates multi-source AI summaries so you get the full picture in about 10 minutes.",
+        "NewsBreak focuses on broad local and national aggregation with an ad-heavy feed. Trace focuses on tech news, scans 100+ tech sources, groups related coverage into single stories, and generates multi-source AI summaries so you get the full picture in about 10 minutes.",
     },
   ]);
 
@@ -193,12 +193,12 @@ export default function BlogPost() {
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Where NewsBreak gives you an endless mixed feed, Trace gives you a
-            focused morning briefing. It scans 50+ tech sources, groups related
+            focused morning briefing. It scans 100+ tech sources, groups related
             coverage into single stories, and generates multi-source summaries
             so you catch up in about 10 minutes with no clickbait.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>AI briefing from 50+ tech sources in about 10 minutes</li>
+            <li>AI briefing from 100+ tech sources in about 10 minutes</li>
             <li>Multi-source summaries that show the full picture fast</li>
             <li>Topic grouping, so one launch is one story, not five posts</li>
             <li>Clean ranking with no clickbait framing</li>
@@ -207,7 +207,7 @@ export default function BlogPost() {
 
           <InlineTraceCTA
             slug="newsbreak-alternatives"
-            blurb="Swap ad-heavy infinite scroll for a 10-minute ranked briefing: Trace reads 50+ tech sources every morning and condenses them into clean multi-source summaries."
+            blurb="Swap ad-heavy infinite scroll for a 10-minute ranked briefing: Trace reads 100+ tech sources every morning and condenses them into clean multi-source summaries."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -295,9 +295,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The 7 Best Tech News Aggregator Apps in 2026 →</Link></li>
-              <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News Alternatives: 6 Better Options for Tech News →</Link></li>
-              <li><Link href="/blog/smartnews-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">SmartNews Alternatives: 6 Better News Apps for 2026 →</Link></li>
+              <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News alternatives →</Link></li>
+              <li><Link href="/blog/smartnews-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">SmartNews alternatives →</Link></li>
+              <li><Link href="/blog/flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Flipboard alternatives →</Link></li>
             </ul>
           </div>
         </div>

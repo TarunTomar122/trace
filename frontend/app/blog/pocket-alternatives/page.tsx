@@ -87,7 +87,7 @@ export default function BlogPost() {
     {
       question: "What is the best Pocket replacement?",
       answer:
-        "For most former Pocket users, the best replacement depends on the habit. If your saved pile was mostly tech news, Trace is the best fit because it summarizes 50+ tech sources into a 10-minute briefing, so there is less to save. If you want a classic save-for-later queue, Instapaper and Raindrop.io are strong free options.",
+        "For most former Pocket users, the best replacement depends on the habit. If your saved pile was mostly tech news, Trace is the best fit because it summarizes 100+ tech sources into a 10-minute briefing, so there is less to save. If you want a classic save-for-later queue, Instapaper and Raindrop.io are strong free options.",
     },
     {
       question: "What happened to Pocket?",
@@ -102,7 +102,7 @@ export default function BlogPost() {
     {
       question: "How is Trace different from a read-it-later app?",
       answer:
-        "Read-it-later apps store articles for you to read in full later. Trace replaces that habit for tech news: it reads across 50+ tech sources, groups related coverage by topic, and gives you multi-source summaries. You get the key points in about 10 minutes instead of building a pile of unread saves.",
+        "Read-it-later apps store articles for you to read in full later. Trace replaces that habit for tech news: it reads across 100+ tech sources, groups related coverage by topic, and gives you multi-source summaries. You get the key points in about 10 minutes instead of building a pile of unread saves.",
     },
   ]);
 
@@ -194,13 +194,13 @@ export default function BlogPost() {
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             To be honest, Trace replaces the habit, not the feature. Instead of
-            saving ten tabs about the same launch, it scans 50+ tech sources,
+            saving ten tabs about the same launch, it scans 100+ tech sources,
             groups related coverage by topic, and gives you multi-source
             summaries. The daily tech briefing takes about 10 minutes, so there
             is far less left to save for later.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>AI briefing from 50+ tech sources in about 10 minutes</li>
+            <li>AI briefing from 100+ tech sources in about 10 minutes</li>
             <li>Multi-source summaries with grouped topics, not single links</li>
             <li>Free and open source, with zero setup or import required</li>
             <li>Natural endpoint, you know when you are caught up</li>
@@ -209,7 +209,7 @@ export default function BlogPost() {
 
           <InlineTraceCTA
             slug="pocket-alternatives"
-            blurb="Still sitting on a Pocket export? Skip rebuilding the pile: Trace turns 50+ tech sources into one 10-minute briefing you can actually finish."
+            blurb="Still sitting on a Pocket export? Skip rebuilding the pile: Trace turns 100+ tech sources into one 10-minute briefing you can actually finish."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

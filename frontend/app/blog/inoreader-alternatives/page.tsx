@@ -240,7 +240,7 @@ export default function BlogPost() {
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Trace takes a fundamentally different approach from Inoreader. Instead of
-            making you manage feeds and rules, it automatically scans 50+ tech sources,
+            making you manage feeds and rules, it automatically scans 100+ tech sources,
             groups related coverage into topic pages, and generates multi-source AI
             summaries. You open it, read for 10-15 minutes, and you&apos;re caught up.
           </p>

@@ -14,6 +14,8 @@ export type BlogPost = {
   author: string;
   readTime: string;
   date: string;
+  /** Last substantial edit; drives the sitemap's lastmod and dateModified. */
+  updated?: string;
   image: string;
   sources: { title: string; url: string; publisher?: string }[];
   sections: BlogPostSection[];
@@ -449,6 +451,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "10 min read",
     date: "August 1, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "mcp-server-for-tech-news",
+      "daily-tech-briefing-agent-telegram-discord-whatsapp",
+      "ai-news-digest-tools",
+    ],
     sources: [
       { title: "Notion MCP overview", url: "https://developers.notion.com/guides/mcp/overview", publisher: "Notion" },
       { title: "Model Context Protocol authorization", url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization", publisher: "MCP" },
@@ -528,6 +535,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "12 min read",
     date: "August 1, 2026",
     image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "ai-agent-live-tech-news",
+      "daily-tech-briefing-agent-telegram-discord-whatsapp",
+      "ai-news-for-developers",
+    ],
     sources: [
       { title: "Linear MCP server documentation", url: "https://linear.app/docs/mcp", publisher: "Linear" },
       { title: "Connecting to Notion MCP", url: "https://developers.notion.com/guides/mcp/get-started-with-mcp", publisher: "Notion" },
@@ -616,6 +628,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "11 min read",
     date: "August 1, 2026",
     image: "https://images.unsplash.com/photo-1611606063065-ee7946f0787a?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "mcp-server-for-tech-news",
+      "ai-agent-live-tech-news",
+      "daily-tech-briefing-guide",
+    ],
     sources: [
       { title: "Telegram Bot API", url: "https://core.telegram.org/bots/api", publisher: "Telegram" },
       { title: "Discord developer documentation", url: "https://discord.com/developers/docs/intro", publisher: "Discord" },
@@ -709,7 +726,13 @@ export const blogPosts: BlogPost[] = [
     author: "Trace Editorial",
     readTime: "14 min read",
     date: "May 5, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "best-ai-news-apps-2026",
+      "best-tech-news-apps-for-developers",
+      "techmeme-alternatives",
+    ],
     sources: [],
     sections: [
       {
@@ -740,7 +763,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for AI-Curated Daily Briefings",
         paragraphs: [
-          "Trace takes a fundamentally different approach from traditional RSS readers. Instead of making you curate individual feeds, it scans 50+ sources automatically and groups related stories into topic pages. Each topic page includes an AI-generated summary, key points pulled from multiple outlets, a timeline of how the story developed, and links to community discussions on Reddit and Hacker News.",
+          "Trace takes a fundamentally different approach from traditional RSS readers. Instead of making you curate individual feeds, it scans 100+ sources automatically and groups related stories into topic pages. Each topic page includes an AI-generated summary, key points pulled from multiple outlets, a timeline of how the story developed, and links to community discussions on Reddit and Hacker News.",
           "Where Trace shines is the morning catch-up. You open the app, scroll through 8-12 topic groups, and in 10-15 minutes you're caught up on tech news without having touched a single feed setting. The AI summaries are multi-source — they synthesize coverage from different publications rather than summarizing one article at a time — which means you get a more balanced picture of each story. The topic grouping feature for tech news is particularly powerful for identifying which stories have real momentum across the industry.",
           "The community discussion integration is an underrated feature. For each topic, Trace links to relevant Reddit threads and Hacker News discussions, so you can see what practitioners are saying — not just what journalists are writing. This surface-level-plus-community format is something none of the other tools on this list do as well."
         ],
@@ -808,17 +831,17 @@ export const blogPosts: BlogPost[] = [
         ]
       },
       {
-        heading: "6. Artifact (Revived) — Best AI-Native Experience",
+        heading: "6. daily.dev — Best for Developer Discovery",
         paragraphs: [
-          "Artifact was originally built by Instagram's co-founders as an AI-driven news app, shut down in 2024, and has since been revived by the community with continued development. It remains one of the most ambitious AI-native news products, with personalized feeds, AI summaries, and the ability to rewrite clickbait headlines into factual descriptions.",
-          "The headline rewriting feature is genuinely useful — instead of seeing 'You Won't BELIEVE What Apple Just Announced,' you get a factual summary like 'Apple announced an M4 Ultra chip with 32-core GPU at its spring event.' This alone reduces the cognitive noise of browsing tech news. Artifact also learns your preferences over time: it observes which topics you read deeply vs scroll past, and adjusts your feed accordingly.",
-          "Where Artifact falls short is multi-source synthesis. It personalizes well and summarizes well, but each article is treated individually — you don't get the grouped, multi-perspective coverage that Trace or Techmeme provide. For breaking stories covered by many outlets, you'll still see multiple entries without a unified view. It's also weaker on community integration (no Reddit/HN discussion links)."
+          "daily.dev turns your browser's new tab into a feed of developer articles from a large set of blogs and publications, ranked by what other developers are reading. There are also web and mobile apps.",
+          "Its strength is discovery. You come across articles, tools and libraries you would not have found yourself, with upvotes and comments from other developers. You can follow tags and mute sources to tune what shows up.",
+          "Where it falls short is catching up. It is built for browsing during the day rather than a complete morning read: it does not group coverage of the same story, and the feed never ends, so it is easy to keep scrolling. If it is not quite right for you, see our [daily.dev alternatives](/blog/daily-dev-alternatives)."
         ],
         bullets: [
-          "Pros: Innovative AI features (headline rewriting, personalization), clean modern interface, learns your preferences well, free with optional premium, mobile-first design",
-          "Cons: No story grouping across sources, community discussion integration is limited, content personalization can create filter bubbles if you're not careful, still recovering from original shutdown / smaller development team",
-          "Pricing: Free with optional premium features",
-          "Best for: Users who want a modern, AI-driven reading experience with strong personalization — especially those who value headline rewriting and dislike clickbait"
+          "Pros: Lives in your new tab, strong developer community, follow tags and mute sources, good for finding new tools and blogs",
+          "Cons: No story grouping across sources, endless feed, developer topics only, less useful for business or AI industry news",
+          "Pricing: Free; an optional paid plan adds extras",
+          "Best for: Developers who want to discover articles and tools during the day, alongside a separate daily catch-up"
         ]
       },
       {
@@ -826,7 +849,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Flipboard takes a magazine-style approach to news aggregation. Instead of a dense list of headlines, stories are presented as cards in a visual layout that you flip through. It's the most casual and visually appealing option on this list, making it popular among users who find traditional RSS readers too text-heavy.",
           "The strength of Flipboard is content discovery. Its topic-based system surfaces stories from sources and publications you might not have found on your own. You follow topics like 'AI & Machine Learning' or 'Developer Tools' rather than specific publications, and Flipboard fills your feed from a mix of sources that cover those topics.",
-          "The weakness is depth and control. Flipboard's curation leans toward broader, more accessible content — you won't find deeply technical analysis or niche developer blog posts the way you would with Inoreader or Trace. The magazine layout is beautiful but slower to scan than a list view, making it less efficient for getting through a large volume of news quickly. It's best used as a complementary tool alongside a more information-dense aggregator."
+          "The weakness is depth and control. Flipboard's curation leans toward broader, more accessible content — you won't find deeply technical analysis or niche developer blog posts the way you would with Inoreader or Trace. The magazine layout is beautiful but slower to scan than a list view, making it less efficient for getting through a large volume of news quickly. It's best used as a complementary tool alongside a more information-dense aggregator. If you are moving off Flipboard, see our [Flipboard alternatives](/blog/flipboard-alternatives)."
         ],
         bullets: [
           "Pros: Beautiful magazine-style layout, excellent content discovery, topic-based following (not source-based), strong for casual browsing, good for finding new publications, free, available on all platforms",
@@ -840,7 +863,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Beyond our top 7, several other news aggregators and tech content tools deserve recognition, even if they didn't quite make the final cut:",
           "Ground News deserves a mention for its political bias analysis on mainstream news — useful for understanding media framing, though less relevant for pure tech news. The platform shows you how different outlets across the political spectrum cover the same story, making it valuable for developing media literacy even in the tech context.",
-          "daily.dev (covered in depth in our [Hacker News alternatives guide](/blog/hacker-news-alternatives)) is a browser extension that replaces your new tab page with a personalized developer news feed. It's excellent for discovery and serendipity, but less effective as a comprehensive aggregator since it can't replace checking specific publications.",
+          "Artifact, the AI news app from Instagram's co-founders, used to appear on lists like this. Its founders announced in January 2024 that it would close, and Yahoo bought it that April and folded its technology into Yahoo News. Our [Artifact alternatives](/blog/artifact-alternatives) covers the apps that do the same job today.",
           "NetNewsWire is the best native RSS reader for Apple users. It's free, open source, and beautifully designed for macOS and iOS. If you're all-in on Apple devices and want a straightforward RSS reader without AI or algorithmic features, it's worth a look — though it's more of a reader than an aggregator.",
           "Google News is the elephant in the room for general news aggregation, but its tech coverage is too broad and consumer-focused to serve as a primary tech news tool. It fills news gaps that specialized tools miss, but shouldn't be your main source for industry or developer news.",
           "Twitter/X Lists and Bluesky feeds remain powerful manual aggregation tools for those willing to curate them. Building a list of 20-30 key tech voices and journalists creates a surprisingly effective real-time news feed, though without any of the organizational or summarization features dedicated tools provide."
@@ -853,16 +876,17 @@ export const blogPosts: BlogPost[] = [
           "If you want to spend less than 15 minutes a day on news and don't want to manage feeds at all: Trace or Techmeme. Trace gives you AI-curated topic pages with multi-source perspectives and community discussions. Techmeme gives you human-curated industry headlines in 3-5 minutes. Both require zero feed management.",
           "If you want complete control over your sources and enjoy the curation process: Inoreader or Feedly. Inoreader offers more features (rules engine, permanent archiving, newsletter integration) while Feedly offers a more polished, beginner-friendly experience. Start with Feedly if you're new to RSS; graduate to Inoreader if you outgrow it.",
           "If you value privacy and want open-source software: NewsBlur. It combines open-source transparency with AI filtering that learns your preferences, and you can self-host for complete data control. See our [RSS reader guide](/blog/best-rss-reader-apps) for more open-source options including Miniflux and FreshRSS.",
-          "If you're a developer who wants project discovery alongside news: Combine Trace or daily.dev (for breadth) with GitHub Trending (for project discovery) and Lobsters or Hacker News (for community discussion). No single tool covers all three dimensions well.",
+          "If you're a developer who wants project discovery alongside news: use Trace for breadth, then daily.dev or GitHub Trending for discovery and Lobsters or Hacker News for community discussion. No single tool covers all three well.",
           "If you're a team lead or executive: Techmeme for the 3-minute industry scan, plus Inoreader with keyword rules for tracking specific competitors and technologies. The rules engine can automatically surface anything mentioning your company, competitors, or key technology terms.",
-          "The most common mistake is trying to use one tool for everything. Most well-informed tech professionals we surveyed use 2-3 tools: one for breadth (daily digest), one for depth (RSS or targeted publications), and one for discovery (community platforms). This layered approach — similar to the system described in our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) — catches more signal with less effort than any single tool."
+          "The most common mistake is trying to use one tool for everything. Most well-informed tech professionals we surveyed use 2-3 tools: one for breadth (daily digest), one for depth (RSS or targeted publications), and one for discovery (community platforms). This layered approach — similar to the system described in our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) — catches more signal with less effort than any single tool.",
+          "Switching away from one app in particular? We compare the closest options for each: [Feedly](/blog/feedly-alternatives), [Inoreader](/blog/inoreader-alternatives), [Flipboard](/blog/flipboard-alternatives), [Google News](/blog/google-news-alternatives), [SmartNews](/blog/smartnews-alternatives), [Techmeme](/blog/techmeme-alternatives), [Hacker News](/blog/hacker-news-alternatives) and [daily.dev](/blog/daily-dev-alternatives)."
         ]
       },
       {
         heading: "Why We Built Trace for This",
         paragraphs: [
           "We built Trace because existing options fell into two camps: raw RSS readers that felt like work, or algorithmic feeds that optimized for engagement over understanding. We wanted something different — a tool that gave you the efficiency of curation without requiring feed management, and the depth of multi-source comparison without requiring you to read five versions of the same story.",
-          "Trace scans 50+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, key points, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
+          "Trace scans 100+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, key points, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
           "The result is a 15-minute morning catch-up that replaces a dozen open tabs. Our users tell us they spend less time on news and retain more of what they read — not because they're consuming less, but because the information is organized in a way that matches how understanding actually works: through comparison, context, and community.",
           "We're biased, obviously, but if you're tired of tab roulette and want a tool that treats your attention as valuable, Trace is free for everyone and open source, so it is an easy place to start. You can also check out our [daily tech briefing guide](/blog/daily-tech-briefing-guide) for tips on building an effective morning news routine, whether you use Trace or another tool."
         ]
@@ -872,11 +896,11 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "feedly-alternatives",
     title: "Best Feedly alternatives for tech news in 2026",
-    subtitle: "Feedly is the default, but it's not perfect. Here are 5 alternatives that might fit your workflow better.",
+    subtitle: "Feedly is the default, but it's not perfect. Here are 7 alternatives that might fit your workflow better.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Outgrowing Feedly? Compare 5 alternatives for 2026 — Trace, Inoreader, NewsBlur — if you want AI summaries without spending your morning managing RSS.",
+      "Outgrowing Feedly? Compare 7 alternatives for 2026 — Trace, Inoreader, NewsBlur — if you want AI summaries without spending your morning managing RSS.",
     author: "Trace Editorial",
     readTime: "11 min read",
     date: "May 5, 2026",
@@ -911,7 +935,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for AI-Curated Tech News (Replaces Feedly Entirely)",
         paragraphs: [
-          "Trace isn't an RSS reader — it's an AI-powered news aggregator that takes a fundamentally different approach. Instead of you subscribing to individual feeds, Trace automatically scans 50+ curated tech sources and groups related coverage into topic pages with AI-generated summaries, key points, and community discussion links.",
+          "Trace isn't an RSS reader — it's an AI-powered news aggregator that takes a fundamentally different approach. Instead of you subscribing to individual feeds, Trace automatically scans 100+ curated tech sources and groups related coverage into topic pages with AI-generated summaries, key points, and community discussion links.",
           "The key difference from Feedly: you don't manage feeds at all. You open the app, and the day's important tech stories are already organized by topic with multi-source perspectives. This is ideal if you find feed curation tedious, if your interests change frequently, or if you want the contextual depth that comes from seeing how different publications cover the same story.",
           "Trace's AI summaries are also multi-source — they synthesize coverage from different publications rather than summarizing one article at a time. This gives a more balanced picture of each story and helps you quickly understand not just what happened, but what the consensus is, what's disputed, and what the different angles are. Feedly's AI summarizes articles individually, which means you don't get this synthesis effect."
         ],
@@ -1016,6 +1040,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "12 min read",
     date: "May 3, 2026",
     image: "https://images.unsplash.com/photo-1487017159836-4e23ece2e4cf?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "how-to-stay-updated-on-tech-without-doomscrolling",
+      "daily-tech-briefing-guide",
+      "information-overload-solutions",
+    ],
     sources: [
       {
         title: "Information overload literature review (Business Research, 2019)",
@@ -1069,7 +1098,7 @@ export const blogPosts: BlogPost[] = [
           "First, list every source you currently check. Every URL, every newsletter, every subreddit, every Twitter list. Most people are surprised to find 15-25 sources. This audit alone is valuable — you can't fix a system you can't see.",
           "Next, categorize each source into one of three types. Primary sources are the publications that break stories or do original reporting — TechCrunch, The Verge, Ars Technica, Wired, The Information. Keep 5-7 maximum. Community sources surface what practitioners are actually talking about — Hacker News, Reddit (r/programming, r/MachineLearning, r/ExperiencedDevs), Lobsters, select Discord servers. Keep 3-5. Signal sources are specific to your domain — if you work in AI, follow arxiv papers and key researchers. If you're in devtools, follow GitHub trending and specific maintainers. These produce the highest signal but are hardest to discover.",
           "Now apply the elimination rule: for each source on your list, ask yourself: 'Has this source helped me make a better decision or learn something useful in the past month?' If the answer is no, cut it. Be ruthless. You can always re-add it. Most people find they can cut 30-40% of their sources with zero loss in information quality.",
-          "For tool recommendations: Feedly and Inoreader are the best RSS readers for manually curating source lists (see our [RSS reader comparison](/blog/best-rss-reader-apps)). Trace is the best option if you want automatic source curation — it scans 50+ tech sources without requiring you to build and maintain a source list. Techmeme is ideal if you only want the major industry headlines with zero curation effort.",
+          "For tool recommendations: Feedly and Inoreader are the best RSS readers for manually curating source lists (see our [RSS reader comparison](/blog/best-rss-reader-apps)). Trace is the best option if you want automatic source curation — it scans 100+ tech sources without requiring you to build and maintain a source list. Techmeme is ideal if you only want the major industry headlines with zero curation effort.",
           "The rule that will save you the most time: if you can't explain to a colleague in one sentence why you follow a source, unfollow it. Quality over quantity isn't a cliché — it's the only approach that works at the scale of modern information production."
         ]
       },
@@ -1149,7 +1178,13 @@ export const blogPosts: BlogPost[] = [
     author: "Trace Editorial",
     readTime: "11 min read",
     date: "May 1, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "best-ai-news-apps-2026",
+      "ai-summary-tools-for-news",
+      "best-tech-news-aggregator-apps",
+    ],
     sources: [
       {
         title: "Infodemic overview and definition",
@@ -1190,7 +1225,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for Daily Multi-Source Tech News Digests",
         paragraphs: [
-          "Trace is purpose-built for the problem most AI digest tools ignore: single-source summaries give you a compressed version of one article, but understanding comes from comparison. Trace's approach is fundamentally multi-source — it scans 50+ curated tech publications, groups related coverage into topic pages, and generates AI summaries that synthesize across sources rather than summarizing them individually.",
+          "Trace is purpose-built for the problem most AI digest tools ignore: single-source summaries give you a compressed version of one article, but understanding comes from comparison. Trace's approach is fundamentally multi-source — it scans 100+ curated tech publications, groups related coverage into topic pages, and generates AI summaries that synthesize across sources rather than summarizing them individually.",
           "The result reads differently from a standard AI summary. Instead of 'Today, Company X announced Product Y,' you get something closer to: 'Company X announced Product Y, covered by 12 major publications. The consensus is that this is a significant improvement in [area], though The Verge notes concerns about [issue] and Ars Technica's benchmarks show [data point]. Hacker News comments are split between [viewpoint 1] and [viewpoint 2].' This is a fundamentally more useful format than any single-article summary.",
           "Trace also integrates community discussion links (Reddit, Hacker News) directly into topic pages, giving you the practitioner perspective alongside journalistic coverage. Every feature, including AI summaries, is included, and Trace is free for everyone and open source."
         ],
@@ -1230,21 +1265,7 @@ export const blogPosts: BlogPost[] = [
         ]
       },
       {
-        heading: "4. Artifact (Revived) — Best for AI-Remixed Headlines and Personalization",
-        paragraphs: [
-          "Artifact's headline rewriting feature remains unique and genuinely useful. Clickbait headlines get rewritten into factual descriptions: 'You Won't BELIEVE What Apple Just Announced' becomes 'Apple announced M4 Ultra chip with 32-core GPU at spring event.' This alone reduces cognitive noise in your news feed.",
-          "The personalization engine learns your reading behavior and adjusts your feed, similar to Particle but with more aggressive optimization. Artifact also offers 'AI-remixed' summaries that go beyond simple extraction — they can restructure and reframe information in ways that sometimes surface useful connections.",
-          "The limitations: Artifact doesn't group stories across sources, so you'll see multiple entries for the same story from different publications. The personalization, while effective, can create filter bubbles if you're not careful to diversify your reading. And the tool is still recovering from its original shutdown in 2024, with a smaller development team and slower feature development than competitors."
-        ],
-        bullets: [
-          "Multi-source synthesis: Weak — no story grouping or cross-source comparison, each article treated independently",
-          "Context preservation: Moderate — summaries are accurate but lack the broader context that multi-source comparison provides",
-          "Accuracy: Good — headline rewriting is conservative and factual, article summaries are generally reliable",
-          "Best for: Users who want strong personalization with innovative AI features like headline rewriting"
-        ]
-      },
-      {
-        heading: "5. Notion AI / ChatGPT / Claude — Best for DIY News Digests",
+        heading: "4. Notion AI / ChatGPT / Claude — Best for DIY News Digests",
         paragraphs: [
           "If you're technically inclined, building your own AI news digest pipeline gives you maximum flexibility. The approach: use an RSS reader (Inoreader, Feedly) or a news API to collect articles, feed them to an LLM (ChatGPT, Claude, or API-based models) with a well-crafted prompt, and receive a daily digest delivered to your preferred channel (email, Slack, Notion).",
           "The prompt engineering is the critical piece. A good prompt specifies: synthesize across sources rather than summarizing individually, attribute every claim to a specific source, highlight where sources disagree, note what's still unknown or developing, and organize by topic rather than by publication. With GPT-4 or Claude 3.5, this produces surprisingly good results.",
@@ -1273,7 +1294,7 @@ export const blogPosts: BlogPost[] = [
         heading: "Pricing Comparison: What You Get at Each Tier",
         paragraphs: [
           "AI digest tools span a wide range of pricing models — from free and open-source to premium subscriptions. Here's how the costs compare and what you get at each level.",
-          "Free: Trace (AI summaries, multi-source topic pages, Pulse, archive, and agent access, all included), Perplexity (limited queries per day, basic search/summarization), Artifact (most features free, premium optional). These cover the needs of most individual users who want AI-powered news without a monthly commitment.",
+          "Free: Trace (AI summaries, multi-source topic pages, Pulse, archive, and agent access, all included), Perplexity (limited queries per day, basic search/summarization). These cover the needs of most individual users who want AI-powered news without a monthly commitment.",
           "Mid-tier ($8-15/month): Feedly Pro ($8/month for AI summaries, search, 1,000 sources), Inoreader Pro ($9.99/month for AI summaries, rules engine, monitoring), Particle News premium features. These are appropriate for professionals who consume tech news as part of their job and need advanced features.",
           "Premium / Team ($15-30/month): Feedly Pro+ ($15/month for AI feeds, team sharing, newsletter integration), Inoreader Business plans, enterprise AI digest services. These make sense for teams that need shared news monitoring, custom AI models, or API access.",
           "DIY cost ($0-20/month + time): Building your own pipeline costs API credits (GPT-4 at roughly $0.01-0.03 per summary, or Claude at similar rates) plus 2-4 hours of initial setup and occasional maintenance. For a daily digest covering 20-30 stories, expect $5-15/month in API costs. The real cost is time — both setup and the ongoing mental overhead of maintaining your own system.",
@@ -1294,7 +1315,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "DIY vs. Ready-Made AI Digest Tools: Which Is Right for You?",
         paragraphs: [
-          "The AI news digest landscape splits into two fundamentally different approaches: ready-made tools (Trace, Perplexity, Particle, Artifact) and DIY pipelines (using APIs and prompt engineering). Here's how to decide which path makes sense for you.",
+          "The AI news digest landscape splits into two fundamentally different approaches: ready-made tools (Trace, Perplexity, Particle) and DIY pipelines (using APIs and prompt engineering). Here's how to decide which path makes sense for you.",
           "Ready-made tools win on convenience. You sign up, and within minutes you're getting AI-powered news digests. The tool handles source discovery, content fetching, AI processing, formatting, and delivery. You get the benefit of product teams that have spent thousands of hours optimizing the AI's behavior, handling edge cases, and improving accuracy. The trade-off is less control: you're limited to the sources and summarization styles the tool supports, and you can't customize the output format or delivery method.",
           "DIY pipelines win on flexibility. You control every dimension: which sources to include, how the AI processes content (your exact prompt), how summaries are formatted, and where they're delivered. You can build custom integrations with your existing tools (Slack, Notion, email workflows). The trade-off is significant setup and maintenance overhead. A well-built DIY pipeline takes 2-4 hours to set up initially, plus ongoing maintenance (updating sources, tweaking prompts as AI models change, handling API updates and breaking changes).",
           "When DIY makes sense: You have very specific source requirements that no existing tool covers (niche academic journals, internal company blogs, specialized industry publications). You need custom formatting or delivery that no tool supports (specific Slack channel formatting, integration with internal knowledge bases). You're tracking hyper-specific keywords across sources and need full control over filtering logic. You're a developer who enjoys building tools and doesn't mind the maintenance overhead.",
@@ -1398,6 +1419,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "10 min read",
     date: "April 25, 2026",
     image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "feedly-alternatives",
+      "inoreader-alternatives",
+      "newsblur-alternatives",
+    ],
     sources: [],
     sections: [
       {
@@ -1450,6 +1476,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "9 min read",
     date: "April 22, 2026",
     image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "techmeme-alternatives",
+      "daily-dev-alternatives",
+      "developer-news-aggregator-guide",
+    ],
     sources: [],
     sections: [
       {
@@ -1461,7 +1492,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "The 6 Best Hacker News Alternatives",
         bullets: [
-          "1. Trace — Best for AI-grouped developer news. Scans 50+ sources including HN, Reddit, GitHub trending, Dev.to, and niche developer blogs. Groups related stories into topic pages with AI summaries and community discussion links. You see what HN is discussing alongside coverage from other sources.",
+          "1. Trace — Best for AI-grouped developer news. Scans 100+ sources including HN, Reddit, GitHub trending, Dev.to, and niche developer blogs. Groups related stories into topic pages with AI summaries and community discussion links. You see what HN is discussing alongside coverage from other sources.",
           "2. Lobsters — Best for curated, high-signal links. An invite-only link aggregator with strict topic guidelines. The community is smaller but the signal-to-noise ratio is dramatically higher than HN. Focuses on programming, not startup culture.",
           "3. Reddit (r/programming, r/ExperiencedDevs, r/MachineLearning) — Best for discussion depth. Each subreddit has different norms and expertise levels. r/ExperiencedDevs in particular has thoughtful discussions you won't find on HN.",
           "4. TLDR Newsletter — Best for quick daily scans. A free daily newsletter that covers tech, programming, and startup news with one-paragraph summaries. Links to 20-30 stories per issue. Great if you want breadth in 5 minutes.",
@@ -1809,6 +1840,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "9 min read",
     date: "June 1, 2026",
     image: "https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "how-to-stay-updated-on-tech-without-doomscrolling",
+      "information-overload-solutions",
+      "daily-tech-briefing-routine",
+    ],
     sources: [
       { title: "Information overload in tech professionals", url: "https://dl.acm.org/doi/", publisher: "ACM" },
       { title: "The cost of context switching", url: "https://www.apa.org/", publisher: "APA" }
@@ -1866,7 +1902,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "How Trace Helps",
         paragraphs: [
-          "Trace was built for tech news fatigue. It scans 50+ sources, groups related stories, and delivers a single daily AI summary. You open it once, read for 10 minutes, and you're done. No infinite scroll, no algorithmic rabbit holes, no notification spam."
+          "Trace was built for tech news fatigue. It scans 100+ sources, groups related stories, and delivers a single daily AI summary. You open it once, read for 10 minutes, and you're done. No infinite scroll, no algorithmic rabbit holes, no notification spam."
         ],
         bullets: [
           "Multi-source AI summaries (one story, multiple perspectives)",
@@ -1937,15 +1973,21 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "ai-summary-tools-for-news",
     title: "AI Summary Tools for News: Do They Actually Work in 2026?",
-    subtitle: "Every news app has AI summaries now. We tested 8 tools to find which ones deliver accurate, useful summaries vs which ones hallucinate or miss context.",
+    subtitle: "Every news app has AI summaries now. We tested 7 tools to find which ones deliver accurate, useful summaries vs which ones hallucinate or miss context.",
     tag: "AI & Tech",
     category: "ai-tools",
     excerpt:
-      "AI-powered news summaries are everywhere in 2026. But how accurate are they? We tested 8 AI news summary tools across accuracy, speed, context retention, and usefulness.",
+      "AI-powered news summaries are everywhere in 2026. But how accurate are they? We tested 7 AI news summary tools across accuracy, speed, context retention, and usefulness.",
     author: "Trace Editorial",
     readTime: "10 min read",
     date: "June 1, 2026",
+    updated: "October 19, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "ai-news-digest-tools",
+      "best-ai-news-apps-2026",
+      "ai-news-for-developers",
+    ],
     sources: [
       { title: "AI summarization benchmark 2026", url: "https://arxiv.org/", publisher: "arXiv" },
       { title: "News AI accuracy study", url: "https://www.niemanlab.org/", publisher: "Nieman Lab" }
@@ -1954,7 +1996,7 @@ export const blogPosts: BlogPost[] = [
       {
         paragraphs: [
           "Every news app in 2026 claims to have AI summaries. The question is whether those summaries are actually useful or just another feature checkbox.",
-          "We tested 8 AI news summary tools across four criteria: accuracy (do they get the facts right?), context (do they preserve important nuance?), speed (how fast can you consume them?), and usefulness (do they save you time or create more work?)."
+          "We tested 7 AI news summary tools across four criteria: accuracy (do they get the facts right?), context (do they preserve important nuance?), speed (how fast can you consume them?), and usefulness (do they save you time or create more work?)."
         ]
       },
       {
@@ -1972,7 +2014,7 @@ export const blogPosts: BlogPost[] = [
         ]
       },
       {
-        heading: "Test Results: 8 AI News Summary Tools",
+        heading: "Test Results: 7 AI News Summary Tools",
         bullets: [
           "Trace: 9/10 — Best multi-source synthesis, minimal hallucination, excellent context retention",
           "Feedly Leo: 7/10 — Good single-article summaries, limited by RSS feed scope",
@@ -1980,7 +2022,6 @@ export const blogPosts: BlogPost[] = [
           "Google News AI: 6/10 — Good for breadth, weak on depth and nuance",
           "ChatGPT with browsing: 5/10 — Inconsistent accuracy, no source grouping",
           "Perplexity Daily Brief: 8/10 — Good multi-source but limited news-specific focus",
-          "Artifact successor: 7/10 — Good headline rewriting, less useful for full summaries",
           "SmartNews AI: 6/10 — Decent for casual reading, misses niche tech stories"
         ]
       },
@@ -2064,6 +2105,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "10 min read",
     date: "June 1, 2026",
     image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "developer-news-aggregator-guide",
+      "hacker-news-alternatives",
+      "daily-tech-briefing-routine",
+    ],
     sources: [],
     sections: [
       {
@@ -2130,6 +2176,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "9 min read",
     date: "July 23, 2026",
     image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "personalized-developer-news-feed",
+      "best-tech-news-apps-for-developers",
+      "free-news-aggregators-for-developers",
+    ],
     sources: [
       { title: "daily.dev developer news blog", url: "https://daily.dev/blog/", publisher: "daily.dev" },
       { title: "Inoreader feature comparison", url: "https://www.inoreader.com/pricing/feature/filters", publisher: "Inoreader" },
@@ -2208,6 +2259,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "10 min read",
     date: "July 23, 2026",
     image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "developer-news-aggregator-guide",
+      "daily-dev-alternatives",
+      "ai-news-for-developers",
+    ],
     sources: [
       { title: "How to build a personalized developer news feed", url: "https://daily.dev/blog/how-to-build-personalized-developer-news-feed/", publisher: "daily.dev" },
       { title: "Follow different source types", url: "https://www.inoreader.com/blog/2026/01/follow-different-sources.html", publisher: "Inoreader" },
@@ -2289,6 +2345,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "11 min read",
     date: "July 23, 2026",
     image: "https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "replace-tech-newsletters-with-a-5-minute-briefing",
+      "techmeme-alternatives",
+      "best-tech-news-aggregator-apps",
+    ],
     sources: [
       { title: "TLDR Tech", url: "https://tldr.tech/tech", publisher: "TLDR" },
       { title: "daily.dev Digest", url: "https://daily.dev/", publisher: "daily.dev" },
@@ -2364,6 +2425,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "11 min read",
     date: "July 27, 2026",
     image: "https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "hacker-news-alternatives",
+      "tldr-newsletter-alternatives",
+      "best-tech-news-aggregator-apps",
+    ],
     sources: [
       { title: "About Techmeme", url: "https://www.techmeme.com/about", publisher: "Techmeme" },
       { title: "Where developers discover what's next", url: "https://daily.dev/", publisher: "daily.dev" },
@@ -2459,6 +2525,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "12 min read",
     date: "July 27, 2026",
     image: "https://images.unsplash.com/photo-1498050108023-c5249f4f085d?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "hacker-news-alternatives",
+      "best-tech-news-apps-for-developers",
+      "developer-news-aggregator-guide",
+    ],
     sources: [
       { title: "daily.dev product overview", url: "https://daily.dev/", publisher: "daily.dev" },
       { title: "daily.dev documentation", url: "https://docs.daily.dev/", publisher: "daily.dev" },
@@ -2554,6 +2625,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "12 min read",
     date: "July 27, 2026",
     image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "google-news-alternatives",
+      "techmeme-alternatives",
+      "best-tech-news-aggregator-apps",
+    ],
     sources: [
       { title: "Who is Ground News?", url: "https://help.ground.news/en/articles/11593153", publisher: "Ground News" },
       { title: "Ground News subscription features", url: "https://help.ground.news/en/articles/648513", publisher: "Ground News" },
@@ -2649,6 +2725,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "11 min read",
     date: "August 3, 2026",
     image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "daily-dev-alternatives",
+      "free-news-aggregators-for-developers",
+      "hacker-news-alternatives",
+    ],
     sources: [
       { title: "daily.dev developer news guide", url: "https://daily.dev/blog/best-tech-news-apps-for-developers/", publisher: "daily.dev" },
       { title: "Feedly product overview", url: "https://feedly.com/", publisher: "Feedly" },
@@ -2729,6 +2810,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "10 min read",
     date: "August 3, 2026",
     image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "best-tech-news-aggregator-apps",
+      "daily-tech-briefing-guide",
+      "best-ai-news-apps-2026",
+    ],
     sources: [
       { title: "Techmeme about page", url: "https://www.techmeme.com/about", publisher: "Techmeme" },
       { title: "Feedly product overview", url: "https://feedly.com/", publisher: "Feedly" },
@@ -2815,6 +2901,11 @@ export const blogPosts: BlogPost[] = [
     readTime: "9 min read",
     date: "August 3, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "how-to-follow-ai-model-releases",
+      "best-ai-news-apps-2026",
+      "ai-news-digest-tools",
+    ],
     sources: [
       { title: "Hugging Face papers hub", url: "https://huggingface.co/papers", publisher: "Hugging Face" },
       { title: "Hacker News API", url: "https://github.com/HackerNews/API", publisher: "Y Combinator" },

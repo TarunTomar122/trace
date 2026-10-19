@@ -30,6 +30,18 @@ export const metadata: Metadata = {
   },
 };
 
+// Roundups of alternatives live on the blog; these are the ones people search for.
+const ALTERNATIVES = [
+  { label: "Feedly alternatives", href: "/blog/feedly-alternatives" },
+  { label: "Flipboard alternatives", href: "/blog/flipboard-alternatives" },
+  { label: "Google News alternatives", href: "/blog/google-news-alternatives" },
+  { label: "Inoreader alternatives", href: "/blog/inoreader-alternatives" },
+  { label: "Techmeme alternatives", href: "/blog/techmeme-alternatives" },
+  { label: "daily.dev alternatives", href: "/blog/daily-dev-alternatives" },
+  { label: "TLDR alternatives", href: "/blog/tldr-newsletter-alternatives" },
+  { label: "Ground News alternatives", href: "/blog/ground-news-alternatives-for-tech" },
+];
+
 export default function CompareHubPage() {
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
@@ -55,6 +67,14 @@ export default function CompareHubPage() {
               <Link href="/tools" className="public-chip">
                 Tools
               </Link>
+            </div>
+            <p className="public-meta mt-8">Leaving a specific app?</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+              {ALTERNATIVES.map((item) => (
+                <Link key={item.href} href={item.href} className="public-chip">
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </div>
         </section>

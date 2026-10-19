@@ -373,21 +373,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  How founders stay on top of AI news without Twitter →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Replace tech newsletters with a 5-minute briefing →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/how-to-stay-updated-on-tech-without-doomscrolling" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  How to Stay Updated on Tech Without Doomscrolling →
-                </Link>
-              </li>
+              <li><Link href="/blog/inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Inoreader alternatives →</Link></li>
+              <li><Link href="/blog/newsblur-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">NewsBlur alternatives →</Link></li>
+              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">7 tech news aggregators compared →</Link></li>
             </ul>
           </div>
         </div>

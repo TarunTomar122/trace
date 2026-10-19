@@ -12,9 +12,9 @@ const priorityPaths = [
   "/blog/category/guides",
   "/blog/category/comparisons",
   "/compare",
-  "/compare/daily-dev-alternative",
-  "/compare/tldr-newsletter-alternative",
-  "/compare/ground-news-alternative-for-tech",
+  "/blog/daily-dev-alternatives",
+  "/blog/ground-news-alternatives-for-tech",
+  "/blog/flipboard-alternatives",
   "/resources",
 ];
 
