@@ -21,10 +21,13 @@ function env() {
   return { url, token };
 }
 
+type Filter = { field: string; op: string; value: unknown };
+
 async function queryCollection(
   collection: string,
   select: string[],
-  limit = MAX_DOCS
+  limit = MAX_DOCS,
+  filters: Filter[] = []
 ): Promise<Doc[]> {
   const { url, token } = env();
   if (!url || !token) throw new Error('LOCALDB_URL / LOCALDB_API_TOKEN not configured');
@@ -33,7 +36,7 @@ async function queryCollection(
   const res = await fetch(`${url}/query`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collection, select, limit }),
+    body: JSON.stringify({ collection, select, limit, filters }),
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`localdb ${collection} -> ${res.status}`);
@@ -143,6 +146,8 @@ export async function GET(request: NextRequest) {
     }
     await adminAuth.verifyIdToken(authHeader.split('Bearer ')[1]);
     const startedAt = Date.now();
+    // The email panels cover the same 30 days as their charts.
+    const emailSince = dayKey(new Date(Date.now() - 29 * DAY));
 
     const [profiles, landing, reads, interactions, extensions, clicks, conversions, promoted, runs, sends, events] =
       await Promise.all([
@@ -162,12 +167,17 @@ export async function GET(request: NextRequest) {
         queryCollection('promoted_tools', ['status']),
         queryCollection('v3_pipeline_runs', ['last_run_at', 'status'], 100),
         // One doc per send attempt (backend/v1/tools/email_sender.py) and one per open
-        // or click (app/api/email/track), joined on track_id.
+        // or click (Brevo's, via backend/v3/flows/sync_brevo.py), joined on track_id.
         queryCollection('email_sends', [
           'to', 'bucket', 'subject', 'transport', 'status', 'track_id', 'dkim',
           'error', 'fallback_from', 'sent_at', 'date',
+        ], MAX_DOCS, [{ field: 'date', op: '>=', value: emailSince }]),
+        // Only opens and clicks: the sync also stores proxy loads, bounces and
+        // blocked sends, which would crowd these out of the doc cap.
+        queryCollection('email_events', ['track_id', 'kind', 'target', 'at', 'date'], MAX_DOCS, [
+          { field: 'kind', op: 'in', value: ['open', 'click'] },
+          { field: 'date', op: '>=', value: emailSince },
         ]),
-        queryCollection('email_events', ['track_id', 'kind', 'target', 'at', 'date']),
       ]);
 
     const now = Date.now();
@@ -307,7 +317,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // ---- Email (our own MTA + open/click tracking) -------------------------
+    // ---- Email (send log + Brevo's opens and clicks) ------------------------
     // email_events only carries the track_id minted per send, so bucket and
     // recipient come from the join against email_sends.
     const trackBucket = new Map<string, string>();
@@ -380,7 +390,10 @@ export async function GET(request: NextRequest) {
     });
 
     const emailSendsTotal = sendRows.length;
-    const emailByBucket = ['pro', 'free', 'landing'].map((bucket) => {
+    // The daily's buckets since Trace went free, then the paid-era ones while
+    // they are still inside the window.
+    const DAILY_BUCKETS = ['member', 'winback', 'landing', 'pro', 'free'];
+    const emailByBucket = DAILY_BUCKETS.map((bucket) => {
       const stats = bucketEngagement.get(bucket);
       const sent = sendRows.filter((d) => String(d.bucket || '').trim() === bucket).length;
       const openers = stats?.openers.size || 0;
@@ -388,28 +401,34 @@ export async function GET(request: NextRequest) {
       return {
         bucket,
         sent,
+        // Only mail that left through Brevo has opens and clicks.
+        tracked: sendRows.some(
+          (d) => String(d.bucket || '').trim() === bucket && String(d.transport || '').trim() === 'brevo'
+        ),
         openers,
         clickers,
         clicks: stats?.clicks || 0,
         openRate: sent ? Math.round((openers / sent) * 100) : 0,
         clickRate: sent ? Math.round((clickers / sent) * 100) : 0,
       };
-    });
+    }).filter((row) => row.sent > 0);
     const unknownBucketed = sendRows.filter(
-      (d) => !['pro', 'free', 'landing'].includes(String(d.bucket || '').trim())
+      (d) => !DAILY_BUCKETS.includes(String(d.bucket || '').trim())
     ).length;
     if (unknownBucketed > 0) {
       notes.push(
-        `${unknownBucketed} send(s) have no pro/free/landing bucket — counted in the totals, not the per-bucket rows`
+        `${unknownBucketed} send(s) are one-offs (welcome, tests and the like) — counted in the totals, not the per-bucket rows`
       );
     }
-    if (openedTracks.size > 0) {
-      notes.push(
-        'Apple Mail preloads the tracking pixel, so open counts run high; clicks are the honest signal'
-      );
-    }
+    // EMAIL_TRACKING=0 on the VPS: no pixel or wrapped links of our own.
+    // backend/v3/flows/sync_brevo.py copies Brevo's opens and clicks in.
+    notes.push(
+      "Opens and clicks come from Brevo for the mail sent through it, synced before each morning's send; mail from our own server is untracked"
+    );
     if (emailSendsTotal > 0 && openEvents === 0) {
-      notes.push('sends recorded but no opens yet — check the tracking pixel and /api/email/track');
+      notes.push(
+        'sends recorded but no opens yet — on the VPS: cd ~/trace/backend && ../.venv/bin/python -m v3.flows.sync_brevo'
+      );
     }
     if (sends.length >= MAX_DOCS) notes.push('email_sends hit the 5000 doc cap');
     if (events.length >= MAX_DOCS) notes.push('email_events hit the 5000 doc cap');

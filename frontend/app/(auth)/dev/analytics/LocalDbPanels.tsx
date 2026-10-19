@@ -92,6 +92,7 @@ type LocalDbAnalytics = {
       clicks: number;
       openRate: number;
       clickRate: number;
+      tracked: boolean;
     }[];
     topTargets: [string, number][];
     recentSends: {
@@ -336,7 +337,7 @@ export default function LocalDbPanels() {
             <Card
               title="Email engagement (30d)"
               icon={<MousePointerClick size={16} />}
-              hint="Sends recorded against opens and clicks from the tracking endpoint"
+              hint="Sends against opens and clicks (Brevo's, synced each morning)"
             >
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -353,7 +354,7 @@ export default function LocalDbPanels() {
               </div>
             </Card>
 
-            <Card title="Per bucket" icon={<Mail size={16} />} hint="Who got it and how many of them acted on it">
+            <Card title="Per bucket (30d)" icon={<Mail size={16} />} hint="Who got it and how many of them acted on it">
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1 text-xs font-semibold text-secondary/60">
                   <span>Bucket</span>
@@ -363,6 +364,9 @@ export default function LocalDbPanels() {
                     <span className="w-32 text-right">Clicked</span>
                   </span>
                 </div>
+                {data.email.byBucket.length === 0 ? (
+                  <p className="px-1 text-sm text-secondary/50">No daily sends in the last 30 days</p>
+                ) : null}
                 {data.email.byBucket.map((row) => (
                   <div
                     key={row.bucket}
@@ -371,12 +375,18 @@ export default function LocalDbPanels() {
                     <span className="font-semibold capitalize">{row.bucket}</span>
                     <span className="flex gap-6 tabular-nums">
                       <span className="w-24 text-right">{row.sent}</span>
-                      <span className="w-32 text-right">
-                        {row.openers} <span className="text-secondary/50">({row.openRate}%)</span>
-                      </span>
-                      <span className="w-32 text-right">
-                        {row.clickers} <span className="text-secondary/50">({row.clickRate}%)</span>
-                      </span>
+                      {row.tracked ? (
+                        <>
+                          <span className="w-32 text-right">
+                            {row.openers} <span className="text-secondary/50">({row.openRate}%)</span>
+                          </span>
+                          <span className="w-32 text-right">
+                            {row.clickers} <span className="text-secondary/50">({row.clickRate}%)</span>
+                          </span>
+                        </>
+                      ) : (
+                        <span className="w-[17.5rem] text-right text-secondary/50">untracked (own server)</span>
+                      )}
                     </span>
                   </div>
                 ))}

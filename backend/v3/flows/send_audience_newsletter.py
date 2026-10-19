@@ -45,6 +45,7 @@ from google.cloud import firestore  # noqa: E402
 
 from v1.storage import FirestoreStore, is_user_subscribed  # noqa: E402
 from v1.tools.email_sender import send_newsletter_email  # noqa: E402
+from v3.flows.sync_brevo import summary as brevo_sync_summary, sync_brevo  # noqa: E402
 from v3.lib.send_worthy import (  # noqa: E402
     SEND_WORTHY_PROMPT_VERSION,
     judge_send_worthy,
@@ -1615,6 +1616,15 @@ def send_audience_newsletter(
                 "stories": published,
             }
 
+    # Unsubscribes and bounces that only Brevo saw reach the profiles before
+    # the audience is resolved, so nobody who opted out is counted or sent to
+    # again (a dry run only reports them). Best effort: the daily must still go out.
+    try:
+        brevo_sync = brevo_sync_summary(sync_brevo(store.db, dry_run=dry_run))
+    except Exception as exc:  # noqa: BLE001
+        brevo_sync = f"skipped: {exc}"
+    _log(f"brevo sync: {brevo_sync}")
+
     buckets = _resolve_audience(store, v3_store)
     counts = {k: len(v) for k, v in buckets.items()}
     _log(f"audience: {counts}")
@@ -1642,6 +1652,7 @@ def send_audience_newsletter(
         "mode": "full",
         "date": target_date,
         "dry_run": dry_run,
+        "brevo_sync": brevo_sync,
         "audience": counts,
         "sent": sent,
         "failed": failed,

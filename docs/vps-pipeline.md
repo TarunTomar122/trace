@@ -41,6 +41,10 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   one-click `List-Unsubscribe` header both write
   `free_newsletter_subscribers/{email}.active = false` and
   `dailyNewsletterEnabled`/`newsletterOptIn = false` on matching profiles.
+  Before resolving the audience it runs `v3.flows.sync_brevo`, which writes the
+  same flags for unsubscribes, complaints and hard bounces that only Brevo saw,
+  and copies Brevo's opens and clicks into `email_events`. To see what it would
+  change: `cd ~/trace/backend && ../.venv/bin/python -m v3.flows.sync_brevo --dry-run`.
 - Selection priority is AI → markets → tech → design → startups, with up to
   3/2/2/1/1/1 slots on Pro and 2/1/1 on the 5-story emails. Model releases
   take up to two Pro slots or one free/landing slot first, but only while

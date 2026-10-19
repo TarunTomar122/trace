@@ -84,8 +84,10 @@ Two related warm-up settings:
   MX — so without it every reply bounces, and a sender nobody can reply to reads
   as bulk.
 - `EMAIL_TRACKING=0` drops the open pixel and the redirect-wrapped links. Both
-  are bulk-sender tells that a domain with no history cannot afford yet. The
-  dashboard's open and click columns read zero while it is off. The email's own
+  are bulk-sender tells that a domain with no history cannot afford yet. Mail
+  that leaves through Brevo is still tracked by Brevo, and `v3.flows.sync_brevo`
+  copies those opens and clicks in each morning; mail from our own server has
+  none while it is off. The email's own
   links still carry `et=<track id>` either way: a plain query param on our own
   links, not a redirect hop or a pixel.
 
@@ -152,6 +154,14 @@ share link) carry `et=<track id>`, the browser reports it to
 `frontend/app/api/email/visit/route.ts`, and that writes one
 `email_events/visit-<track id>` doc (`kind: 'visit'`) per send. The morning run
 counts those readers as active, which is how a win-back reader joins the daily.
+
+With `EMAIL_TRACKING=0` (as on the VPS), opens and clicks come from Brevo
+instead. `backend/v3/flows/sync_brevo.py` runs before each morning's send: it
+copies Brevo's events on our own sends (matched by message id) into
+`email_events` with `source: 'brevo'`, and turns the daily off for anyone Brevo
+has blocked for an unsubscribe, spam complaint or hard bounce. Gmail's
+unsubscribe button on Brevo-routed mail goes to Brevo, not to
+`/api/unsubscribe`, so without the sync those readers stayed on our list.
 
 That feeds the dashboard at **`/dev/analytics`** (signed in, dev only): sends
 per day, transport split while ramping, failures and Brevo fallbacks, DKIM
