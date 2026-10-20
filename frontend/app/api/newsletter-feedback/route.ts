@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { plainPage } from '@/lib/plain-page';
 
 /**
  * GET /api/newsletter-feedback?r=5&email=someone@example.com
@@ -29,22 +30,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Trace feedback</title></head>
-<body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f1419;">
-  <div style="max-width:520px;margin:0 auto;padding:64px 24px;text-align:center;">
-    <p style="margin:0 0 20px;font-size:14px;font-weight:800;letter-spacing:.18em;color:#0f1419;">TRACE</p>
-    <h1 style="margin:0 0 12px;font-size:24px;font-weight:800;letter-spacing:-.02em;">${
-      valid ? 'Thanks — that helps.' : 'Hmm, that link looked broken.'
-    }</h1>
-    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#536471;">${
-      valid
-        ? 'Your rating is saved. I read every piece of feedback myself.'
-        : 'Try tapping a rating in the email again.'
-    }</p>
-    <a href="https://yourtrace.online/feed?from=email" style="display:inline-block;padding:13px 28px;border-radius:999px;background:#1d9bf0;color:#fff;font-size:15px;font-weight:700;text-decoration:none;">Open the feed</a>
-  </div>
-</body></html>`;
+  const html = plainPage({
+    title: 'Trace feedback',
+    heading: valid ? 'Thanks, that helps.' : 'Hmm, that link looked broken.',
+    body: valid
+      ? 'Your rating is saved. I read every piece of feedback myself.'
+      : 'Try tapping a rating in the email again.',
+    cta: { href: 'https://yourtrace.online/feed?from=email', label: 'Open the feed' },
+  });
 
   return new NextResponse(html, {
     status: 200,

@@ -6,15 +6,21 @@
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
     <title>Trace: {{SUBJECT}}</title>
+    <!-- Its own block, so a client that rejects @font-face keeps the phone layout. -->
     <style>
         /* The site's display serif (Roboto Serif) where the mail app loads web
-           fonts (Apple Mail, iOS Mail); Gmail and Outlook use Georgia. */
+           fonts (Apple Mail, iOS Mail); Gmail falls back to Georgia. */
         @font-face {
             font-family: 'Trace Serif';
             font-style: normal;
             font-weight: 500;
             src: url('https://www.yourtrace.online/fonts/trace-serif-500.woff2') format('woff2');
         }
+    </style>
+    <!-- Outlook for Windows skips the fallbacks after a @font-face family and shows
+         Times New Roman; point it at Georgia directly. -->
+    <!--[if mso]><style>.nl-serif { font-family: Georgia, serif !important; }</style><![endif]-->
+    <style>
         /* Phones get the full screen and a tighter text column. */
         @media only screen and (max-width: 680px) {
             .nl-outer { padding: 8px 0 20px 0 !important; }
@@ -26,24 +32,26 @@
 <!-- The Daily Brief in the site's type and colours (yourtrace.online), on
      plain white: a masthead, then the stories, rules between. -->
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color: #ffffff;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background-color: #ffffff;">
         <tr>
             <td class="nl-outer" align="center" style="padding: 28px 12px 24px 12px;">
 
                 <!-- Masthead -->
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width: 640px;">
                     <tr>
                         <td class="nl-p28" style="padding: 8px 28px 16px 28px; border-bottom: 1px solid #e5e5e5;">
-                            <table cellpadding="0" cellspacing="0" border="0">
+                            <table cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
-                                    <td style="vertical-align: middle; padding: 6px; border: 1.5px solid #0a0a0a; border-radius: 10px; background-color: #ffffff;">
+                                    <td style="vertical-align: middle;">
+                                        <!-- The logo on its own white tile: dark-mode apps darken the cell
+                                             behind an image, and the bare line-art logo would vanish. -->
                                         <a href="https://yourtrace.online/feed?from=email" style="text-decoration: none;">
-                                            <img src="https://www.yourtrace.online/trace.png" width="28" height="28" alt="Trace" style="display: block; width: 28px; height: 28px; border: 0;" />
+                                            <img src="https://www.yourtrace.online/trace-email.png" width="40" height="40" alt="Trace" style="display: block; width: 40px; height: 40px; border: 0;" />
                                         </a>
                                     </td>
                                     <td style="vertical-align: middle; padding-left: 12px;">
-                                        <p style="margin: 0; font-size: 16px; line-height: 21px; font-weight: 650; color: #0a0a0a;">Trace Daily Brief</p>
-                                        <p style="margin: 2px 0 0 0; font-size: 14px; line-height: 19px; color: #767676;">{{DATE}}</p>
+                                        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 21px; font-weight: 600; color: #0a0a0a;">Trace Daily Brief</p>
+                                        <p style="margin: 2px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 19px; color: #767676;">{{DATE}}</p>
                                     </td>
                                 </tr>
                             </table>
@@ -52,13 +60,13 @@
                 </table>
 
                 <!-- Stories -->
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width: 640px;">
 
                     <!-- Headline + intro -->
                     <tr>
                         <td class="nl-p28" style="padding: 26px 28px 20px 28px; border-bottom: 1px solid #e5e5e5;">
-                            <p class="nl-headline" style="margin: 0; font-family: 'Trace Serif', Georgia, 'Times New Roman', serif; font-size: 34px; line-height: 37px; font-weight: 500; letter-spacing: -0.005em; color: #0a0a0a;">{{HEADLINE}}</p>
-                            <p style="margin: 10px 0 0 0; font-size: 15px; line-height: 23px; color: #323232;">{{INTRO}}</p>
+                            <p class="nl-headline nl-serif" style="margin: 0; font-family: 'Trace Serif', Georgia, 'Times New Roman', serif; font-size: 34px; line-height: 37px; font-weight: 500; letter-spacing: -0.005em; color: #0a0a0a;">{{HEADLINE}}</p>
+                            <p style="margin: 10px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 23px; color: #323232;">{{INTRO}}</p>
                         </td>
                     </tr>
 
@@ -84,10 +92,10 @@
                     <!-- Footer (the last story's rule or the CTA box sets it apart) -->
                     <tr>
                         <td class="nl-p28" style="padding: 22px 28px 24px 28px;">
-                            <p style="margin: 0 0 8px 0; font-size: 13.5px; line-height: 20px; color: #767676;">
+                            <p style="margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 20px; color: #767676;">
                                 Trace reads 100+ tech sources every morning and keeps the stories that matter.
                             </p>
-                            <p style="margin: 0; font-size: 13.5px; line-height: 20px; color: #767676;">
+                            <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 20px; color: #767676;">
                                 {{FOOTER_LINKS}}
                             </p>
                         </td>

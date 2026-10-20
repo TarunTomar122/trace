@@ -129,7 +129,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/trace.png",
+        source: "/(trace.png|trace-email.png)",
         headers: [
           {
             key: "Cache-Control",

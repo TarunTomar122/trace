@@ -1109,14 +1109,14 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
     source = escape(story["source_name"])
     byline = (
         f'<p style="margin: 0 0 8px 0; font-size: 14px; line-height: 20px; color: {_MUTED}; font-family: {_FONT};">'
-        f'{favicon}<a href="{original}" style="color: {_INK}; font-weight: 650; '
+        f'{favicon}<a href="{original}" style="color: {_INK}; font-weight: 600; '
         f'text-decoration: none;">{source}</a>'
         + (f'&nbsp;&middot;&nbsp;{story["source_count"]} {count_word}'
            if int(story.get("source_count") or 1) > 1 else "")
         + "</p>"
     ) if source else ""
     return (
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" '
         'style="margin: 0 0 4px 0;">'
         "<tr>"
         '<td style="padding: 18px 0 0 0; vertical-align: top;">'
@@ -1147,7 +1147,7 @@ def _section_body(
 ) -> str:
     # The site's section label: a highlighter mark behind the display serif.
     kicker = "" if not show_label else (
-        f'<p style="margin: 0 0 2px 0; font-family: {_DISPLAY}; font-size: 21px; '
+        f'<p class="nl-serif" style="margin: 0 0 2px 0; font-family: {_DISPLAY}; font-size: 21px; '
         f'line-height: 28px; font-weight: 500; color: {_INK};">'
         f'<span style="background-color: {_HIGHLIGHT}; padding: 0 5px;">{escape(label)}</span></p>'
     )
@@ -1198,6 +1198,7 @@ def _cta_html(bucket: str) -> str:
             "No plan, no trial, nothing to pay."
         )
         label = "Open my feed"
+        href = f"{APP_URL}/feed?from=email"
     else:
         title = "Make tomorrow&rsquo;s brief yours."
         body = (
@@ -1205,19 +1206,21 @@ def _cta_html(bucket: str) -> str:
             "you get, and how you read them."
         )
         label = "Personalize it"
+        # Topics, length and format are picked in the builder, not the feed.
+        href = f"{APP_URL}/brief/customize?from=email"
     # An outlined box on the white page (no tint); the button is a table cell
     # because Outlook ignores padding and radius on a bare link.
     return (
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" '
         f'style="border: 1px solid {_LINE}; border-radius: 12px;">'
         '<tr><td align="center" style="padding: 24px 24px 26px 24px;">'
-        f'<p style="margin: 0 0 6px 0; font-family: {_DISPLAY}; font-size: 25px; line-height: 29px; '
+        f'<p class="nl-serif" style="margin: 0 0 6px 0; font-family: {_DISPLAY}; font-size: 25px; line-height: 29px; '
         f'font-weight: 500; color: {_INK};">{title}</p>'
         f'<p style="margin: 0 0 16px 0; font-size: 15px; color: {_TEXT}; line-height: 23px; '
         f'font-family: {_FONT};">{body}</p>'
         '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
         f'<td bgcolor="{_BLUE}" style="border-radius: 3px; background-color: {_BLUE};">'
-        f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 12px 24px; '
+        f'<a href="{href}" style="display: inline-block; padding: 12px 24px; '
         f'font-family: {_FONT}; font-size: 16px; line-height: 22px; font-weight: 600; color: #ffffff; '
         f'text-decoration: none;">{label}</a>'
         "</td></tr></table>"
@@ -1257,7 +1260,7 @@ def _feedback_html(bucket: str, email: str, date: str) -> str:
         '<tr><td style="padding: 24px 24px 20px 24px;">'
         '<p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 650; '
         f'color: {_BLUE}; font-family: {_FONT};">Feedback</p>'
-        f'<p style="margin: 0 0 4px 0; font-family: {_DISPLAY}; font-size: 24px; font-weight: 500; color: {_INK}; '
+        f'<p class="nl-serif" style="margin: 0 0 4px 0; font-family: {_DISPLAY}; font-size: 24px; font-weight: 500; color: {_INK}; '
         'line-height: 1.2;">'
         "What'd you think of today's newsletter?</p>"
         f'<p style="margin: 0 0 16px 0; font-size: 14px; color: {_TEXT}; '
@@ -1396,7 +1399,7 @@ def _render(
     # place so it can be switched on with one line.
     html = _replace_block(html, "FEEDBACK", "")
 
-    dot = f"<span style=\"color: #b5b5b5;\">&nbsp;&middot;&nbsp;</span>"
+    dot = "<span style=\"color: #b5b5b5;\">&nbsp;&middot;&nbsp;</span>"
     share = (
         f'<a href="{_share_url(date)}" style="color: {_BLUE}; font-weight: 600; '
         'text-decoration: none;">Share today&rsquo;s brief</a>'
@@ -1436,7 +1439,7 @@ def _text_version(
     show_summary: bool = True,
     track_id: str = "",
 ) -> str:
-    lines = ["Trace Daily Brief", headline, ""]
+    lines = [f"Trace Daily Brief · {_display_date(date)}" if date else "Trace Daily Brief", headline, ""]
     for _, stories in sections:
         for story in stories:
             lines.append(story["title"])

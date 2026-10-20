@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { plainPage } from '@/lib/plain-page';
 
 /**
  * Unsubscribe from the daily newsletter.
@@ -52,22 +53,14 @@ async function optOutByEmail(raw: string) {
 }
 
 function confirmationPage(valid: boolean) {
-  return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Trace unsubscribe</title></head>
-<body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f1419;">
-  <div style="max-width:520px;margin:0 auto;padding:64px 24px;text-align:center;">
-    <p style="margin:0 0 20px;font-size:14px;font-weight:800;letter-spacing:.18em;color:#0f1419;">TRACE</p>
-    <h1 style="margin:0 0 12px;font-size:24px;font-weight:800;letter-spacing:-.02em;">${
-      valid ? "You're unsubscribed." : 'That link looked broken.'
-    }</h1>
-    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#536471;">${
-      valid
-        ? 'No more morning emails to this address. You can still read the feed any time.'
-        : 'No address came through with this link. Try the unsubscribe link in the email again.'
-    }</p>
-    <a href="https://yourtrace.online/feed" style="display:inline-block;padding:13px 28px;border-radius:999px;background:#1d9bf0;color:#fff;font-size:15px;font-weight:700;text-decoration:none;">Open the feed</a>
-  </div>
-</body></html>`;
+  return plainPage({
+    title: 'Trace unsubscribe',
+    heading: valid ? "You're unsubscribed." : 'That link looked broken.',
+    body: valid
+      ? 'No more morning emails to this address. You can still read the feed any time.'
+      : 'No address came through with this link. Try the unsubscribe link in the email again.',
+    cta: { href: 'https://yourtrace.online/feed', label: 'Open the feed' },
+  });
 }
 
 export async function GET(request: NextRequest) {

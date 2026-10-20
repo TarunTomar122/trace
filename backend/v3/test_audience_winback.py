@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import re
 import types
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -259,6 +260,28 @@ class RenderTests(unittest.TestCase):
     def test_members_manage_settings_in_the_app(self):
         _, html, _ = self.render("member")
         self.assertIn("tab=profile", html)
+
+    def test_one_heading_per_run_of_the_same_label(self):
+        sections = [
+            (N.MODEL_RELEASE_LANE, [dict(STORY)]),
+            ("ai", [dict(STORY)]),
+            ("markets", [dict(STORY)]),
+        ]
+
+        def labels(bucket: str) -> list[str]:
+            html = N._sections_html(bucket, sections)
+            return re.findall(r'<span style="background-color: #ffef5f; padding: 0 5px;">([^<]+)</span>', html)
+
+        # Landing labels every lane "Top stories": one heading for the run.
+        self.assertEqual(labels("landing"), ["Model releases", "Top stories"])
+        # Members see a heading per topic.
+        self.assertEqual(labels("member"), ["Model releases", "Top in AI", "Top in Markets"])
+
+    def test_landing_cta_opens_the_brief_builder(self):
+        # No send id, so links stay plain instead of going through the tracker.
+        _, html, _ = N._render("landing", [("ai", [dict(STORY)])], TODAY, "r@x.com", "")
+        self.assertIn("/brief/customize?from=email", html)
+        self.assertIn("Personalize it", html)
 
 
 if __name__ == "__main__":
