@@ -275,6 +275,7 @@ export function mapTrendingToStories(
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
       // Carried so the Home edition can drop stories Jev judged worthless.
       sendWorthy: typeof topic.jev_send_worthy === 'number' ? topic.jev_send_worthy : null,
+      laneDetail: topic.lane_detail ? canonicalLane(topic.lane_detail) : undefined,
     };
   };
 
@@ -302,6 +303,7 @@ export function mapTrendingToStories(
       cat: canonicalLane(it.interest_id),
       url,
       sendWorthy: typeof it.jev_send_worthy === 'number' ? it.jev_send_worthy : null,
+      laneDetail: it.lane_detail ? canonicalLane(it.lane_detail) : undefined,
     };
   };
 

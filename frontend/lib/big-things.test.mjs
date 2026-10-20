@@ -16,6 +16,7 @@ const story = (over) => ({
   tags: over.tags,
   body: over.body,
   sendWorthy: over.sendWorthy === undefined ? 1 : over.sendWorthy,
+  laneDetail: over.laneDetail,
 });
 
 test('drops stories Jev judged worthless', () => {
@@ -117,38 +118,26 @@ test('a launch whose newest coverage is over 36 hours old competes in its lane',
   assert.equal(selectBigThings(undated, { count: 5, now })[0].id, 'flux');
 });
 
-test('robotics has no reserved slot: it backfills on strength', () => {
-  const quotaLanes = [
-    story({ id: 'ai-1', cat: 'ai' }),
-    story({ id: 'ai-2', cat: 'ai' }),
-    story({ id: 'ai-3', cat: 'ai' }),
-    story({ id: 'mk-1', cat: 'markets' }),
-    story({ id: 'mk-2', cat: 'markets' }),
-    story({ id: 'tech-1', cat: 'tech' }),
-    story({ id: 'tech-2', cat: 'tech' }),
-    story({ id: 'design-1', cat: 'ux-design' }),
+test('robotics gets two slots right after AI, even when weaker', () => {
+  const others = [
+    story({ id: 'launch-a', cat: 'ai', title: 'OpenAI releases GPT-6', tags: ['ai', 'models'], sendWorthy: 2 }),
+    story({ id: 'launch-b', cat: 'ai', title: 'Google ships Gemini 4', tags: ['ai', 'models'], sendWorthy: 2 }),
+    ...['ai-1', 'ai-2', 'ai-3'].map((id) => story({ id, cat: 'ai', sendWorthy: 2 })),
+    ...['mk-1', 'mk-2', 'tech-1', 'tech-2', 'startup-1'].map((id) =>
+      story({ id, cat: id.startsWith('mk') ? 'markets' : id.startsWith('tech') ? 'tech' : 'startups', sendWorthy: 2 })),
   ];
-  const strongRobots = selectBigThings(
-    [
-      ...quotaLanes,
-      story({ id: 'robot-1', cat: 'robotics', sendWorthy: 2 }),
-      story({ id: 'robot-2', cat: 'robotics', sendWorthy: 2 }),
-      story({ id: 'startup-1', cat: 'startups', sendWorthy: 1 }),
-    ],
-    { count: 10 },
-  );
-  assert.deepEqual(strongRobots.slice(8).map((s) => s.id), ['robot-1', 'robot-2']);
+  const robots = ['robot-1', 'robot-2', 'robot-3'].map((id) => story({ id, cat: 'robotics', sendWorthy: 1 }));
+  for (const count of [10, 5]) {
+    const picked = selectBigThings([...others, ...robots], { count });
+    assert.equal(picked.filter((s) => s.cat === 'robotics').length, 2, `count ${count}`);
+  }
+  const ten = selectBigThings([...others, ...robots], { count: 10 }).map((s) => s.id);
+  assert.deepEqual(ten.slice(5, 7), ['robot-1', 'robot-2']);
 
-  const weakRobot = selectBigThings(
-    [
-      ...quotaLanes,
-      story({ id: 'robot-1', cat: 'robotics', sendWorthy: 1 }),
-      story({ id: 'startup-1', cat: 'startups', sendWorthy: 2 }),
-      story({ id: 'startup-2', cat: 'startups', sendWorthy: 2 }),
-    ],
-    { count: 10 },
-  );
-  assert.ok(!weakRobot.some((s) => s.cat === 'robotics'));
+  // A thin day folds robotics into AI; those stories still take the robotics slots.
+  const folded = ['robot-1', 'robot-2'].map((id) => story({ id, cat: 'ai', laneDetail: 'robotics', sendWorthy: 1 }));
+  const foldedTen = selectBigThings([...others, ...folded], { count: 10 }).map((s) => s.id);
+  assert.deepEqual(foldedTen.slice(5, 7), ['robot-1', 'robot-2']);
 });
 
 test('a robotics reader gets the robotics stories', () => {

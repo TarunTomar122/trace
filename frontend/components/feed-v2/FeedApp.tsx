@@ -114,6 +114,8 @@ export interface FeedStory {
   tags?: string[];
   /** Jev verdict from the pipeline: 0 = no reader value (kept out of Home). */
   sendWorthy?: number | null;
+  /** The thin lane a story was folded out of (THIN_LANE_FOLD in build_trending). */
+  laneDetail?: string;
 }
 
 export interface PulseItem {

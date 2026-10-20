@@ -3,10 +3,11 @@ import { isFreshRelease } from './feed-ranking.ts';
 /**
  * The feed's "big things" edition, modelled on the daily email's selection:
  * drop anything Jev judged worthless, lead with new model releases, then fill
- * lane quotas in priority order (AI, markets, tech, design).
+ * lane quotas in priority order (AI, robotics, markets, tech, design).
  *
- * Unlike the email (backend/v3/flows/send_audience_newsletter.py), robotics
- * gets no reserved slot here, so the Home tab and the email can differ.
+ * Robotics keeps two slots right after AI, as in the email
+ * (backend/v3/flows/send_audience_newsletter.py); unlike it, Home gives tech
+ * two slots and startups none.
  */
 
 export type BigThingCandidate = {
@@ -20,21 +21,29 @@ export type BigThingCandidate = {
   body?: string;
   /** Jev verdict: 0 means no reader value. */
   sendWorthy?: number | null;
+  /** The thin lane a story was folded out of; it still fills that lane's slots. */
+  laneDetail?: string;
 };
 
-// Startups and robotics have no quota here: their stories backfill, competing
-// on strength rather than taking a reserved slot.
-const LANE_ORDER = ['ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics'] as const;
+function laneOf(story: BigThingCandidate): string {
+  return story.laneDetail || story.cat || '';
+}
+
+// Startups have no quota here: their stories backfill, competing on strength
+// rather than taking a reserved slot.
+const LANE_ORDER = ['ai', 'robotics', 'markets', 'tech', 'startups', 'ux-design'] as const;
 
 /** Slots per lane once releases have taken theirs (10 and 5 story editions). */
 const LANE_QUOTA_PRO: Record<string, number> = {
   ai: 3,
+  robotics: 2,
   markets: 2,
   tech: 2,
   'ux-design': 1,
 };
 const LANE_QUOTA_FREE: Record<string, number> = {
   ai: 2,
+  robotics: 2,
   markets: 1,
   tech: 1,
 };
@@ -63,7 +72,7 @@ export function selectBigThings<T extends BigThingCandidate>(
   const laneFilter = (options.lanes || []).filter((lane) => lane);
   const eligible = stories
     .filter((story) => story.sendWorthy !== 0)
-    .filter((story) => (laneFilter.length ? laneFilter.includes(story.cat || '') : true))
+    .filter((story) => (laneFilter.length ? laneFilter.includes(story.cat || '') || laneFilter.includes(laneOf(story)) : true))
     .sort(byStrength);
 
   if (eligible.length <= count) return eligible;
@@ -87,7 +96,7 @@ export function selectBigThings<T extends BigThingCandidate>(
     let taken = 0;
     for (const story of eligible) {
       if (taken >= quota[lane] || picked.length >= count) break;
-      if (used.has(story) || story.cat !== lane) continue;
+      if (used.has(story) || laneOf(story) !== lane) continue;
       picked.push(story);
       used.add(story);
       taken += 1;
