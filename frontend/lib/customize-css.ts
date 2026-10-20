@@ -83,7 +83,8 @@ export const CUSTOMIZE_CSS = `
 .hp .cz-paper-head { padding: 22px 22px 14px; border-bottom: 1px solid var(--hp-line); }
 .hp .cz-paper-head p { margin: 0; font-family: var(--hp-serif); font-size: 28px; font-weight: 500; line-height: 1.1; }
 .hp .cz-paper-body { padding-bottom: 12px; }
-@media (min-width: 1024px) { .hp .cz-paper-body { height: 520px; overflow-y: auto; overscroll-behavior: contain; } }
+@media (min-width: 1024px) { .hp .cz-paper-body { height: 520px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; } }
+.hp .cz-paper-body::-webkit-scrollbar { display: none; }
 .hp .cz-kicker { margin: 0; padding: 20px 22px 0; }
 .hp .cz-kicker span { padding: 0 5px; background: #ffef5f; font-family: var(--hp-serif); font-size: 20px; font-weight: 500; line-height: 1.3; }
 .hp .cz-story { padding: 14px 22px 18px; border-bottom: 1px solid var(--hp-line); }

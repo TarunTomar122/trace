@@ -78,7 +78,9 @@ export const BRIEF_CSS = `
 .hp .br-toc-col { display: none; }
 .hp .br-toc { position: sticky; top: 84px; display: flex; flex-direction: column; max-height: calc(100vh - 108px); }
 .hp .br-toc-title { margin: 0 0 12px; font-family: var(--hp-serif); font-weight: 500; font-size: 23px; line-height: 1.1; }
-.hp .br-toc-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-top: 1px solid var(--hp-line); }
+.hp .br-toc-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-top: 1px solid var(--hp-line); }
+/* Still scrolls (wheel, touch, keys); just no scrollbar beside the contents. */
+.hp .br-toc-list::-webkit-scrollbar, .hp .br-jump > ol::-webkit-scrollbar { display: none; }
 .hp .br-toc-group { padding: 10px 0 8px; border-bottom: 1px solid var(--hp-line); }
 .hp .br-toc-label { margin: 0 0 4px; font-size: 13px; font-weight: 650; color: var(--hp-text); }
 .hp .br-toc-group ol, .hp .br-jump ol { list-style: none; margin: 0; padding: 0; }
@@ -101,7 +103,7 @@ export const BRIEF_CSS = `
 .hp .br-jump summary::-webkit-details-marker { display: none; }
 .hp .br-jump summary::after { content: "+"; font-size: 22px; font-weight: 300; line-height: 1; color: var(--hp-muted); }
 .hp .br-jump[open] summary::after { content: "\\2212"; }
-.hp .br-jump > ol { max-height: 60vh; overflow-y: auto; padding: 4px 0 8px; border-top: 1px solid var(--hp-line); }
+.hp .br-jump > ol { max-height: 60vh; overflow-y: auto; scrollbar-width: none; padding: 4px 0 8px; border-top: 1px solid var(--hp-line); }
 .hp .br-jump-label { margin: 0; padding: 10px 14px 2px; font-size: 13px; font-weight: 650; color: var(--hp-text); }
 .hp .br-jump a { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px; padding: 8px 14px; font-size: 15px; line-height: 1.35; color: var(--hp-ink); text-decoration: none; }
 .hp .br-jump a:hover { background: var(--hp-gray); }
