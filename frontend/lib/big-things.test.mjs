@@ -3,12 +3,16 @@ import test from 'node:test';
 
 import { selectBigThings } from './big-things.ts';
 
+// One clock for every story: separate Date.now() calls can land a millisecond
+// apart and flip the order of otherwise-equal stories.
+const NOW = Date.now();
+
 const story = (over) => ({
   id: over.id,
   title: over.title || over.id,
   cat: over.cat || 'ai',
   sources: over.sources || ['a.com'],
-  ts: over.ts ?? Date.now(),
+  ts: over.ts ?? NOW,
   tags: over.tags,
   body: over.body,
   sendWorthy: over.sendWorthy === undefined ? 1 : over.sendWorthy,
