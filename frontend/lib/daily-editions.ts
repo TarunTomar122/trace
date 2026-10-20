@@ -224,6 +224,11 @@ export function neighbours(dates: string[], date: string): { newer: string | nul
 // shows real stories instead of an empty state or samples.
 
 const LIVE_FEED_LOOKBACK = 3;
+// The email leaves out what a daily carried in the last three days
+// (REPEAT_DAYS in send_audience_newsletter.py), so the live brief does too:
+// the same link or headline. Close calls are the email's model's to judge, so
+// a paraphrase can show here until the morning run publishes the edition.
+const REPEAT_DAYS = 3;
 
 function domainOf(url: string): string {
   return sourceHost(url);
@@ -279,6 +284,43 @@ function mergeSameEvent(pool: PoolStory[]): PoolStory[] {
   return kept;
 }
 
+type Carried = { urls: Set<string>; titles: Set<string> };
+
+/** Links and headlines the dailies of the REPEAT_DAYS days before `date` carried. */
+async function recentlySent(date: string): Promise<Carried> {
+  const carried: Carried = { urls: new Set(), titles: new Set() };
+  const db = adminFirestore;
+  if (!db) return carried;
+  try {
+    const day = Date.parse(`${date}T00:00:00Z`);
+    const ids = Array.from({ length: REPEAT_DAYS }, (_, back) =>
+      new Date(day - (back + 1) * 86_400_000).toISOString().slice(0, 10));
+    const snaps = await Promise.all(ids.map((id) => db.collection(EDITIONS_COLLECTION).doc(id).get().catch(() => null)));
+    for (const snap of snaps) {
+      if (!snap?.exists) continue;
+      const data = (snap.data() || {}) as Record<string, unknown>;
+      // `sent` is everything any email carried; older editions only have their public stories.
+      const stories = Array.isArray(data.sent) && data.sent.length ? data.sent : data.stories;
+      for (const value of Array.isArray(stories) ? stories : []) {
+        if (!value || typeof value !== 'object') continue;
+        const story = value as Record<string, unknown>;
+        for (const url of [story.url, ...(Array.isArray(story.urls) ? story.urls : [])]) {
+          if (asText(url)) carried.urls.add(asText(url));
+        }
+        if (asText(story.title)) carried.titles.add(asText(story.title).toLowerCase());
+      }
+    }
+  } catch (error) {
+    // Without the history the live brief is shown as it was: never no brief at all.
+    console.error('[daily-editions] recent editions read failed:', error);
+  }
+  return carried;
+}
+
+function isRepeat(story: PoolStory, carried: Carried): boolean {
+  return carried.urls.has(story.url) || carried.titles.has(story.title.toLowerCase());
+}
+
 async function readLivePool(): Promise<{ date: string; pool: PoolStory[] } | null> {
   if (!adminFirestore) return null;
   try {
@@ -293,8 +335,14 @@ async function readLivePool(): Promise<{ date: string; pool: PoolStory[] } | nul
     for (const doc of snap.docs) {
       if (!isEditionDate(doc.id)) continue;
       const topics = (doc.data() as Record<string, unknown>).trending_topics;
-      const pool = mergeSameEvent((Array.isArray(topics) ? topics : []).flatMap(topicToPool));
-      if (pool.length) return { date: doc.id, pool };
+      const stories = (Array.isArray(topics) ? topics : []).flatMap(topicToPool);
+      if (!stories.length) continue;
+      // Repeats go before merging, as in the email: a new story merged with
+      // yesterday's would otherwise go with it.
+      const carried = await recentlySent(doc.id);
+      const fresh = mergeSameEvent(stories.filter((story) => !isRepeat(story, carried)));
+      // Everything already went out: better a repeat than an empty brief or an older day's.
+      return { date: doc.id, pool: fresh.length ? fresh : mergeSameEvent(stories) };
     }
     return null;
   } catch (error) {

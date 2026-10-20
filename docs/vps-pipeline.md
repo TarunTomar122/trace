@@ -34,8 +34,9 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   DST is handled by systemd; `Persistent=true` catches up a missed run.
 - The newsletter is sent by `backend/v3/flows/send_audience_newsletter.py`, which
   resolves three mutually exclusive buckets and sends **one email per person**:
-  **pro** (10 stories) > **free** (5 stories) > **landing** (5 stories for
-  email-only homepage signups). Pro/free stories come from the recipient's
+  **member** (active accounts; 5, 10 or 15 stories, 10 by default) >
+  **winback** (dormant accounts, 10) > **landing** (10 stories for email-only
+  homepage signups). Member and win-back stories come from the recipient's
   interests; landing gets the global picks. Email is on by default for every
   bucket, and an explicit opt-out wins for all three: the footer link and the
   one-click `List-Unsubscribe` header both write
@@ -46,13 +47,24 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   and copies Brevo's opens and clicks into `email_events`. To see what it would
   change: `cd ~/trace/backend && ../.venv/bin/python -m v3.flows.sync_brevo --dry-run`.
 - Selection priority is AI → markets → tech → design → startups, with up to
-  3/2/2/1/1/1 slots on Pro and 2/1/1 on the 5-story emails. Model releases
-  take up to two Pro slots or one free/landing slot first, but only while
+  3/2/2/1/1/1 slots on member and win-back emails and 2/1/1 on landing.
+  Model releases take up to two member/win-back slots or one landing slot
+  first (one in any 5-story brief), but only while
   their newest coverage is under 36 hours old (`RELEASE_FRESH_HOURS`; the
   pool spans about three days); older launches compete in their lane. Unused
-  slots are filled from the remaining lanes. Pro displays the selected sections as model
+  slots are filled from the remaining lanes. Member and win-back emails display the selected sections as model
   releases → AI → markets → startups → tech → design, then any other selected
   lanes in their existing relative order. Markets prefers macro stories.
+- No repeats: a story any daily carried in the last three days
+  (`REPEAT_DAYS`) is left out, before grouping. Each run records what went
+  out to anyone in `daily_editions/{date}.sent` (older editions fall back to
+  their public `stories`). The same link (any article of a sent story) or the
+  same headline is a repeat outright; a story that only shares words with a
+  sent one is asked of `TRACE_REPEAT_MODEL` (default `gpt-6.1-sol`, one call
+  per 40 of them, `backend/v3/lib/repeats.py`, cached in `v3_synthesis_cache`).
+  Without a key, or if the call fails, those close calls go out. The run logs `repeats: N left out ...` with each
+  pair. Until the morning run publishes, the live `/brief` drops only the
+  outright repeats.
 - Delivery goes through our own Postfix on the VPS with Brevo as the per-message
   fallback (`EMAIL_TRANSPORT=auto`), and every attempt lands in `email_sends`.
   Opens, clicks and visits from the email (`kind: 'visit'`, which make a
@@ -72,8 +84,8 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   `v3_synthesis_cache` (`jev-send-worthy-v1`). Edit the rubric there — never
   add keyword lists.
 - Preview without sending:
-  `python -m v3.flows.send_audience_newsletter --preview --preview-bucket pro`.
-  Demo one address: `--demo-email you@example.com --demo-bucket free`.
+  `python -m v3.flows.send_audience_newsletter --preview --preview-bucket member`.
+  Demo one address: `--demo-email you@example.com --demo-bucket landing`.
   Pull on the VPS after changing the flow, the template
   (`backend/v1/templates/audience_newsletter.html`), or the ranking rubric.
 

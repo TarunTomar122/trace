@@ -22,7 +22,8 @@ chosen by the daily's selection for a new subscriber and linked the way the
 daily links them. The daily also asks the model for fresh quality verdicts to
 rank by; the welcome runs every 5 minutes, so it makes no model call and only
 uses the verdicts the pipeline stored in the feed (which drop worthless
-stories), so its picks and order can differ a little. With fewer than
+stories), so its picks and order can differ a little. It also skips the
+daily's repeat check: a new reader hasn't seen yesterday's stories. With fewer than
 MIN_STORIES, or a feed that hasn't been rebuilt lately, the welcome goes out
 without them.
 """

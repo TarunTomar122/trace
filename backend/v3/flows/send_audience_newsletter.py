@@ -14,7 +14,9 @@ Trace is free for everyone; there are no paid tiers.
 
 Stories come from the trending pool (v3_user_feeds/_global, about three days
 of coverage). Topics that Jev flagged send_worthy=0 are dropped whenever
-verdicts exist. Story links point at the app, never the publisher.
+verdicts exist, and so is anything a daily already carried in the last
+REPEAT_DAYS days (`sent` on each daily_editions doc; close calls are the
+model's, v3.lib.repeats). Story links point at the app, never the publisher.
 """
 
 from __future__ import annotations
@@ -50,6 +52,7 @@ from v3.lib.send_worthy import (  # noqa: E402
     SEND_WORTHY_PROMPT_VERSION,
     judge_send_worthy,
 )
+from v3.lib.repeats import judge_repeats  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
@@ -111,6 +114,20 @@ MODEL_RELEASE_SLOTS = {"member": 2, "winback": 2, "landing": 1}
 # until it ages out; after the window it competes in its lane like any story.
 # Same window as FRESH_STORY_HOURS in frontend/lib/feed-ranking.ts.
 RELEASE_FRESH_HOURS = 36
+# The pool spans about three days, so a big story stays in it that long: once
+# any daily has carried it, it's left out for this many days (Muse Spark and
+# Amazon's Bee each went out three days running before this).
+REPEAT_DAYS = 3
+# The same link or headline is a repeat outright. A story sharing two or more
+# headline words and much of its headline or summary with one that went out is
+# asked of the model (v3.lib.repeats): words alone can't tell "Muse Wonder"
+# after "Muse Spark" (new) from "Saudi engineer arrested at OpenAI" after "FBI
+# arrests OpenAI employee" (the same arrest).
+REPEAT_TITLE_OVERLAP = 0.4
+REPEAT_TEXT_OVERLAP = 0.3
+REPEAT_ASK_PER_STORY = 2  # the closest sent stories to ask about
+# Links kept per sent story: tomorrow's lead article may be any of them.
+SENT_URLS = 12
 
 # Sort only the finished full-edition sections; LANE_ORDER controls selection.
 FULL_DISPLAY_ORDER = (
@@ -330,6 +347,9 @@ def _candidates(feed: dict) -> list[dict]:
         seen_urls.add(url)
         for a in articles:
             seen_urls.add(str(a.get("url", "")).strip())
+        article_urls = list(dict.fromkeys(
+            u for u in (str(a.get("url", "")).strip() for a in articles) if u
+        ))
         newest = max(
             (ts for ts in (_parse_ts(a.get("published_date")) for a in articles) if ts),
             default=None,
@@ -352,6 +372,7 @@ def _candidates(feed: dict) -> list[dict]:
                 title, _source_name(hero), summary
             ),
             "newest_at": newest,
+            "urls": article_urls,
         })
 
     # Raw trending rows not already covered by a topic (singleton lanes).
@@ -382,6 +403,7 @@ def _candidates(feed: dict) -> list[dict]:
                 title, _source_name(row), summary
             ),
             "newest_at": _parse_ts(row.get("published_date")),
+            "urls": [url],
         })
     return candidates
 
@@ -474,21 +496,98 @@ def _same_event_summary(a: dict, b: dict) -> bool:
     return len(shared) >= 6 and len(shared) / min(len(tokens_a), len(tokens_b)) >= 0.25
 
 
+def _repeat_tokens(story: dict) -> tuple[set[str], set[str]]:
+    """(headline words, headline and summary words) for spotting a repeat."""
+    title = str(story.get("title") or "")
+    return _topic_tokens(title), _topic_tokens(f"{title} {str(story.get('summary') or '')[:300]}")
+
+
+def _overlap(a: set[str], b: set[str]) -> float:
+    return len(a & b) / min(len(a), len(b)) if a and b else 0.0
+
+
+def _repeat_index(sent: list[dict]) -> dict:
+    """The recently sent stories, tokenised once for _sure_repeat and _look_alikes."""
+    urls: dict[str, dict] = {}
+    stories = []
+    titles: set[str] = set()
+    for story in sent:
+        extra = story.get("urls")
+        for url in [story.get("url"), *(extra if isinstance(extra, list) else [])]:
+            if isinstance(url, str) and url:
+                urls.setdefault(url, story)
+        title = str(story.get("title") or "").casefold()
+        if title not in titles:  # a story two dailies carried is asked about once
+            titles.add(title)
+            stories.append((story, title, *_repeat_tokens(story)))
+    return {"urls": urls, "stories": stories}
+
+
+def _sure_repeat(story: dict, index: dict) -> dict | None:
+    """The sent story with this one's lead link or headline."""
+    if story.get("url") in index["urls"]:
+        return index["urls"][story["url"]]
+    title = str(story.get("title") or "").casefold()
+    return next((sent for sent, sent_title, *_ in index["stories"] if title and title == sent_title), None)
+
+
+def _look_alikes(story: dict, index: dict) -> list[dict]:
+    """Sent stories close enough in words that the model should compare them, closest first."""
+    title_words, text_words = _repeat_tokens(story)
+    close = []
+    for sent, _, sent_title_words, sent_text_words in index["stories"]:
+        text = _overlap(text_words, sent_text_words)
+        if len(title_words & sent_title_words) >= 2 and (
+            _overlap(title_words, sent_title_words) >= REPEAT_TITLE_OVERLAP or text >= REPEAT_TEXT_OVERLAP
+        ):
+            close.append((text, sent))
+    return [sent for _, sent in sorted(close, key=lambda pair: -pair[0])[:REPEAT_ASK_PER_STORY]]
+
+
+def _find_repeats(v3_store: Any, candidates: list[dict], sent_before: list[dict]) -> dict[str, str]:
+    """Candidates that repeat what a recent daily carried: {topic_id: the sent headline}."""
+    if not sent_before:
+        return {}
+    index = _repeat_index(sent_before)
+    repeats: dict[str, str] = {}
+    pairs: list[tuple[dict, dict]] = []
+    for cand in candidates:
+        sure = _sure_repeat(cand, index)
+        if sure is not None:
+            repeats[cand["topic_id"]] = str(sure.get("title") or "")
+            continue
+        pairs += [(cand, sent) for sent in _look_alikes(cand, index)]
+    verdicts = judge_repeats(v3_store, pairs) or {}
+    for i, (cand, sent) in enumerate(pairs):
+        if verdicts.get(i):
+            repeats.setdefault(cand["topic_id"], str(sent.get("title") or ""))
+    judged = sum(1 for i in range(len(pairs)) if i in verdicts)
+    titles = {c["topic_id"]: c["title"] for c in candidates}
+    _log(f"repeats: {len(repeats)} left out of {len(candidates)} candidates "
+         f"({judged}/{len(pairs)} close calls judged)"
+         + "".join(f"\n  {titles[tid][:60]}  ~ {sent[:50]}" for tid, sent in repeats.items()))
+    return repeats
+
+
 def _story_groups(
     feed: dict,
     verdicts: dict[str, int] | None = None,
     now: datetime | None = None,
+    leave_out: set[str] | None = None,
 ) -> list[dict]:
     """Merge candidates covering the same event into one story group.
 
     Uses exact titles plus a conservative named-event check for paraphrased
     headlines before allocating email slots. Verdict score 0 drops the group.
+    Candidates in `leave_out` (repeats of recent dailies, _find_repeats) go
+    before grouping: grouping is looser than the repeat check, so a new story
+    grouped with yesterday's would otherwise go with it.
     A launch whose newest coverage is older than RELEASE_FRESH_HOURS loses
     its release flag, so it no longer takes a release slot.
     """
     verdicts = verdicts or {}
     stale_before = (now or datetime.now(timezone.utc)) - timedelta(hours=RELEASE_FRESH_HOURS)
-    candidates = _candidates(feed)
+    candidates = [c for c in _candidates(feed) if c["topic_id"] not in (leave_out or set())]
     ranked = _ranked(candidates)
 
     groups: list[dict] = []
@@ -499,10 +598,16 @@ def _story_groups(
         if target is None:
             groups.append({
                 **cand,
+                "urls": list(cand["urls"]),
                 "_verdicts": [verdicts.get(cand["topic_id"])],
             })
             continue
         target["_verdicts"].append(verdicts.get(cand["topic_id"]))
+        # Only an exact-headline twin's links join the group's: tomorrow a link in
+        # `urls` is a repeat outright, and a story merged by the looser same-event
+        # check may be different news that never went out under its own headline.
+        if cand["title"].casefold() == target["title"].casefold():
+            target["urls"] += [url for url in cand["urls"] if url not in target["urls"]]
         for domain in cand["sources"]:
             if domain not in target["sources"]:
                 target["sources"].append(domain)
@@ -1380,6 +1485,65 @@ def _record_winback(store: FirestoreStore, recipient: dict) -> None:
         _log(f"win-back stamp failed for {uid}: {exc}")
 
 
+def _recent_sent(store: FirestoreStore, date: str) -> list[dict]:
+    """Every story the dailies of the REPEAT_DAYS days before `date` carried.
+
+    `sent` is what any reader got that day; editions from before it was
+    recorded fall back to their public `stories`. Best effort: without them
+    the daily goes out as before.
+    """
+    try:
+        day = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        return []
+    stories: list[dict] = []
+    for back in range(1, REPEAT_DAYS + 1):
+        doc_id = (day - timedelta(days=back)).isoformat()
+        try:
+            snap = store.db.collection(EDITIONS_COLLECTION).document(doc_id).get()
+        except Exception as exc:  # noqa: BLE001
+            _log(f"couldn't read {EDITIONS_COLLECTION}/{doc_id} for repeats: {exc}")
+            continue
+        data = (snap.to_dict() or {}) if snap.exists else {}
+        items = data.get("sent") or data.get("stories") or []
+        stories += [s for s in items if isinstance(s, dict) and s.get("title")]
+    return stories
+
+
+def _sent_record(groups: list[dict], sections_seen: list[list[tuple[str, list[dict]]]]) -> list[dict]:
+    """The day's stories as tomorrow's repeat check needs them: everything any
+    email carried, plus the public edition (the landing selection)."""
+    edition = _select_from_groups(groups, [], BUCKETS["landing"]["count"], "landing")
+    out: dict[str, dict] = {}
+    for sections in [edition, *sections_seen]:
+        for _, stories in sections:
+            for story in stories:
+                out.setdefault(story["url"], {
+                    "title": story["title"],
+                    "summary": _clean_summary(story.get("summary", ""))[:400],
+                    "url": story["url"],
+                    "urls": list(story.get("urls") or [story["url"]])[:SENT_URLS],
+                })
+    return list(out.values())
+
+
+def _record_sent(
+    store: FirestoreStore, date: str, groups: list[dict], sections_seen: list[list[tuple[str, list[dict]]]]
+) -> None:
+    """Add today's stories to the edition's `sent`, keeping an earlier run's."""
+    try:
+        stories = _sent_record(groups, sections_seen)
+        ref = store.db.collection(EDITIONS_COLLECTION).document(date)
+        snap = ref.get()
+        earlier = ((snap.to_dict() or {}).get("sent") if snap.exists else None) or []
+        merged = {s["url"]: s for s in earlier if isinstance(s, dict) and isinstance(s.get("url"), str)}
+        merged.update({s["url"]: s for s in stories})
+        ref.set({"sent": list(merged.values()), "sent_at": datetime.now(timezone.utc).isoformat()}, merge=True)
+        _log(f"recorded {len(merged)} stories sent today; they're left out for {REPEAT_DAYS} days")
+    except Exception as exc:  # noqa: BLE001 - the emails are out; tomorrow just checks less
+        _log(f"recording today's stories failed: {exc}")
+
+
 POOL_FIELDS = (
     "topic_id", "title", "summary", "url", "source_name", "image", "sources",
     "source_count", "coverage", "interest_id", "macro", "model_release",
@@ -1401,22 +1565,15 @@ def _web_story(story: dict, lane: str) -> dict:
     }
 
 
-def _publish_edition(
-    store: FirestoreStore,
-    feed: dict,
-    date: str,
-    verdicts: dict[str, int] | None,
-    now: datetime | None = None,
-) -> int:
+def _publish_edition(store: FirestoreStore, groups: list[dict], date: str) -> int:
     """Save the day's brief for the public /brief pages and the builder.
 
     `stories` is the landing selection (no interests), exactly what a new
     subscriber receives. `pool` is every merged story group the selection
     chose from, so the newsletter builder can preview any combination of
     lanes and counts with the same allocation (newsletter-select.ts).
-    Returns the story count.
+    `groups` already leaves out recent repeats. Returns the story count.
     """
-    groups = _story_groups(feed, verdicts, now)
     sections = _select_from_groups(groups, [], BUCKETS["landing"]["count"], "landing")
     stories = [_web_story(story, lane) for lane, group in sections for story in group]
     if not stories:
@@ -1438,26 +1595,24 @@ def _publish_edition(
         "story_count": len(stories),
         "pool": pool,
         "published_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }, merge=True)  # merge: a re-publish keeps the day's `sent`
     return len(stories)
 
 
 def _send_one(
     store: FirestoreStore,
-    feed: dict,
+    groups: list[dict],
     date: str,
     bucket: str,
     recipient: dict,
     dry_run: bool,
     cache: dict,
-    verdicts: dict[str, int] | None = None,
-    now: datetime | None = None,
 ) -> dict:
     interests = tuple(recipient.get("interests") or [])
     count = int(recipient.get("count") or BUCKETS[bucket]["count"])
     key = (bucket, interests, count)
     if key not in cache:
-        cache[key] = _select(feed, list(interests), count, bucket, verdicts, now)
+        cache[key] = _select_from_groups(groups, list(interests), count, bucket)
     sections = cache[key]
     stories = [s for _, group in sections for s in group]
     if not stories:
@@ -1519,19 +1674,22 @@ def send_audience_newsletter(
     if not feed:
         return {"success": False, "error": "no global feed found", "date": target_date}
 
-    verdicts = _send_worthy_verdicts(v3_store, _candidates(feed))
+    candidates = _candidates(feed)
+    verdicts = _send_worthy_verdicts(v3_store, candidates)
     # One clock for the whole run: a launch crossing RELEASE_FRESH_HOURS
     # mid-run must not lead the edition but not the later emails.
     run_now = datetime.now(timezone.utc)
+    # One set of story groups for the whole run too, without what the last few
+    # dailies already carried.
+    repeats = _find_repeats(v3_store, candidates, _recent_sent(store, target_date))
+    groups = _story_groups(feed, verdicts, run_now, set(repeats))
 
     if preview:
         interests = [
             i.strip().lower() for i in preview_interests.split(",") if i.strip()
         ]
         for bucket in ([preview_bucket] if preview_bucket else ["member", "winback", "landing"]):
-            sections = _select(
-                feed, interests, BUCKETS[bucket]["count"], bucket, verdicts, run_now
-            )
+            sections = _select_from_groups(groups, interests, BUCKETS[bucket]["count"], bucket)
             print(f"\n=== {bucket.upper()} ({BUCKETS[bucket]['count']} stories) ===")
             for lane, stories in sections:
                 print(f"  -- {INTEREST_LABELS.get(lane, lane)}")
@@ -1587,9 +1745,7 @@ def send_audience_newsletter(
                 "interests": interests,
             }
         _log(f"demo send: bucket={bucket} email={recipient['email']} interests={interests}")
-        result = _send_one(
-            store, feed, target_date, bucket, recipient, dry_run, {}, verdicts, run_now
-        )
+        result = _send_one(store, groups, target_date, bucket, recipient, dry_run, {})
         return {
             "success": result["ok"],
             "mode": "demo",
@@ -1603,7 +1759,7 @@ def send_audience_newsletter(
         # Publish before sending so every "Share today's brief" link resolves
         # the moment the first email lands. A failure here must not cost the send.
         try:
-            published = _publish_edition(store, feed, target_date, verdicts, run_now)
+            published = _publish_edition(store, groups, target_date)
             _log(f"published {EDITIONS_COLLECTION}/{target_date} ({published} stories)")
         except Exception as exc:  # noqa: BLE001
             published = 0
@@ -1633,20 +1789,23 @@ def send_audience_newsletter(
     errors: list[str] = []
     cache: dict = {}
     transports: dict[str, int] = {}
-    for bucket in ("member", "winback", "landing"):
-        for recipient in buckets[bucket]:
-            res = _send_one(
-                store, feed, target_date, bucket, recipient, dry_run, cache, verdicts, run_now
-            )
-            if res["ok"] and bucket == "winback" and not dry_run:
-                _record_winback(store, recipient)
-            if res["ok"]:
-                sent += 1
-                if res.get("transport"):
-                    transports[res["transport"]] = transports.get(res["transport"], 0) + 1
-            else:
-                failed += 1
-                errors.append(f"{bucket}:{recipient['email']}: {res.get('error')}")
+    try:
+        for bucket in ("member", "winback", "landing"):
+            for recipient in buckets[bucket]:
+                res = _send_one(store, groups, target_date, bucket, recipient, dry_run, cache)
+                if res["ok"] and bucket == "winback" and not dry_run:
+                    _record_winback(store, recipient)
+                if res["ok"]:
+                    sent += 1
+                    if res.get("transport"):
+                        transports[res["transport"]] = transports.get(res["transport"], 0) + 1
+                else:
+                    failed += 1
+                    errors.append(f"{bucket}:{recipient['email']}: {res.get('error')}")
+    finally:
+        # Even when the run dies part way: what went out mustn't go out again tomorrow.
+        if sent and not dry_run:
+            _record_sent(store, target_date, groups, list(cache.values()))
     return {
         "success": failed == 0 and sent > 0,
         "mode": "full",
