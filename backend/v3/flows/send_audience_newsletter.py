@@ -1009,13 +1009,24 @@ def _resolve_audience(store: FirestoreStore, v3_store: V3Store) -> dict:
 # ---------------------------------------------------------------------------
 
 _FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+# The site's look (yourtrace.online, after join1440.com): its display serif for
+# headings where the mail app loads web fonts (@font-face in the template),
+# Georgia for story titles, and the site palette.
+_DISPLAY = "'Trace Serif', Georgia, 'Times New Roman', serif"
+_TITLE = "Georgia, 'Times New Roman', serif"
+_INK = "#0a0a0a"
+_TEXT = "#323232"
+_MUTED = "#767676"
+_LINE = "#e5e5e5"
+_BLUE = "#1634cc"
+_HIGHLIGHT = "#ffef5f"
 
 
 def _favicon_stack(sources: list[str]) -> str:
     icons = "".join(
         f'<img src="https://www.google.com/s2/favicons?domain={escape(d)}&sz=64" '
         'width="16" height="16" alt="" style="display: inline-block; border-radius: 50%; '
-        'border: 1px solid #eff3f4; vertical-align: middle; margin-right: 3px;" />'
+        f'border: 1px solid {_LINE}; background-color: #ffffff; vertical-align: middle; margin-right: 3px;" />'
         for d in sources[:3]
     )
     return f'<span style="white-space: nowrap;">{icons}</span>'
@@ -1089,16 +1100,16 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
     # The feed's story layout: byline, title, full summary, inset image.
     image = (
         f'<a href="{original}" style="display: block; margin: 14px 0 0 0; text-decoration: none;">'
-        f'<img src="{escape(image_url)}" alt="" width="568" '
-        'style="display: block; width: 100%; max-width: 568px; height: auto; '
-        'border: 0; border-radius: 16px;" /></a>'
+        f'<img src="{escape(image_url)}" alt="" width="584" '
+        'style="display: block; width: 100%; max-width: 584px; height: auto; '
+        'border: 0; border-radius: 6px;" /></a>'
     ) if image_url.startswith("https://") else ""
     favicon = _favicon_stack(story["sources"])
     count_word = "source" if story["source_count"] == 1 else "sources"
     source = escape(story["source_name"])
     byline = (
-        f'<p style="margin: 0 0 8px 0; font-size: 14px; color: #71767b; font-family: {_FONT};">'
-        f'{favicon}<a href="{original}" style="color: #0f1419; font-weight: 700; '
+        f'<p style="margin: 0 0 8px 0; font-size: 14px; line-height: 20px; color: {_MUTED}; font-family: {_FONT};">'
+        f'{favicon}<a href="{original}" style="color: {_INK}; font-weight: 650; '
         f'text-decoration: none;">{source}</a>'
         + (f'&nbsp;&middot;&nbsp;{story["source_count"]} {count_word}'
            if int(story.get("source_count") or 1) > 1 else "")
@@ -1110,11 +1121,11 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
         "<tr>"
         '<td style="padding: 18px 0 0 0; vertical-align: top;">'
         + byline
-        + f'<a href="{app_link}" style="display: block; margin: 0; font-size: 20px; '
-        f'font-weight: 700; letter-spacing: -0.01em; line-height: 26px; color: #0f1419; '
-        f'text-decoration: none; font-family: {_FONT};">{title}</a>'
+        + f'<a href="{app_link}" style="display: block; margin: 0; font-size: 21px; '
+        f'font-weight: 700; letter-spacing: -0.01em; line-height: 28px; color: {_INK}; '
+        f'text-decoration: none; font-family: {_TITLE};">{title}</a>'
         + "".join(
-            f'<p style="margin: {10 if index == 0 else 12}px 0 0 0; font-size: 16px; color: #0f1419; '
+            f'<p style="margin: {10 if index == 0 else 12}px 0 0 0; font-size: 16px; color: {_TEXT}; '
             f'line-height: 25px; font-family: {_FONT};">{escape(para)}</p>'
             for index, para in enumerate(_paragraphs(story["summary"]) if show_summary else [])
         )
@@ -1124,7 +1135,7 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
         '<tr><td style="padding: 18px 0 0 0;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
         '<td height="1" style="height: 1px; line-height: 1px; font-size: 1px; '
-        'background-color: #eff3f4;">&nbsp;</td>'
+        f'background-color: {_LINE};">&nbsp;</td>'
         "</tr></table></td></tr>"
         "</table>"
     )
@@ -1132,12 +1143,13 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
 
 def _section_body(
     label: str, stories: list[dict], show_summary: bool = True, show_image: bool = False,
+    show_label: bool = True,
 ) -> str:
-    kicker = (
-        '<p style="margin: 0 0 2px 0; font-size: 12px; color: #f91880; '
-        f'font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; '
-        f'font-family: {_FONT};">'
-        f"&#9733; {escape(label)}</p>"
+    # The site's section label: a highlighter mark behind the display serif.
+    kicker = "" if not show_label else (
+        f'<p style="margin: 0 0 2px 0; font-family: {_DISPLAY}; font-size: 21px; '
+        f'line-height: 28px; font-weight: 500; color: {_INK};">'
+        f'<span style="background-color: {_HIGHLIGHT}; padding: 0 5px;">{escape(label)}</span></p>'
     )
     return kicker + "".join(
         _story_html(story, show_summary, show_image) for story in stories
@@ -1152,10 +1164,11 @@ def _sections_html(
 ) -> str:
     """One table row per section.
 
-    The email stays plain text on white — the launch group is set apart by
-    its heading only, no tinted panel.
+    The stories sit on the white paper; each group is set apart by its
+    highlighted heading only, no tinted panel.
     """
     rows: list[str] = []
+    previous = ""
     for index, (lane, stories) in enumerate(sections):
         if lane == MODEL_RELEASE_LANE:
             label = "Model releases"
@@ -1163,17 +1176,19 @@ def _sections_html(
             label = "Top stories"
         else:
             label = f"Top in {INTEREST_LABELS[lane]}" if lane in INTEREST_LABELS else "More stories"
-        top = 18 if index == 0 else 22
+        # Landing emails label every lane "Top stories": one heading for the run.
+        show_label = label != previous
+        previous = label
+        top = (22 if index == 0 else 26) if show_label else 0
         rows.append(
             f'<tr><td class="nl-p28" style="padding: {top}px 28px 0 28px;">'
-            f"{_section_body(label, stories, show_summary, show_image)}"
+            f"{_section_body(label, stories, show_summary, show_image, show_label)}"
             "</td></tr>"
         )
     return "".join(rows)
 
 
 def _cta_html(bucket: str) -> str:
-    base = f"height: 46px; line-height: 46px; border-radius: 999px; font-size: 15px; font-weight: 700; text-decoration: none; font-family: {_FONT};"
     if bucket == "member":
         return ""
     if bucket == "winback":
@@ -1190,16 +1205,22 @@ def _cta_html(bucket: str) -> str:
             "you get, and how you read them."
         )
         label = "Personalize it"
+    # An outlined box on the white page (no tint); the button is a table cell
+    # because Outlook ignores padding and radius on a bare link.
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background-color: #f7f9f9; border-radius: 16px;">'
-        '<tr><td align="center" style="padding: 22px 24px;">'
-        '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-        f'font-family: {_FONT};">{title}</p>'
-        '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
+        f'style="border: 1px solid {_LINE}; border-radius: 12px;">'
+        '<tr><td align="center" style="padding: 24px 24px 26px 24px;">'
+        f'<p style="margin: 0 0 6px 0; font-family: {_DISPLAY}; font-size: 25px; line-height: 29px; '
+        f'font-weight: 500; color: {_INK};">{title}</p>'
+        f'<p style="margin: 0 0 16px 0; font-size: 15px; color: {_TEXT}; line-height: 23px; '
         f'font-family: {_FONT};">{body}</p>'
-        f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
-        f'background-color: #1d9bf0; color: #ffffff; {base}">{label}</a>'
+        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+        f'<td bgcolor="{_BLUE}" style="border-radius: 3px; background-color: {_BLUE};">'
+        f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 12px 24px; '
+        f'font-family: {_FONT}; font-size: 16px; line-height: 22px; font-weight: 600; color: #ffffff; '
+        f'text-decoration: none;">{label}</a>'
+        "</td></tr></table>"
         "</td></tr></table>"
     )
 
@@ -1218,11 +1239,11 @@ def _feedback_html(bucket: str, email: str, date: str) -> str:
     rows = "".join(
         '<tr><td style="padding: 0 0 8px 0;">'
         f'<a href="{APP_URL}/api/newsletter-feedback?r={score}&amp;email={email_esc}&amp;d={date}" '
-        'style="display: block; padding: 12px 16px; border: 1px solid #e1e8ed; '
-        'border-radius: 10px; text-decoration: none; font-size: 15px; '
+        f'style="display: block; padding: 12px 16px; border: 1px solid {_LINE}; '
+        'border-radius: 4px; background-color: #ffffff; text-decoration: none; font-size: 15px; '
         f'font-family: {_FONT};">'
         f'<span style="color: #f5a623; font-size: 15px;">{stars}</span> '
-        f'<span style="color: #0f1419; font-weight: 650;">{label}</span>'
+        f'<span style="color: {_INK}; font-weight: 650;">{label}</span>'
         "</a></td></tr>"
         for score, stars, label in RATINGS
     )
@@ -1232,22 +1253,22 @@ def _feedback_html(bucket: str, email: str, date: str) -> str:
     )
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background-color: #f7f9f9; border-radius: 16px;">'
+        'style="background-color: #f7f7f8; border-radius: 12px;">'
         '<tr><td style="padding: 24px 24px 20px 24px;">'
-        '<p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; '
-        f'color: #e5484d; letter-spacing: 0.06em; font-family: {_FONT};">Feedback</p>'
-        '<p style="margin: 0 0 4px 0; font-size: 19px; font-weight: 800; color: #0f1419; '
-        f'letter-spacing: -0.02em; line-height: 1.3; font-family: {_FONT};">'
+        '<p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 650; '
+        f'color: {_BLUE}; font-family: {_FONT};">Feedback</p>'
+        f'<p style="margin: 0 0 4px 0; font-family: {_DISPLAY}; font-size: 24px; font-weight: 500; color: {_INK}; '
+        'line-height: 1.2;">'
         "What'd you think of today's newsletter?</p>"
-        '<p style="margin: 0 0 16px 0; font-size: 14px; color: #536471; '
+        f'<p style="margin: 0 0 16px 0; font-size: 14px; color: {_TEXT}; '
         f'font-family: {_FONT};">Vote below and tell me how this is landing.</p>'
         f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{rows}</table>'
-        '<p style="margin: 16px 0 6px 0; font-size: 14px; color: #0f1419; '
+        f'<p style="margin: 16px 0 6px 0; font-size: 14px; color: {_INK}; '
         f'font-family: {_FONT};">Too frequent? Update your preference '
-        f'<a href="{manage}" style="color: #0f1419; font-weight: 700;">here</a>.</p>'
-        '<p style="margin: 0; font-size: 14px; color: #0f1419; '
+        f'<a href="{manage}" style="color: {_INK}; font-weight: 700;">here</a>.</p>'
+        f'<p style="margin: 0; font-size: 14px; color: {_INK}; '
         f'font-family: {_FONT};">Hated it and want to stop receiving them? '
-        f'<a href="{manage}" style="color: #0f1419; font-weight: 700;">Unsubscribe here</a>.</p>'
+        f'<a href="{manage}" style="color: {_INK}; font-weight: 700;">Unsubscribe here</a>.</p>'
         "</td></tr></table>"
     )
 
@@ -1375,25 +1396,25 @@ def _render(
     # place so it can be switched on with one line.
     html = _replace_block(html, "FEEDBACK", "")
 
+    dot = f"<span style=\"color: #b5b5b5;\">&nbsp;&middot;&nbsp;</span>"
     share = (
-        f'<a href="{_share_url(date)}" style="color: #1d9bf0; font-weight: 700; '
+        f'<a href="{_share_url(date)}" style="color: {_BLUE}; font-weight: 600; '
         'text-decoration: none;">Share today&rsquo;s brief</a>'
-        "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
+        + dot
     )
-    dot = "<span style=\"color: #cfd9de;\">&nbsp;&middot;&nbsp;</span>"
     # Topics, length and format live in the builder; it also has the on/off.
     customize = (
-        f'<a href="{APP_URL}/brief/customize?from=email" style="color: #1d9bf0; font-weight: 700; '
+        f'<a href="{APP_URL}/brief/customize?from=email" style="color: {_BLUE}; font-weight: 600; '
         'text-decoration: none;">Customize your brief</a>'
     )
     if bucket in UNSUBSCRIBE_LINK_BUCKETS:
         footer = share + customize + dot + (
             f'<a href="{APP_URL}/api/unsubscribe?email={escape(quote(email, safe=""))}" '
-            'style="color: #71767b; text-decoration: underline;">Unsubscribe</a>'
+            f'style="color: {_MUTED}; text-decoration: underline;">Unsubscribe</a>'
         )
     else:
         footer = share + customize + dot + (
-            f'<a href="{APP_URL}/feed?tab=profile" style="color: #71767b; text-decoration: underline;">'
+            f'<a href="{APP_URL}/feed?tab=profile" style="color: {_MUTED}; text-decoration: underline;">'
             "Email settings</a>"
         )
     html = html.replace("{{FOOTER_LINKS}}", footer)
@@ -1415,7 +1436,7 @@ def _text_version(
     show_summary: bool = True,
     track_id: str = "",
 ) -> str:
-    lines = ["TRACE", headline, ""]
+    lines = ["Trace Daily Brief", headline, ""]
     for _, stories in sections:
         for story in stories:
             lines.append(story["title"])

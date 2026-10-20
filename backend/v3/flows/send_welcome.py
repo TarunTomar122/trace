@@ -86,6 +86,11 @@ MIN_STORIES = 3
 STORIES_MAX_AGE = timedelta(hours=12)
 LOCK_FILE = BACKEND_ROOT.parent / ".welcome.lock"
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+# The site's look (as the daily email): its display serif for the wordmark
+# where the mail app loads web fonts, Georgia for titles, the site palette.
+DISPLAY = "'Trace Serif', Georgia, 'Times New Roman', serif"
+TITLE = "Georgia, 'Times New Roman', serif"
+INK, TEXT, MUTED, BLUE = "#0a0a0a", "#323232", "#767676", "#1634cc"
 
 
 def _log(message: str) -> None:
@@ -245,11 +250,11 @@ def todays_stories(now: datetime, store: FirestoreStore | None = None) -> list[d
 def _link(path: str) -> str:
     url = f"{APP_URL}{path}"
     text = url.replace("https://", "").replace("http://", "")
-    return f'<a href="{html.escape(url)}" style="color: #1d9bf0; font-weight: 700; text-decoration: none;">{html.escape(text)}</a>'
+    return f'<a href="{html.escape(url)}" style="color: {BLUE}; font-weight: 600; text-decoration: none;">{html.escape(text)}</a>'
 
 
 def _p(inner: str) -> str:
-    return f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 25px; color: #0f1419; font-family: {FONT};">{inner}</p>'
+    return f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 25px; color: {INK}; font-family: {FONT};">{inner}</p>'
 
 
 def _para(text: str, *paths: str) -> tuple[str, str]:
@@ -261,10 +266,11 @@ def _top_stories(lead: str, stories: list[dict[str, str]]) -> tuple[str, str]:
     """(plain, html) for a lead-in line with today's top stories under it."""
     plain = "\n\n".join([lead, *("\n".join(filter(None, (s["title"], s["line"], s["url"]))) for s in stories)])
     rich = _p(html.escape(lead)) + "".join(
-        f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 23px; color: #0f1419; font-family: {FONT};">'
-        f'<a href="{html.escape(s["url"])}" style="color: #0f1419; font-weight: 700; text-decoration: none;">'
+        f'<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 23px; color: {INK}; font-family: {FONT};">'
+        f'<a href="{html.escape(s["url"])}" style="color: {INK}; font-family: {TITLE}; font-size: 18px; '
+        f'line-height: 25px; font-weight: 700; text-decoration: none;">'
         f'{html.escape(s["title"])}</a>'
-        + (f'<br><span style="font-size: 15px; line-height: 22px; color: #536471;">{html.escape(s["line"])}</span>'
+        + (f'<br><span style="font-size: 15px; line-height: 22px; color: {TEXT};">{html.escape(s["line"])}</span>'
            if s["line"] else "")
         + "</p>"
         for s in stories
@@ -278,7 +284,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
     hi = f"Hi {first}," if first else "Hi there,"
     customize = "pick your topics, how many stories (5, 10 or 15) and whether you want images"
     intro = _para(
-        "You're in. Trace reads the internet so you don't have to: 100+ tech sources, "
+        "You're in. Trace is the fastest way to catch up on tech and AI news: 100+ sources, "
         "boiled down to the stories that matter, each with a link to the original."
     )
     free = _para("It's all free and open source. No ads, no paywall, nothing to unlock.")
@@ -313,7 +319,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
         footer_text = f"You're getting this because you signed up at yourtrace.online. Unsubscribe: {unsubscribe}"
         footer_html = (
             "You're getting this because you signed up at yourtrace.online. "
-            f'<a href="{html.escape(unsubscribe)}" style="color: #536471;">Unsubscribe</a>'
+            f'<a href="{html.escape(unsubscribe)}" style="color: {MUTED};">Unsubscribe</a>'
         )
     else:
         subject = "You're in. Welcome to Trace"
@@ -350,25 +356,37 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
     # A table-cell button: Outlook ignores padding and radius on a bare link.
     cta = (
         '<table cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 24px 0;"><tr>'
-        '<td bgcolor="#0f1419" style="border-radius: 999px; background: #0f1419;">'
-        f'<a href="{html.escape(APP_URL + button[1])}" style="display: inline-block; padding: 12px 22px; '
-        f'font-family: {FONT}; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none;">'
+        f'<td bgcolor="{BLUE}" style="border-radius: 3px; background: {BLUE};">'
+        f'<a href="{html.escape(APP_URL + button[1])}" style="display: inline-block; padding: 12px 24px; '
+        f'font-family: {FONT}; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">'
         f"{html.escape(button[0])}</a></td></tr></table>"
     )
     page = (
         "<!doctype html><html><head>"
         '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">'
-        f"<title>{html.escape(subject)}</title></head>"
+        f"<title>{html.escape(subject)}</title>"
+        # The site's display serif where the mail app loads web fonts; Georgia elsewhere.
+        "<style>@font-face { font-family: 'Trace Serif'; font-style: normal; font-weight: 700; "
+        "src: url('https://www.yourtrace.online/fonts/trace-serif-700.woff2') format('woff2'); }</style>"
+        "</head>"
         '<body style="margin: 0; padding: 0; background: #ffffff;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"><tr>'
         '<td align="center" style="padding: 32px 16px;">'
         '<table width="560" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 560px;"><tr><td>'
-        f'<p style="margin: 0 0 24px 0; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; color: #1d9bf0; font-family: {FONT};">TRACE</p>'
+        # The site's wordmark: "Trace" in the display serif, then the logo.
+        '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin: 0 0 28px 0;"><tr>'
+        f'<td style="vertical-align: middle; font-family: {DISPLAY}; font-size: 28px; line-height: 30px; '
+        f'font-weight: 700; color: {INK};">Trace</td>'
+        '<td style="vertical-align: middle; padding-left: 8px;">'
+        '<img src="https://www.yourtrace.online/trace.png" width="24" height="24" alt="" '
+        'style="display: block; width: 24px; height: 24px; border: 0;" /></td>'
+        "</tr></table>"
         f"{body}{cta}"
-        f'<p style="margin: 0; font-size: 16px; font-weight: 700; color: #0f1419; font-family: {FONT};">Tarat</p>'
-        f'<p style="margin: 0 0 32px 0; font-size: 14px; color: #536471; font-family: {FONT};">Founder, Trace</p>'
-        f'<p style="margin: 0; font-size: 12px; line-height: 18px; color: #536471; font-family: {FONT};">{footer_html}</p>'
+        f'<p style="margin: 0; font-size: 16px; font-weight: 700; color: {INK}; font-family: {FONT};">Tarat</p>'
+        f'<p style="margin: 0 0 32px 0; font-size: 14px; color: {MUTED}; font-family: {FONT};">Founder, Trace</p>'
+        f'<p style="margin: 0; padding-top: 18px; border-top: 1px solid #e5e5e5; font-size: 12px; line-height: 18px; '
+        f'color: {MUTED}; font-family: {FONT};">{footer_html}</p>'
         "</td></tr></table></td></tr></table></body></html>"
     )
     return subject, page, text

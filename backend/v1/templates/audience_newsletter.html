@@ -3,65 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>Trace: {{SUBJECT}}</title>
     <style>
-        /* Phones get the full screen: no outer gutter, no card frame, and a
-           tighter text column so lines are not cramped by padding. */
+        /* The site's display serif (Roboto Serif) where the mail app loads web
+           fonts (Apple Mail, iOS Mail); Gmail and Outlook use Georgia. */
+        @font-face {
+            font-family: 'Trace Serif';
+            font-style: normal;
+            font-weight: 500;
+            src: url('https://www.yourtrace.online/fonts/trace-serif-500.woff2') format('woff2');
+        }
+        /* Phones get the full screen and a tighter text column. */
         @media only screen and (max-width: 680px) {
-            .nl-outer { padding: 0 !important; }
-            .nl-card {
-                max-width: 100% !important;
-                border-radius: 0 !important;
-                border-left: 0 !important;
-                border-right: 0 !important;
-            }
-            .nl-p28 { padding-left: 16px !important; padding-right: 16px !important; }
+            .nl-outer { padding: 8px 0 20px 0 !important; }
+            .nl-p28 { padding-left: 18px !important; padding-right: 18px !important; }
+            .nl-headline { font-size: 29px !important; line-height: 32px !important; }
         }
     </style>
 </head>
+<!-- The Daily Brief in the site's type and colours (yourtrace.online), on
+     plain white: a masthead, then the stories, rules between. -->
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color: #ffffff;">
         <tr>
-            <td class="nl-outer" align="center" style="padding: 28px 12px;">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 680px; background-color: #ffffff; border: 1px solid #dbe4e8; border-radius: 16px; overflow: hidden;" class="nl-card">
+            <td class="nl-outer" align="center" style="padding: 28px 12px 24px 12px;">
 
-                    <!-- Header -->
+                <!-- Masthead -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px;">
                     <tr>
-                        <td class="nl-p28" style="padding: 20px 28px 16px 28px;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <td class="nl-p28" style="padding: 8px 28px 16px 28px; border-bottom: 1px solid #e5e5e5;">
+                            <table cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="vertical-align: middle;">
+                                    <td style="vertical-align: middle; padding: 6px; border: 1.5px solid #0a0a0a; border-radius: 10px; background-color: #ffffff;">
                                         <a href="https://yourtrace.online/feed?from=email" style="text-decoration: none;">
-                                            <span style="font-size: 15px; color: #0f1419; font-weight: 800; letter-spacing: 0.18em; text-decoration: none;">TRACE</span>
+                                            <img src="https://www.yourtrace.online/trace.png" width="28" height="28" alt="Trace" style="display: block; width: 28px; height: 28px; border: 0;" />
                                         </a>
                                     </td>
-                                    <td align="right" style="vertical-align: middle;">
-                                        <span style="font-size: 12px; color: #71767b; font-weight: 500;">{{DATE}}</span>
+                                    <td style="vertical-align: middle; padding-left: 12px;">
+                                        <p style="margin: 0; font-size: 16px; line-height: 21px; font-weight: 650; color: #0a0a0a;">Trace Daily Brief</p>
+                                        <p style="margin: 2px 0 0 0; font-size: 14px; line-height: 19px; color: #767676;">{{DATE}}</p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+                </table>
+
+                <!-- Stories -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px;">
 
                     <!-- Headline + intro -->
                     <tr>
-                        <td class="nl-p28" style="padding: 4px 28px 8px 28px;">
-                            <p style="margin: 0; font-size: 21px; color: #0f1419; font-weight: 800; letter-spacing: -0.02em; line-height: 1.3;">{{HEADLINE}}</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="nl-p28" style="padding: 0 28px 6px 28px;">
-                            <p style="margin: 0; font-size: 15px; color: #536471; line-height: 1.6;">{{INTRO}}</p>
+                        <td class="nl-p28" style="padding: 26px 28px 20px 28px; border-bottom: 1px solid #e5e5e5;">
+                            <p class="nl-headline" style="margin: 0; font-family: 'Trace Serif', Georgia, 'Times New Roman', serif; font-size: 34px; line-height: 37px; font-weight: 500; letter-spacing: -0.005em; color: #0a0a0a;">{{HEADLINE}}</p>
+                            <p style="margin: 10px 0 0 0; font-size: 15px; line-height: 23px; color: #323232;">{{INTRO}}</p>
                         </td>
                     </tr>
 
-                    <!-- Stories: each section emits its own row so the
-                         model-release panel can run edge to edge. -->
+                    <!-- Stories: one row per section. -->
                     {{SECTIONS_HTML}}
 
                     <!-- CTA -->
                     <tr>
-                        <td class="nl-p28" style="padding: 10px 28px 24px 28px;">
+                        <td class="nl-p28" style="padding: 22px 28px 4px 28px;">
                             {{CTA_HTML}}
                         </td>
                     </tr>
@@ -69,25 +75,25 @@
 
                     <!-- FEEDBACK -->
                     <tr>
-                        <td class="nl-p28" style="padding: 0 28px 24px 28px;">
+                        <td class="nl-p28" style="padding: 22px 28px 4px 28px;">
                             {{FEEDBACK_HTML}}
                         </td>
                     </tr>
                     <!-- /FEEDBACK -->
 
-                    <!-- Footer -->
+                    <!-- Footer (the last story's rule or the CTA box sets it apart) -->
                     <tr>
-                        <td class="nl-p28" style="padding: 20px 28px; border-top: 1px solid #eff3f4;">
-                            <p style="margin: 0 0 6px 0; font-size: 12.5px; color: #71767b; line-height: 1.6;">
-                                Trace reads 400+ sources overnight and hands you the stories that matter.
+                        <td class="nl-p28" style="padding: 22px 28px 24px 28px;">
+                            <p style="margin: 0 0 8px 0; font-size: 13.5px; line-height: 20px; color: #767676;">
+                                Trace reads 100+ tech sources every morning and keeps the stories that matter.
                             </p>
-                            <p style="margin: 0; font-size: 12.5px; color: #71767b; line-height: 1.6;">
+                            <p style="margin: 0; font-size: 13.5px; line-height: 20px; color: #767676;">
                                 {{FOOTER_LINKS}}
                             </p>
                         </td>
                     </tr>
                 </table>
-                <p style="margin: 14px 0 0 0; font-size: 11.5px; color: #8b98a5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">Built by Tarat · © 2026 Trace</p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; line-height: 18px; color: #767676; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">Built by Tarat · © 2026 Trace</p>
             </td>
         </tr>
     </table>
