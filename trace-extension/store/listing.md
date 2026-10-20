@@ -17,7 +17,7 @@ Stories are gathered from trusted publications, grouped into one feed, and summa
 Features:
 
 - A fresh selection on every new tab
-- AI, engineering, markets, startups, technology, and design filters
+- AI, markets, startups, technology, design, and robotics filters
 - Five free summaries each day, with unlimited summaries on Trace Pro
 - Google sign-in and shared Pro access across Trace web and the extension
 - Signed-in bookmarks that sync with your Trace account

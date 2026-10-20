@@ -304,7 +304,20 @@ CANONICAL_TRENDING_INTEREST_MAP = {
     "productivity": "tech",
     "health": "the-world",
     "climate": "the-world",
+    # Engineering was retired as a lane: cached summaries that still carry it
+    # land in tech, where its dev-tools/infra/security stories belong.
+    "engineering": "tech",
+    "robot": "robotics",
+    "robots": "robotics",
+    "physical-ai": "robotics",
+    "autonomous-vehicles": "robotics",
 }
+
+# A lane too thin to stand on its own folds into a broader one for that build,
+# so the feed never shows a Robotics tab with only one or two stories. Readers
+# who picked the lane still get its stories first (lane_detail, see the email's
+# _select_from_groups).
+THIN_LANE_FOLD = {"robotics": "ai"}
 
 
 def _normalize_trending_interest_id(raw: str) -> str:
@@ -320,6 +333,30 @@ def _env_int(name: str, default: str) -> int:
     except (TypeError, ValueError):
         _log(f"Ignoring invalid {name}={os.getenv(name)!r}; using {default}")
         return int(default)
+
+
+def _topic_lane_floors() -> dict[str, int]:
+    """Minimum topic slots per lane (env-overridable), in reservation order."""
+    return {
+        "markets": _env_int("TRENDING_MARKETS_FLOOR", "12"),
+        "tech": _env_int("TRENDING_TECH_FLOOR", "8"),
+        "startups": _env_int("TRENDING_STARTUPS_FLOOR", "8"),
+        "ux-design": _env_int("TRENDING_DESIGN_FLOOR", "6"),
+        # Small on purpose: it guarantees robotics a place, not a share
+        # that strong AI clusters would otherwise win.
+        "robotics": _env_int("TRENDING_ROBOTICS_FLOOR", "4"),
+    }
+
+
+def _flat_lane_floors() -> dict[str, int]:
+    """Minimum flat-list rows per lane (env-overridable)."""
+    return {
+        "markets": _env_int("TRENDING_MARKETS_FLAT_FLOOR", "8"),
+        "tech": _env_int("TRENDING_TECH_FLAT_FLOOR", "4"),
+        "startups": _env_int("TRENDING_STARTUPS_FLAT_FLOOR", "4"),
+        "ux-design": _env_int("TRENDING_DESIGN_FLAT_FLOOR", "3"),
+        "robotics": _env_int("TRENDING_ROBOTICS_FLAT_FLOOR", "2"),
+    }
 
 
 def _env_float(name: str, default: str) -> float:
@@ -2221,12 +2258,7 @@ def _build_trending_topics_payload(
     # crowded out by multi-source AI clusters. Remaining slots go to the
     # globally best clusters, and the final list is re-sorted by popularity
     # so the lead story is unchanged.
-    interest_floors = {
-        "markets": _env_int("TRENDING_MARKETS_FLOOR", "12"),
-        "tech": _env_int("TRENDING_TECH_FLOOR", "8"),
-        "startups": _env_int("TRENDING_STARTUPS_FLOOR", "8"),
-        "ux-design": _env_int("TRENDING_DESIGN_FLOOR", "6"),
-    }
+    interest_floors = _topic_lane_floors()
 
     selected_ids: set[int] = set()
 
@@ -2844,6 +2876,52 @@ def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) 
     }
 
 
+def _fold_thin_lanes(
+    topics: list[dict[str, Any]],
+    feed_items: list[dict[str, Any]],
+    min_stories: int,
+) -> dict[str, int]:
+    """Relabel each THIN_LANE_FOLD lane with fewer than `min_stories` stories
+    into its broader lane, in place. Returns {lane: stories it had} per fold.
+
+    Counts what a reader would see: topics Jev did not reject, plus flat rows
+    not already inside a topic. The original lane stays on `lane_detail` so a
+    folded story can still be told apart (and the fold undone) later.
+    """
+    folded: dict[str, int] = {}
+    if min_stories <= 0:
+        return folded
+    topic_urls = {
+        str(article.get("url", "")).strip()
+        for topic in topics
+        for article in (topic.get("articles") or [])
+        if isinstance(article, dict)
+    }
+    for lane, into in THIN_LANE_FOLD.items():
+        lane_topics = [t for t in topics if t.get("interest_id") == lane]
+        lane_rows = [row for row in feed_items if row.get("interest_id") == lane]
+        if not lane_topics and not lane_rows:
+            continue
+        stories = sum(1 for t in lane_topics if t.get("jev_send_worthy") != 0) + sum(
+            1 for row in lane_rows if str(row.get("url", "")).strip() not in topic_urls
+        )
+        if stories >= min_stories:
+            continue
+        # Articles inside other lanes' topics too, so no surface (extension
+        # tags, archive) still shows a lane that has no tab this build.
+        rows = [
+            *topics,
+            *(a for t in topics for a in (t.get("articles") or []) if isinstance(a, dict)),
+            *feed_items,
+        ]
+        for row in rows:
+            if row.get("interest_id") == lane:
+                row["interest_id"] = into
+                row["lane_detail"] = lane
+        folded[lane] = stories
+    return folded
+
+
 def build_global_feed(
     store: V3Store,
     config: dict[str, Any],
@@ -3027,12 +3105,7 @@ def build_global_feed(
         )
 
     summarized = [i for i in ranked if summary_map.get(str(i.get("url", "")))]
-    flat_floors = {
-        "markets": _env_int("TRENDING_MARKETS_FLAT_FLOOR", "8"),
-        "tech": _env_int("TRENDING_TECH_FLAT_FLOOR", "4"),
-        "startups": _env_int("TRENDING_STARTUPS_FLAT_FLOOR", "4"),
-        "ux-design": _env_int("TRENDING_DESIGN_FLAT_FLOOR", "3"),
-    }
+    flat_floors = _flat_lane_floors()
     if any(v > 0 for v in flat_floors.values()):
         guaranteed: list[dict[str, Any]] = []
         guaranteed_ids: set[int] = set()
@@ -3126,6 +3199,13 @@ def build_global_feed(
         f"(overview_generated={topic_stats.get('overview_generated', 0)} "
         f"overview_cached={topic_stats.get('overview_cached', 0)})"
     )
+
+    min_lane_stories = _env_int("TRENDING_THIN_LANE_MIN", "3")
+    for lane, count in _fold_thin_lanes(trending_topics, feed_items, min_lane_stories).items():
+        _log(
+            f"Folded thin lane {lane} ({count} stories < {min_lane_stories}) "
+            f"into {THIN_LANE_FOLD[lane]}"
+        )
 
     # Write to global feed location
     headlines = build_headlines(store, trending_topics)

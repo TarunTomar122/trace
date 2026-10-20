@@ -7,6 +7,7 @@ import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { slotsFromRankedItems } from '@/lib/feed-topic-order';
 import { filterSendWorthyTopics, rejectedStoryUrls } from './feed-value';
 import { decodeHtmlEntities } from './feed-article-text';
+import { canonicalLane } from './feed-links';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -269,7 +270,7 @@ export function mapTrendingToStories(
       coverage,
       time: timeAgo(newestDate),
       ts: Date.parse(newestDate) || 0,
-      cat: topic.interest_id || first.interest_id || 'tech',
+      cat: canonicalLane(topic.interest_id || first.interest_id),
       url: first.url || '#',
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
       // Carried so the Home edition can drop stories Jev judged worthless.
@@ -298,7 +299,7 @@ export function mapTrendingToStories(
       coverage: [{ title: decodeHtmlEntities(it.title || ''), source, url, time: timeAgo(it.published_date) }],
       time: timeAgo(it.published_date),
       ts: Date.parse(it?.published_date || '') || 0,
-      cat: it.interest_id || 'tech',
+      cat: canonicalLane(it.interest_id),
       url,
       sendWorthy: typeof it.jev_send_worthy === 'number' ? it.jev_send_worthy : null,
     };

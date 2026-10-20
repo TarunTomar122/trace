@@ -17,6 +17,8 @@ export type PoolStory = {
   source_count: number;
   coverage: number;
   interest_id: string;
+  /** The thin lane a story was folded out of (THIN_LANE_FOLD in build_trending). */
+  lane_detail?: string;
   macro: boolean;
   model_release: boolean;
   send_worthy: number | null;
@@ -27,7 +29,7 @@ export type Section = [lane: string, stories: PoolStory[]];
 
 export const MODEL_RELEASE_LANE = 'model-releases';
 export const LANE_ORDER = [
-  'ai', 'markets', 'tech', 'ux-design', 'startups', 'engineering',
+  'ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics',
   'products', 'the-world',
 ] as const;
 const LANE_PATTERN: Record<Bucket, number[]> = {
@@ -36,7 +38,7 @@ const LANE_PATTERN: Record<Bucket, number[]> = {
   landing: [2, 1, 1],
 };
 const MODEL_RELEASE_SLOTS: Record<Bucket, number> = { member: 2, winback: 2, landing: 1 };
-const FULL_DISPLAY_ORDER = [MODEL_RELEASE_LANE, 'ai', 'markets', 'startups', 'tech', 'ux-design'];
+const FULL_DISPLAY_ORDER = [MODEL_RELEASE_LANE, 'ai', 'markets', 'startups', 'tech', 'ux-design', 'robotics'];
 
 function verdictRank(story: PoolStory): number {
   return typeof story.send_worthy === 'number' ? story.send_worthy : 1;
@@ -50,6 +52,10 @@ export function ranked(stories: PoolStory[]): PoolStory[] {
     || b.coverage - a.coverage);
 }
 
+function isWanted(story: PoolStory, wanted: Set<string>): boolean {
+  return wanted.has(story.interest_id) || (!!story.lane_detail && wanted.has(story.lane_detail));
+}
+
 export function selectFromGroups(
   groups: PoolStory[],
   interests: string[],
@@ -61,8 +67,9 @@ export function selectFromGroups(
   let lanes: string[];
   const wanted = new Set(interests.map((i) => i.trim().toLowerCase()).filter(Boolean));
   if (wanted.size > 0) {
-    primary = groups.filter((g) => wanted.has(g.interest_id));
-    secondary = groups.filter((g) => !wanted.has(g.interest_id));
+    // A story folded out of a thin lane still belongs to readers who picked it.
+    primary = groups.filter((g) => isWanted(g, wanted));
+    secondary = groups.filter((g) => !isWanted(g, wanted));
     lanes = LANE_ORDER.filter((lane) => wanted.has(lane));
   } else {
     primary = [...groups];

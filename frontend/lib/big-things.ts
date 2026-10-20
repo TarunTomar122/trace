@@ -3,7 +3,7 @@ import { isFreshRelease } from './feed-ranking.ts';
 /**
  * The feed's "big things" edition — the same selection the daily email makes:
  * drop anything Jev judged worthless, lead with new model releases, then fill
- * lane quotas in priority order (AI, markets, tech, design, startups).
+ * lane quotas in priority order (AI, markets, tech, design).
  *
  * Kept in step with backend/v3/flows/send_audience_newsletter.py on purpose: the
  * homepage promises "10 big things in tech and AI", so the feed should show
@@ -23,7 +23,9 @@ export type BigThingCandidate = {
   sendWorthy?: number | null;
 };
 
-const LANE_ORDER = ['ai', 'markets', 'tech', 'ux-design', 'startups'] as const;
+// Startups and robotics have no quota here: their stories backfill, competing
+// on strength rather than taking a reserved slot.
+const LANE_ORDER = ['ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics'] as const;
 
 /** Slots per lane once releases have taken theirs (10 and 5 story editions). */
 const LANE_QUOTA_PRO: Record<string, number> = {

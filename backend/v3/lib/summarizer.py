@@ -211,7 +211,7 @@ COVERAGE RULE (VERY IMPORTANT):
 
 RULES:
 - Choose exactly one interest_id from this allowed list:
-  ai, tech, startups, markets, engineering, product-design, marketing
+  ai, tech, startups, markets, robotics, product-design, marketing
 - Pick the interest_id based on the actual story itself, not the publisher.
 - Prefer narrower lanes when clearly supported:
   model launches, AI products or assistants, AI agents, agent frameworks,
@@ -219,11 +219,23 @@ RULES:
   If a product update adds a material AI assistant, agent, research, or
   language-model capability, use ai even when it also lists ordinary UI or
   workflow changes.
-  use product-design, tech, or engineering only when AI is incidental and
-  not the core development
+  use product-design or tech only when AI is incidental and not the core
+  development
+  robots and self-driving: humanoids, industrial, warehouse, surgical and
+  home robots, drones and other autonomous machines, robotaxis and
+  self-driving cars or trucks, and robot foundation models, robot
+  simulators, and embodied AI -> robotics. Funding rounds, deals, launches,
+  and other company news from robotics and self-driving companies are
+  robotics too, not startups. Their earnings, IPOs, stock moves, and
+  large-company M&A are still markets, and a general AI story that only
+  mentions robots is still ai:
+  "Figure raises $1B for its humanoids" -> robotics; "Gemini Robotics model
+  teaches robots to fold laundry" -> robotics; "OpenAI model could one day
+  power robots" -> ai; "Tesla earnings beat on robotaxi hopes" -> markets
   funding rounds, raises, valuations, and ecosystem/founder news -> startups,
-  even when the company is an AI, chip, or deep-tech company; use ai only
-  when the story's core is the model, product, or research itself
+  even when the company is an AI, chip, or deep-tech company (robotics and
+  self-driving companies are the exception above); use ai only when the
+  story's core is the model, product, or research itself
   Classify by the story's primary subject, not a secondary mention.
   earnings, IPOs and going-public plans, public markets, M&A at large
   companies, macro (inflation, Fed/rates, jobs, housing, trade/tariffs),
@@ -232,14 +244,15 @@ RULES:
   story stays ai even when it mentions a coming IPO: "locks down compute
   capacity ahead of an IPO" -> ai; "chooses Nasdaq for its IPO listing" ->
   markets; "Nvidia earnings beat" -> markets; "Anthropic safety essay" -> ai
-  developer tools/infra/security/platform engineering -> engineering
+  developer tools/infra/security/platform engineering -> tech
   app redesigns/product changes/UX/interface decisions, design systems,
   accessibility, and UX research -> product-design
   consumer devices, hardware, operating systems, and platform software -> tech
+  (robots, robot vacuums, drones, and self-driving cars are robotics)
   ad platforms/SEO/GTM/distribution -> marketing
   payments/banking/trading/crypto/financial platforms -> fintech
   use tech for broad consumer tech/platform/device/software stories when no narrower lane fits
-- Never return legacy labels like technology, business-market, experience, leadership, productivity, climate, health, or web3.
+- Never return legacy labels like technology, business-market, engineering, experience, leadership, productivity, climate, health, or web3.
 - Write like a sharp reporter, not a marketer.
 - The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
 - In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
@@ -620,9 +633,9 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        # v13: funding rounds at AI/deep-tech startups classify as startups,
-        # so v12 cached classifications regenerate.
-        return "trending_v13"  # stronger relevance gate for professional/news lane fit
+        # v14: robotics replaces engineering as a lane, so v13 cached
+        # classifications regenerate (robot stories sat in ai/startups/tech).
+        return "trending_v14"  # stronger relevance gate for professional/news lane fit
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -797,7 +810,7 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
         "tech",
         "startups",
         "markets",
-        "engineering",
+        "robotics",
         "marketing",
         "fintech",
         "product-design",
@@ -819,6 +832,12 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
         "health": "tech",
         "web3": "fintech",
         "climate": "tech",
+        # Engineering was retired as a lane; its dev-tools/infra stories are tech.
+        "engineering": "tech",
+        "robot": "robotics",
+        "robots": "robotics",
+        "physical-ai": "robotics",
+        "autonomous-vehicles": "robotics",
     }
     interest_id = legacy_map.get(interest_id, interest_id)
     parsed["interest_id"] = interest_id if interest_id in allowed_interest_ids else "tech"

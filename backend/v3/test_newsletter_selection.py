@@ -194,7 +194,7 @@ class NewsletterSelectionTests(unittest.TestCase):
             {"topic_id": "markets", "interest_id": "markets", "model_release": False},
             {"topic_id": "tech", "interest_id": "tech", "model_release": False},
             {"topic_id": "startups", "interest_id": "startups", "model_release": False},
-            {"topic_id": "engineering", "interest_id": "engineering", "model_release": False},
+            {"topic_id": "robotics", "interest_id": "robotics", "model_release": False},
             {"topic_id": "product-1", "interest_id": "products", "model_release": False},
             {"topic_id": "product-2", "interest_id": "products", "model_release": False},
             {"topic_id": "world-1", "interest_id": "the-world", "model_release": False},
@@ -204,7 +204,7 @@ class NewsletterSelectionTests(unittest.TestCase):
             group.update(send_worthy=1, source_count=1, coverage=1, macro=False)
         groups[2]["macro"] = True
         interests = [
-            "ai", "markets", "startups", "tech", "ux-design", "engineering", "products", "the-world",
+            "ai", "markets", "startups", "tech", "ux-design", "robotics", "products", "the-world",
         ]
 
         with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
@@ -216,7 +216,7 @@ class NewsletterSelectionTests(unittest.TestCase):
             [lane for lane, _ in pro],
             [
                 "model-releases", "ai", "markets", "startups", "tech",
-                "engineering", "products", "the-world",
+                "robotics", "products", "the-world",
             ],
         )
         # Backfill folds into the lane's existing section: one heading each.
@@ -224,7 +224,7 @@ class NewsletterSelectionTests(unittest.TestCase):
         selected = [group["topic_id"] for _, stories in pro for group in stories]
         self.assertCountEqual(
             selected,
-            ["release", "ai", "markets", "tech", "startups", "engineering", "product-1", "product-2", "world-1", "world-2"],
+            ["release", "ai", "markets", "tech", "startups", "robotics", "product-1", "product-2", "world-1", "world-2"],
         )
         self.assertEqual(
             [lane for lane, _ in free],
@@ -253,6 +253,60 @@ class NewsletterSelectionTests(unittest.TestCase):
             [lane for lane, _ in landing_with_design],
             ["model-releases", "ai", "markets", "tech", "ux-design"],
         )
+
+    @staticmethod
+    def _groups(*lanes):
+        return [
+            {"topic_id": f"{lane}-{i}", "interest_id": lane, "model_release": False,
+             "send_worthy": 1, "source_count": 1, "coverage": 1, "macro": False}
+            for i, lane in enumerate(lanes)
+        ]
+
+    def test_robotics_reader_gets_a_robotics_section(self):
+        groups = self._groups("ai", "ai", "ai", "ai", "robotics", "robotics", "markets")
+        with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
+            sections = _select({}, ["robotics", "ai"], 5, "member")
+        self.assertEqual([lane for lane, _ in sections], ["ai", "robotics"])
+        self.assertEqual(len(dict(sections)["robotics"]), 2)
+
+    def test_empty_robotics_lane_leaves_no_heading_and_backfills_ai_first(self):
+        groups = self._groups("ai", "ai", "ai", "ai", "ai", "markets", "markets")
+        with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
+            sections = _select({}, ["robotics", "ai"], 5, "member")
+        self.assertEqual([lane for lane, _ in sections], ["ai"])
+        self.assertEqual(sum(len(stories) for _, stories in sections), 5)
+
+    def test_folded_robotics_stories_still_lead_for_robotics_readers(self):
+        # A thin day folds robotics into ai (build_trending THIN_LANE_FOLD);
+        # a robotics-only reader must still get those two stories first.
+        groups = self._groups(*["ai"] * 8, "markets", "markets")
+        groups += [
+            {**group, "topic_id": f"robot-{i}", "lane_detail": "robotics", "send_worthy": 1}
+            for i, group in enumerate(self._groups("ai", "ai"))
+        ]
+        with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
+            sections = _select({}, ["robotics"], 5, "member")
+        stories = [group["topic_id"] for _, lane_stories in sections for group in lane_stories]
+        self.assertEqual(stories[:2], ["robot-0", "robot-1"])
+        self.assertEqual(len(stories), 5)
+
+    def test_candidates_map_retired_lanes_and_keep_lane_detail(self):
+        from v3.flows.send_audience_newsletter import _candidates
+
+        feed = {
+            "trending_topics": [
+                {**_topic("Old engineering story", "https://e.com/1", [("t", "https://e.com/1", "S")], "engineering"),
+                 "id": "t1"},
+                {**_topic("Folded robot story", "https://r.com/1", [("t", "https://r.com/1", "S")], "ai"),
+                 "id": "t2", "lane_detail": "robotics"},
+            ],
+            "trending": [],
+        }
+        by_id = {c["topic_id"]: c for c in _candidates(feed)}
+        self.assertEqual(by_id["t1"]["interest_id"], "tech")
+        self.assertEqual(by_id["t1"]["lane_detail"], "")
+        self.assertEqual(by_id["t2"]["interest_id"], "ai")
+        self.assertEqual(by_id["t2"]["lane_detail"], "robotics")
 
     def test_same_event_topics_do_not_all_make_the_email(self):
         feed = {

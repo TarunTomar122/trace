@@ -1,5 +1,5 @@
 import {
-  Code2, Cpu, Globe, Package, PenTool, Rocket, Sparkles, TrendingUp, type LucideIcon,
+  Bot, Cpu, Globe, Package, PenTool, Rocket, Sparkles, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 
 /** One icon per lane, the same set as the feed's sidebar (FeedApp CAT_ICONS). */
@@ -10,7 +10,7 @@ export const TOPIC_ICONS: Record<string, LucideIcon> = {
   tech: Cpu,
   'ux-design': PenTool,
   startups: Rocket,
-  engineering: Code2,
+  robotics: Bot,
   products: Package,
   'the-world': Globe,
 };

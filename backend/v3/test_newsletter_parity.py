@@ -72,6 +72,8 @@ def _pool(rng: random.Random, size: int) -> list[dict]:
             "source_name": "E",
             "sources": ["e.com"],
             "interest_id": rng.choice(lanes),
+            # Folded thin-lane stories (build_trending THIN_LANE_FOLD).
+            "lane_detail": rng.choice(["", "", "", "robotics"]),
             "send_worthy": rng.choice([None, 1, 2]),
             "source_count": rng.randint(1, 5),
             "coverage": rng.randint(1, 3),

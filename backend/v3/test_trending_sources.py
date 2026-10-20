@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from v2.utils.fetch_article_links import ExtractResult, _extract_from_rss_or_atom
-from v3.build_trending import refresh_pool
+from v3.build_trending import _title_has_excluded_keywords, refresh_pool
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -36,13 +36,66 @@ EXPECTED_SOURCES = {
         "type": "rss",
         "interest_id": "tech",
     },
+    # Robotics lane: checked 2026-10-20 (HTTP 200 with the pipeline's user
+    # agent, parsed by its own RSS/Atom reader).
+    "The Robot Report": {
+        "url": "https://www.therobotreport.com/feed/",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "IEEE Spectrum Robotics": {
+        "url": "https://spectrum.ieee.org/feeds/topic/robotics.rss",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "TechCrunch Robotics": {
+        "url": "https://techcrunch.com/category/robotics/feed/",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "Waymo Blog": {
+        "url": "https://waymo.com/blog/rss.xml",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "Humanoid Robotics Technology": {
+        "url": "https://humanoidroboticstechnology.com/feed/",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "New Atlas Robotics": {
+        "url": "https://newatlas.com/robotics/index.rss",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
+    "The Verge Robots": {
+        "url": "https://www.theverge.com/rss/robot/index.xml",
+        "type": "atom",
+        "interest_id": "robotics",
+    },
+    "The Verge Autonomous Cars": {
+        "url": "https://www.theverge.com/rss/autonomous-cars/index.xml",
+        "type": "atom",
+        "interest_id": "robotics",
+    },
 }
 
 REJECTED_SOURCES = {
     "Cloudflare Blog",
     "NVIDIA Technical Blog",
     "Rest of World",
+    # Robotics candidates that failed the check: raw preprints, SEO filler,
+    # malformed XML, or no working feed.
+    "arXiv cs.RO",
+    "Robotics & Automation News",
+    "Humanoids Daily",
+    "Interesting Engineering",
+    "Robotics 24/7",
 }
+
+# The lanes a source may seed. The model's classification decides the final
+# lane, but a source's own lane is the fallback, so it must be a live one.
+SOURCE_LANES = {"ai", "tech", "startups", "markets", "ux-design", "robotics"}
 
 
 class MemoryPoolStore:
@@ -91,12 +144,34 @@ class TrendingSourceConfigTests(unittest.TestCase):
             self.assertGreaterEqual(source["source_weight"], 1.0)
             self.assertIn(source["type"], {"rss", "atom"})
 
+        self.assertTrue(all(source["interest_id"] in SOURCE_LANES for source in sources))
+        self.assertGreaterEqual(
+            sum(1 for source in sources if source["interest_id"] == "robotics"), 8
+        )
+
         tldr = by_name["AI/TLDR Models"]
         self.assertEqual(tldr["url"], "https://ai-tldr.dev/feed.json")
         self.assertEqual(tldr["type"], "ai_tldr")
         self.assertEqual(tldr["interest_id"], "ai")
         self.assertIn("model", tldr["include_categories"])
         self.assertEqual(set(tldr["include_importance"]), {"seismic", "major"})
+
+    def test_robot_report_drops_event_and_sponsor_posts_but_keeps_news(self) -> None:
+        config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        excluded = {s["name"]: s for s in config["sources"]}["The Robot Report"]["exclude_title_keywords"]
+        for promo in (
+            "A guide to Day 1 of RoboBusiness 2026",
+            "2027 TRR50 Robotics Innovation Awards open nominations",
+            "How to choose a BLDC motor for robotic arms and mobile robots",
+        ):
+            self.assertTrue(_title_has_excluded_keywords(promo, excluded), promo)
+        for news in (
+            "Gecko Robotics secures $300M contract with the U.S. Navy",
+            "Stryker invests $400M into CMR Surgical",
+            # "awards" as a verb is contract news, not the outlet's own prize.
+            "U.S. Army awards Anduril $99M contract for autonomous ground robots",
+        ):
+            self.assertFalse(_title_has_excluded_keywords(news, excluded), news)
 
     def test_parser_normalizes_representative_rss_and_atom_items(self) -> None:
         rss = """\

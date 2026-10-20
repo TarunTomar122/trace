@@ -1162,6 +1162,94 @@
       "url": "https://www.webdesignerdepot.com/feed/",
       "type": "rss",
       "source_weight": 1.0
+    },
+    {
+      "interest_id": "robotics",
+      "name": "The Robot Report",
+      "url": "https://www.therobotreport.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "sponsored",
+        "webinar",
+        "podcast",
+        "robobusiness",
+        "robotics summit",
+        "trr50",
+        "innovation awards",
+        "nominations",
+        "a guide to",
+        "how to choose"
+      ],
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "robotics",
+      "name": "IEEE Spectrum Robotics",
+      "url": "https://spectrum.ieee.org/feeds/topic/robotics.rss",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "video friday",
+        "podcast",
+        "webinar"
+      ],
+      "source_weight": 1.15
+    },
+    {
+      "interest_id": "robotics",
+      "name": "TechCrunch Robotics",
+      "url": "https://techcrunch.com/category/robotics/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "disrupt",
+        "exhibit",
+        "side event",
+        "tickets",
+        "apply",
+        "final call"
+      ],
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "robotics",
+      "name": "Waymo Blog",
+      "url": "https://waymo.com/blog/rss.xml",
+      "type": "rss",
+      "source_weight": 1.15
+    },
+    {
+      "interest_id": "robotics",
+      "name": "Humanoid Robotics Technology",
+      "url": "https://humanoidroboticstechnology.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "appointed",
+        "appoints",
+        "webinar",
+        "podcast",
+        "sponsored"
+      ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "robotics",
+      "name": "New Atlas Robotics",
+      "url": "https://newatlas.com/robotics/index.rss",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "robotics",
+      "name": "The Verge Robots",
+      "url": "https://www.theverge.com/rss/robot/index.xml",
+      "type": "atom",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "robotics",
+      "name": "The Verge Autonomous Cars",
+      "url": "https://www.theverge.com/rss/autonomous-cars/index.xml",
+      "type": "atom",
+      "source_weight": 1.1
     }
   ]
 }

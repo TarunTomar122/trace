@@ -9,6 +9,7 @@ export const NEWSLETTER_TOPICS = [
   { id: 'tech', label: 'Tech', blurb: 'Big Tech, devices, and platforms' },
   { id: 'ux-design', label: 'Design', blurb: 'Product and interface design' },
   { id: 'startups', label: 'Startups', blurb: 'Funding rounds, launches, and founders' },
+  { id: 'robotics', label: 'Robotics', blurb: 'Robots, humanoids, and self-driving cars' },
 ] as const;
 // Only the lanes the pipeline publishes (FeedApp ALL_INTERESTS); a topic with
 // no stories behind it would quietly fill the brief with other topics.
@@ -39,6 +40,8 @@ const LANE_LABELS: Record<string, string> = {
   tech: 'Tech',
   'ux-design': 'Design',
   startups: 'Startups',
+  robotics: 'Robotics',
+  // Retired lane, kept so archived /brief editions still label it.
   engineering: 'Engineering',
   products: 'Products',
   'the-world': 'World',

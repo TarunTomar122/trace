@@ -43,18 +43,24 @@ test('coverage breaks ties between equally matched interests', () => {
 });
 
 test('role-primary topics get a smaller boost than explicit interests', () => {
-  assert.equal(storyBoost('engineering', [], rolePrimaryInterests('engineer')), 2);
+  assert.equal(storyBoost('tech', [], rolePrimaryInterests('engineer')), 2);
   assert.equal(storyBoost('ai', ['ai'], rolePrimaryInterests('engineer')), 5);
   assert.equal(storyBoost('markets', ['ai'], rolePrimaryInterests('engineer')), 0);
 });
 
-test('developer profiles receive engineering lane priority', () => {
+test('developer profiles receive tech lane priority', () => {
   const ranked = rankStoriesForProfile(
-    [story({ cat: 'markets', sources: ['a'] }), story({ cat: 'engineering', sources: ['a'] })],
+    [story({ cat: 'markets', sources: ['a'] }), story({ cat: 'tech', sources: ['a'] })],
     { interests: [], role: 'developer' },
     { diversify: false },
   );
-  assert.equal(ranked[0].cat, 'engineering');
+  assert.equal(ranked[0].cat, 'tech');
+});
+
+test('no role leans on the retired engineering lane', () => {
+  for (const role of ['developer', 'engineer', 'student']) {
+    assert.ok(!rolePrimaryInterests(role).includes('engineering'), role);
+  }
 });
 
 test('recency breaks score ties', () => {

@@ -10,7 +10,7 @@ const CAT_LABELS: Record<string, string> = {
   ai: 'AI',
   markets: 'Markets',
   'ux-design': 'Design',
-  engineering: 'Engineering',
+  robotics: 'Robotics',
   tech: 'Tech',
   startups: 'Startups',
   security: 'Security',

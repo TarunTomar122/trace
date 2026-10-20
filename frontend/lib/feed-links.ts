@@ -7,6 +7,7 @@ export const FEED_TAB_LABELS: Record<string, string> = {
   tech: 'Tech',
   'ux-design': 'Design',
   startups: 'Startups',
+  robotics: 'Robotics',
   conversations: 'Top articles',
 };
 
@@ -32,7 +33,20 @@ const FEED_TAB_ALIASES: Record<string, string> = {
   startup: 'startups',
   startups: 'startups',
   venture: 'startups',
-  engineering: 'engineering',
+  robotics: 'robotics',
+  robot: 'robotics',
+  robots: 'robotics',
+  humanoid: 'robotics',
+  humanoids: 'robotics',
+  'physical-ai': 'robotics',
+  'self-driving': 'robotics',
+  robotaxi: 'robotics',
+  robotaxis: 'robotics',
+  'autonomous-vehicles': 'robotics',
+  drones: 'robotics',
+  'embodied-ai': 'robotics',
+  // Engineering was retired as a lane; its stories now sit in Tech.
+  engineering: 'tech',
   security: 'security',
   bookmarks: 'bookmarks',
   saved: 'bookmarks',
@@ -53,6 +67,11 @@ const FEED_TAB_ALIASES: Record<string, string> = {
   'top-articles': 'conversations',
 };
 
+// Own keys only: a URL value like "constructor" must not hit Object.prototype.
+function lookup(map: Record<string, string>, key: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
 /**
  * Normalize a URL value (tab or q) into an internal feed tab id.
  * Unknown values fall back to `all` when the set of available categories is
@@ -64,7 +83,7 @@ export function normalizeFeedTab(
 ): string {
   const raw = String(value || '').trim().toLowerCase();
   if (!raw) return 'all';
-  const mapped = FEED_TAB_ALIASES[raw] || raw;
+  const mapped = lookup(FEED_TAB_ALIASES, raw) || raw;
   if (mapped === 'profile' || mapped === 'bookmarks' || mapped === 'all' || mapped === 'conversations') {
     return mapped;
   }
@@ -77,9 +96,22 @@ export function normalizeFeedTab(
   return mapped;
 }
 
+// Lanes Trace no longer publishes, and where their stories live now. Archived
+// days still carry them, so the feed must not grow a tab for a retired lane.
+const RETIRED_LANES: Record<string, string> = {
+  engineering: 'tech',
+};
+
+/** A story's lane as the feed shows it today; missing means tech. */
+export function canonicalLane(lane?: string | null): string {
+  const value = String(lane || '').trim().toLowerCase();
+  if (!value) return 'tech';
+  return lookup(RETIRED_LANES, value) || value;
+}
+
 /** Human label for a lane slug, used in metadata for shared links. */
 export function feedTabLabel(tab: string): string {
-  return FEED_TAB_LABELS[tab] || 'Top';
+  return lookup(FEED_TAB_LABELS, tab) || 'Top';
 }
 
 /**

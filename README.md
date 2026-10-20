@@ -23,7 +23,7 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 
 | | |
 | --- | --- |
-| **The feed** | One card per story, every source attached, ranked by how much it matters. Topic lanes (AI, Markets, Tech, Startups, Design), Top articles, bookmarks, an archive. |
+| **The feed** | One card per story, every source attached, ranked by how much it matters. Topic lanes (AI, Markets, Tech, Startups, Design, Robotics), Top articles, bookmarks, an archive. |
 | **The daily brief** | A morning email. Ten stories by default; each reader picks topics, 5/10/15 stories, and summaries, headlines only, or images. The preview in the builder is the real selection. |
 | **Public archive** | Every edition at `/brief/YYYY-MM-DD`, with share buttons and its own share image. |
 | **Mobile app** | Android app on Google Play; the Expo source lives in `trace/` in the main repo. |

@@ -46,14 +46,14 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   same flags for unsubscribes, complaints and hard bounces that only Brevo saw,
   and copies Brevo's opens and clicks into `email_events`. To see what it would
   change: `cd ~/trace/backend && ../.venv/bin/python -m v3.flows.sync_brevo --dry-run`.
-- Selection priority is AI → markets → tech → design → startups, with up to
+- Selection priority is AI → markets → tech → design → startups → robotics, with up to
   3/2/2/1/1/1 slots on member and win-back emails and 2/1/1 on landing.
   Model releases take up to two member/win-back slots or one landing slot
   first (one in any 5-story brief), but only while
   their newest coverage is under 36 hours old (`RELEASE_FRESH_HOURS`; the
   pool spans about three days); older launches compete in their lane. Unused
   slots are filled from the remaining lanes. Member and win-back emails display the selected sections as model
-  releases → AI → markets → startups → tech → design, then any other selected
+  releases → AI → markets → startups → tech → design → robotics, then any other selected
   lanes in their existing relative order. Markets prefers macro stories.
 - No repeats: a story any daily carried in the last three days
   (`REPEAT_DAYS`) is left out, before grouping. Each run records what went
@@ -259,25 +259,40 @@ tail -50 ~/trace/logs/postkit.log
   `OPENAI_API_KEY` through its existing chmod-600 `.env` or systemd
   environment before enabling this code there.
 
-## Interest depth (markets, tech, startups, design)
+## Interest depth (markets, tech, startups, design, robotics)
 
 - The feed reserves topic slots per lane so single-interest clusters are not
   crowded out by multi-source AI clusters: `TRENDING_MARKETS_FLOOR` (12),
   `TRENDING_TECH_FLOOR` (8), `TRENDING_STARTUPS_FLOOR` (8),
-  `TRENDING_DESIGN_FLOOR` (6 topic slots; `ux-design`), plus flat/mobile-list
-  floors (`TRENDING_MARKETS_FLAT_FLOOR` 8, `TRENDING_TECH_FLAT_FLOOR` 4,
-  `TRENDING_STARTUPS_FLAT_FLOOR` 4, `TRENDING_DESIGN_FLAT_FLOOR` 3). Remaining
+  `TRENDING_DESIGN_FLOOR` (6 topic slots; `ux-design`),
+  `TRENDING_ROBOTICS_FLOOR` (4), plus flat/mobile-list floors
+  (`TRENDING_MARKETS_FLAT_FLOOR` 8, `TRENDING_TECH_FLAT_FLOOR` 4,
+  `TRENDING_STARTUPS_FLAT_FLOOR` 4, `TRENDING_DESIGN_FLAT_FLOOR` 3,
+  `TRENDING_ROBOTICS_FLAT_FLOOR` 2). Remaining
   slots go to the globally best clusters; both lists keep score order (a floor
   reserves a place, not the lead) and the per-entity topic cap still applies.
   `max_topics` is 48. Invalid env values fall back to defaults instead of
   failing the build.
 - Lanes are enforced on the model's classified interest, so a story's lane
-  follows its subject, not its source.
+  follows its subject, not its source. Engineering is no longer a lane: the
+  model files dev-tools/infra/security stories under tech, and cached
+  summaries and archived feed days that still say `engineering` read as tech
+  (archived `/brief` editions keep their old "Engineering" heading).
+- Robotics (robots, humanoids, self-driving, embodied AI, and robotics
+  companies' funding and deals) is the thinnest lane. When a build ends with
+  fewer than `TRENDING_THIN_LANE_MIN` (3) robotics stories, they fold into AI
+  for that build (`lane_detail: "robotics"` keeps the original), so the feed
+  never shows a Robotics tab with one or two stories. Readers who picked
+  Robotics still get those stories first in their email. The log says
+  "Folded thin lane robotics".
 - Startup/design sources: Sifted, Tech.eu, EU-Startups, AlleyWatch, BetaKit,
   TechCrunch Venture, The Next Web, SaaStr, Startup Daily, e27, TechNode,
   The Recursive, UKTN, Crunchbase, TechCrunch Startups; Smashing Magazine,
   Nielsen Norman Group, Design Milk, Core77, Creative Bloq, Webdesigner Depot.
   Tech adds Engadget, Gizmodo, Tom's Hardware, MacRumors, CNET News.
+  Robotics: The Robot Report, IEEE Spectrum Robotics, TechCrunch Robotics,
+  Waymo Blog, Humanoid Robotics Technology, New Atlas Robotics, and The Verge
+  robot and autonomous-cars tags.
 - Cross-source quality filters drop entertainment/culture items, investment
   advice/listicles ("Buy These 8 Stocks"), and finance-brand blogs from any
   lane. Named entities are discovered per run: tokens appearing in only a few

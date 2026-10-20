@@ -4,6 +4,7 @@ import { adminFirestore } from '@/lib/firebase-admin';
 import { sameEvent } from '@/lib/same-event';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
 import { isModelRelease, isStaleStory } from '@/lib/feed-ranking';
+import { canonicalLane } from '@/lib/feed-links';
 
 /**
  * Public daily editions: the non-personalised brief the email pipeline
@@ -185,6 +186,7 @@ function normalizePool(raw: unknown): PoolStory[] {
       source_count: Math.max(1, Number(story.source_count) || 1),
       coverage: Math.max(1, Number(story.coverage) || 1),
       interest_id: asText(story.interest_id).toLowerCase(),
+      lane_detail: asText(story.lane_detail).toLowerCase(),
       macro: story.macro === true,
       model_release: story.model_release === true,
       send_worthy: typeof verdict === 'number' ? verdict : null,
@@ -261,7 +263,10 @@ function topicToPool(raw: unknown): PoolStory[] {
     sources: sources.slice(0, 4),
     source_count: Math.max(1, Number(topic.source_count) || sources.length || 1),
     coverage: Math.max(1, Number(topic.article_count) || articles.length || 1),
-    interest_id: asText(topic.interest_id).toLowerCase(),
+    // Same mapping as the email's candidates: a retired lane in an older feed
+    // doc (engineering) reads as today's lane.
+    interest_id: asText(topic.interest_id) ? canonicalLane(asText(topic.interest_id)) : '',
+    lane_detail: asText(topic.lane_detail).toLowerCase(),
     macro: false,
     model_release: isModelRelease({ title, tags: Array.isArray(topic.tags) ? topic.tags.map(asText) : [] })
       && !isStaleStory(newest),

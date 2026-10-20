@@ -74,13 +74,13 @@ export type RankOptions = {
 };
 
 export const ROLE_PRIMARY_INTERESTS: Record<string, string[]> = {
-  developer: ['engineering', 'tech', 'ai'],
-  engineer: ['engineering', 'tech', 'ai'],
+  developer: ['tech', 'ai'],
+  engineer: ['tech', 'ai'],
   designer: ['ux-design', 'products'],
   pm: ['products', 'startups', 'markets'],
   founder: ['startups', 'markets', 'products'],
   investor: ['markets', 'startups'],
-  student: ['engineering', 'ai', 'tech'],
+  student: ['ai', 'tech'],
 };
 
 export function rolePrimaryInterests(role?: string | null): string[] {

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from './feed-links.ts';
+import { canonicalLane, feedTabLabel, normalizeFeedTab, partitionFeedCats } from './feed-links.ts';
 
-const CATS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
+const CATS = ['ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics'];
 
 test('lane links accept slugs and friendly aliases', () => {
   assert.equal(normalizeFeedTab('markets', CATS), 'markets');
@@ -38,12 +38,40 @@ test('stale links for missing categories fall back to home', () => {
 });
 
 test('unknown categories are trusted when no catalog is provided', () => {
-  assert.equal(normalizeFeedTab('engineering'), 'engineering');
+  assert.equal(normalizeFeedTab('security'), 'security');
+});
+
+test('robotics links accept friendly aliases', () => {
+  for (const alias of ['robotics', 'robot', 'robots', 'humanoid', 'humanoids', 'physical-ai', 'self-driving',
+    'robotaxi', 'robotaxis', 'autonomous-vehicles', 'drones', 'embodied-ai']) {
+    assert.equal(normalizeFeedTab(alias, CATS), 'robotics', alias);
+  }
+  // A day with no robotics stories sends the link Home rather than to an empty tab.
+  assert.equal(normalizeFeedTab('robotics', ['ai', 'tech']), 'all');
+});
+
+test('retired engineering lane links and stories land in tech', () => {
+  assert.equal(normalizeFeedTab('engineering'), 'tech');
+  assert.equal(normalizeFeedTab('engineering', CATS), 'tech');
+  assert.equal(feedTabLabel(normalizeFeedTab('engineering')), 'Tech');
+  assert.equal(canonicalLane('engineering'), 'tech');
+  assert.equal(canonicalLane('robotics'), 'robotics');
+  assert.equal(canonicalLane(''), 'tech');
+  assert.equal(canonicalLane(undefined), 'tech');
+  assert.equal(canonicalLane('Engineering'), 'tech');
+});
+
+test('object built-ins are not lanes or labels', () => {
+  assert.equal(canonicalLane('constructor'), 'constructor');
+  assert.equal(normalizeFeedTab('constructor', CATS), 'all');
+  assert.equal(normalizeFeedTab('toString'), 'tostring');
+  assert.equal(feedTabLabel('constructor'), 'Top');
 });
 
 test('labels for metadata', () => {
   assert.equal(feedTabLabel('markets'), 'Markets');
   assert.equal(feedTabLabel('ux-design'), 'Design');
+  assert.equal(feedTabLabel('robotics'), 'Robotics');
   assert.equal(feedTabLabel('conversations'), 'Top articles');
   assert.equal(normalizeFeedTab('top-articles'), 'conversations');
   assert.equal(feedTabLabel('other'), 'Top');

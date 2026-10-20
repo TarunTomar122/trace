@@ -57,6 +57,7 @@ from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
     _looks_like_model_release,
+    _normalize_trending_interest_id,
     _topic_tokens,
 )
 
@@ -86,10 +87,10 @@ MEMBER_CONTINUITY_DAYS = 7
 # writes email_events/visit-<id>; _recent_email_visitors reads it back.
 EMAIL_VISIT_PARAM = "et"
 
-# Selection priority: AI, markets, tech, design, startups, then other lanes.
-# Per-bucket slots give the leading lanes the biggest shares.
+# Selection priority: AI, markets, tech, design, startups, robotics, then
+# other lanes. Per-bucket slots give the leading lanes the biggest shares.
 LANE_ORDER = (
-    "ai", "markets", "tech", "ux-design", "startups", "engineering",
+    "ai", "markets", "tech", "ux-design", "startups", "robotics",
     "products", "the-world",
 )
 LANE_PATTERN = {
@@ -132,6 +133,7 @@ SENT_URLS = 12
 # Sort only the finished full-edition sections; LANE_ORDER controls selection.
 FULL_DISPLAY_ORDER = (
     MODEL_RELEASE_LANE, "ai", "markets", "startups", "tech", "ux-design",
+    "robotics",
 )
 
 # What counts as send-worthy is a judgement call, not a keyword list: Jev
@@ -152,8 +154,8 @@ INTEREST_LABELS = {
     "markets": "Markets",
     "startups": "Startups",
     "tech": "Tech",
-    "engineering": "Engineering",
     "ux-design": "Design",
+    "robotics": "Robotics",
     "products": "Products",
     "the-world": "World",
 }
@@ -338,7 +340,9 @@ def _candidates(feed: dict) -> list[dict]:
             d = _domain(str(a.get("url", "")))
             if d and d not in sources:
                 sources.append(d)
-        interest = str(topic.get("interest_id", "")).strip().lower()
+        # The pipeline's own mapping, so an older feed doc with a retired lane
+        # (engineering) still lands under a heading the email knows.
+        interest = _normalize_trending_interest_id(topic.get("interest_id", ""))
         if not interest:
             continue
         summary = _summary_text(topic.get("summary")) or _summary_text(
@@ -360,6 +364,7 @@ def _candidates(feed: dict) -> list[dict]:
             "title": title,
             "summary": summary,
             "interest_id": interest,
+            "lane_detail": str(topic.get("lane_detail") or "").strip().lower(),
             "source_name": _source_name(hero),
             "image": _image(topic, hero, *articles),
             "sources": sources[:4],
@@ -380,7 +385,7 @@ def _candidates(feed: dict) -> list[dict]:
         if not isinstance(row, dict):
             continue
         url = str(row.get("url", "")).strip()
-        interest = str(row.get("interest_id", "")).strip().lower()
+        interest = _normalize_trending_interest_id(row.get("interest_id", ""))
         title = _plain(row.get("title"))
         if not url or url in seen_urls or not interest or not title:
             continue
@@ -393,6 +398,7 @@ def _candidates(feed: dict) -> list[dict]:
             "title": title,
             "summary": summary,
             "interest_id": interest,
+            "lane_detail": str(row.get("lane_detail") or "").strip().lower(),
             "source_name": _source_name(row),
             "image": _image(row),
             "sources": [domain] if domain else [],
@@ -653,6 +659,10 @@ def _select(
     return _select_from_groups(_story_groups(feed, verdicts, now), interests, count, bucket)
 
 
+def _wanted(group: dict, wanted: set[str]) -> bool:
+    return group["interest_id"] in wanted or group.get("lane_detail") in wanted
+
+
 def _select_from_groups(
     groups: list[dict],
     interests: list[str],
@@ -667,8 +677,11 @@ def _select_from_groups(
     """
     if interests:
         wanted = {i.strip().lower() for i in interests if i.strip()}
-        primary = [g for g in groups if g["interest_id"] in wanted]
-        secondary = [g for g in groups if g["interest_id"] not in wanted]
+        # A story folded out of a thin lane (lane_detail, see THIN_LANE_FOLD in
+        # build_trending) still belongs to readers who picked that lane: it
+        # leads their backfill instead of vanishing on a fold day.
+        primary = [g for g in groups if _wanted(g, wanted)]
+        secondary = [g for g in groups if not _wanted(g, wanted)]
         lanes = [lane for lane in LANE_ORDER if lane in wanted]
     else:
         primary, secondary = list(groups), []
@@ -831,7 +844,7 @@ def _recent_email_visitors(store: FirestoreStore, since: str) -> set[str]:
 
 
 # The lanes the pipeline publishes and the builder offers (newsletter-prefs.ts).
-PICKABLE_LANES = ("ai", "markets", "tech", "ux-design", "startups")
+PICKABLE_LANES = ("ai", "markets", "tech", "ux-design", "startups", "robotics")
 
 
 def newsletter_prefs(profile: dict) -> dict:
@@ -1570,8 +1583,8 @@ def _record_sent(
 
 POOL_FIELDS = (
     "topic_id", "title", "summary", "url", "source_name", "image", "sources",
-    "source_count", "coverage", "interest_id", "macro", "model_release",
-    "send_worthy",
+    "source_count", "coverage", "interest_id", "lane_detail", "macro",
+    "model_release", "send_worthy",
 )
 
 

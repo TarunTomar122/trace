@@ -216,8 +216,12 @@ class RenderTests(unittest.TestCase):
         # Picking no topics in the builder means all of them, not feed interests.
         everything = N.newsletter_prefs({"newsletterTopics": [], "interests": ["tech"]})
         self.assertEqual(everything["interests"], [])
-        # Lanes the pipeline does not publish are dropped.
+        # Lanes the pipeline does not publish (engineering was retired) are dropped.
         self.assertEqual(N.newsletter_prefs({"newsletterTopics": ["engineering", "ai"]})["interests"], ["ai"])
+        # Robotics is a lane readers can pick, from the builder or feed interests.
+        self.assertEqual(N.newsletter_prefs({"newsletterTopics": ["robotics", "ai"]})["interests"],
+                         ["robotics", "ai"])
+        self.assertEqual(N.newsletter_prefs({"interests": ["robotics"]})["interests"], ["robotics"])
 
     def test_come_read_links_carry_the_send_id_but_share_and_unsubscribe_do_not(self):
         with patch.dict(os.environ, {"EMAIL_TRACKING": "0"}):

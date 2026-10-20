@@ -116,3 +116,49 @@ test('a launch whose newest coverage is over 36 hours old competes in its lane',
   const undated = list.map((s) => (s.id === 'flux' ? { ...s, ts: 0 } : s));
   assert.equal(selectBigThings(undated, { count: 5, now })[0].id, 'flux');
 });
+
+test('robotics has no reserved slot: it backfills on strength', () => {
+  const quotaLanes = [
+    story({ id: 'ai-1', cat: 'ai' }),
+    story({ id: 'ai-2', cat: 'ai' }),
+    story({ id: 'ai-3', cat: 'ai' }),
+    story({ id: 'mk-1', cat: 'markets' }),
+    story({ id: 'mk-2', cat: 'markets' }),
+    story({ id: 'tech-1', cat: 'tech' }),
+    story({ id: 'tech-2', cat: 'tech' }),
+    story({ id: 'design-1', cat: 'ux-design' }),
+  ];
+  const strongRobots = selectBigThings(
+    [
+      ...quotaLanes,
+      story({ id: 'robot-1', cat: 'robotics', sendWorthy: 2 }),
+      story({ id: 'robot-2', cat: 'robotics', sendWorthy: 2 }),
+      story({ id: 'startup-1', cat: 'startups', sendWorthy: 1 }),
+    ],
+    { count: 10 },
+  );
+  assert.deepEqual(strongRobots.slice(8).map((s) => s.id), ['robot-1', 'robot-2']);
+
+  const weakRobot = selectBigThings(
+    [
+      ...quotaLanes,
+      story({ id: 'robot-1', cat: 'robotics', sendWorthy: 1 }),
+      story({ id: 'startup-1', cat: 'startups', sendWorthy: 2 }),
+      story({ id: 'startup-2', cat: 'startups', sendWorthy: 2 }),
+    ],
+    { count: 10 },
+  );
+  assert.ok(!weakRobot.some((s) => s.cat === 'robotics'));
+});
+
+test('a robotics reader gets the robotics stories', () => {
+  const picked = selectBigThings(
+    [
+      story({ id: 'ai-1', cat: 'ai', sendWorthy: 2 }),
+      story({ id: 'robot-1', cat: 'robotics' }),
+      story({ id: 'robot-2', cat: 'robotics' }),
+    ],
+    { count: 5, lanes: ['robotics'] },
+  );
+  assert.deepEqual(picked.map((s) => s.id).sort(), ['robot-1', 'robot-2']);
+});

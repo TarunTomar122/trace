@@ -38,7 +38,7 @@ from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
     "designer": ["ux-design", "products"],
-    "developer": ["engineering", "tech", "ai"],
+    "developer": ["tech", "ai"],
     "pm": ["products", "startups", "markets"],
     "founder": ["startups", "markets", "products"],
 }
@@ -58,6 +58,8 @@ INTEREST_ALIASES: dict[str, str] = {
     "productivity": "tech",
     "health": "the-world",
     "climate": "the-world",
+    # Engineering was retired as a lane; old profiles that picked it read tech.
+    "engineering": "tech",
 }
 
 EVERGREEN_EXPERIMENT_MAX_AGE_DAYS = 365

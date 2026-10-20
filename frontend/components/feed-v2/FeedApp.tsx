@@ -74,7 +74,7 @@ import {
 } from './retention/RetentionPanels';
 import {
   Bookmark, Share, ArrowLeft, ArrowUpRight, User, Check, X, Clock,
-  Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, Mail,
+  Home, Sparkles, TrendingUp, Rocket, Bot, Cpu, PenTool, MessageCircle, Mail,
   type LucideIcon,
 } from 'lucide-react';
 import { BriefArt } from '@/components/feed-v2/home-art';
@@ -138,7 +138,7 @@ const CAT_LABELS: Record<string, string> = {
   ai: 'AI',
   markets: 'Markets',
   'ux-design': 'Design',
-  engineering: 'Engineering',
+  robotics: 'Robotics',
   tech: 'Tech',
   startups: 'Startups',
 };
@@ -147,14 +147,14 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   ai: Sparkles,
   markets: TrendingUp,
   'ux-design': PenTool,
-  engineering: Code2,
+  robotics: Bot,
   tech: Cpu,
   startups: Rocket,
 };
 
 // The lanes Trace actually publishes. Extras from older profiles (engineering,
 // security, open-source, policy) are ignored and dropped on the next save.
-export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
+export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics'];
 // Home is the day's big things, picked like the email (selectBigThings) but
 // fifteen deep; the email itself stays at ten by default.
 const HOME_CAP = 15;

@@ -25,8 +25,10 @@ INTEREST_ALIASES = {
     "healthcare": "tech",
     "climate": "tech",
     "sustainability": "tech",
-    "software-engineering": "engineering",
-    "software_engineering": "engineering",
+    # Engineering was retired as a lane; its stories are tech now.
+    "engineering": "tech",
+    "software-engineering": "tech",
+    "software_engineering": "tech",
     "design": "product-design",
     "ux": "product-design",
     "user-experience": "product-design",

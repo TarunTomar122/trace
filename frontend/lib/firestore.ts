@@ -503,13 +503,15 @@ export const INTERESTS = [
   { id: 'products', label: 'Products' },
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
-  { id: 'engineering', label: 'Engineering' },
+  { id: 'robotics', label: 'Robotics' },
   { id: 'ux-design', label: 'Design' },
   { id: 'markets', label: 'Markets' },
   { id: 'the-world', label: 'The World' },
 ];
 
-const DEFAULT_WEB_INTERESTS = ['ai', 'products', 'tech', 'startups', 'engineering', 'ux-design'];
+// Only lanes the feed publishes (FeedApp ALL_INTERESTS). Robotics stays opt-in:
+// it is the thinnest lane, so it is not a default.
+const DEFAULT_WEB_INTERESTS = ['ai', 'tech', 'startups', 'ux-design'];
 
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
   ai: [
@@ -540,12 +542,12 @@ export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]>
     { id: 'macro', label: 'Macro' },
     { id: 'deals', label: 'Deals' },
   ],
-  engineering: [
-    { id: 'developer-tools', label: 'Developer Tools' },
-    { id: 'infra-cloud', label: 'Infra & Cloud' },
-    { id: 'cybersecurity', label: 'Cybersecurity' },
-    { id: 'open-source', label: 'Open Source' },
-    { id: 'platform-engineering', label: 'Platform Engineering' },
+  robotics: [
+    { id: 'humanoids', label: 'Humanoids' },
+    { id: 'industrial-robots', label: 'Industrial Robots' },
+    { id: 'self-driving', label: 'Self-Driving' },
+    { id: 'drones', label: 'Drones' },
+    { id: 'embodied-ai', label: 'Embodied AI' },
   ],
   'ux-design': [
     { id: 'ux', label: 'UX Research' },
@@ -590,7 +592,7 @@ export const ONBOARDING_INTERESTS = [
   { id: 'products', label: 'Products' },
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
-  { id: 'engineering', label: 'Engineering' },
+  { id: 'robotics', label: 'Robotics' },
   { id: 'ux-design', label: 'Design' },
   { id: 'markets', label: 'Markets' },
   { id: 'the-world', label: 'The World' },
