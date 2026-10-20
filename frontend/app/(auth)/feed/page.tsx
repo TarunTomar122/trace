@@ -26,7 +26,7 @@ export async function generateMetadata({
       description,
       url: `https://www.yourtrace.online/feed?tab=${tab}`,
       images: [{
-        url: 'https://www.yourtrace.online/opengraph-image?v=10-big-things',
+        url: 'https://www.yourtrace.online/opengraph-image?v=redesign-2026-10',
         width: 1200,
         height: 630,
         alt: "Trace: the fastest way to catch up on tech & AI news",
@@ -34,7 +34,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: 'summary_large_image', title, description,
-      images: ['https://www.yourtrace.online/twitter-image?v=10-big-things'],
+      images: ['https://www.yourtrace.online/twitter-image?v=redesign-2026-10'],
     },
   };
 }

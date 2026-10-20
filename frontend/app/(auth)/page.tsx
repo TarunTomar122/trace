@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
+        url: "https://www.yourtrace.online/opengraph-image?v=redesign-2026-10",
         width: 1200,
         height: 630,
         alt: "Fastest way to catch up on tech & AI news | Trace",

@@ -10,7 +10,7 @@ export const SITE_DESCRIPTION =
   'Aggregated tech news, build logs, architecture, open source, design, and product thinking for builders.';
 export const SITE_LOGO_URL = `${SITE_BASE_URL}/trace.png`;
 export const DEFAULT_OG_IMAGE = {
-  url: `${SITE_BASE_URL}/opengraph-image?v=10-big-things`,
+  url: `${SITE_BASE_URL}/opengraph-image?v=redesign-2026-10`,
   width: 1200,
   height: 630,
   alt: "Trace: the fastest way to catch up on tech & AI news",
@@ -20,7 +20,7 @@ export const DEFAULT_OPEN_GRAPH = {
   locale: 'en_US',
   images: [DEFAULT_OG_IMAGE],
 };
-export const DEFAULT_TWITTER_IMAGE = `${SITE_BASE_URL}/twitter-image?v=10-big-things`;
+export const DEFAULT_TWITTER_IMAGE = `${SITE_BASE_URL}/twitter-image?v=redesign-2026-10`;
 const TITLE_SUFFIX = ` | ${SITE_NAME}`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────

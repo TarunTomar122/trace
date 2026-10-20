@@ -57,7 +57,7 @@ export const metadata: Metadata = {
       "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     images: [
       {
-        url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
+        url: "https://www.yourtrace.online/opengraph-image?v=redesign-2026-10",
         width: 1200,
         height: 630,
         alt: "Fastest way to catch up on tech & AI news | Trace",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     title: "Fastest way to catch up on tech & AI news | Trace",
     description:
       "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
-    images: ["https://www.yourtrace.online/twitter-image?v=10-big-things"],
+    images: ["https://www.yourtrace.online/twitter-image?v=redesign-2026-10"],
   },
   robots: {
     index: true,
