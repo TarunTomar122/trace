@@ -43,8 +43,10 @@ ALLOW=(
   .dockerignore
   docker-compose.yml
   docker
-  docs/screenshot-landing.png
-  docs/screenshot-builder.png
+  docs/screenshot-homepage.png
+  docs/screenshot-brief.png
+  docs/screenshot-feed.png
+  docs/screenshot-email.png
   .github/FUNDING.yml
   .github/ISSUE_TEMPLATE
   .github/pull_request_template.md

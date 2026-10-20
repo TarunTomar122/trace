@@ -10,9 +10,14 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 
 **Live:** [yourtrace.online](https://www.yourtrace.online) · **Daily archive:** [yourtrace.online/brief](https://www.yourtrace.online/brief) · **Build your brief:** [yourtrace.online/brief/customize](https://www.yourtrace.online/brief/customize)
 
-<p align="center"><img src="docs/screenshot-landing.png" alt="Trace homepage" width="760" /></p>
-<p align="center"><img src="docs/screenshot-feed.jpg" alt="The feed: ranked stories, every source attached, with the tools rail" width="760" /></p>
-<p align="center"><img src="docs/screenshot-builder.png" alt="Build-your-own brief with a live preview" width="760" /></p>
+<p align="center">
+  <img src="docs/screenshot-homepage.png" alt="The homepage: the fastest way to catch up on tech and AI news" width="49%" />
+  <img src="docs/screenshot-brief.png" alt="A daily brief on the web, with a contents list to jump between stories" width="49%" />
+</p>
+<p align="center">
+  <img src="docs/screenshot-feed.png" alt="The feed: serif headlines, every source attached, a tools rail" width="49%" />
+  <img src="docs/screenshot-email.png" alt="The morning email, grouped by topic" width="49%" />
+</p>
 
 ## What you get
 
