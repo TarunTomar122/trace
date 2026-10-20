@@ -145,6 +145,7 @@ export const HOME_CSS = `
 .hp .hp-topics { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
 .hp .hp-topics li { border-bottom: 1px solid var(--hp-line); }
 .hp .hp-topics li:nth-child(-n+2) { border-top: 1px solid var(--hp-line); }
+.hp .hp-topics li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .hp .hp-topics a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 0; color: var(--hp-ink); font-size: 17px; font-weight: 550; text-decoration: none; }
 .hp .hp-topics a span { display: inline-flex; align-items: center; gap: 12px; }
 .hp .hp-topic-arrow { color: #10839e; transition: transform 0.15s ease; }

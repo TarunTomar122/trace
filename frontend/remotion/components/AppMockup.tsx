@@ -4,7 +4,7 @@ import { fontGrotesk, fontMono } from "../fonts";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
-const FILTER_PILLS = ["All", "AI", "Tech", "Startups", "Markets", "Engineering"];
+const FILTER_PILLS = ["All", "AI", "Robotics", "Tech", "Startups", "Markets"];
 
 const SIDEBAR_TOPICS = [
   { title: "Google turns Maps into an AI navigation product", sources: 5, tag: "AI" },

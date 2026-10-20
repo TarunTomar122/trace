@@ -36,6 +36,7 @@ const HOW = [
 
 const TOPICS = [
   { tab: 'ai', label: 'AI', Icon: Sparkles },
+  { tab: 'robotics', label: 'Robotics', Icon: Bot },
   { tab: 'startups', label: 'Startups', Icon: Rocket },
   { tab: 'markets', label: 'Markets', Icon: TrendingUp },
   { tab: 'tech', label: 'Tech', Icon: Cpu },
@@ -232,7 +233,7 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
           <div className="hp-row-copy">
             <p className="hp-kicker"><Compass size={17} strokeWidth={2} aria-hidden="true" /> Topics</p>
             <h3 className="hp-h3">Follow the topics you care about</h3>
-            <p>Open the feed on just what you follow: AI, startups, markets, tech, design, or the day’s best articles.</p>
+            <p>Open the feed on just what you follow: AI, robotics, startups, markets, tech, design, or the day’s best articles.</p>
             <ul className="hp-topics">
               {TOPICS.map(({ tab, label, Icon }) => (
                 <li key={tab}>

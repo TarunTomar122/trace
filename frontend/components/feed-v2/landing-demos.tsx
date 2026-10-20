@@ -169,8 +169,8 @@ export function NewTabDemo({
         <span className="yg-nt-pills">
           <span className="yg-nt-pill on">All</span>
           <span className="yg-nt-pill">AI</span>
+          <span className="yg-nt-pill">Robotics</span>
           <span className="yg-nt-pill">Markets</span>
-          <span className="yg-nt-pill">Startups</span>
         </span>
         <span className="yg-nt-signin">Sign in</span>
       </div>

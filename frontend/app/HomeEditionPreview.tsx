@@ -74,7 +74,7 @@ function StoryCard({ story, compact = false, x = false }: { story: DemoStory; co
 }
 
 function ChromeDemo({ stories, x = false }: { stories: DemoStory[]; x?: boolean }) {
-  const filters = ['All', 'AI', 'Engineering', 'Markets', 'Startups', 'Tech', 'UX design', 'Saved'];
+  const filters = ['All', 'AI', 'Robotics', 'Markets', 'Startups', 'Tech', 'UX design', 'Saved'];
   return (
     <div className={`rounded-[24px] p-2 sm:p-3 ${x ? "bg-[#eff3f4] ring-1 ring-[#eff3f4]" : "bg-surface-secondary shadow-2xl ring-1 ring-foreground/10"}`}>
       {/* x-variant: white chrome */}

@@ -159,7 +159,7 @@ export default async function DailyEditionPage({ params }: Props) {
                 <h2 className="hp-join-title" id="join-title">Get this in your inbox every morning</h2>
                 <p className="hp-join-sub">The stories that mattered in tech and AI, grouped and summed up. Free, no account needed.</p>
                 <p className="br-join-more">
-                  Want only AI and markets, or five stories instead of ten?{' '}
+                  Want only AI and robotics, or five stories instead of ten?{' '}
                   <Link href="/brief/customize">Build your own brief</Link>.
                 </p>
               </div>
