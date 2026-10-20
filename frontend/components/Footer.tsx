@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ExternalLink, LineChart, Rss, Smartphone } from 'lucide-react';
 import { BUY_ME_A_COFFEE_URL, GITHUB_REPO_URL } from '@/lib/site-links';
+import { displaySerif } from '@/lib/home-fonts';
 
 type DirectoryBadge = {
   name: string;
@@ -27,22 +28,24 @@ function DirectoryBadgeMarquee({ badges }: { badges: DirectoryBadge[] }) {
 
 export default function Footer(props: { variant?: 'default' | 'landing'; directoryBadges?: DirectoryBadge[]; stocksBrewMedium?: string } = {}) {
   const dark = props.variant === 'landing';
-  const heading = dark ? 'mb-5 text-[12px] font-semibold text-[#1d9bf0]' : 'mb-5 text-[12px] font-semibold text-foreground';
+  // Dark (site pages): the header's serif wordmark and a lavender tint from the site palette.
+  const heading = dark ? 'mb-5 text-[12px] font-semibold text-[#aab6f0]' : 'mb-5 text-[12px] font-semibold text-foreground';
   const link = dark ? 'text-[#93a5b1] hover:text-white' : 'text-secondary hover:text-foreground';
   return (
-    <footer data-variant={props.variant ?? 'default'} className={`px-5 py-14 sm:px-8 sm:py-20 ${dark ? 'rounded-t-[32px] text-white' : 'border-t border-[var(--footer-line,#eff3f4)] text-[#0f1419]'}`} style={{ backgroundColor: dark ? '#0c1216' : 'var(--footer-bg, #ffffff)' }}>
+    <footer data-variant={props.variant ?? 'default'} className={`${dark ? displaySerif.variable : ''} px-5 py-14 sm:px-8 sm:py-20 ${dark ? 'rounded-t-[32px] text-white' : 'border-t border-[var(--footer-line,#eff3f4)] text-[#0f1419]'}`} style={{ backgroundColor: dark ? '#0c1216' : 'var(--footer-bg, #ffffff)' }}>
       <div className="mx-auto max-w-[1180px]">
         <div className="grid grid-cols-2 gap-12 md:grid-cols-4 md:gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="inline-flex min-h-11 items-center gap-3">
-              <Image src="/trace.webp" width={64} height={28} alt="" className={`h-7 w-auto ${dark ? 'rounded-lg bg-white p-1' : ''}`} />
-              {dark && <span className="text-[19px] font-extrabold tracking-tight text-white">Trace</span>}
+              {dark && <span className="font-[family-name:var(--font-hp-serif)] text-[26px] font-bold leading-none text-white">Trace</span>}
+              <Image src="/trace.webp" width={28} height={28} alt="" className={`h-7 w-7 ${dark ? 'rounded-lg bg-white p-1' : ''}`} />
             </Link>
             <p className={`mt-5 max-w-[280px] text-pretty text-[15px] leading-[1.65] ${dark ? 'text-[#93a5b1]' : 'text-secondary'}`}>The fastest way to catch up on tech and AI news.</p>
           </div>
 
           <nav aria-label="Explore" className="space-y-3 text-[14px]">
             <p className={heading}>Explore</p>
+            <Link href="/brief" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Daily Brief</Link>
             <a href="/feed" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Feed</a>
             <Link href="/how-it-works" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>How it works</Link>
             <Link href="/agents" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Agents</Link>
@@ -62,7 +65,8 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
           </nav>
 
           <nav aria-label="More" className="col-span-2 grid grid-cols-2 gap-x-5 gap-y-3 text-[14px] md:col-span-1 md:block md:space-y-3">
-            <p className={heading}>More</p>
+            {/* Two columns on phones: the heading spans both so it sits above them. */}
+            <p className={`col-span-2 ${heading}`}>More</p>
             <a href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app" className={`inline-flex min-h-11 items-center gap-1.5 md:min-h-0 ${link}`}><Smartphone size={13} />Android app</a>
             <a href={`https://stocksbrew.online/?utm_source=trace&utm_medium=${encodeURIComponent(props.stocksBrewMedium || 'footer')}`} target="_blank" rel="noopener noreferrer" className={`flex min-h-11 items-center gap-1.5 md:min-h-0 ${link}`}><LineChart size={13} strokeWidth={1.8} />StocksBrew <ExternalLink size={11} /></a>
             <Link href="/privacy-policy" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Privacy</Link>

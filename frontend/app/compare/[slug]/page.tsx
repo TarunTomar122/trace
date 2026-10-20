@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import HpJoinBox from "@/components/HpJoinBox";
 import { comparePages, getComparePage } from "../content";
 import {
   DEFAULT_OPEN_GRAPH,
@@ -11,6 +12,9 @@ import {
   generateFAQSchema,
   SITE_BASE_URL,
 } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { COMPARE_CSS } from "@/lib/compare-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -101,7 +105,9 @@ export default async function CompareDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
+    <div className={`hp cmp cmp-detail ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{COMPARE_CSS}</style>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -114,118 +120,123 @@ export default async function CompareDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
-      <main className="px-4 sm:px-6">
-        <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
-          <div className="max-w-3xl">
-            <p className="public-meta uppercase tracking-[0.2em]">
-              Comparison Guide
-            </p>
-            <h1 className="public-title public-title-detail mt-4">
-              {page.heroTitle}
-            </h1>
-            <p className="public-deck mt-5">
-              {page.heroDescription}
-            </p>
-          </div>
+      <PublicHeader subscribeHref="#join" />
+      <main>
+        <article>
+          <div className="cmp-top">
+            <div className="cmp-hero">
+              <p className="hp-kicker">
+                Comparison Guide
+              </p>
+              <h1 className="hp-h1">
+                {page.heroTitle}
+              </h1>
+              <p className="hp-hero-p">
+                {page.heroDescription}
+              </p>
+            </div>
 
-          <div className="public-content-card mt-10 p-7 sm:p-8">
-            <p className="public-body">{page.intro}</p>
-          </div>
-
-          <section className="public-content-card mt-8 p-7 sm:p-8">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">{page.comparisonTitle}</h2>
-            <div className="mt-6 overflow-x-auto rounded-[16px] bg-surface-secondary">
-              <div className="grid min-w-[680px] grid-cols-[1.1fr_1fr_1fr] px-5 py-4 text-sm font-semibold text-foreground">
-                <div>Comparison</div>
-                <div>Trace</div>
-                <div>Alternative</div>
+            <div className="cmp-intro-wrap">
+              <div className="cmp-intro">
+                <p>{page.intro}</p>
               </div>
-              {page.comparisonRows.map((row) => (
+            </div>
+          </div>
+
+          <div className="cmp-wrap">
+            <section className="cmp-section">
+              <h2 className="hp-h2 cmp-h2" id="cmp-table-title">{page.comparisonTitle}</h2>
+              <div className="cmp-table-wrap" role="region" aria-labelledby="cmp-table-title" tabIndex={0}>
+                <table className="cmp-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Comparison</th>
+                      <th scope="col" className="is-trace">Trace</th>
+                      <th scope="col">Alternative</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {page.comparisonRows.map((row) => (
+                      <tr key={row.label}>
+                        <th scope="row">{row.label}</th>
+                        <td className="is-trace">{row.trace}</td>
+                        <td>{row.alternative}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="cmp-panels">
+              {page.sections.map((section) => (
                 <div
-                  key={row.label}
-                  className="grid min-w-[680px] grid-cols-[1.1fr_1fr_1fr] border-t border-border px-5 py-5 text-[15px] leading-6"
+                  key={section.title}
+                  className="cmp-panel"
                 >
-                  <div className="font-medium text-foreground">{row.label}</div>
-                  <div className="text-secondary">{row.trace}</div>
-                  <div className="text-secondary">{row.alternative}</div>
+                  <h2 className="hp-h3">{section.title}</h2>
+                  <p>{section.body}</p>
                 </div>
               ))}
-            </div>
-          </section>
+            </section>
 
-          <section className="mt-8 grid gap-6 md:grid-cols-2">
-            {page.sections.map((section) => (
-              <div
-                key={section.title}
-                className="public-list-section"
-              >
-                <h2 className="text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">{section.title}</h2>
-                <p className="public-body mt-4">{section.body}</p>
+            <section className="cmp-cta">
+              <h2 className="hp-h2 cmp-h2">If you want the workflow, not just the idea</h2>
+              <p>
+                These public pages explain the category. The actual value of Trace is still inside the product:
+                daily topic grouping, faster catch-up, and a cleaner reading habit.
+              </p>
+              <div className="hp-btns">
+                <Link href="/feed" className="hp-btn hp-btn-dark">
+                  Start with Trace
+                </Link>
               </div>
-            ))}
-          </section>
+            </section>
 
-          <section className="public-cta mt-10 p-8 sm:p-10">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">If you want the workflow, not just the idea</h2>
-            <p className="public-body mt-4 max-w-2xl">
-              These public pages explain the category. The actual value of Trace is still inside the product:
-              daily topic grouping, faster catch-up, and a cleaner reading habit.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/feed"
-                className="rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
-              >
-                Start with Trace
-              </Link>
-            </div>
-          </section>
+            <section className="cmp-faq">
+              <h2 className="hp-h2 cmp-h2">FAQ</h2>
+              <div className="cmp-faq-list">
+                {page.faq.map((item) => (
+                  <div key={item.question} className="cmp-faq-item">
+                    <h3 className="hp-h3">{item.question}</h3>
+                    <p>{item.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-          <section className="public-list-section mt-12">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">FAQ</h2>
-            <div className="mt-6 space-y-5">
-              {page.faq.map((item) => (
-                <div key={item.question}>
-                  <h3 className="text-[17px] font-semibold text-foreground">{item.question}</h3>
-                  <p className="mt-2 text-[16px] leading-[1.7] text-secondary">{item.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-8">
-            <h2 className="public-kicker text-secondary">
-              Related comparisons
-            </h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {page.relatedRoundup && (
-                <Link
-                  href={page.relatedRoundup.href}
-                  className="public-content-card p-5 text-[15px] font-semibold leading-6 text-foreground transition-colors hover:text-accent"
-                >
-                  {page.relatedRoundup.label}
-                </Link>
-              )}
-              {relatedPages.map((related) => (
-                <Link
-                  key={related.slug}
-                  href={`/compare/${related.slug}`}
-                  className="public-content-card p-5 text-[15px] font-semibold leading-6 text-foreground transition-colors hover:text-accent"
-                >
-                  {related.heroTitle}
-                </Link>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-wrap gap-2 text-sm">
-              <Link href="/compare" className="public-chip">More comparisons</Link>
-              <Link href="/blog" className="public-chip">Blog</Link>
-              <Link href="/feed" className="public-chip">Today&apos;s briefing</Link>
-            </div>
-          </section>
+            <section className="cmp-related">
+              <h2 className="hp-h2 cmp-h2">
+                Related comparisons
+              </h2>
+              <div className="cmp-rel-grid">
+                {page.relatedRoundup && (
+                  <Link href={page.relatedRoundup.href} className="cmp-rel-card">
+                    {page.relatedRoundup.label}
+                  </Link>
+                )}
+                {relatedPages.map((related) => (
+                  <Link
+                    key={related.slug}
+                    href={`/compare/${related.slug}`}
+                    className="cmp-rel-card"
+                  >
+                    {related.heroTitle}
+                  </Link>
+                ))}
+              </div>
+              <div className="cmp-links">
+                <Link href="/compare" className="cmp-chip">More comparisons</Link>
+                <Link href="/blog" className="cmp-chip">Guides</Link>
+                <Link href="/feed" className="cmp-chip">Today&apos;s briefing</Link>
+              </div>
+            </section>
+          </div>
         </article>
+
+        <HpJoinBox heading="Get the brief in your inbox every morning" source="compare" />
       </main>
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

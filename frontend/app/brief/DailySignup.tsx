@@ -48,11 +48,12 @@ export default function DailySignup({
   }
 
   return (
-    <div className={compact ? '' : 'rounded-2xl border border-border bg-surface p-6 sm:p-8'}>
+    // The homepage's look (lib/home-css.ts): a lavender box, a square-cornered field, a blue button.
+    <div className={compact ? '' : 'rounded-[20px] bg-[#edeffd] p-6 text-[#0a0a0a] sm:p-8'}>
       {!compact && (
         <>
-          <p className="text-lg font-semibold tracking-[-0.02em] text-foreground">{heading}</p>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-secondary">{blurb}</p>
+          <p className="text-[21px] font-semibold leading-snug tracking-[-0.01em]">{heading}</p>
+          <p className="mt-1.5 text-[16px] leading-relaxed">{blurb}</p>
         </>
       )}
       <form onSubmit={handleSubmit} className={`${compact ? '' : 'mt-5 '}flex flex-col gap-2.5 sm:flex-row`}>
@@ -61,22 +62,22 @@ export default function DailySignup({
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
+          placeholder="Your email"
           aria-label="Email address"
-          className="h-12 min-w-0 flex-none rounded-full border border-[#cfd9de] bg-white sm:flex-1 px-5 text-[15px] text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/15"
+          className="h-11 min-w-0 flex-none rounded-[3px] border border-[#8f8f8f] bg-white px-3 text-[16px] text-[#0a0a0a] outline-none transition placeholder:text-[#767676] focus:border-[#1634cc] focus:ring-[3px] focus:ring-[#1634cc]/20 sm:flex-1"
         />
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="h-12 shrink-0 rounded-full bg-[#1d9bf0] px-6 text-[15px] font-bold text-white transition hover:bg-[#1a8cd8] disabled:opacity-60"
+          className="h-11 shrink-0 rounded-[3px] bg-[#1634cc] px-5 text-[16px] text-white transition-colors hover:bg-[#102798] disabled:opacity-60"
         >
-          {status === 'loading' ? 'Subscribing…' : 'Subscribe free'}
+          {status === 'loading' ? 'Subscribing…' : 'Subscribe'}
         </button>
       </form>
       {message && (
         <p
           role="status"
-          className={`mt-3 text-sm ${status === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}
+          className={`mt-3 text-sm font-semibold ${status === 'ok' ? 'text-[#10601f]' : 'text-[#971111]'}`}
         >
           {message}
         </p>

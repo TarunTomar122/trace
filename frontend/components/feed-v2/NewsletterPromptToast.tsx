@@ -84,9 +84,9 @@ export default function NewsletterPromptToast({
         close('dismissed');
       }}
     >
-      <div className="rounded-2xl border border-[#e6ecf0] bg-white p-4 shadow-[0_12px_40px_rgba(15,20,25,0.16)]">
+      <div className="rounded-[10px] border border-[#dfe3fb] bg-[#edeffd] p-4 shadow-[0_12px_40px_rgba(10,10,10,0.14)]">
         <div className="flex items-start justify-between gap-3">
-          <p id="nl-toast-title" aria-live="polite" className="pt-1 text-[15px] font-bold leading-snug text-[#0f1419]">
+          <p id="nl-toast-title" aria-live="polite" className="pt-1 text-[15px] font-bold leading-snug text-[#0a0a0a]">
             {status === 'done' ? message : 'Want this in your email daily?'}
           </p>
           <button
@@ -94,7 +94,7 @@ export default function NewsletterPromptToast({
             type="button"
             onClick={() => close(status === 'done' ? 'subscribed' : 'dismissed')}
             aria-label="Close"
-            className="-mr-2 -mt-2 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-none bg-transparent text-[20px] leading-none text-[#536471] transition-colors hover:bg-[#f7f9f9] hover:text-[#0f1419]"
+            className="-mr-2 -mt-2 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[4px] border-none bg-transparent text-[20px] leading-none text-[#323232] transition-colors hover:bg-[#dfe3fb] hover:text-[#0a0a0a]"
           >
             ×
           </button>
@@ -110,19 +110,19 @@ export default function NewsletterPromptToast({
               placeholder="you@example.com"
               aria-label="Email address"
               autoComplete="email"
-              className="h-10 min-w-0 flex-1 rounded-full border border-[#cfd9de] px-4 text-[16px] outline-none focus:border-[#1d9bf0] focus:ring-2 focus:ring-[#1d9bf0]/20 sm:text-[14px]"
+              className="h-10 min-w-0 flex-1 rounded-[3px] border border-[#8f8f8f] bg-white px-3 text-[16px] text-[#0a0a0a] outline-none focus:border-[#1634cc] focus:ring-[3px] focus:ring-[#1634cc]/20 sm:text-[14px]"
             />
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="h-10 flex-shrink-0 rounded-full border-none bg-[#1d9bf0] px-4 text-[14px] font-bold text-white transition-colors hover:bg-[#1a8cd8] disabled:opacity-70"
+              className="h-10 flex-shrink-0 rounded-[3px] border-none bg-[#1634cc] px-4 text-[14px] font-bold text-white transition-colors hover:bg-[#102798] disabled:opacity-70"
             >
               {status === 'loading' ? 'Subscribing…' : 'Subscribe'}
             </button>
           </form>
         )}
         {status === 'error' && (
-          <p role="alert" className="mt-2 text-[13px] font-semibold text-[#d6303a]">
+          <p role="alert" className="mt-2 text-[13px] font-semibold text-[#971111]">
             {message}
           </p>
         )}

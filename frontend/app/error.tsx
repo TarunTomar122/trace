@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { startTransition, useEffect } from "react";
 import Link from "next/link";
-import PageShell from "@/components/feed-v2/PageShell";
+import { usePathname, useRouter } from "next/navigation";
+import StatusPage, { STATUS_TITLE_ID, type StatusCard } from "@/components/StatusPage";
+
+const CARDS: StatusCard[] = [
+  { title: "Daily Brief", text: "5-minute brief, grouped from 100+ sources", href: "/brief", tint: "yellow" },
+  { title: "The Feed", text: "Every story ranked, every source attached", href: "/feed", tint: "cyan" },
+  { title: "Guides", text: "Plain tips for beating news overload", href: "/blog", tint: "green" },
+];
 
 export default function Error({
   error,
@@ -11,40 +18,62 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
 
+  // Move focus to the headline so screen readers announce the failure.
+  useEffect(() => {
+    document.getElementById(STATUS_TITLE_ID)?.focus();
+  }, []);
+
+  // reset() alone re-renders the same failed server payload; refetch it first.
+  const retry = () => {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
+
   return (
-    <PageShell>
-      <section style={{ textAlign: "center", padding: "72px 0 40px" }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#1d9bf0" }}>
-          Something went wrong
-        </p>
-        <h1 style={{ margin: "14px 0 0", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.05 }}>
-          An error occurred
-        </h1>
-        <p style={{ margin: "14px auto 0", maxWidth: 480, fontSize: 16, lineHeight: 1.65, color: "#536471" }}>
-          We encountered an unexpected issue. Please try again.
-        </p>
-        {error?.digest ? (
-          <p style={{ margin: "10px auto 0", fontSize: 12, color: "#71767b", fontVariantNumeric: "tabular-nums" }}>
-            Error ref: {error.digest}
-          </p>
-        ) : null}
-        <div style={{ marginTop: 28, display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
-          <button
-            type="button"
-            onClick={reset}
-            style={{ height: 44, padding: "0 26px", borderRadius: 9999, border: "none", background: "#1d9bf0", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}
-          >
+    <StatusPage
+      note="well, that wasn't meant to happen"
+      title="Something went wrong"
+      lede="This page hit a problem on our side. Trying again often fixes it."
+      actions={
+        <>
+          <button type="button" onClick={retry} className="st-btn st-btn-dark">
             Try again
           </button>
-          <Link href="/" style={{ fontSize: 14, fontWeight: 600, color: "#536471", textDecoration: "none" }}>
+          {/* The boundary only clears on a route change, so on the homepage itself a plain
+              link to "/" would do nothing; retry instead. */}
+          <Link
+            href="/"
+            className="st-btn st-btn-line"
+            onClick={(event) => {
+              if (pathname === "/") {
+                event.preventDefault();
+                retry();
+              }
+            }}
+          >
             Back to home
           </Link>
-        </div>
-      </section>
-    </PageShell>
+        </>
+      }
+      fine={
+        <>
+          Still stuck? <Link href="/contact">Tell us</Link> and we will look into it.
+          {error?.digest ? (
+            <span className="st-ref">Error ref: {error.digest}</span>
+          ) : null}
+        </>
+      }
+      // A card for the page that just failed would be a dead click (same path, boundary stays).
+      cards={CARDS.filter((card) => card.href !== pathname).slice(0, 2)}
+    />
   );
 }

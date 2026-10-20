@@ -14,6 +14,9 @@ import {
   generateCollectionPageSchema,
   SITE_BASE_URL,
 } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { BLOG_CSS } from "@/lib/blog-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 type PageProps = {
   params: Promise<{
@@ -109,7 +112,9 @@ export default async function CategoryPage({ params }: PageProps) {
   );
 
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
+    <div className={`hp bl bl-gray-end ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{BLOG_CSS}</style>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
@@ -118,118 +123,85 @@ export default async function CategoryPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader />
 
-      {/* Hero */}
-      <section className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl pt-12 pb-8 sm:pt-20 sm:pb-10">
-          <div className="max-w-3xl">
+      <main>
+        {/* Hero */}
+        <div className="hp-top">
+          <section className="hp-hero bl-hero">
             {/* Breadcrumb link */}
-            <Link
-              href="/blog"
-              className="public-meta inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] transition-colors hover:text-foreground"
-            >
-              <ArrowLeft size={12} />
+            <Link href="/blog" className="bl-crumb">
+              <ArrowLeft size={14} aria-hidden="true" />
               All articles
             </Link>
 
-            <p className="public-kicker mt-6">
+            <p className="bl-tag" data-cat={category}>
               {meta.label}
             </p>
-            <h1 className="public-title mt-3">
-              {meta.label}
-            </h1>
-            <p className="public-deck mt-4">
-              {meta.description}
-            </p>
-          </div>
+            <h1 className="hp-h1">{meta.label}</h1>
+            <p className="hp-hero-p">{meta.description}</p>
+          </section>
         </div>
-      </section>
 
-      {/* Category nav */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(CATEGORY_META).map(([key, cat]) => (
-              <Link
-                key={key}
-                href={`/blog/category/${key}`}
-                className={`public-chip ${
-                  key === category
-                    ? "public-chip-active"
-                    : ""
-                }`}
-              >
-                {cat.label}
-              </Link>
-            ))}
-            <Link
-              href="/blog"
-              className={`public-chip ${
-                !category
-                  ? "public-chip-active"
-                  : ""
-              }`}
-            >
-              All Posts
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Post list */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-20 sm:pb-28">
-        <div className="mx-auto max-w-7xl">
-          {posts.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="public-body">No articles in this category yet.</p>
-              <Link
-                href="/blog"
-                className="public-link mt-3 inline-flex items-center gap-1 text-[14px]"
-              >
-                Browse all articles <ArrowRight size={13} />
-              </Link>
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
+        <div className="bl-band">
+          <div className="bl-wrap">
+            {/* Category nav */}
+            <div className="bl-chips">
+              {Object.entries(CATEGORY_META).map(([key, cat]) => (
                 <Link
-                  key={post.slug}
-                  href={`/blog/${post.slug}`}
-                  className="group landing-card block overflow-hidden transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)]"
+                  key={key}
+                  href={`/blog/category/${key}`}
+                  className={`bl-chip${key === category ? " is-active" : ""}`}
                 >
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    <ArticleImage
-                      thumbnail={post.image}
-                      title={post.title}
-                      alt={post.title}
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <p className="public-kicker">
-                      {post.tag}
-                    </p>
-                    <h2 className="mt-2 text-[1.25rem] font-semibold leading-snug tracking-[-0.02em] text-foreground">
-                      {post.title}
-                    </h2>
-                    <p className="mt-3 text-[15px] leading-[1.7] text-secondary">
-                      {post.excerpt}
-                    </p>
-                    <div className="public-meta mt-4 flex items-center gap-3">
-                      <span>{post.author}</span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={10} />
-                        {post.readTime}
-                      </span>
-                    </div>
-                  </div>
+                  {cat.label}
                 </Link>
               ))}
+              <Link href="/blog" className={`bl-chip${!category ? " is-active" : ""}`}>
+                All Posts
+              </Link>
             </div>
-          )}
+
+            {/* Post list */}
+            {posts.length === 0 ? (
+              <div className="bl-empty">
+                <p>No articles in this category yet.</p>
+                <Link href="/blog">
+                  Browse all articles <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              </div>
+            ) : (
+              <div className="bl-grid">
+                {posts.map((post) => (
+                  <Link key={post.slug} href={`/blog/${post.slug}`} className="bl-card">
+                    <div className="bl-card-img">
+                      <ArticleImage
+                        thumbnail={post.image}
+                        title={post.title}
+                        alt={post.title}
+                        className="bl-img"
+                      />
+                    </div>
+                    <div className="bl-card-body">
+                      <p className="bl-tag" data-cat={post.category}>
+                        {post.tag}
+                      </p>
+                      <h2 className="bl-card-title">{post.title}</h2>
+                      <p className="bl-card-ex">{post.excerpt}</p>
+                      <div className="bl-meta">
+                        <span>{post.author}</span>
+                        <span>
+                          <Clock size={13} aria-hidden="true" />
+                          {post.readTime}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </section>
+      </main>
 
       <Footer variant="landing" />
     </div>

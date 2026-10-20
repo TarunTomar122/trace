@@ -30,11 +30,16 @@ export const retentionCss = `
 .xw .ret-sotd:hover { background: var(--hover); }
 .xw .ret-sotd:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .xw .ret-sotd-kicker {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 0 18px;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--pink); margin: 0 0 16px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 18px; margin: 0 0 16px;
+  font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2;
+  letter-spacing: -0.005em; color: var(--text);
 }
+/* The label itself carries the highlight (the icon sits outside it). */
+.xw .ret-sotd-kicker-label { padding: 0 6px; background: var(--highlight); }
+.xw .ret-sotd.lead .ret-sotd-kicker-label { background: var(--lav); color: var(--blue); }
+.xw .ret-sotd-kicker svg { color: var(--text); }
+.xw .ret-sotd.lead .ret-sotd-kicker svg { color: var(--blue); }
 .xw .ret-sotd-shot {
   display: block; width: 100%; max-width: none; height: 340px;
   margin: 0 0 22px; object-fit: cover; object-position: center 28%;
@@ -43,8 +48,8 @@ export const retentionCss = `
 .xw .ret-sotd-copy { min-width: 0; padding: 0 18px; }
 .xw .ret-sotd-title {
   display: block; margin: 0;
-  font-size: 28px; font-weight: 800; letter-spacing: -0.035em;
-  line-height: 1.16; color: var(--text);
+  font-family: var(--serif); font-size: 36px; font-weight: 500; letter-spacing: -0.005em;
+  line-height: 1.06; color: var(--text);
 }
 .xw .ret-sotd-dek {
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
@@ -61,7 +66,7 @@ export const retentionCss = `
   box-shadow: 0 0 0 1px var(--line);
 }
 .xw .ret-sotd-faves img + img { margin-left: -5px; }
-.xw .ret-sotd.lead .ret-sotd-title { font-size: 28px; letter-spacing: -0.035em; }
+.xw .ret-sotd.lead .ret-sotd-title { font-size: 36px; letter-spacing: -0.005em; }
 .xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; -webkit-line-clamp: 3; }
 .xw .ret-streak-slot {
   padding: 0 12px 8px; flex-shrink: 0;
@@ -76,29 +81,29 @@ export const retentionCss = `
 .xw header.head .ret-streak-pill { display: none; }
 .xw .ret-thread-btn {
   display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
-  padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--line);
+  padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line);
   background: #fff; font-size: 11px; font-weight: 700; color: var(--text-2); cursor: pointer;
 }
-.xw .ret-thread-btn.on { border-color: rgba(29, 155, 240, 0.45); color: var(--blue); background: rgba(29, 155, 240, 0.08); }
+.xw .ret-thread-btn.on { border-color: var(--lav); color: var(--blue); background: var(--lav); }
 .xw .ret-launchpad {
   margin: 10px 0 30px; padding: 24px 20px; text-align: center;
-  border: 1px solid var(--line); border-radius: 18px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
 }
 .xw .ret-launchpad-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 44px; height: 44px; border-radius: 9999px; background: var(--green); color: #fff; margin-bottom: 12px;
 }
-.xw .ret-launchpad-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.xw .ret-launchpad-title { margin: 0 0 6px; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.08; letter-spacing: -0.005em; }
 .xw .ret-launchpad-sub { margin: 0 0 18px; font-size: 14px; color: var(--text-2); }
 .xw .ret-launchpad-actions { display: flex; flex-direction: column; gap: 10px; max-width: 320px; margin: 0 auto; }
 .xw .ret-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px 16px; border-radius: 9999px; border: none; font-size: 14px; font-weight: 800;
+  padding: 12px 16px; border-radius: 4px; border: none; font-size: 14px; font-weight: 800;
   cursor: pointer; text-decoration: none; transition: opacity var(--t-quick);
 }
 .xw .ret-btn.primary { background: var(--blue); color: #fff; }
-.xw .ret-btn.primary:hover { background: #1a8cd8; }
-.xw .ret-btn.secondary { background: #fff; color: var(--text); border: 1px solid var(--line); }
+.xw .ret-btn.primary:hover { background: var(--blue-hover); }
+.xw .ret-btn.secondary { background: #fff; color: var(--text); border: 1px solid #c7c7c7; }
 .xw .ret-btn.secondary:hover { background: var(--hover); }
 .xw .ret-btn.ghost { background: transparent; color: var(--text-2); border: 1px dashed var(--line); }
 .xw .ret-btn:disabled { opacity: 0.65; cursor: wait; }
@@ -139,8 +144,8 @@ export const retentionCss = `
 .xw .ret-pulse-hook-thumb {
   flex: 0 0 88px; width: 88px; height: 88px; object-fit: cover;
   object-position: center 30%;
-  border-radius: 14px; display: block; background: var(--hover);
-  box-shadow: 0 0 0 1px rgba(15, 20, 25, 0.06);
+  border-radius: 8px; display: block; background: var(--hover);
+  box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.06);
 }
 .xw .ret-pulse-hook-thumb-fallback {
   display: flex; align-items: center; justify-content: center;
@@ -197,23 +202,23 @@ export const retentionCss = `
   background: var(--line);
 }
 .xw .ret-heatmap-dot.on { background: #ff7a00; }
-.xw .ret-weekly { margin-bottom: 16px; padding: 16px; border-radius: 16px; border: 1px solid rgba(0, 186, 124, 0.25); background: rgba(0, 186, 124, 0.06); }
+.xw .ret-weekly { margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid rgba(0, 186, 124, 0.25); background: rgba(0, 186, 124, 0.06); }
 .xw .ret-weekly-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); margin-bottom: 6px; }
 .xw .ret-weekly-title { margin: 0 0 6px; font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
 .xw .ret-weekly-sub { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.xw .ret-agent-card { margin-bottom: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(135deg, #f8f5ff 0%, #fff 70%); }
+.xw .ret-agent-card { margin-bottom: 16px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(135deg, var(--lav) 0%, #fff 70%); }
 .xw .ret-agent-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; margin-bottom: 4px; }
 .xw .ret-agent-sub { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .xw .ret-milestone-overlay {
   position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
-  background: rgba(15, 20, 25, 0.55); padding: 20px;
+  background: rgba(10, 10, 10, 0.55); padding: 20px;
 }
 .xw .ret-milestone-card {
-  width: min(360px, 100%); padding: 28px 24px; border-radius: 20px; background: #fff; text-align: center;
+  width: min(360px, 100%); padding: 28px 24px; border-radius: 12px; background: #fff; text-align: center;
   box-shadow: 0 24px 60px rgba(0,0,0,0.18);
 }
 .xw .ret-milestone-flame { font-size: 48px; line-height: 1; margin-bottom: 8px; }
-.xw .ret-milestone-title { margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.xw .ret-milestone-title { margin: 0 0 6px; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.08; letter-spacing: -0.005em; }
 .xw .ret-milestone-sub { margin: 0 0 18px; font-size: 14px; color: var(--text-2); line-height: 1.45; }
 @media (max-width: 1100px) {
   .xw aside.side .ret-streak-slot { display: none; }
@@ -230,12 +235,12 @@ export const retentionCss = `
   .xw .ret-pulse-hook-thumb { flex-basis: 76px; width: 76px; height: 76px; border-radius: 12px; }
   .xw .ret-sotd { margin: 0; padding: 18px 0 22px; width: 100%; }
   .xw .ret-sotd, .xw .ret-launchpad { margin-top: 0; }
-  .xw .ret-sotd-kicker { padding: 0 14px; margin-bottom: 14px; }
+  .xw .ret-sotd-kicker { padding: 0 14px; margin-bottom: 14px; font-size: 20px; }
   .xw .ret-sotd-shot { width: 100%; max-width: none; height: 240px; margin: 0 0 18px; }
   .xw .ret-sotd-copy { padding: 0 14px; }
-  .xw .ret-sotd-title { font-size: 22px; }
+  .xw .ret-sotd-title { font-size: 28px; }
   .xw .ret-sotd-dek { font-size: 14.5px; -webkit-line-clamp: 2; }
-  .xw .ret-sotd.lead .ret-sotd-title { font-size: 22px; }
+  .xw .ret-sotd.lead .ret-sotd-title { font-size: 28px; }
   .xw .ret-launchpad { padding: 20px 16px; margin-bottom: 20px; }
   .xw .ret-launchpad-actions { max-width: none; width: 100%; }
   .xw .ret-btn { width: 100%; min-height: 44px; box-sizing: border-box; }
@@ -247,7 +252,7 @@ export const retentionCss = `
     padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom));
     align-items: flex-end;
   }
-  .xw .ret-milestone-card { border-radius: 20px 20px 0 0; width: 100%; max-width: none; }
+  .xw .ret-milestone-card { border-radius: 12px 12px 0 0; width: 100%; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .xw .ret-sotd { transition: none; }
@@ -286,7 +291,7 @@ export function StoryOfDayCard({
   const favs = story.sources.slice(0, 4);
   return (
     <button type="button" className={`ret-sotd${size === 'lead' ? ' lead' : ''}`} onClick={onOpen}>
-      <div className="ret-sotd-kicker"><Star size={12} fill="currentColor" /> {kicker}</div>
+      <div className="ret-sotd-kicker"><Star size={14} fill="currentColor" aria-hidden="true" /><span className="ret-sotd-kicker-label">{kicker}</span></div>
       {story.img ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

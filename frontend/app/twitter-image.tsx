@@ -5,7 +5,7 @@ import { OG_FONT_BOLD_B64, OG_FONT_REGULAR_B64 } from './og-fonts';
 // Keep both share-image routes on the same Node.js runtime.
 export const runtime = 'nodejs';
 
-export const alt = "Trace — reads the internet so you don't have to";
+export const alt = "Trace: the fastest way to catch up on tech & AI news";
 
 export const size = { width: 1200, height: 630 };
 

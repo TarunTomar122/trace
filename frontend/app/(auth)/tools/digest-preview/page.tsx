@@ -256,7 +256,7 @@ export default function DigestPreviewPage() {
 
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader />
 
       <main className="container mx-auto px-4 max-w-4xl py-12">
         <AnimatePresence mode="wait">

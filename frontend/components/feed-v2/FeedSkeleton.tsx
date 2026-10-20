@@ -7,7 +7,7 @@ export default function FeedSkeleton() {
     <div className="xsk">
       <style>{css}</style>
       <aside className="xsk-side" aria-hidden>
-        <div className="xsk-brand"><span className="sk sk-logo" /><span className="sk sk-word" /></div>
+        <div className="xsk-brand"><span className="sk sk-word" /><span className="sk sk-logo" /></div>
         {[92, 78, 98, 84, 70, 88].map((w) => (
           <div key={w} className="sk sk-nav" style={{ width: w }} />
         ))}
@@ -39,14 +39,14 @@ export default function FeedSkeleton() {
 
 const css = `
 .xsk {
-  --line: #eff3f4;
+  --line: #e5e5e5;
   background: #fff; min-height: 100vh;
   display: flex; justify-content: center;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 .xsk .sk {
   display: block; border-radius: 9999px;
-  background: linear-gradient(90deg, #f7f9f9 25%, #eff3f4 50%, #f7f9f9 75%);
+  background: linear-gradient(90deg, #f7f7f8 25%, #ececee 50%, #f7f7f8 75%);
   background-size: 200% 100%;
   animation: xsk-shimmer 1.4s ease-in-out infinite;
 }
@@ -57,7 +57,7 @@ const css = `
 .xsk .sk-logo { width: 30px; height: 30px; border-radius: 8px; }
 .xsk .sk-word { width: 76px; height: 20px; }
 .xsk .sk-nav { height: 22px; margin: 0 8px 22px; }
-.xsk-main { width: 660px; max-width: 100%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 20px 16px 40px; }
+.xsk-main { width: 726px; max-width: 100%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 20px 16px 40px; }
 @media (max-width: 687px) { .xsk-main { border-left: none; border-right: none; } }
 .xsk .sk-head { width: 130px; height: 26px; margin-bottom: 22px; }
 .xsk-post { border-top: 1px solid var(--line); padding: 16px 0 20px; }
@@ -66,7 +66,7 @@ const css = `
 .xsk .sk-title.short { width: 72%; }
 .xsk .sk-img { height: 200px; border-radius: 16px; margin-top: 12px; }
 .xsk-right { width: 330px; flex-shrink: 0; padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
-@media (max-width: 1300px) { .xsk-right { display: none; } }
+@media (max-width: 1340px) { .xsk-right { display: none; } }
 .xsk-rail { border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
 .xsk .sk-railhead { width: 90px; height: 18px; margin-bottom: 12px; }
 .xsk .sk-row { height: 14px; margin-bottom: 12px; }

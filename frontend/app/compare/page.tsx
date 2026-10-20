@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import HpJoinBox from "@/components/HpJoinBox";
 import { comparePages } from "./content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { COMPARE_CSS } from "@/lib/compare-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 export const metadata: Metadata = {
   title: "News Reader Alternatives And Comparison Guides | Trace",
@@ -44,68 +48,71 @@ const ALTERNATIVES = [
 
 export default function CompareHubPage() {
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
-      <main className="px-4 sm:px-6">
-        <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="max-w-3xl">
-            <p className="public-kicker">
+    <div className={`hp cmp ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{COMPARE_CSS}</style>
+      <PublicHeader subscribeHref="#join" />
+      <main>
+        <div className="cmp-top">
+          <section className="cmp-hero">
+            <p className="hp-kicker">
               Comparison Guides
             </p>
-            <h1 className="public-title mt-4">
-              Better ways to follow tech news<br className="hidden sm:block" />
+            <h1 className="hp-h1">
+              Better ways to follow tech news{" "}<br className="hidden sm:block" />
               without building another reading backlog
             </h1>
-            <p className="public-deck mt-5">
+            <p className="hp-hero-p">
               These pages are for people comparing Trace with RSS readers, traditional news apps,
               and other ways of keeping up. The idea is simple: less scrolling, more context.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/blog" className="public-chip">
-                Research
+            <div className="cmp-links">
+              <Link href="/blog" className="hp-btn hp-btn-line">
+                Guides
               </Link>
-              <Link href="/tools" className="public-chip">
+              <Link href="/tools" className="hp-btn hp-btn-line">
                 Tools
               </Link>
             </div>
-            <p className="public-meta mt-8">Leaving a specific app?</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+            <p className="cmp-leaving">Leaving a specific app?</p>
+            <div className="cmp-links cmp-links-tight">
               {ALTERNATIVES.map((item) => (
-                <Link key={item.href} href={item.href} className="public-chip">
+                <Link key={item.href} href={item.href} className="cmp-chip">
                   {item.label}
                 </Link>
               ))}
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        <section className="mx-auto max-w-6xl pb-20">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <section className="cmp-grid-wrap">
+          <div className="cmp-grid">
             {comparePages.map((page) => (
               <Link
                 key={page.slug}
                 href={`/compare/${page.slug}`}
-                className="landing-card p-7 transition-all hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
-                style={{ textDecoration: "none", color: "inherit" }}
+                className="cmp-card"
               >
-                <div className="public-kicker text-secondary">
+                <div className="cmp-tag">
                   Comparison
                 </div>
-                <h2 className="mt-4 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
+                <h2 className="cmp-card-title">
                   {page.heroTitle}
                 </h2>
-                <p className="mt-4 text-[16px] leading-[1.7] text-secondary">
+                <p className="cmp-card-text">
                   {page.description}
                 </p>
-                <div className="public-link mt-6 text-sm">
+                <div className="cmp-more">
                   Read guide
                 </div>
               </Link>
             ))}
           </div>
         </section>
+
+        <HpJoinBox heading="Get the brief in your inbox every morning" source="compare" />
       </main>
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

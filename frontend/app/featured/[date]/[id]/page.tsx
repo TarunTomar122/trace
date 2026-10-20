@@ -10,13 +10,14 @@ import { formatEditionDate, getDailyEdition, sourceHost } from '@/lib/daily-edit
 import { FEATURED_LABELS, featuredUrl, getFeaturedItem } from '@/lib/featured-items';
 import { metadataTitle } from '@/lib/seo';
 import { faviconUrl } from '@/lib/topic-icons';
+import { displaySerif } from '@/lib/home-fonts';
 
 // Ten minutes, like /brief: a just-featured item must not 404 for long.
 export const revalidate = 600;
 
 type Props = { params: Promise<{ date: string; id: string }> };
 
-const TEXT_LINK = 'font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground';
+const TEXT_LINK = 'font-medium text-[#0a0a0a] underline decoration-[#c7c7c7] underline-offset-4 hover:decoration-[#0a0a0a]';
 
 // Not indexed: each page is a title, one line and a link to someone else's
 // work, so in search it would be a thin copy of the original. These pages are
@@ -60,20 +61,20 @@ export default async function FeaturedItemPage({ params }: Props) {
   // their referrers (origin only, per the site's Referrer-Policy).
 
   return (
-    <div className="min-h-screen">
-      <PublicHeader variant="landing" hideCta />
+    <div className={`${displaySerif.variable} min-h-screen bg-white text-[#0a0a0a]`}>
+      <PublicHeader subscribeHref="#subscribe" />
 
       <main className="px-5 sm:px-6 lg:px-8">
         <article className="mx-auto max-w-[640px] pt-10 pb-16 sm:pt-14">
-          <p className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#f91880]">
-            <Star size={12} fill="currentColor" aria-hidden="true" />
-            Featured on Trace
+          <p className="flex items-center gap-1.5 text-[15px] font-semibold">
+            <Star size={15} fill="currentColor" aria-hidden="true" />
+            <span className="bg-[#ffef5f] px-1.5">Featured on Trace</span>
           </p>
-          <p className="mt-2 text-[15px] text-secondary">
+          <p className="mt-2 text-[15px] text-[#767676]">
             In Trace&apos;s {label} for <time dateTime={date}>{formatEditionDate(date)}</time>
           </p>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-border">
+          <div className="mt-6 overflow-hidden rounded-[12px] border border-[#e5e5e5]">
             {item.image && (
               <a href={item.url} target="_blank" rel="noopener" tabIndex={-1} aria-hidden="true">
                 {/* eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails */}
@@ -81,18 +82,18 @@ export default async function FeaturedItemPage({ params }: Props) {
                   src={item.image}
                   alt=""
                   referrerPolicy="no-referrer"
-                  className="block h-[220px] w-full bg-[#f7f9f9] object-cover object-[center_28%] sm:h-[320px]"
+                  className="block h-[220px] w-full bg-[#f7f7f8] object-cover object-[center_28%] sm:h-[320px]"
                 />
               </a>
             )}
             <div className="p-5 sm:p-6">
-              <h1 className="text-[24px] font-extrabold leading-[1.16] tracking-[-0.035em] text-[#0f1419] sm:text-[30px]">
+              <h1 className="font-[family-name:var(--font-hp-serif)] text-[30px] font-medium leading-[1.06] tracking-[-0.005em] text-balance sm:text-[40px]">
                 <a href={item.url} target="_blank" rel="noopener" className="hover:underline">{item.title}</a>
               </h1>
               {item.summary && (
-                <p className="mt-2.5 text-[15px] leading-[1.5] text-[#536471] sm:text-[16px]">{item.summary}</p>
+                <p className="mt-3 text-[16px] leading-[1.55] text-[#323232] sm:text-[17px]">{item.summary}</p>
               )}
-              <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] font-semibold text-[#536471]">
+              <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] font-medium text-[#767676]">
                 {host && (
                   // eslint-disable-next-line @next/next/no-img-element -- publisher favicon
                   <img
@@ -100,7 +101,7 @@ export default async function FeaturedItemPage({ params }: Props) {
                     alt=""
                     width={16}
                     height={16}
-                    className="h-4 w-4 rounded-full bg-white shadow-[0_0_0_1px_#eff3f4]"
+                    className="h-4 w-4 rounded-full bg-white shadow-[0_0_0_1px_#e5e5e5]"
                   />
                 )}
                 <span>{host}</span>
@@ -116,7 +117,7 @@ export default async function FeaturedItemPage({ params }: Props) {
                 href={item.url}
                 target="_blank"
                 rel="noopener"
-                className="mt-5 inline-flex h-11 items-center gap-1.5 rounded-full bg-[#0f1419] px-5 text-[15px] font-bold text-white transition hover:bg-[#272c30]"
+                className="mt-5 inline-flex h-[46px] items-center gap-1.5 rounded-[3px] bg-[#0a0a0a] px-[18px] text-[17px] text-white transition-colors hover:bg-[#323232]"
               >
                 {cta}
                 <ArrowUpRight size={16} aria-hidden="true" />
@@ -128,7 +129,7 @@ export default async function FeaturedItemPage({ params }: Props) {
             <ShareBar url={url} text={`Featured on Trace: ${item.title}`} event="featured_page_shared" />
           </div>
 
-          <p className="mt-10 text-[15px] leading-relaxed text-secondary">
+          <p className="mt-10 text-[16px] leading-relaxed text-[#323232]">
             Trace reads 100+ tech sources every day and keeps what is worth your time.{' '}
             <Link href={listHref} className={TEXT_LINK}>
               See the latest {label}
@@ -141,7 +142,8 @@ export default async function FeaturedItemPage({ params }: Props) {
             .
           </p>
 
-          <div className="mt-6">
+          {/* The header's Subscribe lands here (scroll-mt clears the sticky header). */}
+          <div className="mt-6 scroll-mt-20" id="subscribe">
             <DailySignup
               source="featured_page"
               heading="Get Trace's daily brief"
@@ -151,7 +153,7 @@ export default async function FeaturedItemPage({ params }: Props) {
         </article>
       </main>
 
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

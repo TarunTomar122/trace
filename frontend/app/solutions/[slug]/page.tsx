@@ -75,7 +75,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader />
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">

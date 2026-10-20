@@ -79,9 +79,9 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     <Link
       href={feedHref(slug, "article_end")}
       onClick={() => trackBlogCtaClicked(slug, "article_end", "feed")}
-      className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300"
+      className="bl-feedlink"
     >
-      {label} <ArrowRight size={14} />
+      {label} <ArrowRight size={14} aria-hidden="true" />
     </Link>
   );
 
@@ -89,8 +89,8 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     // Already subscribed: no ask, but the end of the article still leads into the feed.
     if (placement !== "end") return null;
     return (
-      <div className="not-prose my-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/60 px-6 py-5 dark:border-blue-900/40 dark:bg-blue-950/20">
-        <div className="text-[15px] font-semibold text-gray-900 dark:text-white">You&apos;re on the daily brief.</div>
+      <div className="not-prose bl-mail bl-mail-slim">
+        <div className="bl-mail-slim-title">You&apos;re on the daily brief.</div>
         {feedLink("Open today's briefing")}
       </div>
     );
@@ -99,12 +99,12 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     <div
       ref={rootRef}
       data-blog-email-card=""
-      className="not-prose my-10 rounded-xl border border-blue-100 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-7"
+      className="not-prose bl-mail"
     >
-      <div className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+      <div className="bl-mail-kicker">
         The daily brief
       </div>
-      <div className="mt-2 text-lg font-bold leading-snug text-gray-900 dark:text-white sm:text-xl">
+      <div className="bl-mail-title">
         The 10 stories that matter in tech and AI, every morning. Free.
       </div>
       {status === "done" ? (
@@ -112,40 +112,38 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
           ref={doneRef}
           role="status"
           tabIndex={-1}
-          className="mt-4 text-[15px] font-semibold text-emerald-700 outline-none dark:text-emerald-400"
+          className="bl-mail-done"
         >
           {message}
         </div>
       ) : (
-        <form onSubmit={submit} className="mt-4 flex flex-col gap-2.5 sm:flex-row">
-          <input
-            ref={inputRef}
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            aria-label="Email address"
-            aria-invalid={status === "error" || undefined}
-            aria-describedby={status === "error" ? errorId : undefined}
-            autoComplete="email"
-            className="h-11 min-w-0 rounded-full border border-gray-300 bg-white px-5 text-[16px] text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-gray-700 dark:bg-gray-950 dark:text-white sm:flex-1 sm:text-[15px]"
-          />
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className="h-11 shrink-0 rounded-full bg-blue-600 px-6 text-[15px] font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-70"
-          >
-            {status === "loading" ? "Subscribing…" : "Subscribe"}
-          </button>
-        </form>
-      )}
-      {status === "error" && (
-        <div id={errorId} role="alert" className="mt-2 text-[14px] font-semibold text-red-600 dark:text-red-400">
-          {message}
+        <div className="hp-signup hp-signup-box">
+          <form onSubmit={submit} className="hp-form">
+            <input
+              ref={inputRef}
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              aria-label="Email address"
+              aria-invalid={status === "error" || undefined}
+              aria-describedby={status === "error" ? errorId : undefined}
+              autoComplete="email"
+              className="hp-input"
+            />
+            <button type="submit" disabled={status === "loading"} className="hp-submit">
+              {status === "loading" ? "Subscribing…" : "Subscribe"}
+            </button>
+          </form>
+          {status === "error" && (
+            <div id={errorId} role="alert" className="hp-msg is-error">
+              {message}
+            </div>
+          )}
         </div>
       )}
-      {placement === "end" && <div className="mt-4">{feedLink("Or open today's briefing")}</div>}
+      {placement === "end" && <div className="bl-mail-foot">{feedLink("Or open today's briefing")}</div>}
     </div>
   );
 }
@@ -163,24 +161,24 @@ export function InlineTraceCTA({
   buttonLabel?: string;
 }) {
   return (
-    <div className="not-prose my-10 rounded-xl border border-blue-100 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-7">
-      <div className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+    <div className="not-prose bl-cta">
+      <div className="bl-cta-kicker">
         Trace
       </div>
-      <h3 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
+      <h3 className="bl-cta-title">
         {heading || "Catch up on AI in 5 minutes — skip X and LinkedIn"}
       </h3>
-      <p className="mt-2 leading-relaxed text-gray-600 dark:text-gray-400">
+      <p className="bl-cta-text">
         {blurb ||
           "Trace groups model releases, company news, and what actually changed from 100+ sources, ranked and summarized in about five minutes. Every story, Pulse, the archive, and agent access are included. Free for everyone, open source. No RSS, no newsletter pile."}
       </p>
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="hp-btns">
         <Link
           href={feedHref(slug, "inline_cta")}
           onClick={() => trackBlogCtaClicked(slug, "inline_cta", "feed")}
-          className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+          className="hp-btn hp-btn-dark"
         >
-          {buttonLabel || "Open today's briefing"} <ArrowRight size={15} />
+          {buttonLabel || "Open today's briefing"} <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
     </div>
@@ -209,24 +207,24 @@ export function StickyBlogBar({ slug }: { slug: string }) {
 
   if (dismissed || cardInView) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 md:hidden">
-      <div className="mx-auto flex max-w-3xl items-center gap-3">
-        <p className="min-w-0 flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">
+    <div className="bl-sticky">
+      <div className="bl-sticky-in">
+        <p className="bl-sticky-text">
           5-minute AI briefing, free
         </p>
         <Link
           href={feedHref(slug, "sticky_bar")}
           onClick={() => trackBlogCtaClicked(slug, "sticky_bar", "feed")}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+          className="bl-sticky-btn"
         >
-          Open it <ArrowRight size={14} />
+          Open it <ArrowRight size={14} aria-hidden="true" />
         </Link>
         <button
           onClick={() => setDismissed(true)}
           aria-label="Dismiss"
-          className="shrink-0 rounded-full p-1.5 text-gray-400 hover:text-gray-600"
+          className="bl-sticky-x"
         >
-          <X size={16} />
+          <X size={16} aria-hidden="true" />
         </button>
       </div>
     </div>

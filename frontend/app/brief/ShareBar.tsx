@@ -43,11 +43,12 @@ export default function ShareBar({
     }
   }
 
+  // Rectangular outline buttons, as on the homepage (lib/home-css.ts .hp-btn-line).
   const button =
-    'inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:border-foreground/30';
+    'inline-flex h-10 items-center gap-2 rounded-[3px] border border-[#c7c7c7] bg-white px-4 text-[15px] text-[#0a0a0a] transition-colors hover:border-[#0a0a0a]';
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2.5">
       <a
         className={button}
         href={`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`}

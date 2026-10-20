@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import HpJoinBox from "@/components/HpJoinBox";
 import { newslettersContent } from "./content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { NEWSLETTERS_CSS } from "@/lib/newsletters-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 export const metadata: Metadata = {
   title: "Tech Newsletter Reviews & Comparisons | Trace",
@@ -30,79 +34,77 @@ export const metadata: Metadata = {
 
 export default function NewslettersHubPage() {
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
-      <main className="px-4 sm:px-6">
-        <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="max-w-3xl">
-            <p className="public-kicker">Newsletter reviews</p>
-            <h1 className="public-title mt-4">
-              Tech newsletters,<br className="hidden sm:block" />
+    <div className={`hp nl ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{NEWSLETTERS_CSS}</style>
+      <PublicHeader subscribeHref="#join" />
+      <main>
+        <div className="nl-top">
+          <section className="nl-hero">
+            <p className="hp-kicker">Newsletter reviews</p>
+            <h1 className="hp-h1">
+              Tech newsletters,{" "}<br className="hidden sm:block" />
               actually reviewed
             </h1>
-            <p className="public-deck mt-5">
+            <p className="hp-hero-p">
               Most &ldquo;best newsletters&rdquo; lists are just links. These are real reviews with ratings,
               pros, cons, and honest takes on whether each one earns its inbox real estate.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/compare" className="public-chip">
+            <div className="hp-btns">
+              <Link href="/compare" className="hp-btn hp-btn-line">
                 Compare Tools
               </Link>
-              <Link href="/solutions" className="public-chip">
+              <Link href="/solutions" className="hp-btn hp-btn-line">
                 Solutions
               </Link>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        <section className="mx-auto max-w-6xl pb-20">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <section className="nl-grid-wrap">
+          <div className="nl-grid">
             {newslettersContent.map((item) => (
               <Link
                 key={item.slug}
                 href={`/newsletters/${item.slug}`}
-                className="landing-card p-7 transition-all hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
-                style={{ textDecoration: "none", color: "inherit" }}
+                className="nl-card"
               >
-                <div className="flex items-center gap-2">
-                  <div className="public-kicker text-secondary">
-                    Review
-                  </div>
-                  <span className="text-sm tracking-tight text-accent">
-                    {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
-                  </span>
-                  <span className="public-meta font-medium">
-                    {item.rating}/5
+                <div className="nl-card-top">
+                  <span className="nl-tag">Review</span>
+                  <span className="nl-rate">
+                    <span className="nl-stars" role="img" aria-label={`${item.rating} out of 5 stars`}>
+                      {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
+                    </span>
+                    <span aria-hidden="true">{item.rating}/5</span>
                   </span>
                 </div>
-                <h2 className="mt-4 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
+                <h2 className="nl-card-title">
                   {item.name}
                 </h2>
-                <p className="mt-4 text-[16px] leading-[1.7] text-secondary">
+                <p className="nl-card-text">
                   {item.description}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  <span className="public-chip min-h-0 py-1 text-[11px] text-accent">
+                <div className="nl-chips">
+                  <span className="nl-chip nl-chip-freq">
                     {item.frequency}
                   </span>
                   {item.topics.slice(0, 2).map((t) => (
-                    <span
-                      key={t}
-                      className="public-chip min-h-0 py-1 text-[11px]"
-                    >
+                    <span key={t} className="nl-chip">
                       {t}
                     </span>
                   ))}
                 </div>
-                <div className="public-link mt-6 text-sm">
+                <div className="nl-more">
                   Read review
                 </div>
               </Link>
             ))}
           </div>
         </section>
+
+        <HpJoinBox heading="Get the brief in your inbox every morning" source="newsletters" />
       </main>
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

@@ -3,10 +3,14 @@ import Link from "next/link";
 import { ArrowRight, Clock, Calendar } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { BlogEmailCard } from "@/components/BlogCTA";
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "./content";
 import { standaloneBlogPosts } from "./standalone-content";
 import { generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { BLOG_CSS } from "@/lib/blog-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 export const metadata: Metadata = {
   title: "Blog | Trace | Tech News, Productivity & AI Insights",
@@ -61,167 +65,125 @@ export default function BlogPage() {
   );
 
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
+    <div className={`hp bl ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{BLOG_CSS}</style>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
+      <PublicHeader />
 
-      {/* Hero */}
-      <section className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl pt-12 pb-10 sm:pt-20 sm:pb-14">
-          <div className="max-w-3xl">
-            <p className="public-kicker">Blog</p>
-            <h1 className="public-title mt-4">
-              Guides & insights for<br className="hidden sm:block" />
+      <main>
+        {/* Hero */}
+        <div className="hp-top">
+          <section className="hp-hero bl-hero">
+            <p className="bl-tag">Blog</p>
+            <h1 className="hp-h1">
+              Guides & insights for{" "}<br className="hidden sm:block" />
               smarter tech reading
             </h1>
-            <p className="public-deck mt-5">
+            <p className="hp-hero-p">
               Expert guides on tech news aggregation, productivity, AI tools, and building better information diets.
               Written for developers, founders, and anyone drowning in tabs.
             </p>
-            <Link
-              href="/feed?utm_source=blog&utm_medium=hero&utm_campaign=blog_index"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#0f1419] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#29313a]"
-            >
-              Read today&apos;s tech brief <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
+            <div className="hp-btns">
+              <Link href="/feed?utm_source=blog&utm_medium=hero&utm_campaign=blog_index" className="hp-btn hp-btn-dark">
+                Read today&apos;s tech brief <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
         </div>
-      </section>
 
-      {/* Featured Post */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="mx-auto max-w-7xl">
-          <Link
-            href={`/blog/${featuredPost.slug}`}
-            className="group landing-card relative block overflow-hidden transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)]"
-          >
-            <div className="grid md:grid-cols-2">
-              <div className="relative aspect-[16/10] md:aspect-auto overflow-hidden">
+        <div className="bl-band">
+          <div className="bl-wrap">
+            {/* Featured Post */}
+            <Link href={`/blog/${featuredPost.slug}`} className="bl-feat">
+              <div className="bl-feat-img">
                 <ArticleImage
                   thumbnail={featuredPost.image}
                   title={featuredPost.title}
                   alt={featuredPost.title}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="bl-img"
                 />
               </div>
-              <div className="flex flex-col justify-center p-6 sm:p-10">
-                <p className="public-kicker mb-3">
+              <div className="bl-feat-body">
+                <p className="bl-tag" data-cat={featuredPost.category}>
                   {featuredPost.tag}
                 </p>
-                <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] leading-tight text-foreground sm:text-[2rem]">
-                  {featuredPost.title}
-                </h2>
-                <p className="mt-4 text-[16px] leading-[1.72] text-secondary">
-                  {featuredPost.excerpt}
-                </p>
-                <div className="mt-5 flex items-center gap-4">
-                  <span className="public-link inline-flex items-center gap-1.5 text-[13px]">
+                <h2 className="bl-feat-title">{featuredPost.title}</h2>
+                <p className="bl-feat-ex">{featuredPost.excerpt}</p>
+                <div className="bl-meta">
+                  <span className="bl-read">
                     Read article
-                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight size={14} aria-hidden="true" />
                   </span>
-                  <span className="public-meta flex items-center gap-1">
-                    <Clock size={11} />
+                  <span>
+                    <Clock size={14} aria-hidden="true" />
                     {featuredPost.readTime}
                   </span>
-                  <span className="public-meta flex items-center gap-1">
-                    <Calendar size={11} />
+                  <span>
+                    <Calendar size={14} aria-hidden="true" />
                     {featuredPost.date}
                   </span>
                 </div>
               </div>
+            </Link>
+
+            {/* Category Pills */}
+            <div className="bl-chips">
+              {CATEGORIES.map((cat) => (
+                <Link
+                  key={cat.key}
+                  href={cat.key === "all" ? "/blog" : `/blog/category/${cat.key}`}
+                  className={`bl-chip${cat.key === "all" ? " is-active" : ""}`}
+                >
+                  {cat.label}
+                </Link>
+              ))}
             </div>
-          </Link>
-        </div>
-      </section>
 
-      {/* Category Pills */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.key}
-                href={cat.key === "all" ? "/blog" : `/blog/category/${cat.key}`}
-                className="public-chip"
-              >
-                {cat.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* All Posts Grid */}
-      <section className="px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {remainingPosts.map((post) => (
-              <Link
-                key={post.slug}
-                href={`/blog/${post.slug}`}
-                className="group landing-card flex flex-col overflow-hidden transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <ArticleImage
-                    thumbnail={post.image}
-                    title={post.title}
-                    alt={post.title}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="public-kicker">
+            {/* All Posts Grid */}
+            <div className="bl-grid">
+              {remainingPosts.map((post) => (
+                <Link key={post.slug} href={`/blog/${post.slug}`} className="bl-card">
+                  <div className="bl-card-img">
+                    <ArticleImage
+                      thumbnail={post.image}
+                      title={post.title}
+                      alt={post.title}
+                      className="bl-img"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="bl-card-body">
+                    <p className="bl-tag" data-cat={post.category}>
                       {post.tag}
                     </p>
+                    <h2 className="bl-card-title">{post.title}</h2>
+                    <p className="bl-card-ex">{post.excerpt}</p>
+                    <div className="bl-meta">
+                      <span className="bl-read">
+                        Read article
+                        <ArrowRight size={13} aria-hidden="true" />
+                      </span>
+                      <span>
+                        <Clock size={13} aria-hidden="true" />
+                        {post.readTime}
+                      </span>
+                    </div>
                   </div>
-                  <h2 className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-snug text-foreground">
-                    {post.title}
-                  </h2>
-                  <p className="mt-3 flex-1 text-[15px] leading-[1.7] text-secondary">
-                    {post.excerpt}
-                  </p>
-                  <div className="public-rule mt-5 flex items-center justify-between border-t pt-4">
-                    <span className="public-link inline-flex items-center gap-1.5 text-[12px]">
-                      Read article
-                      <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                    <span className="public-meta flex items-center gap-1">
-                      <Clock size={10} />
-                      {post.readTime}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* Newsletter CTA */}
-      <section className="px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl landing-card p-10 text-center sm:p-14">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[2rem]">
-            Get the latest posts in your inbox
-          </h2>
-          <p className="public-body mx-auto mt-3 max-w-xl">
-            Weekly guides on tech news, productivity, and AI tools. No spam, just useful stuff.
-          </p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/feed?utm_source=blog&utm_medium=index_cta"
-              className="landing-btn landing-btn-primary landing-btn-lg inline-flex"
-            >
-              Open today&apos;s briefing
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
+        {/* The daily brief signup (there is no separate posts email). */}
+        <section className="bl-end" aria-label="Subscribe to the daily brief">
+          <BlogEmailCard slug="blog-index" placement="end" />
+        </section>
+      </main>
 
       <Footer variant="landing" />
     </div>

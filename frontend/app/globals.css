@@ -150,11 +150,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   background-color: #ffffff;
 }
 
-.landing-page > header {
-  background: var(--background);
-  border: none;
-}
-
 .landing-page footer {
   border-color: transparent;
   background-color: var(--background);
@@ -926,50 +921,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   padding-top: 1.5rem;
 }
 
-.editorial-static-article .prose {
-  font-size: 1.0625rem;
-  line-height: 1.82;
-}
-
-.editorial-static-article .prose > :where(p, ul, ol) {
-  max-width: 70ch;
-}
-
-/* Older SEO articles use the same paper, type, and rules without duplicating a page shell. */
-.editorial-static-article {
-  background: var(--background) !important;
-  color: var(--foreground);
-}
-
-.editorial-static-article h1,
-.editorial-static-article h2,
-.editorial-static-article h3 {
-  font-family: var(--font-space-grotesk), sans-serif !important;
-  color: var(--foreground) !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.035em;
-}
-
-.editorial-static-article p,
-.editorial-static-article li {
-  color: var(--secondary) !important;
-  line-height: 1.7;
-}
-
-/* article links only: the CTA cards (not-prose) keep their own colours, e.g. white button text */
-.editorial-static-article a:not(.not-prose a) {
-  color: var(--accent);
-}
-
-.editorial-static-article hr {
-  border-color: var(--border) !important;
-}
-
-.editorial-static-article .bg-gray-50,
-.editorial-static-article .dark\:bg-gray-900 {
-  background: var(--surface-secondary) !important;
-  border-radius: 16px;
-}
+/* Static blog posts (.editorial-static-article): styled in lib/blog-css.ts. */
 
 .legal-content .rounded-xl,
 .legal-content .rounded-2xl,

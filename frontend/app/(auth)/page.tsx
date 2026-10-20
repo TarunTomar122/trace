@@ -13,7 +13,7 @@ import LandingAuthRedirect from './LandingAuthRedirect';
 import { listDailyEditions } from '@/lib/daily-editions';
 
 export const metadata: Metadata = {
-  title: "Trace — reads the internet so you don't have to",
+  title: "Fastest way to catch up on tech & AI news | Trace",
   description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
   keywords: [
     "AI news aggregator",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace — reads the internet so you don't have to",
+    title: "Fastest way to catch up on tech & AI news | Trace",
     description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     url: "https://www.yourtrace.online",
     type: "website",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace — reads the internet so you don't have to",
+        alt: "Fastest way to catch up on tech & AI news | Trace",
       },
     ],
   },
@@ -50,7 +50,7 @@ export default async function HomePage() {
   if (sessionCookie && verifyTraceSession(sessionCookie)) {
     redirect('/feed');
   }
-  // Today's real brief for the "Today's brief" section (demo stories if none yet).
+  // Today's real brief for the Daily Brief row's preview (demo stories if none yet).
   const [edition] = await listDailyEditions(1);
   return (
     <>

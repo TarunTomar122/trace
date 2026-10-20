@@ -13,7 +13,7 @@ export const DEFAULT_OG_IMAGE = {
   url: `${SITE_BASE_URL}/opengraph-image?v=10-big-things`,
   width: 1200,
   height: 630,
-  alt: "Trace — reads the internet so you don't have to",
+  alt: "Trace: the fastest way to catch up on tech & AI news",
 };
 export const DEFAULT_OPEN_GRAPH = {
   siteName: SITE_NAME,

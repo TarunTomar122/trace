@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Star } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
-import DailySignup from './DailySignup';
+import BriefStrip from './BriefStrip';
+import { HOME_CSS } from '@/lib/home-css';
+import { BRIEF_CSS } from '@/lib/brief-css';
+import { HOME_FONT_VARS } from '@/lib/home-fonts';
+import { bodyParagraphs } from '@/lib/body-text';
 import { formatEditionDate, listDailyEditions } from '@/lib/daily-editions';
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle, SITE_BASE_URL } from '@/lib/seo';
 
@@ -21,84 +25,120 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [DEFAULT_TWITTER_IMAGE] },
 };
 
+/** Summaries mark key names with **…**; the preview shows plain text. */
+function plain(text: string): string {
+  return text.split('**').join('');
+}
+
 export default async function DailyArchivePage() {
   const editions = await listDailyEditions(90);
   const [latest, ...past] = editions;
   const lead = latest?.stories[0];
+  const leadSummary = lead ? plain(bodyParagraphs(lead.summary)[0] ?? '') : '';
 
   return (
-    <div className="min-h-screen">
-      <PublicHeader variant="landing" hideCta />
+    <div className={`hp ${HOME_FONT_VARS} min-h-screen`}>
+      <style>{HOME_CSS}</style>
+      <style>{BRIEF_CSS}</style>
+      <PublicHeader subscribeHref="#subscribe" />
+      <BriefStrip />
 
-      <main className="px-5 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[720px] pt-10 pb-16 sm:pt-14">
-          <h1 className="text-[2rem] font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">
-            The daily brief
-          </h1>
-          <p className="mt-2 text-[17px] leading-relaxed text-secondary">
-            The stories that mattered in tech, every morning.{' '}
-            <Link href="/brief/customize" className="font-semibold text-[#1d9bf0] hover:underline">Make it yours</Link>
+      <main>
+        <section className="br-hero">
+          <h1 className="hp-h1">The Daily Brief</h1>
+          <p>
+            The tech and AI stories that mattered, grouped and summed up every morning.{' '}
+            <Link href="/brief/customize" className="br-link">Make it yours</Link>
           </p>
-          <div className="mt-6">
-            <DailySignup compact />
-          </div>
+        </section>
 
-          {!latest || !lead ? (
-            <p className="mt-12 text-secondary">The first edition is on its way. Check back tomorrow morning.</p>
-          ) : (
-            <>
-              {/* Today, as the feed's story-of-the-day card. */}
-              <Link href={`/brief/${latest.date}`} className="group -mx-5 mt-10 block border-y border-border pt-[18px] pb-[22px] transition hover:bg-[#f7f9f9] sm:mx-0 sm:overflow-hidden sm:rounded-2xl sm:border sm:pt-[22px] sm:pb-[26px]">
-                <p className="mb-3.5 flex items-center gap-1.5 px-5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#f91880] sm:mb-4 sm:px-[18px]">
-                  <Star size={12} fill="currentColor" aria-hidden="true" /> {formatEditionDate(latest.date)}
-                </p>
-                {lead.image && (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails
-                  <img src={lead.image} alt="" referrerPolicy="no-referrer" className="mb-[18px] block h-[240px] w-full bg-[#f7f9f9] object-cover object-[center_28%] sm:mb-[22px] sm:h-[340px]" />
-                )}
-                <div className="px-5 sm:px-[18px]">
-                  <h2 className="text-[22px] font-extrabold leading-[1.16] tracking-[-0.035em] group-hover:underline sm:text-[28px]">{lead.title}</h2>
-                  <ul className="mt-3 space-y-2 text-[14.5px] leading-[1.45] text-[#536471] sm:text-[16px]">
-                    {latest.stories.slice(1, 4).map((story) => (
-                      <li key={story.url}>· {story.title}</li>
+        {!latest || !lead ? (
+          <p className="br-empty">The first edition is on its way. Check back tomorrow morning.</p>
+        ) : (
+          <>
+            <div className="br-wrap">
+              <article className="br-latest" aria-labelledby="latest-title">
+                <div>
+                  <p className="hp-kicker">
+                    <Mail size={17} strokeWidth={2} aria-hidden="true" />
+                    {/* Not "Today's": the newest edition is yesterday's until each morning's send. */}
+                    Latest edition
+                  </p>
+                  <h2 className="hp-h3" id="latest-title">
+                    <Link href={`/brief/${latest.date}`}>{latest.stories.length} big things in tech</Link>
+                  </h2>
+                  <p className="br-date"><time dateTime={latest.date}>{formatEditionDate(latest.date)}</time></p>
+                  <ol className="br-list">
+                    {latest.stories.slice(0, 4).map((story) => (
+                      <li key={story.url}>
+                        <Link href={`/brief/${latest.date}`}>{story.title}</Link>
+                      </li>
                     ))}
-                  </ul>
-                  <span className="mt-4 inline-flex h-9 items-center rounded-full bg-[#1d9bf0] px-4 text-[14px] font-bold text-white">
-                    Read all {latest.stories.length}
-                  </span>
+                  </ol>
+                  <div className="hp-btns">
+                    <Link href={`/brief/${latest.date}`} className="hp-btn hp-btn-dark">Read all {latest.stories.length}</Link>
+                    <Link href="/brief/customize" className="hp-btn hp-btn-line">Make it yours</Link>
+                  </div>
                 </div>
-              </Link>
 
-              {past.length > 0 && (
-                <ul className="-mx-5 mt-8 border-y border-border sm:mx-0 sm:overflow-hidden sm:rounded-2xl sm:border">
+                {/* The edition as the email shows it: header card over the story of the day. */}
+                <Link href={`/brief/${latest.date}`} className="br-panel-link" tabIndex={-1} aria-hidden="true">
+                  <div className="hp-panel hp-panel-yellow">
+                    <div className="hp-mail-card">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/trace.webp" alt="" className="hp-mail-logo" />
+                      <div>
+                        <p className="hp-mail-name">Trace Daily Brief</p>
+                        <p className="hp-mail-promise">
+                          {formatEditionDate(latest.date)} <i>·</i> {latest.stories.length} stories
+                        </p>
+                      </div>
+                    </div>
+                    <div className="hp-mail-paper">
+                      <p className="hp-mail-mark"><span>Story of the day</span></p>
+                      {lead.image && (
+                        // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails
+                        <img src={lead.image} alt="" referrerPolicy="no-referrer" className="br-panel-img" />
+                      )}
+                      <p className="hp-mail-title">{lead.title}</p>
+                      {leadSummary && <p className="hp-mail-sum">{leadSummary}</p>}
+                    </div>
+                  </div>
+                </Link>
+              </article>
+            </div>
+
+            {past.length > 0 && (
+              <section className="br-past" aria-labelledby="past-title">
+                <h2 className="hp-h2" id="past-title">Past editions</h2>
+                <ul className="br-past-list">
                   {past.map((edition) => {
                     const top = edition.stories[0];
                     return (
-                      <li key={edition.date} className="border-b border-border last:border-b-0">
-                        <Link href={`/brief/${edition.date}`} className="flex gap-4 px-5 py-[18px] transition hover:bg-[#f7f9f9] sm:px-[18px]">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[14px] text-secondary">
-                              <time dateTime={edition.date}>{formatEditionDate(edition.date)}</time>
-                            </p>
-                            <p className="mt-0.5 text-[16px] font-bold leading-snug">{top?.title}</p>
-                            {edition.stories.length > 1 && <p className="mt-1 text-[14px] text-secondary">+ {edition.stories.length - 1} more</p>}
+                      <li key={edition.date}>
+                        <Link href={`/brief/${edition.date}`} className={`br-past-link${top?.image ? '' : ' no-img'}`}>
+                          <div className="min-w-0">
+                            <p className="br-past-date"><time dateTime={edition.date}>{formatEditionDate(edition.date)}</time></p>
+                            <p className="br-past-title br-story-serif">{top?.title}</p>
+                            {edition.stories.length > 1 && <p className="br-past-more">+ {edition.stories.length - 1} more</p>}
                           </div>
                           {top?.image && (
                             // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails
-                            <img src={top.image} alt="" loading="lazy" className="h-[76px] w-[112px] shrink-0 rounded-xl bg-[#f7f9f9] object-cover" />
+                            <img src={top.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="br-past-img" />
                           )}
                         </Link>
                       </li>
                     );
                   })}
                 </ul>
-              )}
-            </>
-          )}
-        </div>
+              </section>
+            )}
+          </>
+        )}
+        <div className="h-24" aria-hidden="true" />
       </main>
 
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

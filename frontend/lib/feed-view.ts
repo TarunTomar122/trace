@@ -50,7 +50,7 @@ const getCachedFeed = unstable_cache(
   { revalidate: 60 },
 );
 
-const getPromotedTools = unstable_cache(
+export const getPromotedTools = unstable_cache(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (): Promise<any[]> => {
     try {

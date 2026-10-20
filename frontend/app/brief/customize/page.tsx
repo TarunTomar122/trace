@@ -3,6 +3,9 @@ import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import NewsletterBuilder from './NewsletterBuilder';
+import { HOME_CSS } from '@/lib/home-css';
+import { HOME_FONT_VARS } from '@/lib/home-fonts';
+import { CUSTOMIZE_CSS } from '@/lib/customize-css';
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle, SITE_BASE_URL } from '@/lib/seo';
 
 const TITLE = 'Build your daily brief';
@@ -19,25 +22,23 @@ export const metadata: Metadata = {
 
 export default function CustomizeBriefPage() {
   return (
-    <div className="min-h-screen">
-      <PublicHeader variant="landing" hideCta />
-      <main className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl pt-10 pb-20 sm:pt-14">
-          <h1 className="max-w-[20ch] text-[2rem] font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[2.5rem]">
-            Make it yours
-          </h1>
-          <p className="mt-2 max-w-[60ch] text-[17px] leading-relaxed text-secondary">
-            Pick topics, length and format. The preview is today&rsquo;s real email.
-          </p>
-          <div className="mt-10">
-            {/* /brief lives outside the (auth) group, so it brings its own provider. */}
-            <AuthProvider>
-              <NewsletterBuilder />
-            </AuthProvider>
-          </div>
+    <div className={`hp ${HOME_FONT_VARS} min-h-screen`}>
+      <style>{HOME_CSS}</style>
+      <style>{CUSTOMIZE_CSS}</style>
+      <PublicHeader />
+      <main>
+        <section className="cz-head">
+          <h1 className="hp-h1">Make it yours</h1>
+          <p>Pick your topics, how many stories you get and how you read them. The preview is today&rsquo;s real email.</p>
+        </section>
+        <div className="cz">
+          {/* /brief lives outside the (auth) group, so it brings its own provider. */}
+          <AuthProvider>
+            <NewsletterBuilder />
+          </AuthProvider>
         </div>
       </main>
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

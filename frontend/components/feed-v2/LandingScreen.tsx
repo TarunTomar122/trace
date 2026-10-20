@@ -1,45 +1,47 @@
 import Link from 'next/link';
 import LandingCtaLink from '@/app/LandingCtaLink';
-import LandingDiscoveryLink from '@/app/LandingDiscoveryLink';
 import Footer from '@/components/Footer';
-import { BUY_ME_A_COFFEE_URL, GITHUB_REPO_URL } from '@/lib/site-links';
-import LandingWhatYouGet from '@/components/feed-v2/LandingWhatYouGet';
+import PublicHeader from '@/components/PublicHeader';
+import { BUY_ME_A_COFFEE_URL } from '@/lib/site-links';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
+import SubscribeNowLink from '@/components/feed-v2/SubscribeNowLink';
+import HpJoinBox, { SourceFaces } from '@/components/HpJoinBox';
+import { HOME_FONT_VARS } from '@/lib/home-fonts';
+import { FeedDemo, NewTabDemo, DiscordDemo } from '@/components/feed-v2/landing-demos';
+import { AgentArt, BriefArt, FeedArt, HandArrow, TabArt } from '@/components/feed-v2/home-art';
 import { LANDING_CSS } from '@/lib/landing-css';
-import { LANDING_DEMO_STORIES } from '@/lib/landing-demo-stories';
-import { formatEditionDate, isFreshEdition, type DailyEdition } from '@/lib/daily-editions';
-import { laneKicker } from '@/lib/newsletter-prefs';
-import LandingBuilderDemo from '@/components/feed-v2/LandingBuilderDemo';
-import { Code2, Coffee, Layers, Mail, Radar, Sparkles, Star, Unlock } from 'lucide-react';
-import { faviconUrl } from '@/lib/topic-icons';
+import { HOME_CSS } from '@/lib/home-css';
+import { LANDING_DEMO_STORIES, type LandingDemoStory } from '@/lib/landing-demo-stories';
+import { isFreshEdition, type DailyEdition, type DailyStory } from '@/lib/daily-editions';
+import { topicLabel } from '@/lib/newsletter-prefs';
+import {
+  AppWindow, ArrowRight, Bot, Compass, Cpu, ExternalLink, Mail, MessagesSquare, PenTool, Rocket, Sparkles, TrendingUp,
+} from 'lucide-react';
 
-const ANDROID_URL = 'https://play.google.com/store/apps/details?id=online.yourtrace.app';
-const CHROME_URL = 'https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk';
+const CHROME_URL = 'https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk?utm_source=yourtrace&utm_medium=homepage';
 
-// Outlets the pipeline actually reads (backend/v3/config/*_sources.json, Pulse).
-const SOURCES = [
-  { name: 'TechCrunch', domain: 'techcrunch.com' },
-  { name: 'The Verge', domain: 'theverge.com' },
-  { name: 'Bloomberg', domain: 'bloomberg.com' },
-  { name: 'Ars Technica', domain: 'arstechnica.com' },
-  { name: 'Wired', domain: 'wired.com' },
-  { name: 'MIT Tech Review', domain: 'technologyreview.com' },
-  { name: 'Hacker News', domain: 'news.ycombinator.com' },
-  { name: 'Product Hunt', domain: 'producthunt.com' },
-  { name: 'Hugging Face', domain: 'huggingface.co' },
-  { name: 'GitHub', domain: 'github.com' },
+
+const CARDS = [
+  { id: 'brief', title: 'Daily Brief', text: '5-minute brief, grouped from 100+ sources', href: '/brief', Art: BriefArt },
+  { id: 'feed', title: 'The Feed', text: 'Every story ranked, every source attached', href: '/feed?utm_source=site&utm_medium=card', Art: FeedArt },
+  { id: 'tab', title: 'New Tab', text: 'Today’s stories in every Chrome tab', href: CHROME_URL, Art: TabArt },
+  { id: 'agents', title: 'AI Agents', text: 'Ask Claude or Cursor about today’s news', href: '/agents', Art: AgentArt },
+] as const;
+
+const HOW = [
+  { title: 'Scan', body: 'We read over a hundred tech sources every morning.' },
+  { title: 'Group', body: 'We fold every outlet’s take on a story into one.' },
+  { title: 'Summarise', body: 'We sum each one up in a few lines, sources attached.' },
 ];
 
-const HOW_IT_WORKS = [
-  { title: 'Scan', body: 'Over a hundred sources, every morning.', Icon: Radar },
-  { title: 'Group and rank', body: 'Same story, one card, every source attached.', Icon: Layers },
-  { title: 'Read', body: 'Five minutes, by email or in the feed.', Icon: Mail },
+const TOPICS = [
+  { tab: 'ai', label: 'AI', Icon: Sparkles },
+  { tab: 'startups', label: 'Startups', Icon: Rocket },
+  { tab: 'markets', label: 'Markets', Icon: TrendingUp },
+  { tab: 'tech', label: 'Tech', Icon: Cpu },
+  { tab: 'ux-design', label: 'Design', Icon: PenTool },
+  { tab: 'conversations', label: 'Top articles', Icon: MessagesSquare },
 ];
-
-// The "group" step, drawn: five outlets' coverage folding into one story.
-const GROUP_DEMO = ['techcrunch.com', 'theverge.com', 'bloomberg.com', 'wired.com', 'arstechnica.com'];
-
-const SAMPLE_COUNT = 3;
 
 export const LANDING_FAQ = [
   {
@@ -76,248 +78,217 @@ export const LANDING_FAQ = [
   },
 ];
 
-type SampleStory = { id: string; url: string; domains: string[]; title: string; why: string; tag: string; sourceCount: number; source: string; image: string };
+/**
+ * Today's real stories for the product mockups, multi-source ones first (the
+ * mockups show "N sources"); the samples if too few have images.
+ */
+function demoStories(stories: DailyStory[]): LandingDemoStory[] {
+  const withImages = stories.filter((story) => story.image);
+  const real = [...withImages.filter((story) => story.source_count > 1), ...withImages.filter((story) => story.source_count <= 1)]
+    .map((story) => ({
+      id: story.url,
+      title: story.title,
+      tag: topicLabel(story.lane),
+      why: story.summary,
+      sources: story.sources.length ? story.sources : [story.source_name],
+      sourceName: story.source_name,
+      image: story.image,
+      mark: '',
+      coverage: [],
+    }));
+  return real.length >= 4 ? real.slice(0, 6) : LANDING_DEMO_STORIES;
+}
+
+/** The Daily Brief panel: the email's header card over today's top stories. */
+function BriefPreview({ stories }: { stories: { title: string; summary: string }[] }) {
+  return (
+    <div className="hp-mail" aria-hidden="true">
+      <div className="hp-mail-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/trace.webp" alt="" className="hp-mail-logo" />
+        <div>
+          <p className="hp-mail-name">Trace Daily Brief</p>
+          <p className="hp-mail-promise">100% free <i>·</i> Every morning <i>·</i> Unsubscribe anytime</p>
+        </div>
+      </div>
+      <div className="hp-mail-paper">
+        <p className="hp-mail-mark"><span>Story of the day</span></p>
+        {stories.map((story) => (
+          <div key={story.title} className="hp-mail-story">
+            <p className="hp-mail-title">{story.title}</p>
+            <p className="hp-mail-sum">{story.summary}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /** Today's real brief when it is published; the demo stories otherwise. */
 export default function LandingScreen({ edition = null }: { edition?: DailyEdition | null }) {
-  const sample: SampleStory[] = edition
-    ? edition.stories.slice(0, SAMPLE_COUNT).map((story) => ({
-      id: story.url,
-      url: story.url,
-      domains: story.sources,
-      title: story.title,
-      why: story.summary,
-      tag: laneKicker(story.lane),
-      sourceCount: story.source_count,
-      source: story.source_name,
-      image: story.image,
-    }))
-    : LANDING_DEMO_STORIES.slice(0, SAMPLE_COUNT).map((story) => ({
-      id: story.id,
-      url: '',
-      domains: story.sources,
-      title: story.title,
-      why: story.why,
-      tag: `Top in ${story.tag}`,
-      sourceCount: story.sources.length,
-      source: story.sourceName,
-      image: story.image,
-    }));
-  const moreCount = (edition ? edition.stories.length : 10) - sample.length;
-  const fresh = edition ? isFreshEdition(edition.date) : false;
-  const sampleHeading = !edition ? 'A morning brief, for example' : fresh ? 'Today’s brief' : 'The latest brief';
+  const demo = demoStories(edition?.stories ?? []);
+  const briefStories = edition?.stories.length
+    ? edition.stories.slice(0, 2).map((story) => ({ title: story.title, summary: story.summary }))
+    : LANDING_DEMO_STORIES.slice(0, 2).map((story) => ({ title: story.title, summary: story.why }));
+  const briefHref = edition ? `/brief/${edition.date}` : '/brief';
+  const briefLabel = edition && !isFreshEdition(edition.date) ? 'Read the latest brief' : 'Read today’s brief';
+
   return (
-    <main className="lp">
+    <div className={`lp hp ${HOME_FONT_VARS}`}>
       <style>{LANDING_CSS}</style>
+      <style>{HOME_CSS}</style>
 
-      <header className="nav">
-        <div className="nav-in">
-          <Link href="/" className="brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/trace.webp" alt="Trace" className="brand-logo" />
-            <span className="wordmark">Trace</span>
-          </Link>
-          <nav className="nav-links" aria-label="Main">
-            <Link href="/brief" className="nav-hide-sm">Daily brief</Link>
-            <Link href="/how-it-works" className="nav-hide-sm">How it works</Link>
-            <Link href="/blog" className="nav-hide-sm">Blog</Link>
-            <LandingCtaLink href="/feed?utm_source=site&utm_medium=nav" location="nav">Feed</LandingCtaLink>
-            {GITHUB_REPO_URL && (
-              <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="nav-gh" aria-label="Trace on GitHub">
-                <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                </svg>
-              </a>
-            )}
-          </nav>
+      <PublicHeader subscribeHref="#subscribe" />
+
+      <main>
+
+      <section className="hp-strip" id="subscribe" aria-label="Subscribe">
+        <div className="hp-strip-in">
+          <div>
+            <p className="hp-strip-title">Subscribe to the Trace Daily Brief</p>
+            <p className="hp-strip-sub">
+              The most important tech and AI stories of the day, summed up. <em>100% free, unsubscribe anytime.</em>{' '}
+              <a href="/terms">Terms</a> &amp; <a href="/privacy-policy">Privacy</a>.
+            </p>
+          </div>
+          <LandingHeroSignup placement="strip" inputId="subscribe-email" />
         </div>
-      </header>
+      </section>
 
-      <section className="hero">
-        <h1 className="hero-title">Fastest way to catch&nbsp;up with Tech &amp;&nbsp;AI</h1>
-        <p className="hero-sub">Trace reads 100+ sources, groups the stories everyone is covering and sums each one up. In your inbox every morning.</p>
-        <LandingHeroSignup />
-        <p className="hero-links">
-          <Link href="/brief" className="text-link">Read today&rsquo;s brief</Link>
-          <LandingCtaLink href="/feed?utm_source=site&utm_medium=hero" location="hero" className="text-link">Open the feed</LandingCtaLink>
-        </p>
+      <div className="hp-top">
+        <section className="hp-hero">
+          <h1 className="hp-h1">Fastest way to catch&nbsp;up on tech &amp;&nbsp;AI news</h1>
+          <p className="hp-hero-p">
+            From a 5-minute morning email to every new tab, Trace is designed to give you{' '}
+            <strong>the tech and AI stories that matter, grouped and summed up</strong>, without the noise.
+          </p>
+        </section>
 
-        <div className="proof">
-          <p className="proof-label">Reading over a hundred sources, including</p>
-          <ul className="logos">
-            {SOURCES.map((source) => (
-              <li key={source.domain}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- publisher favicons */}
-                <img src={faviconUrl(source.domain)} alt="" width={20} height={20} loading="lazy" />
-                {source.name}
+        <ul className="hp-cards">
+          {CARDS.map(({ id, title, text, href, Art }) => {
+            const body = (
+              <>
+                <span className="hp-card-title">{title}</span>
+                <Art />
+                <span className="hp-card-text">{text}</span>
+              </>
+            );
+            return (
+              <li key={id} className={`hp-card hp-card-${id}`}>
+                {id === 'feed' ? (
+                  <LandingCtaLink href={href} location="card" className="hp-card-link">{body}</LandingCtaLink>
+                ) : href.startsWith('http') ? (
+                  <a href={href} target="_blank" rel="noreferrer" className="hp-card-link">
+                    {body}<span className="sr-only"> (Chrome Web Store, opens in a new tab)</span>
+                  </a>
+                ) : (
+                  <Link href={href} className="hp-card-link">{body}</Link>
+                )}
               </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+            );
+          })}
+        </ul>
+      </div>
 
-      <section className="section" id="sample" style={{ paddingTop: 'var(--s5)' }} aria-labelledby="sample-title">
-        <div className="sec-head">
-          <h2 className="h2" id="sample-title">{sampleHeading}</h2>
-          {edition && <p className="sec-date"><time dateTime={edition.date}>{formatEditionDate(edition.date)}</time></p>}
-        </div>
-        {/* The feed's own card: kicker, full-bleed image, heavy headline. */}
-        <div className="fcol">
-          {sample.map((story, i) => (
-            <article key={story.id} className="fcard">
-              {/* One kicker per topic run, never the same label twice in a row. */}
-              {(i < 2 || story.tag !== sample[i - 1].tag) && (
-                <p className="fkicker"><Star size={12} fill="currentColor" aria-hidden="true" /> {i === 0 ? 'Story of the day' : story.tag}</p>
-              )}
-              {story.image && (
-                <a href={story.url || undefined} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- publisher thumbnails */}
-                  <img src={story.image} alt="" className="fimg" referrerPolicy="no-referrer" loading={i === 0 ? 'eager' : 'lazy'} />
-                </a>
-              )}
-              <div className="fbody">
-                <h3 className="ftitle">
-                  {story.url ? <a href={story.url} target="_blank" rel="noopener noreferrer">{story.title}</a> : story.title}
-                </h3>
-                <p className="fmeta">
-                  <span className="fav-stack" aria-hidden="true">
-                    {story.domains.slice(0, 4).map((domain) => (
-                      // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
-                      <img key={domain} src={faviconUrl(domain)} alt="" width={16} height={16} loading="lazy" />
-                    ))}
-                  </span>
-                  <span>{story.source}</span>
-                  {story.sourceCount > 1 && <span>· {story.sourceCount} sources</span>}
-                </p>
-              </div>
-            </article>
-          ))}
-          <div className="ffoot">
-            <span>{moreCount > 0 ? `+ ${moreCount} more in today’s edition` : 'Every morning'}</span>
-            <Link href={edition ? `/brief/${edition.date}` : '/brief'} className="fbtn">Read the full edition</Link>
-          </div>
-        </div>
-      </section>
-
-      <div className="band">
-        <section className="section" id="how" aria-labelledby="how-title">
-          <div className="sec-head">
-            <h2 className="h2" id="how-title">How it works</h2>
-          </div>
-          <ol className="steps">
-            {HOW_IT_WORKS.map((step, i) => (
-              <li key={step.title} className="step">
-                <span className="step-icon" aria-hidden="true"><step.Icon size={22} strokeWidth={2.2} /></span>
-                <h3 className="step-title">{step.title}</h3>
-                <p className="step-body">{step.body}</p>
-                {i === 0 && (
-                  <div className="step-viz" aria-hidden="true">
-                    <span className="viz-stack">
-                      {SOURCES.slice(5, 10).map((source) => (
-                        // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
-                        <img key={source.domain} src={faviconUrl(source.domain)} alt="" width={28} height={28} loading="lazy" />
-                      ))}
-                    </span>
-                    <span className="viz-more">+100 more</span>
-                  </div>
-                )}
-                {i === 2 && (
-                  <div className="step-viz" aria-hidden="true">
-                    <span className="viz-mail">
-                      <Mail size={15} strokeWidth={2.4} />
-                      <span><b>Trace</b> · 10 big things today</span>
-                      <em>8:00</em>
-                    </span>
-                  </div>
-                )}
-                {i === 1 && (
-                  <div className="step-viz" aria-hidden="true">
-                    <span className="viz-stack">
-                      {GROUP_DEMO.map((domain) => (
-                        // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
-                        <img key={domain} src={faviconUrl(domain)} alt="" width={28} height={28} loading="lazy" />
-                      ))}
-                    </span>
-                    <span className="viz-arrow">→</span>
-                    <span className="viz-card">1 story · 5 sources</span>
-                  </div>
-                )}
+      <section className="hp-how-wrap" aria-labelledby="how-title">
+        <div className="hp-how">
+          <h2 className="hp-hand" id="how-title">How we <br />do it</h2>
+          <HandArrow variant="in" />
+          <ol className="hp-how-steps">
+            {HOW.map((step) => (
+              <li key={step.title}>
+                <h3 className="hp-how-title">{step.title}</h3>
+                <p>{step.body}</p>
               </li>
             ))}
           </ol>
-        </section>
-      </div>
-
-      <section className="section" id="make-it-yours" aria-labelledby="mine-title">
-        <div className="sec-head">
-          <h2 className="h2" id="mine-title">Make it yours</h2>
-          <p className="lede">Try it. The preview is today&rsquo;s email, built from your picks.</p>
-        </div>
-        <LandingBuilderDemo fallback={sample} />
-      </section>
-
-      <LandingWhatYouGet stories={edition?.stories ?? []} />
-
-      <div className="band">
-        <section className="section trust" id="open-source" aria-labelledby="trust-title">
-          <span className="trust-icon" aria-hidden="true"><Unlock size={26} strokeWidth={2.2} /></span>
-          <h2 className="h2" id="trust-title">Free for everyone. Open source.</h2>
-          <p className="lede">No paywall, no tiers.{GITHUB_REPO_URL ? ' Read every line of code.' : ''}</p>
-          <ul className="trust-points">
-            <li><Sparkles size={16} strokeWidth={2.3} aria-hidden="true" /> Every feature unlocked</li>
-            <li><Mail size={16} strokeWidth={2.3} aria-hidden="true" /> Your own daily brief</li>
-            <li><Code2 size={16} strokeWidth={2.3} aria-hidden="true" /> Open source code</li>
-          </ul>
-          <div className="btn-row trust-actions">
-            {GITHUB_REPO_URL && (
-              <LandingDiscoveryLink href={GITHUB_REPO_URL} slug="open-source" className="btn-ghost">View the source on GitHub</LandingDiscoveryLink>
-            )}
-            <LandingCtaLink href="/feed?utm_source=site&utm_medium=open_source" location="open_source" className="btn-primary">Open the feed</LandingCtaLink>
-          </div>
-        </section>
-      </div>
-
-      <section className="section" aria-labelledby="founder-title">
-        <div className="founder">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tarat-avatar.jpg" alt="Tarat" className="founder-avatar" />
-          <div>
-            <h2 className="founder-title" id="founder-title">Hey, I am Tarat.</h2>
-            <p className="founder-p">
-              Trace is the first solo indie app I have built and launched. I put it out at the end of January 2026,
-              and it got so much traction on Product Hunt that I decided to keep going.
-            </p>
-            <p className="founder-p">
-              Eight months in, the app has changed a lot. I read every bit of feedback I can get and genuinely love
-              working on it, making Trace more useful, clearer, and more worth opening for the people who use it.
-            </p>
-            <p className="founder-p">
-              On the personal side, I&rsquo;ve just started my master&rsquo;s in AI at the University of Edinburgh.
-              Trace is now free and open source, so sharing it with a friend is the best way to help me keep building
-              while I figure out student life.
-            </p>
-            <p className="founder-p">
-              If you&rsquo;re into investing or the US stock market, I also make{' '}
-              <a href="https://stocksbrew.online" target="_blank" rel="noreferrer" className="flink">StocksBrew</a>. You can find more
-              about me and the other things I&rsquo;m building at{' '}
-              <a href="https://www.tarat.space" target="_blank" rel="noreferrer" className="flink">tarat.space</a>.
-            </p>
-            <p className="founder-sign">Tarat</p>
-            <a href={BUY_ME_A_COFFEE_URL} target="_blank" rel="noopener noreferrer" className="bmc-btn">
-              <Coffee size={18} strokeWidth={2.3} aria-hidden="true" /> Buy me a coffee
-            </a>
-            <p className="bmc-note">Trace is free. If it saves you time, a coffee keeps it running.</p>
-          </div>
+          <HandArrow variant="down" />
         </div>
       </section>
 
-      <section className="section" id="faq" style={{ paddingTop: 0 }} aria-labelledby="faq-title">
-        <div className="sec-head">
-          <h2 className="h2" id="faq-title">FAQ</h2>
+      <section className="hp-explore" aria-labelledby="explore-title">
+        <div className="hp-explore-head">
+          <h2 className="hp-h2" id="explore-title">Read what you want, how you want</h2>
+          <p>Read it in your inbox, scroll it in the feed, catch it in every new tab, or ask your AI about it.</p>
         </div>
-        <div className="faq">
+
+        <article className="hp-row">
+          <div className="hp-row-copy">
+            <p className="hp-kicker"><Mail size={17} strokeWidth={2} aria-hidden="true" /> Daily Brief</p>
+            <h3 className="hp-h3">Stay informed with the Daily Brief</h3>
+            <p>The most important tech and AI stories of the day in a 5-minute brief, grouped, summed up and sent every morning.</p>
+            <p className="hp-stat"><SourceFaces /><span><b>100+</b> sources read every morning</span></p>
+            <div className="hp-btns">
+              <SubscribeNowLink className="hp-btn hp-btn-dark">Subscribe now</SubscribeNowLink>
+              <Link href={briefHref} className="hp-btn hp-btn-line">{briefLabel}</Link>
+            </div>
+          </div>
+          <div className="hp-panel hp-panel-yellow">
+            <BriefPreview stories={briefStories} />
+          </div>
+        </article>
+
+        <article className="hp-row hp-row-flip">
+          <div className="hp-row-copy">
+            <p className="hp-kicker"><Compass size={17} strokeWidth={2} aria-hidden="true" /> Topics</p>
+            <h3 className="hp-h3">Follow the topics you care about</h3>
+            <p>Open the feed on just what you follow: AI, startups, markets, tech, design, or the day’s best articles.</p>
+            <ul className="hp-topics">
+              {TOPICS.map(({ tab, label, Icon }) => (
+                <li key={tab}>
+                  <Link href={`/feed?tab=${tab}&utm_source=site&utm_medium=landing_topics`}>
+                    <span><Icon size={19} strokeWidth={1.9} aria-hidden="true" /> {label}</span>
+                    <ArrowRight size={20} strokeWidth={2} aria-hidden="true" className="hp-topic-arrow" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link href="/brief/customize" className="hp-more">Pick topics for your email too</Link>
+          </div>
+          <div className="hp-panel hp-panel-cyan">
+            <FeedDemo stories={demo} />
+          </div>
+        </article>
+
+        <article className="hp-row">
+          <div className="hp-row-copy">
+            <p className="hp-kicker"><AppWindow size={17} strokeWidth={2} aria-hidden="true" /> New Tab</p>
+            <h3 className="hp-h3">Catch up every time you open a tab</h3>
+            <p>The Chrome extension puts today’s ranked stories in every new tab, so you are caught up before you start typing.</p>
+            <p className="hp-stat"><span><b>Free</b> on the Chrome Web Store</span></p>
+            <div className="hp-btns">
+              <a href={CHROME_URL} target="_blank" rel="noreferrer" className="hp-btn hp-btn-dark">
+                Add to Chrome <ExternalLink size={16} strokeWidth={2.2} aria-hidden="true" />
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </div>
+          </div>
+          <div className="hp-panel hp-panel-magenta">
+            <NewTabDemo stories={demo} />
+          </div>
+        </article>
+
+        <article className="hp-row hp-row-flip" id="agents">
+          <div className="hp-row-copy">
+            <p className="hp-kicker"><Bot size={17} strokeWidth={2} aria-hidden="true" /> AI Agents</p>
+            <h3 className="hp-h3">Ask your AI what happened today</h3>
+            <p>Claude, Cursor and other MCP clients can read the same ranked feed and answer questions about today’s news. Read-only, and free for everyone.</p>
+            <div className="hp-btns">
+              <Link href="/agents" className="hp-btn hp-btn-dark">Set up your agent</Link>
+              <LandingCtaLink href="/feed?utm_source=site&utm_medium=agents" location="agents" className="hp-btn hp-btn-line">Open the feed</LandingCtaLink>
+            </div>
+          </div>
+          <div className="hp-panel hp-panel-green">
+            <DiscordDemo stories={demo} />
+          </div>
+        </article>
+      </section>
+
+      <section className="hp-faq" id="faq" aria-labelledby="faq-title">
+        <h2 className="hp-h2" id="faq-title">Questions, answered</h2>
+        <div className="hp-faq-list">
           {LANDING_FAQ.map((item) => (
-            <details key={item.q} className="faq-item">
+            <details key={item.q} className="hp-faq-item">
               <summary>{item.q}</summary>
               <p>{item.a}</p>
             </details>
@@ -325,20 +296,26 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
         </div>
       </section>
 
-      <div className="final-wrap">
-        <section className="final-cta on-dark" aria-labelledby="final-title">
-          <h2 className="h2" id="final-title">Be the one who already knows.</h2>
-          <LandingHeroSignup />
-          <p className="final-apps">
-            <span>Also on</span>
-            <a href={CHROME_URL} target="_blank" rel="noreferrer">Chrome</a>
-            <a href={ANDROID_URL} target="_blank" rel="noreferrer">Android</a>
-            <Link href="/feed?utm_source=site&utm_medium=final">the web feed</Link>
-          </p>
-        </section>
-      </div>
+      <HpJoinBox heading={<>Join the curious people who catch&nbsp;up with Trace every morning</>} source="landing">
+          <figure className="hp-quote">
+            <blockquote>
+              Trace is the first solo indie app I have built and launched. I read every bit of feedback I can get and
+              genuinely love working on it, making Trace <mark>more useful, clearer, and more worth opening</mark> for
+              the people who use it.
+            </blockquote>
+            <figcaption>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/tarat-avatar.jpg" alt="" className="hp-quote-avatar" />
+              <span><cite>Tarat</cite>, who builds Trace</span>
+            </figcaption>
+            <a href={BUY_ME_A_COFFEE_URL} target="_blank" rel="noopener noreferrer" className="hp-coffee">
+              Trace is free. If it saves you time, buy me a coffee
+            </a>
+          </figure>
+      </HpJoinBox>
+      </main>
 
       <Footer variant="landing" />
-    </main>
+    </div>
   );
 }

@@ -6,6 +6,14 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import HpJoinBox from "@/components/HpJoinBox";
+import { HandArrow } from "@/components/feed-v2/home-art";
+
+const IN_SHORT = [
+  { title: "Scan", body: "We read over a hundred tech sources every morning." },
+  { title: "Group", body: "We fold every outlet’s take on a story into one." },
+  { title: "Summarise", body: "We sum each one up in a few lines, sources attached." },
+];
 
 const STEPS = [
   {
@@ -36,7 +44,7 @@ const STEPS = [
     num: 5,
     icon: Zap,
     title: "Your Daily Pulse",
-    body: "Everything lands in one scannable feed. Under 10 minutes, linked to sources, with nothing you don't need. One tab, one brief, and you're caught up for the day.",
+    body: "Everything lands in one scannable feed and a morning email. About five minutes, linked to sources, with nothing you don't need. One tab, one brief, and you're caught up for the day.",
   },
 ];
 
@@ -51,11 +59,11 @@ const FAQS = [
   },
   {
     q: "What do I get?",
-    a: "Everything is included: every ranked story with its full brief, Pulse discussions and tools, the archive, bookmarks that sync, your personalized ranking, and read-only agent access. Free for everyone, and open source.",
+    a: "Everything is included: every ranked story with its full brief, Pulse discussions and tools, the archive, bookmarks that sync, your personalised ranking, and read-only agent access. Free for everyone, and open source.",
   },
   {
-    q: "How does personalization work?",
-    a: "Pick your interests in your profile and your For You feed is ordered around them — they only change ordering, nothing else. No black box: the same transparent ranking, weighted to your topics.",
+    q: "How does personalisation work?",
+    a: "Pick your interests in your profile and your For You feed is ordered around them. They only change the ordering, nothing else. No black box: the same transparent ranking, weighted to your topics.",
   },
   {
     q: "Is there an app or email version?",
@@ -65,64 +73,70 @@ const FAQS = [
 
 export default function HowItWorksContent() {
   return (
-    <div className="mx-auto max-w-4xl pb-20">
-      <div className="border-t border-border">
-        {STEPS.map((step) => (
-          <section key={step.num} className="grid gap-5 border-b border-border py-8 sm:grid-cols-[64px_1fr] sm:gap-8 sm:py-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-surface text-accent">
-              <step.icon size={23} strokeWidth={1.8} />
-            </div>
+    <>
+      <section className="hp-how-wrap" aria-labelledby="in-short-title">
+        <div className="hp-how">
+          <h2 className="hp-hand" id="in-short-title">In <br />short</h2>
+          <HandArrow variant="in" />
+          <ol className="hp-how-steps">
+            {IN_SHORT.map((step) => (
+              <li key={step.title}>
+                <h3 className="hp-how-title">{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            ))}
+          </ol>
+          <HandArrow variant="down" />
+        </div>
+      </section>
 
-            <div>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="public-kicker">Step {step.num}</span>
-                <h2 className="text-[1.625rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.875rem]">
-                  {step.title}
-                </h2>
+      <section className="hw-section" aria-labelledby="steps-title">
+        <div className="hw-head">
+          <p className="hw-note" aria-hidden="true">every morning</p>
+          <h2 className="hp-h2" id="steps-title">Five steps, from a hundred sources to one page</h2>
+          <p>What happens between the first headline and the brief you read.</p>
+        </div>
+        <ol className="hw-steps">
+          {STEPS.map((step) => (
+            <li key={step.num} className="hw-step">
+              <div className="hw-num" aria-hidden="true">
+                <span className="hw-digit">{step.num}</span>
+                <span className="hw-icon"><step.icon size={26} strokeWidth={1.8} /></span>
               </div>
-              <p className="public-body mt-3 max-w-[68ch]">{step.body}</p>
-            </div>
-          </section>
-        ))}
-      </div>
+              <div className="hw-copy">
+                <p className="hp-kicker">Step {step.num}</p>
+                <h3 className="hp-h3">{step.title}</h3>
+                <p>{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <div className="public-cta mt-12 p-8 text-center sm:p-10">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">
-            Ready to see it in action?
-          </h2>
-          <p className="public-body mx-auto mt-3 max-w-md">
-            The best way to understand Trace is to try it. Read today&apos;s
-            brief and see how much you catch in 10 minutes.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/feed?utm_source=site&utm_medium=how_it_works"
-              className="inline-flex rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
-            >
-              Read today&apos;s brief
-            </Link>
-          </div>
-      </div>
+      <section className="hw-cta" aria-labelledby="cta-title">
+        <h2 className="hp-h2" id="cta-title">Ready to see it in action?</h2>
+        <p>
+          The best way to understand Trace is to try it. Read today&apos;s brief and see how much you catch in about five minutes.
+        </p>
+        <div className="hp-btns">
+          <Link href="/brief" className="hp-btn hp-btn-dark">Read today&apos;s brief</Link>
+          <Link href="/feed?utm_source=site&utm_medium=how_it_works" className="hp-btn hp-btn-line">Open the feed</Link>
+        </div>
+      </section>
 
-      <div className="mx-auto mt-16 max-w-3xl">
-        <p className="public-kicker text-center">Questions</p>
-        <h2 className="mt-3 text-center text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">
-          How Trace works, answered
-        </h2>
-        <div className="mt-8 divide-y divide-[var(--border)] border-y border-[var(--border)]">
+      <section className="hp-faq" aria-labelledby="faq-title">
+        <h2 className="hp-h2" id="faq-title">How Trace works, answered</h2>
+        <div className="hp-faq-list">
           {FAQS.map((faq) => (
-            <details key={faq.q} className="group py-5">
-              <summary className="cursor-pointer list-none text-[16px] font-semibold text-foreground [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center justify-between gap-4">
-                  {faq.q}
-                  <span className="text-[20px] font-normal leading-none text-secondary transition-transform group-open:rotate-45">+</span>
-                </span>
-              </summary>
-              <p className="public-body mt-3 max-w-[68ch]">{faq.a}</p>
+            <details key={faq.q} className="hp-faq-item">
+              <summary>{faq.q}</summary>
+              <p>{faq.a}</p>
             </details>
           ))}
         </div>
-      </div>
-    </div>
+      </section>
+
+      <HpJoinBox heading="Get the brief in your inbox every morning" source="how_it_works" />
+    </>
   );
 }

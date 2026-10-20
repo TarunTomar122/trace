@@ -18,6 +18,9 @@ import {
   metadataTitle,
   SITE_BASE_URL,
 } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { BLOG_CSS } from "@/lib/blog-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 type PageProps = {
   params: Promise<{
@@ -29,21 +32,12 @@ function RichParagraph({ children }: { children: string }) {
   return (
     <ReactMarkdown
       components={{
-        p: ({ children: content }) => (
-          <p className="public-body">{content}</p>
-        ),
+        p: ({ children: content }) => <p>{content}</p>,
         a: ({ href = "", children: content }) =>
           href.startsWith("/") ? (
-            <Link href={href} className="public-link">
-              {content}
-            </Link>
+            <Link href={href}>{content}</Link>
           ) : (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="public-link"
-            >
+            <a href={href} target="_blank" rel="noopener noreferrer">
               {content}
             </a>
           ),
@@ -165,7 +159,9 @@ export default async function BlogPostPage({ params }: PageProps) {
   const feedCtaIndex = Math.max(1, Math.floor(post.sections.length / 2));
 
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
+    <div className={`hp bl ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{BLOG_CSS}</style>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
@@ -180,62 +176,50 @@ export default async function BlogPostPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(generateFAQSchema(post.faqs)) }}
         />
       )}
-      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
+      <PublicHeader />
 
-      <article className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl pt-12 sm:pt-18">
-          <Link href="/blog" className="public-meta inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] transition-colors hover:text-foreground">
-            <ArrowLeft size={12} />
+      <main>
+        <article className="bl-art">
+          <Link href="/blog" className="bl-back">
+            <ArrowLeft size={14} aria-hidden="true" />
             Blog
           </Link>
 
-          <header className="mt-7 max-w-3xl">
-            <p className="public-kicker mb-4">{post.tag}</p>
-            <h1 className="public-title public-title-detail">
-              {post.title}
-            </h1>
-            <p className="public-deck mt-5">
-              {post.subtitle}
-            </p>
-            <div className="public-meta mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <header className="bl-art-head">
+            <p className="bl-tag">{post.tag}</p>
+            <h1 className="bl-title">{post.title}</h1>
+            <p className="bl-deck">{post.subtitle}</p>
+            <div className="bl-byline">
               <span>{post.author}</span>
-              <span className="flex items-center gap-1">
-                <Clock size={11} />
+              <span>
+                <Clock size={14} aria-hidden="true" />
                 {post.readTime}
               </span>
-              <span className="flex items-center gap-1">
-                <Calendar size={11} />
+              <span>
+                <Calendar size={14} aria-hidden="true" />
                 {post.date}
               </span>
             </div>
           </header>
 
-          <div className="public-hero-media mt-10 sm:mt-12">
+          <div className="bl-hero-img">
             <ArticleImage
               thumbnail={post.image}
               title={post.title}
               alt={post.title}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="bl-img"
             />
           </div>
-        </div>
-
-        <div className="mx-auto mt-12 max-w-3xl pb-20 sm:mt-16 sm:pb-28">
 
           {post.sections.filter((section) => section.heading).length > 2 && (
-            <nav aria-label="Table of contents" className="public-rule mb-12 border-y py-6">
-              <p className="public-kicker text-secondary">
-                In this guide
-              </p>
-              <ol className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            <nav aria-label="Table of contents" className="bl-toc">
+              <p className="bl-toc-title">In this guide</p>
+              <ol>
                 {post.sections
                   .filter((section): section is typeof section & { heading: string } => Boolean(section.heading))
                   .map((section, index) => (
                     <li key={section.heading}>
-                      <a
-                        href={`#${headingId(section.heading)}`}
-                        className="text-[14px] leading-6 text-secondary hover:text-accent"
-                      >
+                      <a href={`#${headingId(section.heading)}`}>
                         {index + 1}. {section.heading}
                       </a>
                     </li>
@@ -245,17 +229,10 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* Content */}
-          <div className="flex flex-col gap-10">
+          <div className="bl-prose">
             {post.sections.map((section, index) => (
-              <section key={`${post.slug}-section-${index}`} className="flex flex-col gap-4">
-                {section.heading && (
-                  <h2
-                    id={headingId(section.heading)}
-                    className="scroll-mt-24 text-[1.625rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[1.875rem]"
-                  >
-                    {section.heading}
-                  </h2>
-                )}
+              <section key={`${post.slug}-section-${index}`}>
+                {section.heading && <h2 id={headingId(section.heading)}>{section.heading}</h2>}
                 {section.paragraphs?.map((paragraph, paragraphIndex) => (
                   <RichParagraph
                     key={`${post.slug}-section-${index}-paragraph-${paragraphIndex}`}
@@ -264,12 +241,9 @@ export default async function BlogPostPage({ params }: PageProps) {
                   </RichParagraph>
                 ))}
                 {section.bullets && (
-                  <ul className="space-y-3 pl-0">
+                  <ul>
                     {section.bullets.map((bullet, bulletIndex) => (
-                      <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`} className="flex gap-3">
-                        <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                        <span className="public-body">{bullet}</span>
-                      </li>
+                      <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`}>{bullet}</li>
                     ))}
                   </ul>
                 )}
@@ -288,21 +262,21 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Sources */}
           {post.sources.length > 0 && (
-            <section className="public-rule mt-14 border-t pt-8">
-              <h2 className="public-kicker mb-5 text-secondary">Sources &amp; further reading</h2>
-              <div className="space-y-2.5">
+            <section className="bl-aux">
+              <h2 className="bl-aux-title">Sources &amp; further reading</h2>
+              <div className="bl-sources">
                 {post.sources.map((source) => (
                   <a
                     key={source.url}
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 text-[15px] leading-6 text-secondary transition-colors hover:text-foreground"
+                    className="bl-source"
                   >
-                    <ExternalLink size={14} className="mt-1 shrink-0 text-secondary group-hover:text-accent" />
+                    <ExternalLink size={14} aria-hidden="true" />
                     <span>
                       {source.title}
-                      {source.publisher ? <span className="text-secondary"> · {source.publisher}</span> : ""}
+                      {source.publisher ? <span className="bl-source-pub"> · {source.publisher}</span> : ""}
                     </span>
                   </a>
                 ))}
@@ -311,13 +285,13 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {post.faqs && post.faqs.length > 0 && (
-            <section className="public-rule mt-14 border-t pt-8">
-              <h2 className="public-kicker mb-5 text-secondary">FAQ</h2>
-              <div className="space-y-6">
+            <section className="bl-aux">
+              <h2 className="bl-aux-title">FAQ</h2>
+              <div className="bl-faq">
                 {post.faqs.map((faq) => (
                   <div key={faq.question}>
-                    <h3 className="text-[17px] font-semibold leading-snug text-foreground">{faq.question}</h3>
-                    <p className="public-body mt-2">{faq.answer}</p>
+                    <h3 className="bl-faq-q">{faq.question}</h3>
+                    <p className="bl-faq-a">{faq.answer}</p>
                   </div>
                 ))}
               </div>
@@ -329,18 +303,14 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Related posts */}
           {relatedPosts.length > 0 && (
-            <section className="public-rule mt-14 border-t pt-8">
-              <h2 className="public-kicker mb-5 text-secondary">Related articles</h2>
-              <div className="grid gap-4 sm:grid-cols-3">
+            <section className="bl-aux">
+              <h2 className="bl-aux-title">Related articles</h2>
+              <div className="bl-related">
                 {relatedPosts.map((related) => (
-                  <Link
-                    key={related.slug}
-                    href={`/blog/${related.slug}`}
-                    className="group landing-card block p-5 transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
-                  >
-                    <p className="public-kicker">{related.tag}</p>
-                    <h3 className="mt-2 text-[16px] font-semibold leading-snug text-foreground">{related.title}</h3>
-                    <p className="mt-2 text-[15px] leading-[1.65] text-secondary">{related.excerpt}</p>
+                  <Link key={related.slug} href={`/blog/${related.slug}`} className="bl-rel">
+                    <p className="bl-tag">{related.tag}</p>
+                    <h3 className="bl-rel-title">{related.title}</h3>
+                    <p className="bl-rel-ex">{related.excerpt}</p>
                   </Link>
                 ))}
               </div>
@@ -348,24 +318,20 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* Bottom nav */}
-          <div className="mt-8 flex flex-wrap gap-2">
+          <div className="bl-chips">
             {[
               { href: "/blog", label: "All articles" },
               { href: "/compare", label: "Compare guides" },
               { href: "/tools", label: "Free tools" },
               { href: `/feed?utm_source=blog&utm_medium=bottom_nav&utm_campaign=${post.slug}`, label: "Today's briefing" },
             ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="public-chip"
-              >
+              <Link key={link.href} href={link.href} className="bl-chip">
                 {link.label}
               </Link>
             ))}
           </div>
-        </div>
-      </article>
+        </article>
+      </main>
 
       <StickyBlogBar slug={post.slug} />
       <Footer variant="landing" />

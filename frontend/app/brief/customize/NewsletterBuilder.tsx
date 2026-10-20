@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
+import { Check, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import DailySignup from '../DailySignup';
+import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
 import { faviconUrl, topicIcon } from '@/lib/topic-icons';
 import { bodyParagraphs } from '@/lib/body-text';
@@ -181,24 +182,15 @@ export default function NewsletterBuilder() {
     }
   }
 
-  const chip = (on: boolean) =>
-    `rounded-xl border px-4 py-3 text-left transition ${on
-      ? 'border-accent bg-accent/10 text-foreground'
-      : 'border-border bg-surface text-foreground hover:border-foreground/30'}`;
-  const segment = (on: boolean) =>
-    `flex-1 rounded-xl border px-3 py-3 text-left transition ${on
-      ? 'border-accent bg-accent/10'
-      : 'border-border bg-surface hover:border-foreground/30'}`;
-
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
+    <div className="cz-grid">
       <div>
         {user && (
-          <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4">
+          <div className="cz-switch-card">
             <div>
-              <p className="font-semibold text-foreground">Daily email</p>
-              <p className="text-sm text-secondary">
-                {prefs.enabled ? 'On — lands every morning.' : 'Off — you can turn it back on anytime.'}
+              <p className="cz-switch-title">Daily email</p>
+              <p className="cz-switch-sub">
+                {prefs.enabled ? 'On. It lands every morning.' : 'Off. You can turn it back on anytime.'}
               </p>
             </div>
             <button
@@ -207,72 +199,69 @@ export default function NewsletterBuilder() {
               aria-checked={prefs.enabled}
               aria-label="Daily email"
               onClick={() => update({ enabled: !prefs.enabled })}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition ${prefs.enabled ? 'bg-accent' : 'bg-border'}`}
+              className="cz-switch"
             >
-              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${prefs.enabled ? 'left-[22px]' : 'left-0.5'}`} />
+              <span />
             </button>
           </div>
         )}
 
-        <fieldset>
-          <legend className="text-lg font-semibold tracking-[-0.02em] text-foreground">Topics</legend>
-          <p className="mt-1 text-sm text-secondary">
+        <fieldset className="cz-set">
+          <legend className="cz-legend">Topics</legend>
+          <p className="cz-hint">
             Pick what you care about, in any order. Pick none and you get the biggest stories across all of them.
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="cz-tiles cz-tiles-topics">
             {NEWSLETTER_TOPICS.map((topic) => {
               const on = chosen.has(topic.id);
               return (
-                <button key={topic.id} type="button" aria-pressed={on} onClick={() => toggleTopic(topic.id)} className={chip(on)}>
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 font-semibold">
-                      {(() => { const Icon = topicIcon(topic.id); return <Icon size={17} strokeWidth={2.2} className="text-[#1d9bf0]" aria-hidden="true" />; })()}
+                <button key={topic.id} type="button" aria-pressed={on} onClick={() => toggleTopic(topic.id)} className="cz-tile">
+                  <span className="cz-tile-row">
+                    <span className="cz-tile-name">
+                      {(() => { const Icon = topicIcon(topic.id); return <Icon size={18} strokeWidth={2} aria-hidden="true" />; })()}
                       {topic.label}
                     </span>
-                    <span
-                      aria-hidden="true"
-                      className={`flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${on ? 'border-accent bg-accent text-white' : 'border-border'}`}
-                    >
-                      {on ? '✓' : ''}
+                    <span aria-hidden="true" className="cz-check">
+                      {on && <Check size={14} strokeWidth={3} />}
                     </span>
                   </span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-secondary">{topic.blurb}</span>
+                  <span className="cz-tile-sub">{topic.blurb}</span>
                 </button>
               );
             })}
           </div>
         </fieldset>
 
-        <fieldset className="mt-9">
-          <legend className="text-lg font-semibold tracking-[-0.02em] text-foreground">How many stories</legend>
-          <div className="mt-4 flex gap-2.5">
+        <fieldset className="cz-set">
+          <legend className="cz-legend">How many stories</legend>
+          <div className="cz-tiles cz-tiles-3">
             {STORY_COUNTS.map((count) => (
-              <button key={count} type="button" aria-pressed={prefs.count === count} onClick={() => update({ count })} className={segment(prefs.count === count)}>
-                <span className="block text-xl font-semibold text-foreground">{count}</span>
-                <span className="block text-[13px] text-secondary">{COUNT_COPY[count]}</span>
+              <button key={count} type="button" aria-pressed={prefs.count === count} onClick={() => update({ count })} className="cz-tile">
+                <span className="cz-num">{count}</span>
+                <span className="cz-tile-sub">{COUNT_COPY[count]}</span>
               </button>
             ))}
           </div>
         </fieldset>
 
-        <fieldset className="mt-9">
-          <legend className="text-lg font-semibold tracking-[-0.02em] text-foreground">How you read it</legend>
-          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <fieldset className="cz-set">
+          <legend className="cz-legend">How you read it</legend>
+          <div className="cz-tiles cz-tiles-3 cz-tiles-format">
             {STORY_FORMATS.map((format) => (
-              <button key={format} type="button" aria-pressed={prefs.format === format} onClick={() => update({ format })} className={segment(prefs.format === format)}>
-                <span className="block font-semibold text-foreground">{FORMAT_COPY[format].label}</span>
-                <span className="block text-[13px] text-secondary">{FORMAT_COPY[format].sub}</span>
+              <button key={format} type="button" aria-pressed={prefs.format === format} onClick={() => update({ format })} className="cz-tile">
+                <span className="cz-fmt">{FORMAT_COPY[format].label}</span>
+                <span className="cz-tile-sub">{FORMAT_COPY[format].sub}</span>
               </button>
             ))}
           </div>
         </fieldset>
 
-        <div className="mt-9 flex flex-wrap items-center gap-3">
+        <div className="cz-actions">
           <button
             type="button"
             onClick={handleSave}
             disabled={save === 'saving' || authLoading || (Boolean(user) && !dirty)}
-            className="h-12 rounded-full bg-[#1d9bf0] px-7 text-[15px] font-bold text-white transition hover:bg-[#1a8cd8] disabled:opacity-50"
+            className="hp-btn hp-btn-dark"
           >
             {save === 'saving'
               ? 'Saving…'
@@ -281,108 +270,107 @@ export default function NewsletterBuilder() {
                 : 'Sign in to save my brief'}
           </button>
           {save === 'saved' && !dirty && (
-            <p role="status" className="text-sm text-emerald-600">Saved. Tomorrow&rsquo;s email follows this setup.</p>
+            <p role="status" className="cz-ok">Saved. Tomorrow&rsquo;s email follows this setup.</p>
           )}
-          {save === 'error' && <p role="status" className="text-sm text-red-600">{error}</p>}
+          {save === 'error' && <p role="status" className="cz-err">{error}</p>}
           {user && (
-            <Link href="/feed?tab=profile" className="text-sm font-medium text-secondary hover:text-foreground">
+            <Link href="/feed?tab=profile" className="cz-link">
               Back to profile
             </Link>
           )}
         </div>
 
         {!user && !authLoading && (
-          <div className="mt-10 border-t border-border pt-8">
-            <p className="text-sm font-semibold text-foreground">Rather not sign in?</p>
-            <p className="mt-1 text-sm text-secondary">
+          <div className="cz-alt">
+            <p className="cz-alt-title">Rather not sign in?</p>
+            <p className="cz-alt-sub">
               Get the standard ten-story brief by email. You can make it yours later.
             </p>
-            <div className="mt-4">
-              <DailySignup compact />
-            </div>
+            <LandingHeroSignup placement="box" source="daily_page" />
           </div>
         )}
       </div>
 
       {/* Live preview: the sender's own allocation over today's stories. */}
-      <div className="lg:sticky lg:top-24 lg:self-start">
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-secondary">
-            Preview{poolDate ? ` · with ${displayDate(poolDate)}'s stories` : ''}
+      <div className="cz-preview">
+        <div className="cz-preview-bar">
+          <p className="cz-preview-label">
+            <Eye size={17} strokeWidth={2} aria-hidden="true" />
+            Preview{poolDate ? ` · with ${displayDate(poolDate)}’s stories` : ''}
           </p>
-          <p className="text-xs text-secondary">≈ {readingMinutes(storyCount || prefs.count, prefs.format)} min read</p>
+          <p className="cz-read">≈ {readingMinutes(storyCount || prefs.count, prefs.format)} min read</p>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-white text-[#0f1419] shadow-[0_20px_50px_rgba(26,39,76,0.08)]">
-          <div className="border-b border-[#eff3f4] px-6 py-5">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#1d9bf0]">Trace</p>
-            <p className="mt-1.5 text-[22px] font-extrabold tracking-[-0.02em]">
-              {storyCount || prefs.count} big things today
-            </p>
+        <div className="cz-panel">
+          <div className="hp-mail-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/trace.webp" alt="" className="hp-mail-logo" />
+            <div>
+              <p className="hp-mail-name">Trace Daily Brief</p>
+              <p className="hp-mail-promise">100% free <i>·</i> Every morning <i>·</i> Unsubscribe anytime</p>
+            </div>
           </div>
-          <div className="pb-3 lg:h-[560px] lg:overflow-y-auto lg:overscroll-contain">
-            {pool === null && <p className="py-10 text-center text-sm text-[#536471]">Loading today&rsquo;s stories…</p>}
-            {pool !== null && sections.length === 0 && (
-              <p className="px-6 py-10 text-center text-sm text-[#536471]">
-                Today&rsquo;s stories are not in yet. Your setup still saves; the preview fills in after the morning run.
-              </p>
-            )}
-            {sections.map(([lane, stories], index) => {
-              const first = sections.slice(0, index).reduce((sum, [, group]) => sum + group.length, 0);
-              const hide = !showAll ? ' max-lg:hidden' : '';
-              return (
-              <section key={`${lane}-${index}`} className={first >= PHONE_PREVIEW ? hide : ''}>
-                <p className="px-[18px] pt-[18px] text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#f91880]">
-                  ★ {laneKicker(lane)}
+          <div className="cz-paper">
+            <div className="cz-paper-head">
+              <p>{storyCount || prefs.count} big things today</p>
+            </div>
+            <div className="cz-paper-body">
+              {pool === null && <p className="cz-empty">Loading today&rsquo;s stories…</p>}
+              {pool !== null && sections.length === 0 && (
+                <p className="cz-empty">
+                  Today&rsquo;s stories are not in yet. Your setup still saves; the preview fills in after the morning run.
                 </p>
-                {stories.map((story, i) => (
-                  <article key={story.topic_id} className={`border-b border-[#eff3f4] px-[18px] pt-3.5 pb-4${first + i >= PHONE_PREVIEW ? hide : ''}`}>
-                    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-[#71767b]">
-                      <span className="inline-flex items-center" aria-hidden="true">
-                        {(story.sources ?? []).slice(0, 3).map((domain, i) => (
-                          // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
-                          <img key={domain} src={faviconUrl(domain, 32)} alt="" width={18} height={18} loading="lazy"
-                            className={`h-[18px] w-[18px] rounded-full border-2 border-white bg-white object-contain shadow-[0_0_0_1px_#eff3f4] ${i ? '-ml-2' : ''}`} />
+              )}
+              {sections.map(([lane, stories], index) => {
+                const first = sections.slice(0, index).reduce((sum, [, group]) => sum + group.length, 0);
+                const hide = !showAll ? 'cz-hide-sm' : '';
+                return (
+                  <section key={`${lane}-${index}`} className={`cz-section ${first >= PHONE_PREVIEW ? hide : ''}`}>
+                    <p className="cz-kicker"><span>{laneKicker(lane)}</span></p>
+                    {stories.map((story, i) => (
+                      <article key={story.topic_id} className={`cz-story ${first + i >= PHONE_PREVIEW ? hide : ''}`}>
+                        <p className="cz-meta">
+                          <span className="cz-favs" aria-hidden="true">
+                            {(story.sources ?? []).slice(0, 3).map((domain) => (
+                              // eslint-disable-next-line @next/next/no-img-element -- publisher favicons
+                              <img key={domain} src={faviconUrl(domain, 32)} alt="" width={18} height={18} loading="lazy" />
+                            ))}
+                          </span>
+                          <a href={story.url} target="_blank" rel="noopener noreferrer">
+                            {story.source_name}
+                          </a>
+                          {story.source_count > 1 && <span>· {story.source_count} sources</span>}
+                        </p>
+                        <p className="cz-title">
+                          <a href={story.url} target="_blank" rel="noopener noreferrer">{story.title}</a>
+                        </p>
+                        {prefs.format !== 'headlines' && bodyParagraphs(story.summary).map((para, i) => (
+                          <p key={i} className="cz-sum">{para}</p>
                         ))}
-                      </span>
-                      <a href={story.url} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0f1419] hover:underline">
-                        {story.source_name}
-                      </a>
-                      {story.source_count > 1 && <span>· {story.source_count} sources</span>}
-                    </p>
-                    <p className="mt-2 text-[19px] font-bold leading-[25px] tracking-[-0.01em]">
-                      <a href={story.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{story.title}</a>
-                    </p>
-                    {prefs.format !== 'headlines' && bodyParagraphs(story.summary).map((para, i) => (
-                      <p key={i} className={`${i ? 'mt-2.5' : 'mt-2'} text-[15px] leading-[23px] text-[#0f1419]`}>{para}</p>
+                        {prefs.format === 'images' && story.image && (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails, as in the email
+                          <img
+                            src={story.image}
+                            alt=""
+                            loading="lazy"
+                            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                            className="cz-img"
+                          />
+                        )}
+                      </article>
                     ))}
-                    {prefs.format === 'images' && story.image && (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote publisher thumbnails, as in the email
-                      <img
-                        src={story.image}
-                        alt=""
-                        loading="lazy"
-                        onError={(event) => { event.currentTarget.style.display = 'none'; }}
-                        className="mt-3 max-h-[320px] w-full rounded-2xl bg-[#eff3f4] object-cover"
-                      />
-                    )}
-                  </article>
-                ))}
-              </section>
-              );
-            })}
-            {!showAll && storyCount > PHONE_PREVIEW && (
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="mx-[18px] mt-3.5 mb-1 h-11 w-[calc(100%-36px)] rounded-full border border-[#cfd9de] bg-white text-[15px] font-bold lg:hidden"
-              >
-                Show all {storyCount} stories
-              </button>
-            )}
+                  </section>
+                );
+              })}
+              {!showAll && storyCount > PHONE_PREVIEW && (
+                <button type="button" onClick={() => setShowAll(true)} className="cz-more">
+                  Show all {storyCount} stories
+                </button>
+              )}
+            </div>
           </div>
         </div>
         {backfilled && (
-          <p className="mt-3 text-xs text-secondary">
+          <p className="cz-note">
             Not enough news in your topics today, so the rest comes from the biggest stories elsewhere.
           </p>
         )}

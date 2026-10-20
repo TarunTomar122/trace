@@ -3,6 +3,9 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import HowItWorksContent from "./HowItWorksContent";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
+import { HOME_CSS } from "@/lib/home-css";
+import { HOW_CSS } from "@/lib/how-css";
+import { HOME_FONT_VARS } from "@/lib/home-fonts";
 
 export const metadata: Metadata = {
   title: "How Trace Turns Noise Into a Daily Brief | Trace",
@@ -29,25 +32,24 @@ export const metadata: Metadata = {
 
 export default function HowItWorksPage() {
   return (
-    <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
-      <main className="px-4 sm:px-6">
-        <section className="mx-auto max-w-3xl pt-16 pb-10 sm:pt-24 sm:pb-14 text-center">
-          <p className="public-kicker">
-            How It Works
-          </p>
-          <h1 className="public-title public-title-detail mx-auto mt-4">
-            How Trace turns noise into a daily brief
-          </h1>
-          <p className="public-deck mx-auto mt-5">
-            From scattered sources to a clean, scannable pulse. See how Trace
-            groups, summarizes, and delivers what matters in under 10 minutes.
-          </p>
-        </section>
+    <div className={`hp hw ${HOME_FONT_VARS}`}>
+      <style>{HOME_CSS}</style>
+      <style>{HOW_CSS}</style>
+      <PublicHeader subscribeHref="#join" />
+      <main>
+        <div className="hp-top">
+          <section className="hp-hero">
+            <h1 className="hp-h1">How Trace turns noise into a daily brief</h1>
+            <p className="hp-hero-p">
+              From scattered sources to one calm page. Trace reads <strong>over a hundred sources every morning</strong>,
+              groups the stories everyone is covering and sums each one up, so you are caught up in about five minutes.
+            </p>
+          </section>
+        </div>
 
         <HowItWorksContent />
       </main>
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

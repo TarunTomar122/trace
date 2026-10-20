@@ -5,9 +5,13 @@ import { type LandingDemoStory } from '../../lib/landing-demo-stories';
  * The homepage's product demos, kept here so the launch video can render the
  * exact same components and copy the site does (no second implementation).
  *
- * Styling lives in lib/landing-demo-styles.ts, which both the landing page and
- * the Remotion composition inject.
+ * Styling lives in lib/landing-css.ts (LANDING_CSS), which both the landing page
+ * and the Remotion composition inject.
  */
+
+function sourceCount(n: number): string {
+  return `${n} source${n === 1 ? '' : 's'}`;
+}
 
 export function FavStack({ sources }: { sources: string[] }) {
   const shown = sources.slice(0, 4);
@@ -51,7 +55,7 @@ export function FeedDemo({ stories }: { stories: LandingDemoStory[] }) {
           <FavStack sources={featured.sources} />
           <span>{featured.sourceName}</span>
           <span>· 8 min ago</span>
-          <span>· {featured.sources.length} sources</span>
+          <span>· {sourceCount(featured.sources.length)}</span>
           <span className="yg-follow">Follow</span>
         </p>
       </article>
@@ -66,7 +70,7 @@ export function FeedDemo({ stories }: { stories: LandingDemoStory[] }) {
               <FavStack sources={story.sources} />
               <span className="yg-feed-src">{story.sourceName}</span>
               <span>· 2h ago</span>
-              <span>· {story.sources.length} sources</span>
+              <span>· {sourceCount(story.sources.length)}</span>
               {i === 1 && (
                 <>
                   <span>· Ongoing story</span>
@@ -112,7 +116,7 @@ export function EmailDemo({ stories }: { stories: LandingDemoStory[] }) {
                 <p className="yg-why">{story.why}</p>
                 <p className="yg-meta">
                   <FavStack sources={story.sources} />
-                  <span>{story.sources.length} sources</span>
+                  <span>{sourceCount(story.sources.length)}</span>
                   <span className="yg-letter-tag">{story.tag}</span>
                 </p>
               </div>
@@ -220,7 +224,7 @@ export function DiscordDemo({ stories }: { stories: LandingDemoStory[] }) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={lead.image} alt="" />
                   <div>
-                    <p className="yg-dc-embed-k">{lead.sourceName} · {lead.sources.length} sources</p>
+                    <p className="yg-dc-embed-k">{lead.sourceName} · {sourceCount(lead.sources.length)}</p>
                     <p className="yg-dc-embed-t">{lead.title}</p>
                   </div>
                 </div>
@@ -229,7 +233,7 @@ export function DiscordDemo({ stories }: { stories: LandingDemoStory[] }) {
                 {lines.map((story) => (
                   <li key={story.id}>
                     {story.title}
-                    <span> · {story.sources.length} sources</span>
+                    <span> · {sourceCount(story.sources.length)}</span>
                   </li>
                 ))}
               </ol>

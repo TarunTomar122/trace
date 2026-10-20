@@ -33,7 +33,7 @@ const TOOLS = [
 export default function ToolsPage() {
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader />
 
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-4xl pt-16 pb-10 sm:pt-24 sm:pb-14">

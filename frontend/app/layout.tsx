@@ -31,7 +31,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — reads the internet so you don't have to",
+  title: "Fastest way to catch up on tech & AI news | Trace",
   description:
     "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — reads the internet so you don't have to",
+    title: "Fastest way to catch up on tech & AI news | Trace",
     description:
       "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     images: [
@@ -60,13 +60,13 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image?v=10-big-things",
         width: 1200,
         height: 630,
-        alt: "Trace — reads the internet so you don't have to",
+        alt: "Fastest way to catch up on tech & AI news | Trace",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — reads the internet so you don't have to",
+    title: "Fastest way to catch up on tech & AI news | Trace",
     description:
       "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
     images: ["https://www.yourtrace.online/twitter-image?v=10-big-things"],
@@ -131,7 +131,9 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    // data-scroll-behavior: pages that turn on smooth scrolling (the brief's contents
+    // links) still jump instantly when Next navigates between pages.
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link rel="preconnect" href="https://www.googleapis.com" />
         <link rel="preconnect" href="https://apis.google.com" />
