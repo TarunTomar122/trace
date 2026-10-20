@@ -5,8 +5,8 @@
   ../.venv/bin/python -m v3.flows.post_instagram                           # render, host, share now
 
 trace-instagram.timer runs it at 09:00 and 20:00 Europe/London. Each run
-picks 3-4 of today's top stories that were not posted before (two AI, then
-Markets and Startups), renders a cover listing them, then a photo slide and a
+picks 3-4 of today's top stories that were not posted before (AI, Robotics,
+AI, Startups), renders a cover listing them, then a photo slide and a
 story slide (its first paragraphs, as the feed splits them) for each, all in
 one theme (a light one in the morning, rotating by day; dark in the evening;
 see instagram_slides.theme_for), writes the JPEGs where

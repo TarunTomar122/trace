@@ -87,16 +87,16 @@ MEMBER_CONTINUITY_DAYS = 7
 # writes email_events/visit-<id>; _recent_email_visitors reads it back.
 EMAIL_VISIT_PARAM = "et"
 
-# Selection priority: AI, markets, tech, design, startups, robotics, then
+# Selection priority: AI, robotics, markets, tech, startups, design, then
 # other lanes. Per-bucket slots give the leading lanes the biggest shares.
 LANE_ORDER = (
-    "ai", "markets", "tech", "ux-design", "startups", "robotics",
+    "ai", "robotics", "markets", "tech", "startups", "ux-design",
     "products", "the-world",
 )
 LANE_PATTERN = {
     "member": (3, 2, 2, 1, 1, 1),
     "winback": (3, 2, 2, 1, 1, 1),
-    "landing": (2, 1, 1),
+    "landing": (2, 2, 1),
 }
 
 # Subject/headline: "<count> big things today <emoji>", emoji rotating daily.
@@ -132,8 +132,8 @@ SENT_URLS = 12
 
 # Sort only the finished full-edition sections; LANE_ORDER controls selection.
 FULL_DISPLAY_ORDER = (
-    MODEL_RELEASE_LANE, "ai", "markets", "startups", "tech", "ux-design",
-    "robotics",
+    MODEL_RELEASE_LANE, "ai", "robotics", "markets", "tech", "startups",
+    "ux-design",
 )
 
 # What counts as send-worthy is a judgement call, not a keyword list: Jev

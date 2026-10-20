@@ -46,14 +46,15 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   same flags for unsubscribes, complaints and hard bounces that only Brevo saw,
   and copies Brevo's opens and clicks into `email_events`. To see what it would
   change: `cd ~/trace/backend && ../.venv/bin/python -m v3.flows.sync_brevo --dry-run`.
-- Selection priority is AI → markets → tech → design → startups → robotics, with up to
-  3/2/2/1/1/1 slots on member and win-back emails and 2/1/1 on landing.
+- Selection priority is AI → robotics → markets → tech → startups → design, with up to
+  3/2/2/1/1/1 slots on member and win-back emails and 2/2/1 on landing (the
+  public /brief edition).
   Model releases take up to two member/win-back slots or one landing slot
   first (one in any 5-story brief), but only while
   their newest coverage is under 36 hours old (`RELEASE_FRESH_HOURS`; the
   pool spans about three days); older launches compete in their lane. Unused
   slots are filled from the remaining lanes. Member and win-back emails display the selected sections as model
-  releases → AI → markets → startups → tech → design → robotics, then any other selected
+  releases → AI → robotics → markets → tech → startups → design, then any other selected
   lanes in their existing relative order. Markets prefers macro stories.
 - No repeats: a story any daily carried in the last three days
   (`REPEAT_DAYS`) is left out, before grouping. Each run records what went
@@ -133,8 +134,8 @@ tail -50 ~/trace/logs/welcome.log
 `trace-instagram.timer` posts to the Trace Instagram account through Buffer at
 09:00 and 20:00 UK time (`Europe/London`, so it follows BST and GMT).
 
-- Each run picks 3-5 stories from today's feed in this order: two AI, then
-  one each from Markets, Startups and Design (`INSTAGRAM_LANES`). A lane with
+- Each run picks 3-4 stories from today's feed in this order: AI, Robotics,
+  AI, Startups, then Markets when a slot is free (`INSTAGRAM_LANES`). A lane with
   nothing new is skipped and the best remaining story from any lane fills the
   gap. The "Top in X" kicker shows once per lane, as in the brief; gap fillers
   have none. Stories posted in the last 14 days are skipped (by topic id,

@@ -1,13 +1,12 @@
 import { isFreshRelease } from './feed-ranking.ts';
 
 /**
- * The feed's "big things" edition — the same selection the daily email makes:
+ * The feed's "big things" edition, modelled on the daily email's selection:
  * drop anything Jev judged worthless, lead with new model releases, then fill
  * lane quotas in priority order (AI, markets, tech, design).
  *
- * Kept in step with backend/v3/flows/send_audience_newsletter.py on purpose: the
- * homepage promises "10 big things in tech and AI", so the feed should show
- * the same ten.
+ * Unlike the email (backend/v3/flows/send_audience_newsletter.py), robotics
+ * gets no reserved slot here, so the Home tab and the email can differ.
  */
 
 export type BigThingCandidate = {

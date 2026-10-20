@@ -29,16 +29,16 @@ export type Section = [lane: string, stories: PoolStory[]];
 
 export const MODEL_RELEASE_LANE = 'model-releases';
 export const LANE_ORDER = [
-  'ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics',
+  'ai', 'robotics', 'markets', 'tech', 'startups', 'ux-design',
   'products', 'the-world',
 ] as const;
 const LANE_PATTERN: Record<Bucket, number[]> = {
   member: [3, 2, 2, 1, 1, 1],
   winback: [3, 2, 2, 1, 1, 1],
-  landing: [2, 1, 1],
+  landing: [2, 2, 1],
 };
 const MODEL_RELEASE_SLOTS: Record<Bucket, number> = { member: 2, winback: 2, landing: 1 };
-const FULL_DISPLAY_ORDER = [MODEL_RELEASE_LANE, 'ai', 'markets', 'startups', 'tech', 'ux-design', 'robotics'];
+const FULL_DISPLAY_ORDER = [MODEL_RELEASE_LANE, 'ai', 'robotics', 'markets', 'tech', 'startups', 'ux-design'];
 
 function verdictRank(story: PoolStory): number {
   return typeof story.send_worthy === 'number' ? story.send_worthy : 1;

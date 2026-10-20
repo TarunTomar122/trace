@@ -215,8 +215,8 @@ class NewsletterSelectionTests(unittest.TestCase):
         self.assertEqual(
             [lane for lane, _ in pro],
             [
-                "model-releases", "ai", "markets", "startups", "tech",
-                "robotics", "products", "the-world",
+                "model-releases", "ai", "robotics", "markets", "tech",
+                "startups", "products", "the-world",
             ],
         )
         # Backfill folds into the lane's existing section: one heading each.
@@ -228,11 +228,11 @@ class NewsletterSelectionTests(unittest.TestCase):
         )
         self.assertEqual(
             [lane for lane, _ in free],
-            ["model-releases", "ai", "markets", "tech", "startups"],
+            ["model-releases", "ai", "robotics", "markets", "tech"],
         )
         self.assertEqual(
             [lane for lane, _ in landing],
-            ["model-releases", "ai", "markets", "tech", "startups"],
+            ["model-releases", "ai", "robotics", "markets", "tech"],
         )
 
         design = {"topic_id": "design", "interest_id": "ux-design", "model_release": False,
@@ -243,16 +243,25 @@ class NewsletterSelectionTests(unittest.TestCase):
             landing_with_design = _select({}, [], 5, "landing")
         lanes_with_design = [lane for lane, _ in pro_with_design]
         self.assertIn("ux-design", lanes_with_design)
-        self.assertEqual(lanes_with_design[3:6], ["startups", "tech", "ux-design"])
+        self.assertEqual(lanes_with_design[4:7], ["tech", "startups", "ux-design"])
         self.assertEqual(sum(len(stories) for _, stories in pro_with_design), 10)
         self.assertEqual(
             [lane for lane, _ in free_with_design],
-            ["model-releases", "ai", "markets", "tech", "ux-design"],
+            ["model-releases", "ai", "robotics", "markets", "tech"],
         )
         self.assertEqual(
             [lane for lane, _ in landing_with_design],
-            ["model-releases", "ai", "markets", "tech", "ux-design"],
+            ["model-releases", "ai", "robotics", "markets", "tech"],
         )
+
+    def test_brief_gives_robotics_two_stories_after_ai(self):
+        groups = self._groups("ai", "ai", "ai", "robotics", "robotics", "robotics",
+                              "markets", "markets", "tech", "startups", "ux-design", "products", "the-world")
+        with patch("v3.flows.send_audience_newsletter._story_groups", return_value=groups):
+            landing = _select({}, [], 10, "landing")
+            member = _select({}, [], 10, "member")
+        self.assertEqual([(lane, len(s)) for lane, s in landing][:3], [("ai", 2), ("robotics", 2), ("markets", 1)])
+        self.assertEqual([(lane, len(s)) for lane, s in member][:3], [("ai", 3), ("robotics", 2), ("markets", 2)])
 
     @staticmethod
     def _groups(*lanes):
