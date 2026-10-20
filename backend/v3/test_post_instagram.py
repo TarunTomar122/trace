@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from PIL import Image
 
 from v3.flows import post_instagram as ig
-from v3.lib.instagram_slides import PALETTES, SlideStory, render_carousel
+from v3.lib.instagram_slides import THEMES, Cover, SlideStory, render_carousel, theme_for
 
 
 class FakeDoc:
@@ -231,23 +231,42 @@ class CopyTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
-    def test_carousel_alternates_photo_and_story_at_4x5(self):
-        story = SlideStory("A headline long enough to wrap across a couple of lines on the slide", [
-            "Google announced the Fitbit Edge, a tracker that sits between the Fitbit Air and the Pixel Watch.",
-            "It costs $179.99 and goes on sale next week, with a special edition priced at $219.99.",
-            "Battery life is up to seven days, and the battery can be replaced.",
-        ], picture(""), "Top in AI")
-        for palette in PALETTES:
-            slides = render_carousel([story, story], palette)
-            self.assertEqual(len(slides), 4)
+    STORY = SlideStory("A headline long enough to wrap across a couple of lines on the slide", [
+        "Google announced the Fitbit Edge, a tracker that sits between the Fitbit Air and the Pixel Watch.",
+        "It costs $179.99 and goes on sale next week, with a special edition priced at $219.99.",
+        "Battery life is up to seven days, and the battery can be replaced.",
+    ], picture(""), "Top in AI", "The Verge", 4)
+
+    def test_a_cover_then_photo_and_story_for_each_at_4x5(self):
+        cover = Cover("Tuesday, October 20", "morning", ["First headline", "Second headline"])
+        for theme in THEMES:
+            slides = render_carousel([self.STORY, self.STORY], theme, cover)
+            self.assertEqual(len(slides), 5)
             self.assertTrue(all(s.size == (1080, 1350) and s.mode == "RGB" for s in slides))
-        # The photo slide shows the photo; the story slide is the palette background.
-        self.assertNotEqual(slides[0].getpixel((540, 400)), slides[1].getpixel((540, 400)))
-        self.assertEqual(slides[1].getpixel((5, 5)), PALETTES[-1].background)
+            # One theme for the whole post: every slide sits on its background...
+            for slide in slides:
+                self.assertEqual(slide.getpixel((5, 5)), theme.background)
+            # ...and the photo slide shows the photo under the headline.
+            self.assertEqual(slides[1].getpixel((540, 1150)), (40, 90, 160))
+            self.assertNotEqual(slides[2].getpixel((540, 1150)), (40, 90, 160))
+
+    def test_without_a_cover_two_slides_per_story(self):
+        self.assertEqual(len(render_carousel([self.STORY])), 2)
+
+    def test_evening_posts_are_dark_and_mornings_rotate_the_light_themes(self):
+        self.assertTrue(theme_for("2026-10-20", "pm").dark)
+        mornings = {theme_for(f"2026-10-{day}", "am").name for day in (20, 21, 22)}
+        self.assertEqual(len(mornings), 3)
+        self.assertFalse(any(theme_for(f"2026-10-{day}", "am").dark for day in (20, 21, 22)))
 
     def test_very_long_story_text_still_renders(self):
         story = SlideStory("Headline", ["word " * 120, "word " * 120, "word " * 120], picture(""))
         self.assertEqual(len(render_carousel([story])), 2)
+
+    def test_a_very_long_headline_still_leaves_room_for_the_photo(self):
+        story = SlideStory("A very long headline " * 6, ["One short paragraph."], picture(""), "Top in AI")
+        photo = render_carousel([story])[0]
+        self.assertEqual(photo.getpixel((540, 1150)), (40, 90, 160))
 
 
 class RunTests(unittest.TestCase):

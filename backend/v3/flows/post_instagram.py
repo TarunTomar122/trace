@@ -5,9 +5,11 @@
   ../.venv/bin/python -m v3.flows.post_instagram                           # render, host, share now
 
 trace-instagram.timer runs it at 09:00 and 20:00 Europe/London. Each run
-picks 3-5 of today's top stories that were not posted before (two AI, then
-Markets, Startups and Design), renders a photo slide and a story slide (its
-first paragraphs, as the feed splits them) for each, writes the JPEGs where
+picks 3-4 of today's top stories that were not posted before (two AI, then
+Markets and Startups), renders a cover listing them, then a photo slide and a
+story slide (its first paragraphs, as the feed splits them) for each, all in
+one theme (a light one in the morning, rotating by day; dark in the evening;
+see instagram_slides.theme_for), writes the JPEGs where
 Caddy serves them (INSTAGRAM_MEDIA_DIR -> INSTAGRAM_MEDIA_URL), shares the
 carousel now through Buffer and waits until Buffer reports it sent.
 
@@ -20,7 +22,6 @@ does not double-post. Live runs by hand should go through the service
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -46,12 +47,13 @@ load_dotenv(BACKEND_ROOT.parent / ".env")
 from v3.build_trending import _looks_promotional  # noqa: E402
 from v3.flows.send_audience_newsletter import _paragraphs  # noqa: E402  (the feed's paragraph split)
 from v3.lib.instagram_slides import (  # noqa: E402
-    PALETTES,
+    Cover,
     SlideStory,
     drawable,
     fetch_image,
     fits_story_slide,
     render_carousel,
+    theme_for,
     without_missing_glyphs,
 )
 from v3.lib.store import V3Store  # noqa: E402
@@ -73,9 +75,9 @@ def _env_int(name: str, default: int, low: int, high: int) -> int:
     return max(low, min(high, value))
 
 
-MIN_STORIES = _env_int("INSTAGRAM_MIN_STORIES", 3, 1, 5)
-# Two slides per story, and an Instagram carousel holds at most 10.
-MAX_STORIES = _env_int("INSTAGRAM_MAX_STORIES", 5, MIN_STORIES, 5)
+MIN_STORIES = _env_int("INSTAGRAM_MIN_STORIES", 3, 1, 4)
+# A cover, then two slides per story, and an Instagram carousel holds at most 10.
+MAX_STORIES = _env_int("INSTAGRAM_MAX_STORIES", 4, MIN_STORIES, 4)
 # One story per entry, in this order: two AI, then Markets, Startups, Design.
 LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "ai,ai,markets,startups,ux-design").split(",") if lane.strip()]
 LANE_LABELS = {"ai": "AI", "markets": "Markets", "startups": "Startups", "tech": "Tech", "ux-design": "Design"}
@@ -183,6 +185,17 @@ def _best_image(topic: dict[str, Any]) -> Any:
         if min(image.size) >= 600:
             break
     return best
+
+
+def _source(topic: dict[str, Any]) -> tuple[str, int]:
+    """The lead outlet and how many outlets covered the story, for the story slide."""
+    articles = [a for a in topic.get("articles") or [] if isinstance(a, dict)]
+    name = _clean((articles[0].get("source_name") or articles[0].get("source")) if articles else "")
+    try:
+        count = int(topic.get("source_count") or len(articles) or 1)
+    except (TypeError, ValueError):
+        count = 1
+    return without_missing_glyphs(name)[:60], max(1, count)
 
 
 def _kicker(lane: str) -> str:
@@ -534,15 +547,23 @@ def run(args: argparse.Namespace) -> int:
 
     hook = write_copy(stories)
     caption = caption_for(stories, hook)
-    palette = PALETTES[int(hashlib.sha256(f"{date}-{slot}".encode()).hexdigest(), 16) % len(PALETTES)]
+    # One theme per post: a light one in the morning (rotating by day), dark at night.
+    theme = theme_for(date, slot)
+    cover = Cover(
+        date_label=datetime.strptime(date, "%Y-%m-%d").strftime("%A, %B %-d"),
+        when="morning" if slot == "am" else "evening",
+        headlines=[s["headline"] for s in stories],
+    )
     slides = render_carousel(
-        [SlideStory(s["headline"], s["paragraphs"], s["image"], s["kicker"]) for s in stories], palette
+        [SlideStory(s["headline"], s["paragraphs"], s["image"], s["kicker"], *_source(s["topic"])) for s in stories],
+        theme,
+        cover,
     )
     record = {
         "date": date,
         "slot": slot,
         "feed_date": feed_date,
-        "palette": palette.name,
+        "palette": theme.name,
         "topic_ids": [str(s["topic"].get("id") or "") for s in stories],
         "titles": [s["title"] for s in stories],
         "headlines": [s["headline"] for s in stories],
@@ -558,7 +579,7 @@ def run(args: argparse.Namespace) -> int:
         for i, slide in enumerate(slides, 1):
             slide.save(out / f"{i:02d}.jpg", "JPEG", quality=90)
         (out / "caption.txt").write_text(caption)
-        _log(f"dry run: {len(slides)} slides ({palette.name}) and caption.txt in {out}")
+        _log(f"dry run: {len(slides)} slides ({theme.name}) and caption.txt in {out}")
         print(json.dumps({k: v for k, v in record.items() if k != "caption"}, indent=1))
         return 0
 
