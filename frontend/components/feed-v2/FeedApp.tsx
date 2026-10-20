@@ -3190,32 +3190,26 @@ const css = `
 .xw .pulse-title { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
 .xw .promo-slot { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-top: 1px solid var(--line); }
-/* a Trace ticket: lavender stub, dashed edge, blue stamp, perforated foot */
+/* a Trace ticket, quiet on the white rail: dashed edge, ink stamp, outlined button */
 .xw .promo-ticket {
-  --ticket: var(--lav);
-  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-  padding: 16px 16px 20px; border: 1px dashed #aab6f0; border-bottom: 0; border-radius: 10px 10px 0 0;
-  background: var(--ticket); color: var(--text);
-}
-.xw .promo-ticket::after {
-  content: ""; position: absolute; left: -1px; right: -1px; bottom: -6px; height: 7px;
-  background: radial-gradient(circle at 6px 0, var(--ticket) 5px, transparent 5.5px) repeat-x;
-  background-size: 12px 7px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 16px 16px 18px; border: 1px dashed #c7c7c7; border-radius: 10px;
+  background: #fff; color: var(--text);
 }
 .xw .promo-stamp {
-  display: inline-block; padding: 2px 8px; border: 1.5px solid var(--blue); border-radius: 4px;
-  background: #fff; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  display: inline-block; padding: 2px 8px; border: 1.5px solid var(--text); border-radius: 4px;
+  background: #fff; color: var(--text); font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
   transform: rotate(-3deg);
 }
 .xw .promo-ticket-line { margin: 4px 0 0; font-family: var(--serif); font-size: 26px; font-weight: 500; line-height: 1.05; letter-spacing: -0.005em; }
 .xw .promo-ticket-sub { margin: 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
 .xw .promo-cta {
-  width: 100%; height: 42px; margin-top: 6px; border: 0; border-radius: 4px;
-  background: var(--blue); color: #fff; cursor: pointer;
-  font-family: inherit; font-size: 14.5px; font-weight: 700;
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  width: 100%; height: 42px; margin-top: 6px; border: 1px solid #c7c7c7; border-radius: 4px;
+  background: #fff; color: var(--text); cursor: pointer;
+  font-family: inherit; font-size: 14.5px; font-weight: 600;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.xw .promo-cta:hover { background: var(--blue-hover); }
+.xw .promo-cta:hover { border-color: var(--text); }
 .xw .promo-cta:active { transform: translateY(1px); }
 .xw .promo-cta:focus-visible,
 .xw .promo-proof-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
