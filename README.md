@@ -1,6 +1,6 @@
 # Trace
 
-**Trace reads the internet so you don't have to.** 100+ tech sources, 10
+**The fastest way to catch up on tech & AI news.** 100+ tech sources, 10
 stories, 5 minutes. Free for everyone, open source.
 
 Trace reads tech and AI news from over a hundred sources every morning, groups
@@ -10,7 +10,8 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 
 **Live:** [yourtrace.online](https://www.yourtrace.online) · **Daily archive:** [yourtrace.online/brief](https://www.yourtrace.online/brief) · **Build your brief:** [yourtrace.online/brief/customize](https://www.yourtrace.online/brief/customize)
 
-<p align="center"><img src="docs/screenshot-landing.png" alt="Trace landing page" width="760" /></p>
+<p align="center"><img src="docs/screenshot-landing.png" alt="Trace homepage" width="760" /></p>
+<p align="center"><img src="docs/screenshot-feed.jpg" alt="The feed: ranked stories, every source attached, with the tools rail" width="760" /></p>
 <p align="center"><img src="docs/screenshot-builder.png" alt="Build-your-own brief with a live preview" width="760" /></p>
 
 ## What you get
