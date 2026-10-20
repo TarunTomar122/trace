@@ -98,12 +98,6 @@ export const LANDING_CSS = `
 
 /* hero */
 .lp .hero { max-width: 880px; margin: 0 auto; padding: 88px var(--s4) var(--s7); text-align: center; }
-.lp .pill {
-  display: inline-flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s4); padding: 6px 14px;
-  border: 1px solid var(--line); border-radius: 9999px; background: #fff;
-  font-size: 13px; font-weight: 600; color: var(--text-2);
-}
-.lp .pill i { width: 6px; height: 6px; border-radius: 50%; background: #1a7f45; display: block; }
 .lp .hero-title {
   margin: 0 auto var(--s4); max-width: 900px; font-family: var(--serif); font-size: var(--fs-h1);
   font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; text-wrap: balance;

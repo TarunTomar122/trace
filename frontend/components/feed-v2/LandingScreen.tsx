@@ -134,8 +134,7 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
       </header>
 
       <section className="hero">
-        <p className="pill"><i aria-hidden="true" />Free for everyone. Open source.</p>
-        <h1 className="hero-title">Everything that mattered in tech and AI today, in 5&nbsp;minutes.</h1>
+        <h1 className="hero-title">Fastest way to catch&nbsp;up with Tech &amp;&nbsp;AI</h1>
         <p className="hero-sub">Trace reads 100+ sources, groups the stories everyone is covering and sums each one up. In your inbox every morning.</p>
         <LandingHeroSignup />
         <p className="hero-links">
