@@ -8,12 +8,18 @@ Each morning, the first time the laptop wakes after 05:00, `trace_xpost.py`:
    first story and this week's YouTube videos of it;
 2. downloads about 30 seconds of the first video that works. YouTube blocks the
    VPS but not a home connection, which is why this half runs here;
-3. writes `~/x-posts/{date}/index.html` with the clip and the image inside it:
-   Copy post, Download video (then drag it from the browser's downloads into
+3. replaces `~/x-posts/index.html`, the one page to bookmark
+   (`file:///Users/<you>/x-posts/index.html`). The clip and the image are inside
+   it: Copy post, Download video (then drag it from the browser's downloads into
    the post: browsers can't copy a video), Copy image, Download image and Copy
-   reply. `post.txt`, `x-post.jpg` and `x-clip.mp4` sit beside it, and
-   `~/x-posts/latest` points at the day;
-4. shows a notification. Clicking it opens the page.
+   reply. The same post, clip and image work on LinkedIn and Threads; Bluesky
+   stops at 300 characters, so drop a line there (the counter is X's 360). It
+   links to the last two weeks, and a tab left open reloads itself when you
+   come back to it. Each day also keeps `~/x-posts/{date}/` (`index.html`,
+   `post.txt`, `x-post.jpg`, `x-clip.mp4`);
+4. shows a notification. Clicking it opens the page if terminal-notifier is
+   allowed to notify (System Settings > Notifications > terminal-notifier).
+   Otherwise macOS's own notification names the page: open your bookmark.
 
 Nothing is posted anywhere: you post it. The VPS also runs at 07:30 UK time
 (`trace-postkit.timer`); whichever run comes first writes the day's post and the

@@ -31,4 +31,4 @@ for attempt in 1 2 3 4 5; do
 done
 
 echo "Installed. It runs the first time this Mac wakes after 05:00 each day (and once now)."
-echo "Posts: ~/x-posts/latest/index.html   Log: ~/Library/Logs/trace-xpost.log"
+echo "Bookmark: file://$HOME/x-posts/index.html   Log: ~/Library/Logs/trace-xpost.log"

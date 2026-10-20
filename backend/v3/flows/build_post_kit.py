@@ -19,7 +19,7 @@ Nothing is emailed or posted. The founder's laptop runs
 backend/laptop/trace_xpost.py the first time it wakes each morning: it calls
 this with --json over SSH, downloads a short clip of the first story (YouTube
 blocks the VPS, not a home connection), puts the post, the image and the clip
-in ~/x-posts/{date}/ and shows a notification. Posts with a picture
+on one page, ~/x-posts/index.html, and shows a notification. Posts with a picture
 or a video travel much further, so the image is the best one from the first
 story's articles (a JPEG X accepts) and the videos are this week's YouTube
 uploads about it: titles that name what the line says first, then short clips.

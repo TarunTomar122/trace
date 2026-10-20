@@ -96,6 +96,10 @@ class FolderTests(unittest.TestCase):
         self.assertIn("Video: KBS News", (folder / "post.txt").read_text())
         self.assertEqual(text.count("https://"), 1)  # the only link is Trace's, in the reply
         self.assertEqual((self.root / "latest").resolve(), folder.resolve())
+        # The day keeps its own copy, clip and all.
+        day_page = (folder / "index.html").read_text()
+        self.assertIn(base64.b64encode(b"\x00\x00\x00\x18ftypmp42video").decode(), day_page)
+        self.assertIn("Download video", day_page)
         xpost.write_folder(KIT, folder, None)  # a second run replaces the link
         self.assertNotIn("<video", page.read_text())
         self.assertIn('const CLIP = ""', page.read_text())
@@ -111,6 +115,63 @@ class FolderTests(unittest.TestCase):
         folder.mkdir()
         page = xpost.write_folder({**KIT, "image": None}, folder, None)
         self.assertIn("No clip or image today", page.read_text())
+
+    def test_one_page_to_bookmark(self):
+        for day, line in (("2026-10-14", "Older story"), ("2026-10-15", "Yesterday's <story>")):
+            (self.root / day).mkdir()
+            (self.root / day / "index.html").write_text("old page")
+            (self.root / day / "post.txt").write_text(f"Biggest updates:\n\n- {line}\n- Second\n\n--- reply ---\nlink\n")
+        (self.root / "2026-10-13").mkdir()  # a run that never finished: not listed
+        (self.root / "2026-10-12").mkdir()
+        (self.root / "2026-10-12" / "index.html").write_text("old page")
+        (self.root / "2026-10-12" / "post.txt").write_bytes(b"- caf\xe9 \xff")  # not UTF-8: listed, not fatal
+        (self.root / "2026-12-31").mkdir()  # a stray folder from the future doesn't freeze the page
+        folder = self.root / "2026-10-16"
+        folder.mkdir()
+        page = xpost.write_folder(KIT, folder, None)
+        self.assertEqual(page, self.root / "index.html")
+        home = page.read_text()
+        self.assertIn("<title>Trace · today's post</title>", home)  # what a bookmark is called
+        self.assertIn("Copy post", home)
+        self.assertIn('href="2026-10-12/index.html"', home)
+        self.assertIn('id="stale" hidden', home)
+        self.assertIn('const DAY = "2026-10-16"', home)
+        # Newest first, each with its first story; the links stay inside the folder.
+        self.assertLess(home.index('href="2026-10-15/index.html"'), home.index('href="2026-10-14/index.html"'))
+        self.assertIn("Thursday, October 15</a>", home)
+        self.assertIn("Yesterday&#x27;s &lt;story&gt;", home)
+        self.assertNotIn("2026-10-13", home)
+        self.assertNotIn('href="2026-10-16', home)
+        self.assertFalse((self.root / ".index.html.tmp").exists())
+        # The day's own copy has no list and no date check.
+        day_page = (folder / "index.html").read_text()
+        self.assertNotIn("Earlier days", day_page)
+        self.assertNotIn("LOADED_ON", day_page)
+        self.assertIn("<title>Post · 2026-10-16</title>", day_page)
+        self.assertEqual((self.root / "latest").resolve(), folder.resolve())
+
+    def test_an_older_day_by_hand_leaves_the_bookmarked_page(self):
+        (self.root / "2026-10-17").mkdir()
+        (self.root / "2026-10-17" / "index.html").write_text("the 17th's own page")
+        (self.root / "index.html").write_text("the 17th")
+        folder = self.root / "2026-10-16"
+        folder.mkdir()
+        page = xpost.write_folder(KIT, folder, None)
+        self.assertEqual(page, folder / "index.html")
+        self.assertEqual((self.root / "index.html").read_text(), "the 17th")
+        self.assertFalse((self.root / "latest").exists())
+
+    def test_a_broken_bookmarked_page_still_leaves_the_day(self):
+        folder = self.root / "2026-10-16"
+        folder.mkdir()
+        with patch.object(xpost, "write_home", side_effect=PermissionError("read-only")):
+            page = xpost.write_folder(KIT, folder, None)
+        self.assertEqual(page, folder / "index.html")
+        self.assertIn("Copy post", page.read_text())
+
+    def test_dates_are_whole_strings(self):
+        self.assertTrue(xpost.DATE.match("2026-10-19"))
+        self.assertFalse(xpost.DATE.match("2026-10-19\n"))
 
 
 class RunTests(unittest.TestCase):
@@ -226,6 +287,12 @@ class RunTests(unittest.TestCase):
             xpost.notify("Ready", 'Tesla "flew"', Path("/tmp/x/index.html"))
         self.assertEqual(run.call_args.args[0][0], "osascript")
         self.assertIn('\\"flew\\"', run.call_args.args[0][2])
+        # macOS's own notification can't open the page, so it says where it is.
+        self.assertIn('subtitle "Open /tmp/x/index.html"', run.call_args.args[0][2])
+        with patch.object(xpost.shutil, "which", return_value=None), \
+                patch.object(xpost.subprocess, "run", return_value=MagicMock(returncode=0)) as run:
+            xpost.notify("Ready", "Tesla", xpost.HOME / "x-posts" / "index.html")
+        self.assertIn('subtitle "Open ~/x-posts/index.html"', run.call_args.args[0][2])
 
     def test_no_post_means_try_again_later(self):
         code, _, notify = self.run_at(9, kit=None)

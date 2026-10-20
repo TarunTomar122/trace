@@ -15,11 +15,13 @@ this machine downloads the clip:
    replayed" peak if it has one, else the chapter or stretch of captions that
    matches the story, else from a fifth of the way in. Re-encoded to H.264/AAC,
    which X takes.
-3. ~/x-posts/{date}/index.html, with the clip and the image inside it:
-   Copy post, Download video (then drag it from Chrome's download bubble into
-   X: browsers can't copy a video), Copy image, Download image and Copy reply. post.txt,
-   x-post.jpg and x-clip.mp4 sit beside it; ~/x-posts/latest points at the day.
-4. A notification; clicking it opens index.html.
+3. ~/x-posts/index.html: one page, replaced each morning, to bookmark. It has the
+   clip and the image inside it: Copy post, Download video (then drag it from
+   Chrome's download bubble into X: browsers can't copy a video), Copy image,
+   Download image and Copy reply, and links to earlier days. Each day also keeps
+   ~/x-posts/{date}/ (index.html, post.txt, x-post.jpg, x-clip.mp4).
+4. A notification. Clicking it opens the page when terminal-notifier may notify;
+   macOS's own notification can only name it.
 
 Nothing is posted anywhere. Setup and the launchd agent: backend/laptop/README.md.
 The files live outside ~/Documents and ~/Desktop, which macOS keeps from
@@ -56,10 +58,11 @@ UPGRADED = STATE_DIR / "yt-dlp-upgraded"
 UPGRADE_EVERY = 7 * 24 * 3600  # YouTube changes often; an old yt-dlp stops downloading
 START_HOUR = 5  # local time: before this it is still last night
 IST = timezone(timedelta(hours=5, minutes=30))  # the feed's days are India's: they turn over at 18:30 UTC
-DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+DATE = re.compile(r"^\d{4}-\d{2}-\d{2}\Z")  # \Z: "$" would let a trailing newline through
 CLIP_SECONDS = 30
 MAX_HEIGHT = 720  # plenty for X; a 30 s clip is 3-10 MB, carried inside the page
 MAX_VIDEO_TRIES = 3
+EARLIER_DAYS = 14  # linked from the bottom of ~/x-posts/index.html
 EDGE = 0.07  # "most replayed" often peaks at the very start or end: not the moment we want
 SSH_OPTIONS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "ClearAllForwardings=yes",
                "-o", "ServerAliveInterval=30"]
@@ -315,7 +318,7 @@ def clip_for(kit: dict[str, Any], folder: Path) -> dict[str, Any] | None:
 # ---------------------------------------------------------------------------
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>X post · {date}</title>
+<title>{title}</title>
 <style>
   :root {{ color-scheme: light dark; }}
   body {{ margin: 0; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: Canvas; color: CanvasText; }}
@@ -330,10 +333,12 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport"
   .muted {{ color: color-mix(in srgb, CanvasText 55%, transparent); font-size: 14px; }}
   video, img {{ display: block; width: 100%; border-radius: 14px; margin-top: 8px; }}
   li {{ margin-bottom: 10px; }}
+  a {{ color: #1d9bf0; }}
+  .stale {{ padding: 12px 16px; border-radius: 12px; background: color-mix(in srgb, #f5a623 18%, Canvas); }}
 </style></head><body><main>
-<div class="kicker">TRACE · X POST</div>
+<div class="kicker">TRACE · DAILY POST</div>
 <h1>{date_label}</h1>
-<div class="box" id="post">{post}</div>
+{stale}<div class="box" id="post">{post}</div>
 <button onclick="copyText('post', this)">Copy post</button> <span class="muted">{count}</span>
 {media}
 <h2>Reply to your own post with</h2>
@@ -342,7 +347,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport"
 <h2>Where each line comes from</h2>
 <ul>{sources}</ul>
 <p class="muted">{note}</p>
-</main>
+{earlier}</main>
 <script>
 // The clip and the image are inside this page, so it works on its own: no folder, no server.
 const CLIP = "{clip_b64}", IMAGE = "{image_b64}";
@@ -365,7 +370,7 @@ function copyText(id, button) {{
 function download(b64, type, name, button) {{
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob(b64, type)); a.download = name; a.click();
-  flash(button, 'Downloaded: drag it into X');
+  flash(button, 'Downloaded: drag it into the post');
 }}
 function copyImage(button) {{
   // Browsers only copy images as PNG; X takes a pasted PNG.
@@ -381,11 +386,11 @@ function copyImage(button) {{
     img.onerror = reject; img.src = 'data:image/jpeg;base64,' + IMAGE;
   }});
   navigator.clipboard.write([new ClipboardItem({{ 'image/png': png }})])
-    .then(() => flash(button, 'Copied: paste it in X'), () => flash(button, "Couldn't copy: use Download image"));
+    .then(() => flash(button, 'Copied: paste it into the post'), () => flash(button, "Couldn't copy: use Download image"));
 }}
 if (CLIP) document.getElementById('clip').src = URL.createObjectURL(blob(CLIP, 'video/mp4'));
 if (IMAGE) document.getElementById('image').src = 'data:image/jpeg;base64,' + IMAGE;
-</script></body></html>
+{home_script}</script></body></html>
 """
 
 
@@ -396,7 +401,25 @@ def reply_text(kit: dict[str, Any], clip: dict[str, Any] | None) -> str:
     return kit["reply"]
 
 
-def render_page(kit: dict[str, Any], clip: dict[str, Any] | None, clip_bytes: bytes = b"") -> str:
+HOME_SCRIPT = """
+// The bookmarked page: say when it's an old day's post, and reload a tab left open since yesterday.
+function localDay() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+const DAY = "%s", LOADED_ON = localDay();
+if (DAY < LOADED_ON) document.getElementById('stale').hidden = false;
+// Back on the tab: reload on a new day, and keep checking while the post is old (after 5am, when the new one comes).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (localDay() !== LOADED_ON || (DAY < localDay() && new Date().getHours() >= 5)) location.reload();
+});
+"""
+
+
+def render_page(kit: dict[str, Any], clip: dict[str, Any] | None, clip_bytes: bytes = b"",
+                earlier: list[tuple[str, str]] | None = None) -> str:
+    """One day's page. With `earlier` (day, first line) it's ~/x-posts/index.html, which lists them."""
     post = kit["post"]
     e = html.escape
     image = kit.get("image")
@@ -426,14 +449,25 @@ def render_page(kit: dict[str, Any], clip: dict[str, Any] | None, clip_bytes: by
         for b in post["bullets"]
     )
     reply = reply_text(kit, clip if clip and clip_bytes else None)
+    home = earlier is not None
+    date_label = f"{day:%A, %B} {day.day}"
+    stale = (f'<p class="stale" id="stale" hidden>This is {e(date_label)}\'s post. Today\'s comes a few minutes after '
+             "this Mac is first awake after 5am: press ⌘R to check.</p>\n") if home else ""
+    days = "".join(
+        f'<li><a href="{d}/index.html">{datetime.strptime(d, "%Y-%m-%d"):%A, %B} {int(d[-2:])}</a>'
+        + (f'<br><span class="muted">{e(first)}</span>' if first else "") + "</li>"
+        for d, first in earlier or [])
     how = ("Written by the model from the feed's last 24 hours: check each line before posting."
            if post["written_by"] == "model" else
            "The model was unavailable, so these are the stories' own titles: tidy them up before posting.")
     return PAGE.format(
-        date=kit["date"], date_label=f"{day:%A, %B} {day.day}", post=e(post["text"]),
+        date=kit["date"], title="Trace · today's post" if home else f"Post · {kit['date']}",
+        date_label=date_label, stale=stale, post=e(post["text"]),
         count=f"{post['length']}/{kit.get('limit') or 360} characters", media="".join(media), reply=e(reply),
         sources=sources,
         note=e(f"{how} From {kit['stories']} stories."),
+        earlier=f"<h2>Earlier days</h2><ul>{days}</ul>\n" if days else "",
+        home_script=HOME_SCRIPT % kit["date"] if home else "",
         # base64 has no quotes or backslashes, so it is safe inside a JS string.
         clip_b64=base64.b64encode(clip_bytes).decode() if clip and clip_bytes else "",
         image_b64=image_base64(image),
@@ -460,11 +494,39 @@ def write_folder(kit: dict[str, Any], folder: Path, clip: dict[str, Any] | None)
     clip_bytes = clip_file.read_bytes() if clip and clip_file.exists() else b""
     page = folder / "index.html"
     page.write_text(render_page(kit, clip, clip_bytes))
+    try:
+        return write_home(kit, clip, clip_bytes) or page
+    except Exception as exc:  # the bookmarked page is extra: it mustn't cost the day's post
+        log(f"couldn't update {OUT_ROOT / 'index.html'}: {type(exc).__name__}: {str(exc)[:160]}")
+        return page
+
+
+def write_home(kit: dict[str, Any], clip: dict[str, Any] | None, clip_bytes: bytes) -> Path | None:
+    """~/x-posts/index.html, the page to bookmark: the newest day's post and links to the ones before."""
+    days = sorted((p.name for p in OUT_ROOT.iterdir()
+                   if p.is_dir() and DATE.match(p.name) and (p / "index.html").exists()), reverse=True)
+    if days and kit["date"] < days[0]:
+        log(f"{kit['date']} is older than {days[0]}: the bookmarked page keeps {days[0]}")
+        return None
     latest = OUT_ROOT / "latest"
     if latest.is_symlink() or latest.exists():
         latest.unlink()
-    latest.symlink_to(folder.name)
-    return page
+    latest.symlink_to(kit["date"])
+    earlier = [(d, first_line(OUT_ROOT / d)) for d in [d for d in days if d != kit["date"]][:EARLIER_DAYS]]
+    home = OUT_ROOT / "index.html"
+    partial = OUT_ROOT / ".index.html.tmp"
+    partial.write_text(render_page(kit, clip, clip_bytes, earlier))
+    os.replace(partial, home)  # whole or not at all: the page may be open in a browser
+    return home
+
+
+def first_line(folder: Path) -> str:
+    """The day's first story, from its post.txt."""
+    try:
+        text = (folder / "post.txt").read_text(errors="replace")
+    except OSError:
+        return ""
+    return next((line[2:].strip() for line in text.splitlines() if line.startswith("- ")), "")
 
 
 def notify(title: str, message: str, page: Path | None) -> None:
@@ -476,8 +538,9 @@ def notify(title: str, message: str, page: Path | None) -> None:
         if subprocess.run(command, capture_output=True, timeout=30).returncode == 0:
             return
         log("terminal-notifier failed; a plain notification instead (clicking it won't open the page)")
-    quoted = [json.dumps(text, ensure_ascii=False) for text in (message, title)]  # AppleScript takes JSON-style strings
-    script = f"display notification {quoted[0]} with title {quoted[1]}"
+    where = f"Open {str(page).replace(str(HOME), '~', 1)}" if page else ""
+    quoted = [json.dumps(text, ensure_ascii=False) for text in (message, title, where)]  # AppleScript takes JSON-style strings
+    script = f"display notification {quoted[0]} with title {quoted[1]}" + (f" subtitle {quoted[2]}" if where else "")
     subprocess.run(["osascript", "-e", script], capture_output=True, timeout=30)
 
 
@@ -535,7 +598,7 @@ def make_post(args: argparse.Namespace, today: str) -> int:
     STATE.write_text(today)  # before the notification: a failed notification mustn't redo the day
     first = kit["post"]["bullets"][0]["text"] if kit["post"]["bullets"] else kit["post"]["hook"]
     try:
-        notify("Your X post is ready" + (" (with a clip)" if clip else ""), first, page)
+        notify("Today's post is ready" + (" (with a clip)" if clip else ""), first, page)
     except Exception as exc:
         log(f"no notification ({type(exc).__name__}); the page is at {page}")
     log(f"done: {page}")
