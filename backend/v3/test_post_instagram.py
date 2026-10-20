@@ -109,21 +109,26 @@ class PickTests(unittest.TestCase):
         with patch.object(ig, "fetch_image", side_effect=picture):
             return ig.pick_stories(topics, list(posted), limit)
 
-    def test_two_ai_then_markets_startups_design(self):
+    def test_ai_robotics_ai_startups_markets(self):
         topics = [topic(1, "tech"), topic(2, "ai"), topic(3, "markets"), topic(4, "ai"),
-                  topic(5, "startups"), topic(6, "ux-design"), topic(7, "ai"), topic(8, "markets")]
+                  topic(5, "startups"), topic(6, "robotics"), topic(7, "ai"), topic(8, "markets")]
         picked = self.pick(topics)
-        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_4", "tt_3", "tt_5", "tt_6"])
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_6", "tt_4", "tt_5", "tt_3"])
         # One kicker per lane, like the brief: the second AI story has none.
         self.assertEqual([p["kicker"] for p in picked],
-                         ["Top in AI", "", "Top in Markets", "Top in Startups", "Top in Design"])
+                         ["Top in AI", "Top in Robotics", "", "Top in Startups", "Top in Markets"])
+
+    def test_a_four_story_post_leaves_markets_to_fill_gaps(self):
+        topics = [topic(2, "ai"), topic(3, "markets"), topic(4, "ai"), topic(5, "startups"), topic(6, "robotics")]
+        picked = self.pick(topics, limit=4)
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_6", "tt_4", "tt_5"])
 
     def test_a_lane_with_nothing_new_is_filled_from_the_rest(self):
         topics = [topic(1, "tech"), topic(2, "ai"), topic(3, "ux-design"), topic(4, "markets"), topic(5, "ai")]
         picked = self.pick(topics)
-        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_5", "tt_4", "tt_3", "tt_1"])
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_2", "tt_5", "tt_4", "tt_1", "tt_3"])
         # Gap fillers carry no kicker: tt_1 isn't the top of any lane the post covers.
-        self.assertEqual([p["kicker"] for p in picked], ["Top in AI", "", "Top in Markets", "Top in Design", ""])
+        self.assertEqual([p["kicker"] for p in picked], ["Top in AI", "", "Top in Markets", "", ""])
 
     def test_a_story_without_an_image_gives_way_to_the_next_in_its_lane(self):
         topics = [topic(2, "ai", thumbnail="", articles=[]), topic(4, "ai"), topic(7, "ai"), topic(3, "markets")]
@@ -174,7 +179,7 @@ class PickTests(unittest.TestCase):
 class CopyTests(unittest.TestCase):
     def stories(self):
         with patch.object(ig, "fetch_image", side_effect=picture):
-            return ig.pick_stories([topic(1, "ai"), topic(2, "markets"), topic(3, "startups")], [], 5)
+            return ig.pick_stories([topic(1, "ai"), topic(2, "startups"), topic(3, "markets")], [], 5)
 
     def test_story_text_is_the_feed_summary_in_paragraphs(self):
         stories = self.stories()

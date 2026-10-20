@@ -78,9 +78,11 @@ def _env_int(name: str, default: int, low: int, high: int) -> int:
 MIN_STORIES = _env_int("INSTAGRAM_MIN_STORIES", 3, 1, 4)
 # A cover, then two slides per story, and an Instagram carousel holds at most 10.
 MAX_STORIES = _env_int("INSTAGRAM_MAX_STORIES", 4, MIN_STORIES, 4)
-# One story per entry, in this order: two AI, then Markets, Startups, Design.
-LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "ai,ai,markets,startups,ux-design").split(",") if lane.strip()]
-LANE_LABELS = {"ai": "AI", "markets": "Markets", "startups": "Startups", "tech": "Tech", "ux-design": "Design"}
+# One story per entry, in this order: AI, Robotics, AI, Startups, Markets.
+# Only the first MAX_STORIES entries get a slot; later ones are never lane picks.
+LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "ai,robotics,ai,startups,markets").split(",") if lane.strip()]
+LANE_LABELS = {"ai": "AI", "robotics": "Robotics", "markets": "Markets", "startups": "Startups", "tech": "Tech",
+               "ux-design": "Design"}
 # A story that went out is not posted again for this long.
 REPEAT_WINDOW_DAYS = 14
 KEEP_MEDIA_DAYS = 14
@@ -96,6 +98,7 @@ GENERIC_WORDS = {"launches", "launch", "unveils", "announces", "says", "plans", 
 
 HASHTAGS = {
     "ai": ["#ai", "#artificialintelligence"],
+    "robotics": ["#robotics", "#robots"],
     "markets": ["#markets", "#business"],
     "startups": ["#startups", "#founders"],
     "ux-design": ["#design", "#ux"],
@@ -205,7 +208,7 @@ def _kicker(lane: str) -> str:
 def pick_stories(
     topics: list[dict[str, Any]], posted: list[dict[str, Any]], limit: int, lanes: list[str] | None = None
 ) -> list[dict[str, Any]]:
-    """One story per entry in `lanes` (two AI, then Markets, Startups, Design):
+    """One story per entry in `lanes` (AI, Robotics, AI, Startups, Markets):
     the best story in that lane with an image and a summary, not posted
     recently. A lane with nothing new is skipped and the best remaining story
     from any lane fills the gap at the end.
