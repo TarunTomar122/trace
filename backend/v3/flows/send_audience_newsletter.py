@@ -1202,42 +1202,18 @@ def _sections_html(
 
 
 def _cta_html(bucket: str) -> str:
-    if bucket == "member":
-        return ""
-    if bucket == "winback":
-        title = "Your feed is still here."
-        body = (
-            "Everything is unlocked now: every story, Pulse, and the archive. "
-            "No plan, no trial, nothing to pay."
-        )
-        label = "Open my feed"
-        href = f"{APP_URL}/feed?from=email"
-    else:
-        title = "Make tomorrow&rsquo;s brief yours."
-        body = (
-            "Create a free account to pick your topics, how many stories "
-            "you get, and how you read them."
-        )
-        label = "Personalize it"
-        # Topics, length and format are picked in the builder, not the feed.
-        href = f"{APP_URL}/brief/customize?from=email"
-    # An outlined box on the white page (no tint); the button is a table cell
-    # because Outlook ignores padding and radius on a bare link.
+    """One plain line under the stories, for every reader: pick your topics.
+
+    Topics, length and format are picked in the builder, not the feed. The
+    win-back email's news ("everything is unlocked") is in its subject and intro.
+    """
+    href = f"{APP_URL}/brief/customize?from=email"
     return (
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" '
-        f'style="border: 1px solid {_LINE}; border-radius: 12px;">'
-        '<tr><td align="center" style="padding: 24px 24px 26px 24px;">'
-        f'<p class="nl-serif" style="margin: 0 0 6px 0; font-family: {_DISPLAY}; font-size: 25px; line-height: 29px; '
-        f'font-weight: 500; color: {_INK};">{title}</p>'
-        f'<p style="margin: 0 0 16px 0; font-size: 15px; color: {_TEXT}; line-height: 23px; '
-        f'font-family: {_FONT};">{body}</p>'
-        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-        f'<td bgcolor="{_BLUE}" style="border-radius: 3px; background-color: {_BLUE};">'
-        f'<a href="{href}" style="display: inline-block; padding: 12px 24px; '
-        f'font-family: {_FONT}; font-size: 16px; line-height: 22px; font-weight: 600; color: #ffffff; '
-        f'text-decoration: none;">{label}</a>'
-        "</td></tr></table>"
-        "</td></tr></table>"
+        f'<p style="margin: 0; padding-top: 4px; font-family: {_FONT}; font-size: 16px; '
+        f'line-height: 25px; color: {_TEXT};">Want this email to be more useful? '
+        f'<a href="{href}" style="color: {_BLUE}; font-weight: 600; text-decoration: underline; '
+        f'text-underline-offset: 3px;">Choose the topics you follow</a> and your daily brief '
+        "will be built around them.</p>"
     )
 
 

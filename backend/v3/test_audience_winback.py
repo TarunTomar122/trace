@@ -189,7 +189,7 @@ class RenderTests(unittest.TestCase):
         subject, html, _ = self.render("winback")
         self.assertTrue(subject.startswith("Everything in Trace is unlocked"))
         self.assertIn("/api/unsubscribe?email=", html)
-        self.assertIn("Open my feed", html)
+        self.assertIn("Choose the topics you follow", html)
 
     def test_formats_control_summaries_and_images(self):
         def html_for(story_format):
@@ -285,7 +285,8 @@ class RenderTests(unittest.TestCase):
         # No send id, so links stay plain instead of going through the tracker.
         _, html, _ = N._render("landing", [("ai", [dict(STORY)])], TODAY, "r@x.com", "")
         self.assertIn("/brief/customize?from=email", html)
-        self.assertIn("Personalize it", html)
+        self.assertIn("Choose the topics you follow", html)
+        self.assertNotIn("Personalize it", html)
 
 
 if __name__ == "__main__":
