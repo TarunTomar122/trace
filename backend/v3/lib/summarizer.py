@@ -1171,7 +1171,8 @@ def batch_presummarize(
                 stats["failed"] += 1
                 if stats["failed"] <= 3:
                     # OpenAI echoes part of a bad key in its error: keep that out of the log.
-                    _log_presummary(f"  Failed: {re.sub(r'sk-[\w*-]+', 'sk-…', detail)[:300]}")
+                    safe_detail = re.sub(r"sk-[\w*-]+", "sk-…", detail)[:300]
+                    _log_presummary(f"  Failed: {safe_detail}")
             if done % 10 == 0 or done == len(tasks):
                 _log_presummary(
                     f"  Progress: {done}/{len(tasks)} "
