@@ -128,6 +128,30 @@ class TopicGroupingTests(unittest.TestCase):
         self.assertEqual(len(second), 1)
         decide.assert_called_once()
         self.assertEqual(len(store.cache), 1)
+        # Firestore rejects arrays nested in arrays: groups are stored as maps.
+        [cached] = store.cache.values()
+        for group in cached["groups"] + cached["threads"]:
+            self.assertIsInstance(group, dict)
+
+    def test_old_bare_list_groups_still_load_from_cache(self):
+        articles = [
+            item("Meta launches One subscriptions", "https://example.com/a", score=2.0),
+            item("Meta introduces One subscription bundles", "https://example.com/b"),
+        ]
+        summaries = {article["url"]: summary("Meta launched a subscription bundle.") for article in articles}
+        store = FakeStore()
+        with patch("v3.build_trending._group_embeddings", return_value=[[1.0, 0.0], [0.99, 0.01]]), \
+             patch(
+                 "v3.build_trending._group_decisions",
+                 return_value=({(0, 1): {"same_card": 0.9, "relationship": "same_concrete_event"}}, True),
+             ):
+            _group_story_clusters(store, articles, summaries)
+        [key] = store.cache
+        store.cache[key]["groups"] = [group["urls"] for group in store.cache[key]["groups"]]
+        with patch("v3.build_trending._group_decisions") as decide:
+            clusters = _group_story_clusters(store, articles, summaries)
+        decide.assert_not_called()
+        self.assertEqual(len(clusters), 1)
 
     def test_url_duplicates_are_removed_before_grouping(self):
         articles = [

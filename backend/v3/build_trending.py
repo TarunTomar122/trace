@@ -1186,6 +1186,16 @@ def _clusters_from_group_decisions(
     return clusters
 
 
+def _cached_group_urls(group: Any) -> list[Any] | None:
+    """URLs of one cached group: {"urls": [...]}, or a bare list in older caches.
+
+    Firestore rejects arrays nested in arrays, so groups are stored as maps.
+    """
+    if isinstance(group, dict):
+        group = group.get("urls")
+    return group if isinstance(group, list) else None
+
+
 def _group_story_clusters(
     store: V3Store,
     ranked_items: list[dict[str, Any]],
@@ -1210,7 +1220,8 @@ def _group_story_clusters(
         url_to_index = {state["url"]: index for index, state in enumerate(states)}
         decisions: dict[tuple[int, int], dict[str, Any]] = {}
         for group in cached.get("groups", []) or []:
-            if not isinstance(group, list):
+            group = _cached_group_urls(group)
+            if group is None:
                 continue
             indexes = [url_to_index[url] for url in group if isinstance(url, str) and url in url_to_index]
             if not indexes:
@@ -1222,7 +1233,8 @@ def _group_story_clusters(
                     "relationship": "same_concrete_event",
                 }
         for group in cached.get("threads", []) or []:
-            if not isinstance(group, list):
+            group = _cached_group_urls(group)
+            if group is None:
                 continue
             indexes = [url_to_index[url] for url in group if isinstance(url, str) and url in url_to_index]
             for left, right in zip(indexes, indexes[1:]):
@@ -1265,8 +1277,8 @@ def _group_story_clusters(
     ]
     store.cache_synthesis(cache_key, {
         "ok": True,
-        "groups": groups,
-        "threads": threads,
+        "groups": [{"urls": urls} for urls in groups],
+        "threads": [{"urls": urls} for urls in threads],
         "prompt_version": GROUPING_PROMPT_VERSION,
         "model": model,
         "embed_model": embed_model,
