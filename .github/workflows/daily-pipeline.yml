@@ -79,7 +79,7 @@ jobs:
       - name: Run morning jobs
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
+            python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }} --skip-notifications
           else
             python -u -m v3.scheduler --jobs for_you --audience all
             python -u -m v3.scheduler --jobs pulse --audience all

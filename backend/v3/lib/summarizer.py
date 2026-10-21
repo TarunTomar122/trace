@@ -1169,6 +1169,8 @@ def batch_presummarize(
                 stats["rejected"] += 1
             else:
                 stats["failed"] += 1
+                if stats["failed"] <= 3:
+                    _log_presummary(f"  Failed: {detail[:300]}")
             if done % 10 == 0 or done == len(tasks):
                 _log_presummary(
                     f"  Progress: {done}/{len(tasks)} "
