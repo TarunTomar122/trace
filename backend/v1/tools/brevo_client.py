@@ -39,6 +39,7 @@ def send_email(
     reply_to_email: Optional[str] = None,
     tags: Optional[list[str]] = None,
     attachments: Optional[list[tuple[str, bytes, str]]] = None,
+    headers: Optional[dict[str, str]] = None,
 ) -> dict:
     """
     Send an email via Brevo API.
@@ -54,6 +55,7 @@ def send_email(
         reply_to_email: Reply-to address (optional)
         tags: List of tags for tracking (optional)
         attachments: (filename, bytes, mime type) files to attach (optional)
+        headers: extra headers, such as our own List-Unsubscribe (optional)
 
     Returns:
         Dict with:
@@ -108,6 +110,9 @@ def send_email(
 
         if tags:
             send_smtp_email.tags = tags
+
+        if headers:
+            send_smtp_email.headers = headers
 
         if attachments:
             import base64

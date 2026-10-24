@@ -159,9 +159,11 @@ With `EMAIL_TRACKING=0` (as on the VPS), opens and clicks come from Brevo
 instead. `backend/v3/flows/sync_brevo.py` runs before each morning's send: it
 copies Brevo's events on our own sends (matched by message id) into
 `email_events` with `source: 'brevo'`, and turns the daily off for anyone Brevo
-has blocked for an unsubscribe, spam complaint or hard bounce. Gmail's
-unsubscribe button on Brevo-routed mail goes to Brevo, not to
-`/api/unsubscribe`, so without the sync those readers stayed on our list.
+has blocked for an unsubscribe, spam complaint or hard bounce. Every send
+now carries our own List-Unsubscribe on both transports, so Gmail's button
+lands on `/api/unsubscribe`; the sync is the backstop for complaints, bounces
+and anything Brevo blocks on its own (before 2026-10-24 the Brevo route
+dropped our header and Gmail's button went to Brevo instead).
 
 That feeds the dashboard at **`/dev/analytics`** (signed in, dev only): sends
 per day, transport split while ramping, failures and Brevo fallbacks, DKIM
@@ -178,7 +180,8 @@ state: `free_newsletter_subscribers/{email}.active = false` for landing
 subscribers, and `dailyNewsletterEnabled`/`newsletterOptIn = false` on any
 matching profile. The flow treats an explicit opt-out as final for every
 bucket, Pro included. `GET` serves the footer link, `POST ?email=` serves the
-RFC 8058 one-click header.
+RFC 8058 one-click header, which both transports send on every daily and
+welcome email.
 
 ## Risks
 

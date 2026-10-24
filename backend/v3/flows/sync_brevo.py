@@ -5,6 +5,8 @@ Brevo carries the mail routed to it (member, win-back, welcome) and tracks it
 itself, but none of that reached our database. A reader who unsubscribed
 through Gmail's button or Brevo's own link stayed on our list (Brevo then
 quietly blocked every later send), and opens and clicks only lived in Brevo.
+Since 2026-10-24 our sends carry our own List-Unsubscribe through Brevo too,
+so this is now the backstop for complaints, bounces and Brevo's own blocks.
 
 Each run, safe to repeat:
 

@@ -1655,11 +1655,9 @@ def _send_one(
         text_content=text,
         bucket=bucket,
         track_id=track_id,
-        list_unsubscribe=(
-            f"{APP_URL}/api/unsubscribe?email={quote(recipient['email'], safe='')}"
-            if bucket in UNSUBSCRIBE_LINK_BUCKETS
-            else f"{APP_URL}/feed?tab=profile"
-        ),
+        # The header always points at the real opt-out, members included:
+        # Gmail's one-click POSTs to it, and a settings page would ignore that.
+        list_unsubscribe=f"{APP_URL}/api/unsubscribe?email={quote(recipient['email'], safe='')}",
     )
     if res.get("success"):
         transport = res.get("transport", "brevo")

@@ -289,5 +289,19 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("Personalize it", html)
 
 
+
+class UnsubscribeHeaderTests(unittest.TestCase):
+    def test_every_bucket_gets_the_one_click_endpoint(self):
+        # Gmail's one-click POSTs to the header URL; a settings page would ignore it.
+        story = {"title": "t", "url": "https://x.co"}
+        for bucket in ("member", "winback", "landing"):
+            with patch.object(N, "_select_from_groups", return_value=[("ai", [story])]), \
+                    patch.object(N, "_render", return_value=("s", "<p>h</p>", "t")), \
+                    patch.object(N, "send_newsletter_email", return_value={"success": True}) as send:
+                N._send_one(None, [], "2026-10-24", bucket, {"email": "A+b@x.co", "count": 1}, False, {})
+            self.assertEqual(send.call_args.kwargs["list_unsubscribe"],
+                             f"{N.APP_URL}/api/unsubscribe?email=A%2Bb%40x.co", bucket)
+
+
 if __name__ == "__main__":
     unittest.main()

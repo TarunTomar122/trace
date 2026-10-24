@@ -265,6 +265,21 @@ def _dkim_sign(raw: bytes, include_headers: list[bytes]) -> tuple[bytes, str]:
         return raw, "failed"
 
 
+def unsubscribe_headers(list_unsubscribe: Optional[str]) -> Optional[dict[str, str]]:
+    """RFC 8058 one-click unsubscribe headers for ``list_unsubscribe``, or None.
+
+    Both transports carry the same pair. Without ours, Brevo adds its own
+    header, and an unsubscribe there blocks the address inside Brevo while our
+    database still thinks the reader wants the daily.
+    """
+    if not list_unsubscribe:
+        return None
+    return {
+        "List-Unsubscribe": f"<{list_unsubscribe}>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
+
+
 def _send_via_smtp(
     *,
     to_email: str,
@@ -285,10 +300,9 @@ def _send_via_smtp(
     message["Message-ID"] = make_msgid(domain=sender_email.split("@")[-1])
     if reply_to_email:
         message["Reply-To"] = reply_to_email
-    if list_unsubscribe:
-        # Bulk-sender requirement for Gmail/Yahoo; cheap to include from day one.
-        message["List-Unsubscribe"] = f"<{list_unsubscribe}>"
-        message["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+    # Bulk-sender requirement for Gmail/Yahoo; cheap to include from day one.
+    for name, value in (unsubscribe_headers(list_unsubscribe) or {}).items():
+        message[name] = value
     message.set_content(text_content or _plain_text_from_html(html_content))
     message.add_alternative(html_content, subtype="html")
     for name, data, mime in attachments or []:
@@ -536,6 +550,7 @@ def send_email(
         # One-off emails get their own tag so Brevo's stats keep the daily apart.
         tags=[bucket] if bucket in {"welcome", "supporter_thanks", "post_kit", "test"} else ["newsletter", "daily"],
         attachments=attachments,
+        headers=unsubscribe_headers(list_unsubscribe),
     )
     if log:
         _record_send(

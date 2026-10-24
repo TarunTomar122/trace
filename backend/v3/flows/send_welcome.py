@@ -408,9 +408,9 @@ def _send(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]], 
     from v1.tools.email_sender import send_email
 
     subject, page, text = render(reader, now, stories)
-    unsubscribe = (
-        f"{APP_URL}/api/unsubscribe?email={quote(reader['email'], safe='')}" if reader["kind"] == "newsletter" else None
-    )
+    # Every welcome carries our one-click opt-out, accounts included: without
+    # it, Brevo adds its own and keeps the unsubscribe to itself.
+    unsubscribe = f"{APP_URL}/api/unsubscribe?email={quote(reader['email'], safe='')}"
     return send_email(to or reader["email"], reader.get("name") or None, subject, page, text,
                       bucket=bucket, list_unsubscribe=unsubscribe)
 
