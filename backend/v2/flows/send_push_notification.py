@@ -190,7 +190,9 @@ def _recent_pushes(store: V3Store, today: str) -> list[dict[str, Any]]:
 
 def _pick_topic(store: V3Store, topics: list[dict[str, Any]], recent: list[dict[str, Any]]) -> dict[str, Any] | None:
     """The highest-ranked topic that isn't a recent push, or None when all of the top ones are."""
-    candidates = topics[:PUSH_CANDIDATES]
+    # Stories the send-worthy judge turned down (jev_send_worthy == 0: promos,
+    # minor updates) stay out, as they do from the daily and Instagram.
+    candidates = [t for t in topics if t.get("jev_send_worthy") != 0][:PUSH_CANDIDATES]
     if not recent:
         return candidates[0] if candidates else None
     from v3.flows.send_audience_newsletter import _look_alikes, _repeat_index, _sure_repeat

@@ -24,6 +24,11 @@ class PickTopicTests(unittest.TestCase):
     def test_no_history_pushes_the_top_story(self):
         self.assertIs(P._pick_topic(None, [ONE_PASSWORD, CANVA], []), ONE_PASSWORD)
 
+    def test_turned_down_stories_are_never_pushed(self):
+        promo = {**_topic("t0", "Save 40% on a VPN today"), "jev_send_worthy": 0}
+        self.assertIs(P._pick_topic(None, [promo, CANVA], []), CANVA)
+        self.assertIsNone(P._pick_topic(None, [promo], []))
+
     def test_same_link_is_a_repeat_without_asking(self):
         same_link = _topic("t3", "Something else entirely", url=SENT["url"])
         with patch("v3.lib.repeats.judge_repeats", return_value={}) as judge:
