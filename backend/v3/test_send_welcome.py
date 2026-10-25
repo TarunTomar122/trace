@@ -141,11 +141,12 @@ class WhoTests(unittest.TestCase):
 
 class WhatTests(unittest.TestCase):
     def test_first_brief_day_follows_the_daily_send(self):
-        # Tuesday 13 October: before the 9:30 UK send it's today, after it tomorrow.
-        self.assertEqual(welcome.first_brief_day(datetime(2026, 10, 13, 8, 29, tzinfo=timezone.utc)), "Tuesday")
-        self.assertEqual(welcome.first_brief_day(datetime(2026, 10, 13, 8, 31, tzinfo=timezone.utc)), "Wednesday")
-        # Winter: 9:30 UK is 09:30 UTC.
-        self.assertEqual(welcome.first_brief_day(datetime(2026, 11, 2, 9, 29, tzinfo=timezone.utc)), "Monday")
+        # Tuesday 13 October (BST): before the 8:30 UK send (07:30 UTC) it's today, after it tomorrow.
+        self.assertEqual(welcome.first_brief_day(datetime(2026, 10, 13, 7, 29, tzinfo=timezone.utc)), "Tuesday")
+        self.assertEqual(welcome.first_brief_day(datetime(2026, 10, 13, 7, 31, tzinfo=timezone.utc)), "Wednesday")
+        # Winter: 8:30 UK is 08:30 UTC.
+        self.assertEqual(welcome.first_brief_day(datetime(2026, 11, 2, 8, 29, tzinfo=timezone.utc)), "Monday")
+        self.assertEqual(welcome.first_brief_day(datetime(2026, 11, 2, 8, 31, tzinfo=timezone.utc)), "Tuesday")
 
     def test_newsletter_version(self):
         reader = {"email": "a+b@x.com", "name": "", "kind": "newsletter", "joined": NOW - timedelta(minutes=5)}

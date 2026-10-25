@@ -74,10 +74,10 @@ RETRY_AFTER = timedelta(minutes=30)
 ACCOUNT_DELAY = timedelta(minutes=30)
 # "Your first brief lands Wednesday" only while the signup is fresh.
 FRESH = timedelta(hours=1)
-# The daily brief goes out at 10:30 Europe/Berlin (trace-newsletter.timer),
-# which is 9:30 in the UK all year: both switch clocks on the same days.
-BRIEF_ZONE, BRIEF_HOUR, BRIEF_MINUTE = ZoneInfo("Europe/Berlin"), 10, 30
-BRIEF_TIME_UK = "9:30am UK time"
+# The daily brief goes out at 08:30 Europe/London (trace-newsletter.timer),
+# so 8:30 in the UK in summer and winter alike.
+BRIEF_ZONE, BRIEF_HOUR, BRIEF_MINUTE = ZoneInfo("Europe/London"), 8, 30
+BRIEF_TIME_UK = "8:30am UK time"
 STORY_COUNT = 5
 # Fewer than this reads as a thin list; the plain copy is better.
 MIN_STORIES = 3

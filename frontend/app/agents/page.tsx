@@ -156,7 +156,7 @@ export default function AgentsPage() {
           </ol>
           <div className="ag-mail">
             <Mail size={18} aria-hidden="true" />
-            <p><strong>You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 9:30am UK time. Unsubscribe from any email and your agent keeps access. If your daily email is off, connecting leaves it off.</p>
+            <p><strong>You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 8:30am UK time. Unsubscribe from any email and your agent keeps access. If your daily email is off, connecting leaves it off.</p>
           </div>
           <p className="ag-fine">To disconnect, remove Trace from your app, which deletes its sign-in there. Access tokens last an hour, and a sign-in that goes unused for 90 days stops working.</p>
         </section>

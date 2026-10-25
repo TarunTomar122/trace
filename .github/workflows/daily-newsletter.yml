@@ -2,7 +2,7 @@ name: Daily Newsletter
 
 on:
   # The scheduled send lives on the VPS (trace-newsletter.timer at
-  # 10:30 Europe/Berlin) — GitHub cron fires hours late in practice.
+  # 08:30 Europe/London) — GitHub cron fires hours late in practice.
   # This workflow stays for manual/replay sends.
   workflow_dispatch:
     inputs:

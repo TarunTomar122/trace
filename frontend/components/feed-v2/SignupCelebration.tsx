@@ -99,7 +99,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
         </h2>
         <p className="mx-auto mb-4 max-w-[360px] text-[15.5px] leading-relaxed text-[#323232]">
           Check your inbox for a welcome email. Your brief arrives every morning around{' '}
-          <strong className="text-[#0a0a0a]">9:30am UK time</strong>.
+          <strong className="text-[#0a0a0a]">8:30am UK time</strong>.
         </p>
 
         <ul className="mb-5 list-none rounded-[12px] bg-[#edeffd] px-4 py-4 text-left">

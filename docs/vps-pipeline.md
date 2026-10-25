@@ -19,7 +19,7 @@ Actions keeps push notifications plus manual/replay workflows.
 | `trace-pipeline.service/.timer` | every 20 min (`:00/:20/:40`) | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10 --skip-notifications` |
 | `trace-pulse.service/.timer` | every 3 h | `scheduler --jobs pulse assemble --audience all --force-pools` |
 | `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
-| `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_audience_newsletter` |
+| `trace-newsletter.service/.timer` | daily 08:30 Europe/London | `v3.flows.send_audience_newsletter` |
 | `trace-instagram.service/.timer` | 09:00 and 20:00 Europe/London | `v3.flows.post_instagram` |
 | `trace-welcome.service/.timer` | every 5 min | `v3.flows.send_welcome` |
 | `trace-postkit.service/.timer` | daily 07:30 Europe/London | `v3.flows.build_post_kit` |
@@ -96,7 +96,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
 and sends one welcome to each new reader:
 
 - an email-only subscriber (`free_newsletter_subscribers.subscribedAt`) gets
-  "your first brief lands <weekday> around 9:30am UK time", links to the latest
+  "your first brief lands <weekday> around 8:30am UK time", links to the latest
   brief and `/brief/customize`, and an unsubscribe link;
 - a new web account (`user_profiles.createdAt`, from Google sign-in) gets "your
   feed is ready" plus either "your daily brief lands every morning" or "set up
