@@ -84,13 +84,14 @@ def judge_repeats(v3_store: Any, pairs: list[tuple[dict[str, Any], dict[str, Any
     """For each (new, sent) pair, whether `new` repeats `sent`, by pair index.
 
     None means the judge is unavailable (no key); a pair missing from the
-    result could not be judged. Either way the caller sends the story.
+    result could not be judged. The daily sends those stories; the morning
+    push treats them as repeats.
     """
     if not pairs:
         return {}
     client = _client()
     if client is None:
-        _log("no OPENAI_API_KEY: stories that only look like recent ones go out")
+        _log("no OPENAI_API_KEY: close calls go unjudged")
         return None
 
     answers: dict[int, bool] = {}
@@ -113,7 +114,7 @@ def judge_repeats(v3_store: Any, pairs: list[tuple[dict[str, Any], dict[str, Any
         except Exception as exc:  # noqa: BLE001 - unjudged stories go out
             # OpenAI echoes part of a bad key in its error: keep that out of the log.
             detail = re.sub(r"sk-[\w*-]+", "sk-…", str(exc))[:160]
-            _log(f"judge failed ({type(exc).__name__}: {detail}); the rest go out unjudged")
+            _log(f"judge failed ({type(exc).__name__}: {detail}); the rest go unjudged")
             break  # a down or hanging API would cost each batch its timeout: the daily mustn't wait
         for i in batch:
             if f"p{i}" not in result:

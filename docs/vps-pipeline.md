@@ -26,7 +26,7 @@ Actions keeps push notifications plus manual/replay workflows.
 
 Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}`, `trace-welcome.{service,timer}` and `trace-postkit.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
-- Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
+- Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed. The daily push skips a top story that repeats one it pushed in the last 3 days (same link, same headline, or the daily's repeat judge on a look-alike; unjudged look-alikes count as repeats) and records what it sent in `push_notifications_sent/<date>`.
 
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
 - Pipeline and pulse timers are **calendar-only** (`OnCalendar` + `Persistent=true`), same as foryou/newsletter. Do not use `OnUnitActiveSec` / `OnBootSec`: a user-systemd restart drops that baseline and the timer sits at `NEXT="-"` until someone kicks it. Calendar + Persistent catch up immediately after the manager comes back.
