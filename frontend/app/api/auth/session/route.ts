@@ -5,10 +5,26 @@ import {
   createTraceSession,
   TRACE_SESSION_COOKIE_NAME,
   TRACE_SESSION_MAX_AGE_MS,
+  TRACE_SIGNED_IN_COOKIE_NAME,
+  TRACE_SIGNED_IN_MAX_AGE_MS,
   isTraceSessionProfileFresh,
   verifyTraceSession,
   type TraceSessionProfile,
 } from '@/lib/server-session';
+
+// The homepage's "signed in" hint, renewed on every sync so a reader who comes
+// back within 30 days skips the landing page (see TRACE_SIGNED_IN_COOKIE_NAME).
+function setSignedInHint(response: NextResponse, signedIn: boolean) {
+  response.cookies.set({
+    name: TRACE_SIGNED_IN_COOKIE_NAME,
+    value: signedIn ? '1' : '',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: signedIn ? Math.floor(TRACE_SIGNED_IN_MAX_AGE_MS / 1000) : 0,
+  });
+}
 
 // Trace is free: every account is Pro. Paid status only drives billing controls.
 function computeHasAccess(): boolean {
@@ -137,10 +153,11 @@ export async function POST(request: NextRequest) {
       && isTraceSessionProfileFresh(existingSession)
     );
 
-    // Reuse a just-issued signed profile during document navigation. Outside
-    // that short window, refresh from Firestore so upgrades and revocations
-    // converge without turning every /feed entry into a profile read.
+    // Reuse a signed profile issued in the last 36h. Outside that window,
+    // refresh from Firestore so upgrades and revocations converge without
+    // turning every /feed entry into a profile read.
     const response = NextResponse.json({ ok: true });
+    setSignedInHint(response, true);
     if (existingProfileIsFresh) {
       return response;
     }
@@ -176,6 +193,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
+  setSignedInHint(response, false);
   response.cookies.set({
     name: TRACE_SESSION_COOKIE_NAME,
     value: '',

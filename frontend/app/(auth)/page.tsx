@@ -7,7 +7,11 @@ import { generateFAQSchema } from '@/lib/seo';
 import { LANDING_FAQ } from '@/components/feed-v2/LandingScreen';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
+import {
+  looksSignedIn,
+  TRACE_SESSION_COOKIE_NAME,
+  TRACE_SIGNED_IN_COOKIE_NAME,
+} from '@/lib/server-session';
 import LandingScreen from '@/components/feed-v2/LandingScreen';
 import LandingAuthRedirect from './LandingAuthRedirect';
 import { listDailyEditions } from '@/lib/daily-editions';
@@ -46,8 +50,8 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   // signed-in readers skip the pitch: straight to the feed
-  const sessionCookie = (await cookies()).get(TRACE_SESSION_COOKIE_NAME)?.value;
-  if (sessionCookie && verifyTraceSession(sessionCookie)) {
+  const jar = await cookies();
+  if (looksSignedIn(jar.get(TRACE_SESSION_COOKIE_NAME)?.value, jar.get(TRACE_SIGNED_IN_COOKIE_NAME)?.value)) {
     redirect('/feed');
   }
   // Today's real brief for the Daily Brief row's preview (demo stories if none yet).

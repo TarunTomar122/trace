@@ -7,6 +7,20 @@ export const TRACE_SESSION_COOKIE_NAME = 'trace_session';
 export const TRACE_SESSION_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 export const TRACE_SESSION_PROFILE_FRESH_AGE_MS = 36 * 60 * 60 * 1000;
 
+// "This browser is signed in", read only by the homepage to send readers
+// straight to /feed. It proves nothing (forging it only redirects yourself),
+// so it can outlive the 36h session above, which stays short because API
+// routes take it as proof of identity. Without it, a reader back after 36h
+// saw the landing page until the client-side redirect fired. Set and cleared
+// with the session cookie.
+export const TRACE_SIGNED_IN_COOKIE_NAME = 'trace_signed_in';
+export const TRACE_SIGNED_IN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Whether the homepage should skip the pitch: a live session, or the long-lived hint. */
+export function looksSignedIn(sessionCookie?: string, signedInCookie?: string): boolean {
+  return signedInCookie === '1' || Boolean(sessionCookie && verifyTraceSession(sessionCookie));
+}
+
 // Optional viewer profile fields embedded in the session cookie so the feed
 // page SSR can skip a Firestore user-profile read. These are signed (HMAC),
 // so the client can't forge values like `hasAccess`.
