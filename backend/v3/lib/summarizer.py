@@ -18,7 +18,7 @@ from typing import Any
 from openai import OpenAI
 
 MODEL = "gpt-4o-mini"
-FOR_YOU_PROSE_MODEL = "gpt-5-mini"
+FOR_YOU_PROSE_MODEL = "gpt-6.1-terra"
 TEMPERATURE = 0.3
 TIMEOUT = 45
 

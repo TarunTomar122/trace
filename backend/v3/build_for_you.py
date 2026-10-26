@@ -63,13 +63,13 @@ CONFIG_PATH = "v3/config/for_you_sources.json"
 BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
 FOR_YOU_BRIEF_BUCKET = "for_you_brief_v23_top_stories"
-FOR_YOU_BRIEF_MODEL = "gpt-5-mini"
+FOR_YOU_BRIEF_MODEL = "gpt-6.1-terra"
 FOR_YOU_ROLE_CLASSIFIER_BUCKET = "for_you_role_classifier_v1"
 FOR_YOU_ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
 FOR_YOU_VIDEO_BUCKET = "for_you_video_v1"
 FOR_YOU_VIDEO_MODEL = "gpt-4o-mini"
 ENABLE_DAILY_VIDEO = False
-# gpt-5-mini is the default cost/quality tradeoff for daily personalized briefs.
+# gpt-6.1-terra writes the daily personalized briefs.
 FOR_YOU_VIDEO_CHANNEL_URL = "https://www.youtube.com/@CNET/videos"
 FOR_YOU_VIDEO_SCAN_LIMIT = 5
 

@@ -61,7 +61,7 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   out to anyone in `daily_editions/{date}.sent` (older editions fall back to
   their public `stories`). The same link (any article of a sent story) or the
   same headline is a repeat outright; a story that only shares words with a
-  sent one is asked of `TRACE_REPEAT_MODEL` (default `gpt-6.1-sol`, one call
+  sent one is asked of `TRACE_REPEAT_MODEL` (default `gpt-6.1-terra`, one call
   per 40 of them, `backend/v3/lib/repeats.py`, cached in `v3_synthesis_cache`).
   Without a key, or if the call fails, those close calls go out. The run logs `repeats: N left out ...` with each
   pair. Until the morning run publishes, the live `/brief` drops only the
@@ -193,7 +193,7 @@ laptop picks it up the first time it wakes and posts it by hand
 
 - The post opens "Biggest updates in tech in the last 24 hours:", has 3-6
   short, plain lines and ends "Did I miss anything??". The model
-  (`TRACE_KIT_MODEL`, default gpt-6.1-sol) picks them from the feed's last 24
+  (`TRACE_KIT_MODEL`, default gpt-6.1-terra) picks them from the feed's last 24
   hours: today's and yesterday's topics, plus recent trending-pool articles no
   topic covers yet. It picks by how interesting a story is, not by coverage.
 - A line with a number its story never mentions, hype ("insane", "!"), a

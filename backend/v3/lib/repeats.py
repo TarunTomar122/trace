@@ -26,7 +26,7 @@ from typing import Any
 
 # Bump when the question changes: cached answers are keyed by version.
 REPEAT_PROMPT_VERSION = "daily-repeat-v1"
-REPEAT_MODEL = os.getenv("TRACE_REPEAT_MODEL", "gpt-6.1-sol")  # TRACE_KIT_MODEL's default
+REPEAT_MODEL = os.getenv("TRACE_REPEAT_MODEL", "gpt-6.1-terra")  # TRACE_KIT_MODEL's default
 BATCH = 40
 
 PROMPT = """Each pair below has a story that went out in an earlier daily tech brief (`sent`) and a candidate for today's brief (`new`). For each pair, answer true when `new` is the same story as `sent`, so a reader of the earlier brief would feel told the same news again, and false when it is news they haven't had.

@@ -71,7 +71,7 @@ SITE_URL = "https://www.yourtrace.online"
 REPLY_URL = f"{SITE_URL}/?utm_source=x&utm_medium=post"
 REPLY_TEXT = f"I send the biggest tech stories every morning, free: {REPLY_URL}"
 # One call a day, and picking what goes viral needs taste: the strongest model, not the cheapest.
-KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-6.1-sol")
+KIT_MODEL = os.getenv("TRACE_KIT_MODEL", "gpt-6.1-terra")
 LOCK_FILE = BACKEND_ROOT.parent / ".postkit.lock"
 SECTIONS = ("tools", "discussions")  # the pulse lists whose items get share pages
 X_URL_LENGTH = 23  # X counts every link as 23 characters

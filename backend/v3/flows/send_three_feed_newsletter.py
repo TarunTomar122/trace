@@ -33,7 +33,7 @@ from v3.lib.store import V3Store  # noqa: E402
 NEWSLETTER_INTERESTS = ("ai", "startups", "engineering")
 NEWSLETTER_TOP_STORIES = 7
 EDITORIAL_VERSION = "builder_digest_v15"
-EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-5-mini")
+EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-6.1-terra")
 
 from v3.build_trending import (  # noqa: E402
     _document_frequencies,
@@ -55,6 +55,8 @@ def _editorial_model_options(
     """Use only the Chat Completions parameters accepted by the selected model."""
     if model.startswith("gpt-5"):
         return {"max_completion_tokens": limit, "reasoning_effort": "minimal"}
+    if model.startswith("gpt-6"):  # no "minimal" here; "none" is the lowest effort
+        return {"max_completion_tokens": limit, "reasoning_effort": "none"}
     return {"max_tokens": limit, "temperature": temperature}
 
 

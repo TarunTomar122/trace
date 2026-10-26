@@ -25,6 +25,12 @@ class NewsletterPreferenceTests(unittest.TestCase):
             {"max_completion_tokens": 100, "reasoning_effort": "minimal"},
         )
 
+    def test_gpt6_editorial_options_use_lowest_supported_effort(self):
+        self.assertEqual(
+            _editorial_model_options("gpt-6.1-terra", 100, 0.4),
+            {"max_completion_tokens": 100, "reasoning_effort": "none"},
+        )
+
     def test_takeaway_review_requires_every_source_url(self):
         items = [{"url": "https://example.com/story"}]
         self.assertTrue(_takeaway_review_is_complete({"stories": [{
