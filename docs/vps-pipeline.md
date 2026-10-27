@@ -161,6 +161,33 @@ tail -50 ~/trace/logs/welcome.log
   sending count as posted, and the next run re-reads their status.
 - Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` (see `.env.example`).
 
+### Daily reel (`trace-reel.timer`, 14:00 GMT)
+
+`v3.flows.post_reel` posts one Instagram reel a day through the same Buffer channel:
+
+- Stories: today's top 3 AI stories in feed order, plus the 2 non-AI stories covered by the most
+  outlets (`source_count`). Promos, stories the send-worthy judge turned down, stories without a
+  summary, near-duplicates and anything a reel used in the last 3 days are skipped. At least 4 are
+  needed to post.
+- Script (`backend/v3/lib/reel_video.py`): gpt-6.1-terra writes a plain newsreader script (90-110
+  words for 5 stories, mixed order, "That's Trace for today." at the end). A critic pass checks it
+  against the summaries and a list of AI-sounding phrasing, and a reviser fixes it, up to 3 rounds.
+  Banned words, dashes and the length are also checked in code.
+- Pictures: two per story from Runway (`REEL_IMAGE_MODEL`), one art direction, no faces or text.
+  Voice: Runway's ElevenLabs v3 preset `REEL_VOICE` (Elliot), long pauses trimmed. A take over 52s
+  is sped up by at most 1.12x. Subtitle timings come from whisper-1.
+- Video: 1080x1920 H.264, rendered with Pillow and ffmpeg. Per story there's a picture, a source card
+  (publisher, date, headline, highlighter), a number card when the script says a number, then more
+  pictures, cut at word boundaries. Subtitles, tags and the progress bar stay inside Instagram's safe
+  area. The last frame matches the first, so it loops.
+- Work files are kept in `REEL_WORK_DIR/{date}/` for 7 days, so a retry resumes from the saved script,
+  pictures and voice. The MP4 and cover are served from `/var/www/trace-social/reel-{date}-{id}/`.
+- It's shared as an Instagram reel labelled AI-generated, logged in `instagram_reels/{date}` with the
+  same retry rules as the carousel, and logs go to `~/trace/logs/reel.log`.
+- Cost: about 70 Runway credits for the pictures plus about 15 for the voice (under $1), plus a few
+  OpenAI calls.
+- Try it without posting: `cd ~/trace/backend && ../.venv/bin/python -m v3.flows.post_reel --dry-run`.
+
 One-time setup on the VPS:
 
 ```bash
@@ -171,6 +198,9 @@ caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemc
 # add BUFFER_API_KEY (and BUFFER_INSTAGRAM_CHANNEL_ID) to ~/trace/.env
 cp ~/trace/backend/vps/trace-instagram.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload && systemctl --user enable --now trace-instagram.timer
+# daily reel: add RUNWAY_API_KEY to ~/trace/.env, then
+cp ~/trace/backend/vps/trace-reel.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now trace-reel.timer
 ```
 
 Day to day:

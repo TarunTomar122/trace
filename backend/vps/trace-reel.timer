@@ -1,0 +1,12 @@
+[Unit]
+Description=Post the Trace daily reel at 14:00 GMT
+
+[Timer]
+# GMT all year (UTC): 14:00 in UK winter, 15:00 during BST.
+OnCalendar=*-*-* 14:00:00 UTC
+AccuracySec=1min
+Persistent=false
+Unit=trace-reel.service
+
+[Install]
+WantedBy=timers.target

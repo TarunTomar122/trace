@@ -64,3 +64,6 @@ trace-images/
 vantage/
 videos/
 wonder/
+
+# daily reel work files on the VPS (v3.flows.post_reel)
+reel-work/

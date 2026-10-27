@@ -589,7 +589,9 @@ def run(args: argparse.Namespace) -> int:
     prune_media(now)
     image_urls = host_slides(slides, f"{doc_id}-{uuid.uuid4().hex[:8]}")
     channel_id = instagram_channel()
-    ref.set({**record, "status": "posting", "image_urls": image_urls, "created_at": now.isoformat()}, merge=True)
+    # Clear what an earlier, refused attempt left, so a later refresh can't read its old post.
+    ref.set({**record, "status": "posting", "image_urls": image_urls, "created_at": now.isoformat(),
+             "buffer_post_id": None, "external_link": "", "error": ""}, merge=True)
     try:
         post_id = share_now(channel_id, caption, image_urls)
     except BufferRefused as exc:

@@ -1,0 +1,20 @@
+[Unit]
+Description=Trace daily Instagram reel via Buffer
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=3h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+# Rendering is CPU-heavy; let the news pipeline go first.
+Nice=10
+TimeoutStartSec=60min
+WorkingDirectory=%h/trace/backend
+EnvironmentFile=%h/trace/.env
+ExecStart=/usr/bin/flock -w 600 %h/trace/.reel.lock %h/trace/.venv/bin/python -u -m v3.flows.post_reel
+# A failed run retries and resumes from the saved script, pictures and voice; a day that posted is skipped.
+Restart=on-failure
+RestartSec=15min
+StandardOutput=append:%h/trace/logs/reel.log
+StandardError=append:%h/trace/logs/reel.log
