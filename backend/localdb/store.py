@@ -34,9 +34,16 @@ def sql_equality(field_path: str, expected: Any) -> tuple[str, list[Any]] | None
     extract = f"json_extract(data_json, '$.{'.'.join(parts)}')"
     if isinstance(expected, bool):
         return f"{extract} = ?", [1 if expected else 0]
-    if isinstance(expected, int) or (isinstance(expected, float) and math.isfinite(expected)):
+    # SQLite integers are 64-bit; anything bigger is left to Python.
+    if (isinstance(expected, int) and -(2**63) <= expected < 2**63) or (
+        isinstance(expected, float) and math.isfinite(expected)
+    ):
         return f"{extract} = ?", [expected]
     if isinstance(expected, str):
+        try:
+            expected.encode("utf-8")  # a lone surrogate can't be bound
+        except UnicodeEncodeError:
+            return None
         return f"({extract} = ? OR json_type(data_json, '$.{'.'.join(parts)}') = 'object')", [expected]
     return None
 
@@ -259,7 +266,8 @@ class LocalDocumentStore:
             if pushed:
                 clauses.append(pushed[0])
                 params.extend(pushed[1])
-                if field_path == "is_active" and not isinstance(expected, str) and not use_index:
+                # Only for "is active": the inactive rows are most of a pool, where a scan is fine.
+                if field_path == "is_active" and expected is True and not use_index:
                     use_index = " INDEXED BY documents_is_active"
         connection = self._connect()
         try:

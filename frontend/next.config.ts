@@ -58,7 +58,7 @@ const nextConfig: NextConfig = {
       { source: '/compare/tldr-newsletter-alternative', destination: '/blog/tldr-newsletter-alternatives', permanent: true },
       { source: '/compare/ground-news-alternative-for-tech', destination: '/blog/ground-news-alternatives-for-tech', permanent: true },
       // Old URLs Search Console still reports as 404s.
-      { source: '/use-cases/trace-for-:who', destination: '/use-cases/for-:who', permanent: true },
+      { source: '/use-cases/trace-for-:who(founders|pms|developers|designers|marketers|investors|students|remote-teams|researchers|creators)', destination: '/use-cases/for-:who', permanent: true },
       { source: '/solutions/stop-info-overload', destination: '/solutions/info-overload', permanent: true },
       { source: '/research', destination: '/blog', permanent: true },
       { source: '/research/:slug', destination: '/blog', permanent: true },

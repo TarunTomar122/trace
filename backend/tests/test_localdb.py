@@ -267,6 +267,8 @@ class EqualityPrefilterTests(unittest.TestCase):
         self.assertSame(pool.where("n", ">=", 2), ["b", "c"])
         self.assertSame(pool.where("is_active", "==", None), [])
         self.assertSame(pool.where("weird-key", "==", "x"), [])
+        self.assertSame(pool.where("n", "==", 2**70), [])  # beyond SQLite's 64-bit ints
+        self.assertSame(pool.where("lane", "==", "a\udc80"), [])  # lone surrogate
 
 
 if __name__ == "__main__":

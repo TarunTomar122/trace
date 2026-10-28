@@ -236,7 +236,8 @@ ${P} div.bg-gray-50 a${NP}:hover { text-decoration: underline; }
 .hp .bl-mail .hp-signup { margin-top: 20px; }
 .hp .bl-mail-preview { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: #fff; }
 .hp .bl-mail-preview-label { color: var(--hp-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
-.hp .bl-mail-preview ol { margin: 8px 0 0; padding-left: 20px; }
+.hp .bl-mail-preview.is-loading { min-height: 128px; }
+.hp .bl-mail-preview ol { margin: 8px 0 0; padding-left: 20px; list-style: decimal; }
 .hp .bl-mail-preview li { margin: 6px 0 0; padding-left: 2px; color: var(--hp-ink); font-size: 15.5px; line-height: 1.4; }
 .hp .bl-mail-preview a { color: var(--hp-ink); font-weight: 600; text-decoration: none; }
 .hp .bl-mail-preview a:hover { color: var(--hp-blue); text-decoration: underline; text-underline-offset: 3px; }

@@ -12,27 +12,34 @@ function feedHref(slug: string, location: string) {
   return `/feed?utm_source=blog&utm_medium=${location}&utm_campaign=${slug}`;
 }
 
-/**
- * The daily-email ask inside a post: one after the intro, one at the end (which also keeps
- * the old end-of-article link to the feed). Server-rendered for everyone; after hydration,
- * readers already subscribed on this device lose the ask (the end card keeps its feed link).
- */
 type BriefPreview = { date: string; label: string; stories: { title: string; href: string }[] };
 
-// Both cards on a page share one request for the latest brief's headlines.
+// Both cards on a page share one request for the latest brief's headlines; a
+// failed one is forgotten, so the next card to mount tries again.
 let briefPreview: Promise<BriefPreview | null> | null = null;
 function loadBriefPreview(): Promise<BriefPreview | null> {
   briefPreview ??= fetch("/api/public/brief-preview")
     .then((res) => (res.ok ? res.json() : null))
     .then((data) => (data && data.preview ? (data.preview as BriefPreview) : null))
-    .catch(() => null);
+    .catch(() => null)
+    .then((value) => {
+      if (!value) briefPreview = null;
+      return value;
+    });
   return briefPreview;
 }
 
+/**
+ * The daily-email ask inside a post: one after the intro, one at the end (which also keeps
+ * the old end-of-article link to the feed). Server-rendered for everyone; after hydration,
+ * readers already subscribed on this device lose the ask (the end card keeps its feed link).
+ */
 export function BlogEmailCard({ slug, placement }: { slug: string; placement: "intro" | "end" }) {
   const [hidden, setHidden] = useState(false);
   // The newest brief's top headlines: what the email is, before we ask for an address.
-  const [preview, setPreview] = useState<BriefPreview | null>(null);
+  // undefined while loading: the panel holds its height, so the article doesn't jump.
+  const [preview, setPreview] = useState<BriefPreview | null | undefined>(undefined);
+  const previewLabelId = useId();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -131,10 +138,11 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       <div className="bl-mail-title">
         The 10 stories that matter in tech and AI, every morning. Free.
       </div>
+      {preview === undefined && status !== "done" && <div className="bl-mail-preview is-loading" aria-hidden="true" />}
       {preview && status !== "done" && (
         <div className="bl-mail-preview">
-          <div className="bl-mail-preview-label">In the brief for {preview.label}:</div>
-          <ol>
+          <div id={previewLabelId} className="bl-mail-preview-label">In the brief for {preview.label}:</div>
+          <ol aria-labelledby={previewLabelId}>
             {preview.stories.map((story) => (
               <li key={story.href}>
                 <Link
