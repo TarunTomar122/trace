@@ -105,11 +105,29 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
   return pages
 }
 
+// The sitemap is prerendered at build, and Next fails the whole deploy if a
+// page takes over 60s. A slow database gets the static pages only; the hourly
+// revalidate fills the rest in later.
+const DATA_TIMEOUT_MS = 20_000
+
+function withTimeout<T>(work: Promise<T>, fallback: T, label: string): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.error(`[sitemap] ${label} took over ${DATA_TIMEOUT_MS / 1000}s; left out this time`)
+      resolve(fallback)
+    }, DATA_TIMEOUT_MS)
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      (error) => { clearTimeout(timer); console.error(`[sitemap] ${label} failed:`, error); resolve(fallback) },
+    )
+  })
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.yourtrace.online'
   const [articlePages, editions] = await Promise.all([
-    getPublicArticlePages(baseUrl),
-    listEditionDates(365),
+    withTimeout(getPublicArticlePages(baseUrl), [], 'article pages'),
+    withTimeout(listEditionDates(365), [], 'brief editions'),
   ])
 
   // One public page per daily brief, plus the archive. lastModified is the
