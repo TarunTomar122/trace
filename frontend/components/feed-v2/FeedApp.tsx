@@ -2185,6 +2185,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, displayRank,
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return; // Enter on Bookmark or Share is theirs
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onClick();

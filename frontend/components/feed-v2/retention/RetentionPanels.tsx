@@ -20,7 +20,7 @@ import {
 
 export const retentionCss = `
 .xw .ret-sotd {
-  margin: 0; padding: 22px 0 26px;
+  display: block; margin: 0; padding: 22px 0 26px;
   border: none; border-bottom: 1px solid var(--line); border-radius: 0;
   background: transparent; font-family: inherit; color: inherit;
   cursor: pointer; text-align: left; width: 100%;
@@ -289,8 +289,24 @@ export function StoryOfDayCard({
 }) {
   const dek = storyDek(story);
   const favs = story.sources.slice(0, 4);
+  // An article acting as a button, not a <button>: the Follow button sits
+  // inside it, and a button inside a button is invalid HTML.
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return; // a key on Follow is Follow's
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onOpen();
+    }
+  };
   return (
-    <button type="button" className={`ret-sotd${size === 'lead' ? ' lead' : ''}`} onClick={onOpen}>
+    <article
+      className={`ret-sotd${size === 'lead' ? ' lead' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label={story.title}
+      onClick={onOpen}
+      onKeyDown={onKey}
+    >
       <div className="ret-sotd-kicker"><Star size={14} fill="currentColor" aria-hidden="true" /><span className="ret-sotd-kicker-label">{kicker}</span></div>
       {story.img ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -334,7 +350,7 @@ export function StoryOfDayCard({
           ) : null}
         </span>
       </div>
-    </button>
+    </article>
   );
 }
 
