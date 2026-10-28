@@ -5,9 +5,10 @@ import Link from 'next/link';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { isNewsletterSubscribed, onNewsletterSubscribed } from '@/lib/newsletter-local';
 import { trackFeedItemClicked, trackSponsoredToolClicked } from '@/lib/posthog';
+import { recordSponsorClick, sponsorHref } from '@/lib/sponsor-link';
 import { faviconUrl } from '@/lib/topic-icons';
 
-// The edition page's right rail (wide screens): the sponsor card, then the
+// The edition page's right rail (wide screens): the sponsor cards, then the
 // subscribe card. Client components only for the click tracking and for
 // knowing whether this device already subscribed.
 
@@ -21,24 +22,26 @@ function domainOf(url: string): string {
   }
 }
 
-/** The active sponsor, as the feed's sponsor row shows it, in the rail's card style. */
-export function RailSponsorCard({ sponsor, editionDate }: { sponsor: RailSponsor; editionDate: string }) {
+/** An active sponsor, as the feed's sponsor row shows it, in the rail's card style. */
+export function RailSponsorCard({ sponsor, editionDate, position }: { sponsor: RailSponsor; editionDate: string; position: number }) {
   const domain = domainOf(sponsor.url);
   return (
     <a
       className="br-sponsor"
-      href={sponsor.url}
+      href={sponsorHref(sponsor.url, 'brief_rail')}
       target="_blank"
-      rel="noreferrer sponsored"
+      rel="noopener sponsored"
+      referrerPolicy="origin"
       aria-label={`Sponsored: ${sponsor.title}. Visit website`}
       onClick={() => {
         trackFeedItemClicked(sponsor.id, 'promo', '');
+        recordSponsorClick(sponsor.id, 'brief_rail');
         trackSponsoredToolClicked({
           sponsorId: sponsor.id,
           title: sponsor.title,
           domain,
           placement: 'brief_rail',
-          position: 1,
+          position,
           feedDate: editionDate,
         });
       }}

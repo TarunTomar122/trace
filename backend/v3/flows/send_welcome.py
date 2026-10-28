@@ -278,6 +278,52 @@ def _top_stories(lead: str, stories: list[dict[str, str]]) -> tuple[str, str]:
     return plain, rich
 
 
+def page_shell(subject: str, body: str, button: tuple[str, str], footer_html: str) -> str:
+    """The welcome's HTML page: wordmark, `body`, a button to APP_URL + button[1], signature, footer."""
+    # A table-cell button: Outlook ignores padding and radius on a bare link.
+    # Spacing lives on table cells, not margins or padding on <p>: Outlook drops those.
+    cta = (
+        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td style="padding: 8px 0 24px 0;">'
+        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+        f'<td bgcolor="{BLUE}" style="border-radius: 3px; background: {BLUE};">'
+        f'<a href="{html.escape(APP_URL + button[1])}" style="display: inline-block; padding: 12px 24px; '
+        f'font-family: {FONT}; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">'
+        f"{html.escape(button[0])}</a></td></tr></table></td></tr></table>"
+    )
+    return (
+        "<!doctype html><html><head>"
+        '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">'
+        f"<title>{html.escape(subject)}</title>"
+        # The site's display serif where the mail app loads web fonts; Georgia elsewhere
+        # (Outlook for Windows needs telling, or it shows Times New Roman).
+        "<style>@font-face { font-family: 'Trace Serif'; font-style: normal; font-weight: 700; "
+        "src: url('https://www.yourtrace.online/fonts/trace-serif-700.woff2') format('woff2'); }</style>"
+        "<!--[if mso]><style>.nl-serif { font-family: Georgia, serif !important; }</style><![endif]-->"
+        "</head>"
+        '<body style="margin: 0; padding: 0; background: #ffffff;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff"><tr>'
+        '<td align="center" style="padding: 32px 16px;">'
+        '<table width="560" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width: 100%; max-width: 560px;"><tr><td>'
+        # The site's wordmark: "Trace" in the display serif, then the logo on its own
+        # white tile (dark-mode apps darken the cell behind an image; bare line art vanishes).
+        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+        f'<td class="nl-serif" style="vertical-align: middle; padding: 0 0 28px 0; font-family: {DISPLAY}; font-size: 28px; '
+        f'line-height: 30px; font-weight: 700; color: {INK};">Trace</td>'
+        '<td style="vertical-align: middle; padding: 0 0 28px 10px;">'
+        '<img src="https://www.yourtrace.online/trace-email.png" width="32" height="32" alt="" '
+        'style="display: block; width: 32px; height: 32px; border: 0;" /></td>'
+        "</tr></table>"
+        f"{body}{cta}"
+        f'<p style="margin: 0; font-size: 16px; font-weight: 700; color: {INK}; font-family: {FONT};">Tarat</p>'
+        f'<p style="margin: 0 0 32px 0; font-size: 14px; color: {MUTED}; font-family: {FONT};">Founder, Trace</p>'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+        f'<td style="padding-top: 18px; border-top: 1px solid #e5e5e5; font-size: 12px; line-height: 18px; '
+        f'color: {MUTED}; font-family: {FONT};">{footer_html}</td></tr></table>'
+        "</td></tr></table></td></tr></table></body></html>"
+    )
+
+
 def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] | None = None) -> tuple[str, str, str]:
     """(subject, html, text) for this reader's version of the welcome, with `stories` from todays_stories()."""
     first = _first_name(reader.get("name", ""))
@@ -353,48 +399,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
 
     text = "\n\n".join([hi, *(plain for plain, _ in paragraphs), "Tarat, founder of Trace", footer_text])
     body = _p(html.escape(hi)) + "".join(rich for _, rich in paragraphs)
-    # A table-cell button: Outlook ignores padding and radius on a bare link.
-    # Spacing lives on table cells, not margins or padding on <p>: Outlook drops those.
-    cta = (
-        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td style="padding: 8px 0 24px 0;">'
-        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-        f'<td bgcolor="{BLUE}" style="border-radius: 3px; background: {BLUE};">'
-        f'<a href="{html.escape(APP_URL + button[1])}" style="display: inline-block; padding: 12px 24px; '
-        f'font-family: {FONT}; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">'
-        f"{html.escape(button[0])}</a></td></tr></table></td></tr></table>"
-    )
-    page = (
-        "<!doctype html><html><head>"
-        '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">'
-        f"<title>{html.escape(subject)}</title>"
-        # The site's display serif where the mail app loads web fonts; Georgia elsewhere
-        # (Outlook for Windows needs telling, or it shows Times New Roman).
-        "<style>@font-face { font-family: 'Trace Serif'; font-style: normal; font-weight: 700; "
-        "src: url('https://www.yourtrace.online/fonts/trace-serif-700.woff2') format('woff2'); }</style>"
-        "<!--[if mso]><style>.nl-serif { font-family: Georgia, serif !important; }</style><![endif]-->"
-        "</head>"
-        '<body style="margin: 0; padding: 0; background: #ffffff;">'
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff"><tr>'
-        '<td align="center" style="padding: 32px 16px;">'
-        '<table width="560" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width: 100%; max-width: 560px;"><tr><td>'
-        # The site's wordmark: "Trace" in the display serif, then the logo on its own
-        # white tile (dark-mode apps darken the cell behind an image; bare line art vanishes).
-        '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-        f'<td class="nl-serif" style="vertical-align: middle; padding: 0 0 28px 0; font-family: {DISPLAY}; font-size: 28px; '
-        f'line-height: 30px; font-weight: 700; color: {INK};">Trace</td>'
-        '<td style="vertical-align: middle; padding: 0 0 28px 10px;">'
-        '<img src="https://www.yourtrace.online/trace-email.png" width="32" height="32" alt="" '
-        'style="display: block; width: 32px; height: 32px; border: 0;" /></td>'
-        "</tr></table>"
-        f"{body}{cta}"
-        f'<p style="margin: 0; font-size: 16px; font-weight: 700; color: {INK}; font-family: {FONT};">Tarat</p>'
-        f'<p style="margin: 0 0 32px 0; font-size: 14px; color: {MUTED}; font-family: {FONT};">Founder, Trace</p>'
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-        f'<td style="padding-top: 18px; border-top: 1px solid #e5e5e5; font-size: 12px; line-height: 18px; '
-        f'color: {MUTED}; font-family: {FONT};">{footer_html}</td></tr></table>'
-        "</td></tr></table></td></tr></table></body></html>"
-    )
+    page = page_shell(subject, body, button, footer_html)
     return subject, page, text
 
 

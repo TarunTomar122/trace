@@ -115,7 +115,7 @@ export const BRIEF_CSS = `
   .hp .br-jump { display: none; }
 }
 
-/* right rail (sponsor, then subscribe card): sticky on wide screens, level with the contents column */
+/* right rail (sponsors, then subscribe card): sticky on wide screens, level with the contents column */
 .hp .br-rail-col { display: none; }
 .hp .br-rail { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 16px; }
 .hp .br-rail-sub { padding: 18px; border-radius: 12px; background: var(--hp-lav); }
@@ -128,7 +128,7 @@ export const BRIEF_CSS = `
 .hp .br-sponsor-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .hp .br-sponsor-head img { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; }
 .hp .br-sponsor-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; }
-.hp .br-sponsor-sub { font-size: 13px; line-height: 1.4; color: var(--hp-text); }
+.hp .br-sponsor-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.4; color: var(--hp-text); }
 .hp .br-sponsor-visit { margin-top: 2px; font-size: 14px; font-weight: 600; color: var(--hp-blue); }
 .hp .br-sponsor:hover .br-sponsor-visit { text-decoration: underline; text-underline-offset: 3px; }
 .hp .br-rail-title { margin: 0; font-family: var(--hp-serif); font-weight: 500; font-size: 25px; line-height: 1.08; }

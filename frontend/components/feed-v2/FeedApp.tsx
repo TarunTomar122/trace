@@ -78,6 +78,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BriefArt } from '@/components/feed-v2/home-art';
+import { recordSponsorClick, sponsorHref, SPONSOR_SLOTS } from '@/lib/sponsor-link';
 
 export interface CoverageLink {
   title: string;
@@ -1212,7 +1213,7 @@ export default function FeedApp({
     };
   })();
   const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
-  const homeSponsors = promoted.slice(0, 3);
+  const homeSponsors = promoted.slice(0, SPONSOR_SLOTS);
 
   // Viewing a story counts as reading it — covers shared links and
   // back-button restores too, not just taps in the list.
@@ -1865,22 +1866,10 @@ export default function FeedApp({
                 variant="tools"
               />
             ))}
-            {/* Sponsors, then StocksBrew: the rail stays a glance, not a list. */}
-            <a
-              className="pulse-row house-row"
-              href="https://stocksbrew.online/?utm_source=trace&utm_medium=feed_tools_rail"
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => trackFeedItemClicked('stocksbrew', 'house', 'StocksBrew')}
-            >
-              <span className="house-label">From the maker of Trace</span>
-              {/* eslint-disable-next-line @next/next/no-img-element -- favicon */}
-              <img className="rail-logo" src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
-              <span className="pulse-title">StocksBrew</span>
-              <span className="rail-sub">US stock research: market data, fundamentals and watchlist monitoring, with an API and MCP for AI agents.</span>
-            </a>
           </div>
-          <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
+          {homeSponsors.length < SPONSOR_SLOTS && (
+            <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
+          )}
         </div>
       </aside>
 
@@ -1915,7 +1904,8 @@ function WelcomeModal({ onClose }: { kind: 'promo'; onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const perks = [
-    'A sponsored spot in Tools on desktop, at the top of Top articles on phones, and at the end of Home, for 30 days',
+    'A sponsored spot in Tools on desktop, at the top of Top articles on phones, at the end of Home and on the daily brief pages, for 30 days',
+    'Clicks tagged utm_source=trace for your analytics, plus a private stats page with our own count (link coming by email)',
     `Support anytime: ${CONTACT_EMAIL}`,
   ];
   return (
@@ -2061,12 +2051,14 @@ function SponsoredToolLink({
   return (
     <a
       className={`sponsored-tool-row sponsored-tool-row--${variant}`}
-      href={sponsor.url}
+      href={sponsorHref(sponsor.url, placement)}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener sponsored"
+      referrerPolicy="origin"
       aria-label={`Sponsored: ${sponsor.title}. Visit website`}
       onClick={() => {
         trackFeedItemClicked(sponsor.id, 'promo', '');
+        recordSponsorClick(sponsor.id, placement);
         trackSponsoredToolClicked({
           sponsorId: sponsor.id,
           title: sponsor.title,
@@ -3220,9 +3212,6 @@ const css = `
   text-decoration: none; white-space: nowrap;
 }
 .xw .promo-proof-link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
-/* StocksBrew: the maker's own product, labelled as such */
-.xw .house-label { grid-column: 1 / -1; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
-.xw .house-row .pulse-title { font-size: 16px; font-weight: 600; }
 .xw .promo-overlay {
   position: fixed; inset: 0; z-index: 400; background: rgba(10,10,10,0.45);
   display: flex; align-items: center; justify-content: center; padding: 20px;

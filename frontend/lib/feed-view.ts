@@ -8,6 +8,8 @@ import { slotsFromRankedItems } from '@/lib/feed-topic-order';
 import { filterSendWorthyTopics, rejectedStoryUrls } from './feed-value';
 import { decodeHtmlEntities } from './feed-article-text';
 import { canonicalLane } from './feed-links';
+import { toDateMaybe } from './subscription-access';
+import { SPONSOR_SLOTS } from './sponsor-link';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -64,16 +66,13 @@ export const getPromotedTools = unstable_cache(
         .map((d: any) => ({ id: d.id, ...(d.data() as Doc) }))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((t: any) => {
-          const exp = t.expires_at;
-          const ms =
-            exp && typeof exp.toMillis === 'function' ? exp.toMillis()
-            : exp instanceof Date ? exp.getTime()
-            : 0;
+          const ms = toDateMaybe(t.expires_at)?.getTime() || 0;
           return !ms || ms > now;
         })
+        // Oldest purchase first: an earlier sponsor keeps its spot when a new one buys in.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .sort((a: any, b: any) => Number(b.created_at?.toMillis?.() || 0) - Number(a.created_at?.toMillis?.() || 0))
-        .slice(0, 3)
+        .sort((a: any, b: any) => (toDateMaybe(a.created_at)?.getTime() || 0) - (toDateMaybe(b.created_at)?.getTime() || 0))
+        .slice(0, SPONSOR_SLOTS)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((t: any) => ({ id: t.id, title: t.title || '', url: t.url || '#', sub: t.subtext || '' }));
     } catch {

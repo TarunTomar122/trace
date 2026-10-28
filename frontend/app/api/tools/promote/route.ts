@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { SPONSOR_SLOTS } from '@/lib/sponsor-link';
+import { toDateMaybe } from '@/lib/subscription-access';
 
 const PROMO_PRODUCT_ID = 'pdt_0NmqHrCrNa6vQDowGHn10';
 
@@ -36,6 +38,16 @@ export async function POST(request: NextRequest) {
     }
     if (!title) {
       return NextResponse.json({ error: 'Enter a tool title' }, { status: 400 });
+    }
+
+    // Only SPONSOR_SLOTS sponsors show at once: don't sell a spot nobody would see.
+    const active = await adminDb.collection('promoted_tools').where('status', '==', 'active').get();
+    const running = active.docs.filter((d) => {
+      const ends = toDateMaybe(d.data().expires_at)?.getTime() || 0;
+      return !ends || ends > Date.now();
+    }).length;
+    if (running >= SPONSOR_SLOTS) {
+      return NextResponse.json({ error: 'All sponsor spots are taken right now. Email us and we will hold the next one for you.' }, { status: 409 });
     }
 
     const DODO_API_KEY = process.env.DODO_API_KEY;

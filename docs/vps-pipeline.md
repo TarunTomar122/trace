@@ -22,9 +22,10 @@ Actions keeps push notifications plus manual/replay workflows.
 | `trace-newsletter.service/.timer` | daily 08:30 Europe/London | `v3.flows.send_audience_newsletter` |
 | `trace-instagram.service/.timer` | 09:00 and 20:00 Europe/London | `v3.flows.post_instagram` |
 | `trace-welcome.service/.timer` | every 5 min | `v3.flows.send_welcome` |
+| `trace-sponsor-welcome.service/.timer` | every 10 min | `v3.flows.send_sponsor_welcome` |
 | `trace-postkit.service/.timer` | daily 07:30 Europe/London | `v3.flows.build_post_kit` |
 
-Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}`, `trace-welcome.{service,timer}` and `trace-postkit.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
+Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{service,timer}`, `trace-instagram.{service,timer}`, `trace-welcome.{service,timer}`, `trace-sponsor-welcome.{service,timer}` and `trace-postkit.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed. The daily push skips a top story that repeats one it pushed in the last 3 days (same link, same headline, or the daily's repeat judge on a look-alike; unjudged look-alikes count as repeats) and records what it sent in `push_notifications_sent/<date>`.
 
@@ -127,6 +128,30 @@ Day to day (the job takes `~/trace/.welcome.lock`, so a manual run can't race th
 cd ~/trace/backend && ../.venv/bin/python -m v3.flows.send_welcome --dry-run    # who's next, HTML previews
 ../.venv/bin/python -m v3.flows.send_welcome --test-to you@example.com          # every version to you
 tail -50 ~/trace/logs/welcome.log
+```
+
+## Sponsor welcome email
+
+`trace-sponsor-welcome.timer` runs `backend/v3/flows/send_sponsor_welcome.py`
+every 10 minutes. When the payment webhook makes a `promoted_tools` record
+active, the sponsor gets one email: their tool is live and until when, where it
+shows (the feed and the daily brief pages), how to find Trace visits in their
+own analytics (`utm_source=trace`, `utm_medium=sponsored`, the spot in
+`utm_content`), and a link to their private stats page
+(`/sponsor/<id>?k=<stats_token>`, token made by the job). `welcome_status` on
+the record makes it once ever; only sponsors created since 2026-10-27 count.
+
+Clicks are counted twice: PostHog `sponsored_tool_clicked` (ours), and a beacon
+to `/api/tools/click` that adds to `sponsor_clicks/<id>_<day>` (the numbers on
+the stats page). Sponsors show oldest purchase first, on the feed and the brief.
+
+```bash
+cp ~/trace/backend/vps/trace-sponsor-welcome.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now trace-sponsor-welcome.timer
+cd ~/trace/backend && ../.venv/bin/python -m v3.flows.send_sponsor_welcome --dry-run   # who's next, HTML preview
+../.venv/bin/python -m v3.flows.send_sponsor_welcome --test-to you@example.com         # a preview to you
+../.venv/bin/python -m v3.flows.send_sponsor_welcome --id <promoted_tools id>          # one sponsor now
+tail -50 ~/trace/logs/sponsor-welcome.log
 ```
 
 ## Instagram carousels

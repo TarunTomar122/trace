@@ -80,10 +80,10 @@ export default async function DailyEditionPage({ params }: Props) {
   const [edition, recent, sponsors] = await Promise.all([
     getDailyEdition(date),
     listEditionDates(400),
-    getPromotedTools(), // the feed's active sponsors (cached 5 min); the rail shows the first
+    getPromotedTools(), // the feed's active sponsors (cached 5 min), oldest purchase first
   ]);
   if (!edition) notFound();
-  const sponsor: RailSponsor | null = (sponsors[0] as RailSponsor | undefined) ?? null;
+  const railSponsors = sponsors as RailSponsor[];
 
   const { newer, older } = neighbours(recent.map((item) => item.date), date);
   const url = editionUrl(date);
@@ -143,10 +143,12 @@ export default async function DailyEditionPage({ params }: Props) {
               ))}
             </ol>
           </article>
-          {/* Wide screens only: the sponsor, then the subscribe card, sticky like the contents column. */}
+          {/* Wide screens only: the sponsors, then the subscribe card, sticky like the contents column. */}
           <aside className="br-rail-col" aria-label="Sponsor and subscribe">
             <div className="br-rail">
-              {sponsor && <RailSponsorCard sponsor={sponsor} editionDate={date} />}
+              {railSponsors.map((sponsor, index) => (
+                <RailSponsorCard key={sponsor.id} sponsor={sponsor} editionDate={date} position={index + 1} />
+              ))}
               <RailSubscribeCard />
             </div>
           </aside>

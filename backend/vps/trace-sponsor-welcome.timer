@@ -1,0 +1,10 @@
+[Unit]
+Description=Welcome new Trace sponsors every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+AccuracySec=30s
+Unit=trace-sponsor-welcome.service
+
+[Install]
+WantedBy=timers.target

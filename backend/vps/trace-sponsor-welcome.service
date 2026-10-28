@@ -1,0 +1,14 @@
+[Unit]
+Description=Trace welcome email for new sponsors
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=10min
+WorkingDirectory=%h/trace/backend
+EnvironmentFile=%h/trace/.env
+# The job takes ~/trace/.sponsor-welcome.lock itself, so manual runs are covered too.
+ExecStart=%h/trace/.venv/bin/python -u -m v3.flows.send_sponsor_welcome
+StandardOutput=append:%h/trace/logs/sponsor-welcome.log
+StandardError=append:%h/trace/logs/sponsor-welcome.log

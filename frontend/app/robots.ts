@@ -21,6 +21,7 @@ export default function robots(): MetadataRoute.Robots {
           '/oauth/',
           '/bookmarks',
           '/dev',
+          '/sponsor/',
         ],
       },
     ],
