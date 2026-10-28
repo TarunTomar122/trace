@@ -717,16 +717,16 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "best-tech-news-aggregator-apps",
-    title: "7 tech news aggregators compared (2026)",
-    subtitle: "Stop jumping between 47 tabs. These tools curate, summarize, and deliver tech news so you actually stay informed.",
+    title: "Best Tech News Aggregator Apps in 2026: 7 Compared",
+    subtitle: "Seven tools that collect, group or summarize tech news, compared on setup, price, and how quickly you can catch up.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Compare 7 tech news aggregators for 2026 — Trace, Feedly, Inoreader — on AI summaries, source grouping, and whether you can actually finish reading in 10 minutes.",
+      "7 tech news aggregators compared for 2026: Trace, Feedly, Inoreader, NewsBlur, Techmeme, daily.dev and Flipboard, with prices and who each one suits.",
     author: "Trace Editorial",
     readTime: "14 min read",
     date: "May 5, 2026",
-    updated: "October 19, 2026",
+    updated: "October 28, 2026",
     image: "https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=1200&h=630&fit=crop&auto=format",
     relatedSlugs: [
       "best-ai-news-apps-2026",
@@ -737,10 +737,9 @@ export const blogPosts: BlogPost[] = [
     sections: [
       {
         paragraphs: [
-          "If you work in tech, you know the drill. You have 15 tabs open — TechCrunch, The Verge, Hacker News, Reddit, a few Twitter lists, maybe a Discord server or two. You scroll through each one, read three headlines, forget two of them, and somehow still miss the one story everyone's talking about at lunch.",
-          "The problem isn't access to information. It's that nobody designed a system to filter, group, and contextualize it for you. That's where tech news aggregators come in — tools that pull stories from dozens of sources, group related coverage, and often use AI to summarize and prioritize what matters.",
-          "After testing over 15 tech news aggregation tools in 2026, we've narrowed the field to the 7 best options. If you want the product, not another roundup, the [daily AI briefing on Trace](/) is the no-setup version — [today's edition](/feed) is free to start. Each tool below was evaluated on source diversity, story grouping quality, AI accuracy, reading experience, noise filtering, and value for price.",
-          "We also tested for the things that matter in daily use: how quickly you can get through your morning catch-up, whether the mobile experience holds up, and whether the tool surfaces genuinely new information or just recycles the same 10 headlines you've already seen on Twitter."
+          "The best tech news aggregator depends on how much setup you want. With no setup, use Trace (a free, open-source brief that groups each story once across 100+ sources and summarizes it) or Techmeme (a human-edited front page); to choose every source yourself, use Inoreader or Feedly; for open source, NewsBlur; for developer articles, daily.dev; and for visual browsing, Flipboard.",
+          "Below are all seven, with what each does well, where it falls short, current pricing, and who it suits, followed by a decision guide. If you want the product rather than another roundup, [today's Trace brief](/feed) is free and needs no setup.",
+          "How we picked: we compared each tool on source coverage, whether it groups coverage of the same story, summary quality, reading experience, noise control, and price, and we rechecked plans and prices in October 2026. Plans change, so confirm on each site before you pay. We build Trace, so weigh our view of it accordingly."
         ]
       },
       {
@@ -750,7 +749,7 @@ export const blogPosts: BlogPost[] = [
           "Source diversity is the foundation. A great aggregator pulls from 50+ reputable sources — not just one or two publications. You need TechCrunch, The Verge, Ars Technica, Hacker News, Reddit, Product Hunt, GitHub trending, and ideally Twitter/Bluesky accounts from key voices in the industry. If your aggregator only shows you five publications, you might as well just bookmark those sites directly.",
           "Story grouping is what separates an aggregator from an RSS reader. When five publications cover the same story, a good aggregator groups them into one topic page with multiple perspectives. This saves you from reading the same news five times — and more importantly, helps you spot where publications agree and where they diverge. This is especially critical for story grouping for news consumption where multiple viewpoints reveal nuance.",
           "AI summaries add another layer. The best tools use AI to give you the key points, why it matters, and what different sources are saying — without hallucinating facts or stripping away context. An effective AI summary tells you what happened, which sources reported it, what the consensus is, and where opinions differ. See our [deep dive on AI news digest tools](/blog/ai-news-digest-tools) for more on what makes AI summaries trustworthy.",
-          "Reading experience matters more than you think. A clean interface with good typography, dark mode, and the ability to read full articles without leaving the app makes a huge difference in daily use. We eliminated several tools during testing purely because the interface created friction — confusing navigation, slow loading, or poor mobile formatting that made reading feel like a chore.",
+          "Reading experience matters more than you think. A clean interface with good typography, dark mode, and the ability to read full articles without leaving the app makes a huge difference in daily use. Confusing navigation, slow loading, or poor mobile formatting can make reading feel like a chore, however good the sources are.",
           "Finally, noise filtering is essential. Your aggregator should let you control what you see — whether through topic preferences, source filtering, or AI that learns what you find useful. The best tools combine explicit controls (keyword filters, source muting) with implicit learning (observing what you read and share). Without effective noise filtering, even the best aggregator becomes another source of [information overload](/blog/information-overload-solutions)."
         ]
       },
@@ -764,8 +763,8 @@ export const blogPosts: BlogPost[] = [
         heading: "1. Trace — Best for AI-Curated Daily Briefings",
         paragraphs: [
           "Trace takes a fundamentally different approach from traditional RSS readers. Instead of making you curate individual feeds, it scans 100+ sources automatically and groups related stories into topic pages. Each topic page includes an AI-generated summary, key points pulled from multiple outlets, a timeline of how the story developed, and links to community discussions on Reddit and Hacker News.",
-          "Where Trace shines is the morning catch-up. You open the app, scroll through 8-12 topic groups, and in 10-15 minutes you're caught up on tech news without having touched a single feed setting. The AI summaries are multi-source — they synthesize coverage from different publications rather than summarizing one article at a time — which means you get a more balanced picture of each story. The topic grouping feature for tech news is particularly powerful for identifying which stories have real momentum across the industry.",
-          "The community discussion integration is an underrated feature. For each topic, Trace links to relevant Reddit threads and Hacker News discussions, so you can see what practitioners are saying — not just what journalists are writing. This surface-level-plus-community format is something none of the other tools on this list do as well."
+          "Where Trace shines is the morning catch-up. You open the brief, scroll through the day's topic groups, and in about five minutes you're caught up on tech news without having touched a single feed setting. If you prefer, the same brief can arrive by email around 8:30am UK time. The AI summaries are multi-source — they synthesize coverage from different publications rather than summarizing one article at a time — which means you get a more balanced picture of each story. The topic grouping feature for tech news is particularly powerful for identifying which stories have real momentum across the industry.",
+          "The community discussion integration is an underrated feature. For each topic, Trace links to relevant Reddit threads and Hacker News discussions, so you can see what practitioners are saying — not just what journalists are writing. Few of the other tools on this list pair the news with community discussion this directly."
         ],
         bullets: [
           "Pros: Automatic source scanning (no feed curation needed), multi-source AI summaries, topic grouping with multiple perspectives, community discussion integration, clean reading experience, free and open source",
@@ -777,42 +776,42 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "2. Feedly — Best Traditional RSS Reader with AI Smarts",
         paragraphs: [
-          "Feedly is the default RSS reader for millions of users, and the 2026 version is more than just a feed viewer. Its AI engine (Leo) can filter feeds by keywords, summarize articles, and surface trending topics across your subscriptions. The free plan gives you 100 sources and 3 folders — enough for most casual users.",
+          "Feedly is one of the most widely used RSS readers, and the 2026 version is more than just a feed viewer. Its AI engine (Leo) can filter feeds by keywords, summarize articles, and surface trending topics across your subscriptions. The free plan gives you 100 sources and 3 folders — enough for most casual users.",
           "The real advantage of Feedly is maturity. It has polished web, iOS, and Android apps, integrations with third-party tools via its API, and a massive library of pre-curated source collections. If you want a reliable RSS reader that works everywhere and occasionally surfaces insights via AI, Feedly is the safe choice.",
-          "The downside is that Feedly's AI features are gated behind Pro ($8/month) and Pro+ ($15/month) plans. On the free tier, you're essentially using a very good RSS reader without any of the intelligence that makes modern aggregators compelling. And like all RSS-first tools, Feedly doesn't group related stories from different sources — you'll see the same product launch covered separately by five publications."
+          "The downside is that Feedly's AI assistant, Leo, is on the Pro+ plan, and search needs at least the Pro plan. On the free tier, you're essentially using a very good RSS reader without any of the intelligence that makes modern aggregators compelling. And like all RSS-first tools, Feedly doesn't group related stories from different sources — you'll see the same product launch covered separately by five publications."
         ],
         bullets: [
           "Pros: Polished apps on every platform, generous free tier (100 sources), reliable synchronization, extensive integrations, large user community, AI filtering and summarization on paid plans",
-          "Cons: AI features paywalled behind Pro, no story grouping across sources, free tier limited to 3 folders, some users report Leo's summaries can be inconsistent",
-          "Pricing: Free (100 sources, 3 folders); Pro $8/month (1,000 sources, AI summaries, search); Pro+ $15/month (AI feeds, team features)",
+          "Cons: AI features (Leo) only on Pro+, search not on the free plan, no story grouping across sources, free tier limited to 3 folders",
+          "Pricing: Free (100 sources, 3 folders); Pro adds search and more sources; Pro+ adds Leo and AI feeds. Prices vary by billing period, so check feedly.com",
           "Best for: Users who want a reliable, mature RSS reader with optional AI features — especially those who already have a well-organized list of sources"
         ]
       },
       {
         heading: "3. Inoreader — Best for Power Users",
         paragraphs: [
-          "Inoreader is the Swiss Army knife of news aggregation. Its free plan already beats Feedly's free plan — 150 subscriptions vs 100, plus newsletter integration, YouTube channel tracking, and permanent archiving. The Pro plan ($9.99/month) adds AI summaries, an advanced rules engine, keyword monitoring, and automated reports.",
-          "The rules engine is Inoreader's killer feature. You can create complex automation: 'If an article contains keyword X but not Y, from source A or B, tag it with Z, forward it to Slack, and mark it as high priority.' For professionals who need to track specific topics across dozens of sources, nothing else comes close. The rules engine can filter news feeds by topic, source, author, and even sentiment.",
-          "Inoreader also excels at search. Unlike Feedly (which gatekeeps search behind Pro), Inoreader offers full-text search on the free plan. Combined with permanent archiving, this means you can find articles from years ago — invaluable for research and reference. The newsletter integration is another standout: you can give Inoreader a unique email address and subscribe newsletters directly to your reader, keeping your inbox clean."
+          "Inoreader packs in more features than any other reader here. Its free plan gives you more than Feedly's: 150 feeds instead of 100, plus article search. The Pro plan (from €6.67/month billed yearly, or €8.99 monthly) adds the rules engine and filters, keyword monitoring feeds, newsletter subscriptions, feeds from social networks and sites without RSS, and AI article summaries.",
+          "The rules engine is Inoreader's standout feature. You can create complex automation: 'If an article contains keyword X but not Y, from source A or B, tag it with Z, forward it to Slack, and mark it as high priority.' For professionals who need to track specific topics across dozens of sources, it is the most capable option on this list. The rules engine can filter news feeds by topic, source, author, and even sentiment.",
+          "Inoreader also excels at search. Unlike Feedly (which gatekeeps search behind Pro), Inoreader offers full-text search on the free plan. Combined with its archive, this means you can find articles from long ago — invaluable for research and reference. The newsletter integration is another standout: you can give Inoreader a unique email address and subscribe newsletters directly to your reader, keeping your inbox clean."
         ],
         bullets: [
-          "Pros: Most features at every price tier, advanced rules engine unmatched by any competitor, permanent archiving on all plans, newsletter and social media integration, full-text search on free plan, 150 free subscriptions",
+          "Pros: Most features at every price tier, advanced rules engine, article archive, newsletter and social media feeds, full-text search on free plan, 150 free feeds",
           "Cons: Interface can feel overwhelming for new users, steeper learning curve than Feedly, mobile app less polished than desktop experience",
-          "Pricing: Free (150 subscriptions, search, archiving); Pro $9.99/month (rules, AI, keyword monitoring); Business plans available",
-          "Best for: Power users, researchers, and professionals who need advanced filtering, automation, and permanent searchable archives"
+          "Pricing: Free (150 feeds, search); Pro from €6.67/month billed yearly or €8.99 monthly (2,500 feeds, rules, monitoring, newsletters, AI summaries); custom plans for teams",
+          "Best for: Power users, researchers, and professionals who need advanced filtering, automation, and searchable archives"
         ]
       },
       {
         heading: "4. NewsBlur — Best Open-Source Option",
         paragraphs: [
           "NewsBlur is the leading open-source news reader, and its AI-powered filtering sets it apart from other self-hosted options. The tool learns your reading preferences based on which stories you actually open and read, then adjusts your feed to surface similar content. It's subtle but effective — like having an assistant who gradually learns what you care about.",
-          "The free tier gives you 64 sites, which is competitive with other freemium readers. The premium plan ($36/year) unlocks 1,000 subscriptions and unlimited folders. If you're privacy-conscious or just prefer controlling your own infrastructure, NewsBlur can be fully self-hosted on your own server with Docker.",
+          "The free tier gives you 64 sites, which is competitive with other freemium readers. Premium ($36/year) raises that to 1,024 sites, and Premium Archive ($99/year) adds a full archive, Ask AI, and a daily briefing. If you're privacy-conscious or just prefer controlling your own infrastructure, NewsBlur can be fully self-hosted on your own server with Docker.",
           "The AI filtering is NewsBlur's differentiator in the open-source space. Where most self-hosted readers (like Miniflux) are strictly reverse-chronological, NewsBlur actively surfaces stories it thinks you'll find relevant. This isn't the same as multi-source AI summaries — it's more about relevance ranking within your existing feeds — but for reducing noise from high-volume sources, it's genuinely useful."
         ],
         bullets: [
           "Pros: Open source with self-hosting option, AI filtering learns preferences automatically, competitive free tier (64 sites), active development community, mobile apps available, privacy-respecting",
-          "Cons: AI is limited to filtering (no multi-source summarization), open-source nature means slower feature development, self-hosting requires technical knowledge, smaller user base than commercial alternatives",
-          "Pricing: Free (64 sites, AI filtering); Premium $36/year (1,000 subscriptions, unlimited folders); Self-hosted: free",
+          "Cons: Ask AI and the daily briefing need the $99/year Archive plan, no grouping of the same story across sources, self-hosting requires technical knowledge, smaller user base than commercial alternatives",
+          "Pricing: Free (64 sites, AI filtering); Premium $36/year (1,024 sites); Premium Archive $99/year (4,096 sites, full archive, Ask AI); Self-hosted: free",
           "Best for: Privacy-conscious users, open-source advocates, and developers who want AI filtering without depending on a commercial service — also great if you want to self-host"
         ]
       },
@@ -874,11 +873,11 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "The best tech news aggregator for you depends on your role, how much time you have, and how much control you want. Here's a decision guide based on common user profiles:",
           "If you want to spend less than 15 minutes a day on news and don't want to manage feeds at all: Trace or Techmeme. Trace gives you AI-curated topic pages with multi-source perspectives and community discussions. Techmeme gives you human-curated industry headlines in 3-5 minutes. Both require zero feed management.",
-          "If you want complete control over your sources and enjoy the curation process: Inoreader or Feedly. Inoreader offers more features (rules engine, permanent archiving, newsletter integration) while Feedly offers a more polished, beginner-friendly experience. Start with Feedly if you're new to RSS; graduate to Inoreader if you outgrow it.",
+          "If you want complete control over your sources and enjoy the curation process: Inoreader or Feedly. Inoreader offers more features (rules engine, full-text search, newsletter feeds) while Feedly offers a more polished, beginner-friendly experience. Start with Feedly if you're new to RSS; graduate to Inoreader if you outgrow it.",
           "If you value privacy and want open-source software: NewsBlur. It combines open-source transparency with AI filtering that learns your preferences, and you can self-host for complete data control. See our [RSS reader guide](/blog/best-rss-reader-apps) for more open-source options including Miniflux and FreshRSS.",
           "If you're a developer who wants project discovery alongside news: use Trace for breadth, then daily.dev or GitHub Trending for discovery and Lobsters or Hacker News for community discussion. No single tool covers all three well.",
           "If you're a team lead or executive: Techmeme for the 3-minute industry scan, plus Inoreader with keyword rules for tracking specific competitors and technologies. The rules engine can automatically surface anything mentioning your company, competitors, or key technology terms.",
-          "The most common mistake is trying to use one tool for everything. Most well-informed tech professionals we surveyed use 2-3 tools: one for breadth (daily digest), one for depth (RSS or targeted publications), and one for discovery (community platforms). This layered approach — similar to the system described in our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) — catches more signal with less effort than any single tool.",
+          "The most common mistake is trying to use one tool for everything. Many people who follow tech closely end up with 2-3 tools: one for breadth (daily digest), one for depth (RSS or targeted publications), and one for discovery (community platforms). This layered approach — similar to the system described in our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) — catches more signal with less effort than any single tool.",
           "Switching away from one app in particular? We compare the closest options for each: [Feedly](/blog/feedly-alternatives), [Inoreader](/blog/inoreader-alternatives), [Flipboard](/blog/flipboard-alternatives), [Google News](/blog/google-news-alternatives), [SmartNews](/blog/smartnews-alternatives), [Techmeme](/blog/techmeme-alternatives), [Hacker News](/blog/hacker-news-alternatives) and [daily.dev](/blog/daily-dev-alternatives)."
         ]
       },
@@ -887,7 +886,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "We built Trace because existing options fell into two camps: raw RSS readers that felt like work, or algorithmic feeds that optimized for engagement over understanding. We wanted something different — a tool that gave you the efficiency of curation without requiring feed management, and the depth of multi-source comparison without requiring you to read five versions of the same story.",
           "Trace scans 100+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, key points, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
-          "The result is a 15-minute morning catch-up that replaces a dozen open tabs. Our users tell us they spend less time on news and retain more of what they read — not because they're consuming less, but because the information is organized in a way that matches how understanding actually works: through comparison, context, and community.",
+          "The aim is a short morning catch-up, about five minutes, that replaces a dozen open tabs, with the information organized the way understanding tends to work: through comparison, context, and community. If you would rather not open anything, the same brief can come to your inbox around 8:30am UK time.",
           "We're biased, obviously, but if you're tired of tab roulette and want a tool that treats your attention as valuable, Trace is free for everyone and open source, so it is an easy place to start. You can also check out our [daily tech briefing guide](/blog/daily-tech-briefing-guide) for tips on building an effective morning news routine, whether you use Trace or another tool."
         ]
       }
@@ -895,15 +894,16 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "feedly-alternatives",
-    title: "Best Feedly alternatives for tech news in 2026",
+    title: "Free Feedly Alternatives: 7 Options Compared (2026)",
     subtitle: "Feedly is the default, but it's not perfect. Here are 7 alternatives that might fit your workflow better.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Outgrowing Feedly? Compare 7 alternatives for 2026 — Trace, Inoreader, NewsBlur — if you want AI summaries without spending your morning managing RSS.",
+      "7 Feedly alternatives you can start free in 2026: Inoreader, NewsBlur, Miniflux, NetNewsWire, Fluent Reader, Reeder, and Trace, a free AI tech news brief.",
     author: "Trace Editorial",
-    readTime: "11 min read",
+    readTime: "8 min read",
     date: "May 5, 2026",
+    updated: "October 28, 2026",
     image: "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=630&fit=crop&auto=format",
     sources: [],
     sections: [
@@ -1409,15 +1409,16 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "best-rss-reader-apps",
-    title: "5 RSS readers compared (2026)",
-    subtitle: "RSS is still the best way to follow specific sources without algorithms. Here are the top RSS readers for every use case.",
+    title: "Best RSS Reader Apps in 2026: 5 Free Picks Compared",
+    subtitle: "RSS is still the simplest way to follow specific sources without an algorithm. Five readers, compared by use case.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Feedly, Inoreader, NewsBlur, FreshRSS, and Miniflux compared on features, pricing, and setup. Pick an RSS reader if you want source control — or a briefing if you do not.",
+      "Inoreader, Feedly, NewsBlur, FreshRSS and Miniflux compared for 2026: free plans, prices and self-hosting. All five still maintained as of October 2026.",
     author: "Trace Editorial",
     readTime: "10 min read",
     date: "April 25, 2026",
+    updated: "October 28, 2026",
     image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&h=630&fit=crop&auto=format",
     relatedSlugs: [
       "feedly-alternatives",
@@ -1428,8 +1429,9 @@ export const blogPosts: BlogPost[] = [
     sections: [
       {
         paragraphs: [
-          "RSS (Really Simple Syndication) has been declared dead roughly 47 times since Google Reader shut down in 2013. But in 2026, RSS is thriving — it remains the best way to follow specific publications, blogs, and newsletters without algorithmic interference.",
-          "The modern RSS landscape is surprisingly rich. You have managed services with AI features, self-hosted options for the privacy-conscious, and minimalist readers that get out of your way. Here are the 5 best RSS reader apps in 2026."
+          "For most people the best RSS reader app in 2026 is Inoreader, which includes the most on its free plan; Feedly is the easiest to start with, NewsBlur is the open-source pick with a hosted option, and FreshRSS and Miniflux are the best free readers to host yourself. All five have a free option, and all five were still actively maintained when we checked in October 2026.",
+          "RSS remains the way to follow specific publications, blogs, and newsletters without algorithmic interference: you choose the sources, and you see everything they publish. If you would rather not choose sources at all, an AI brief like [Trace](/feed) is the other route, and we compare the two at the end.",
+          "How we picked: we compared readers on free-plan limits, price, self-hosting, AI features, and how pleasant they are to read in every day, and we rechecked plans, prices, and recent releases in October 2026. Plans change, so confirm on each site before you pay."
         ]
       },
       {
@@ -1443,14 +1445,21 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "The 5 Best RSS Readers",
         paragraphs: [
-          "We tested every major RSS reader active in 2026. Here are the top 5, organized by use case."
+          "All five are actively developed as of October 2026. Here they are, organized by use case."
         ],
         bullets: [
-          "1. Inoreader — Best overall RSS reader. 150 free subscriptions, permanent archiving, advanced rules engine, newsletter and social media integration. The Pro plan ($9.99/month) adds AI summaries, keyword monitoring, and automated reports. The most feature-complete option.",
-          "2. Feedly — Best for beginners. Clean interface, excellent mobile apps, generous free plan (100 sources). AI features like article summarization and content filtering on Pro ($8/month). Integrates with most third-party RSS apps via its API.",
-          "3. NewsBlur — Best for AI filtering. Automatically learns your reading preferences and surfaces relevant stories. Free for 64 sites, $36/year for 1,000 subscriptions. Open source — you can self-host.",
-          "4. FreshRSS — Best self-hosted option. Free, open source, easy to install on any server. Supports multiple users, mobile-friendly, and has a decent extension ecosystem. Great for privacy-conscious users who want full control.",
-          "5. Miniflux — Best minimalist reader. Keyboard-driven, blazingly fast, no JavaScript bloat. Self-hosted, free, open source. Perfect if you want a reading experience that gets out of your way completely."
+          "1. Inoreader — Best overall RSS reader. The free plan covers 150 feeds and includes article search. Pro (from €6.67/month billed yearly, or €8.99 monthly) adds the rules engine and filters, keyword monitoring, newsletter and social media feeds, AI article summaries, and up to 2,500 feeds. The most feature-complete option.",
+          "2. Feedly — Best for beginners. Clean interface, polished mobile apps, and a free plan with 100 sources and 3 folders. Search is on paid plans, and the AI assistant, Leo, is on Pro+. Integrates with many third-party RSS apps via its API.",
+          "3. NewsBlur — Best for AI filtering. Learns your reading preferences and surfaces relevant stories. Free for 64 sites, Premium $36/year for 1,024 sites, and Premium Archive $99/year adds a full archive and Ask AI. Open source (MIT) — you can self-host.",
+          "4. FreshRSS — Best self-hosted option. Free, open source, easy to install on any server. Supports multiple users, works well on mobile browsers, syncs with mobile RSS apps through its API, and has a decent extension ecosystem. Good for privacy-conscious users who want full control.",
+          "5. Miniflux — Best minimalist reader. Keyboard-driven, fast, and light on JavaScript. Free and open source to self-host. A good fit if you want a reading experience that gets out of your way."
+        ]
+      },
+      {
+        heading: "Also Worth Knowing",
+        paragraphs: [
+          "On Apple devices, NetNewsWire is a free, open-source reader for Mac and iOS that is still actively developed. Reeder is a free download for iPhone, iPad, and Mac with an optional subscription; its older one-time-purchase version is sold separately as Reeder Classic. On the desktop, Fluent Reader is a free, open-source reader for Windows and macOS.",
+          "If you self-host Tiny Tiny RSS: its original developer shut down the project's site and repositories on November 1, 2025, and a new maintainer continues it as a fork on GitHub, so check that your install pulls updates from the fork. Google Reader, the reader many of these tools replaced, closed in 2013."
         ]
       },
       {

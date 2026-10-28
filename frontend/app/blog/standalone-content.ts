@@ -78,12 +78,13 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
   },
   {
     slug: "best-ai-news-apps-2026",
-    title: "Best AI News Apps in 2026: 10 Tools Compared",
+    title: "Best AI News Apps in 2026: 6 Apps Compared",
     tag: "AI & Tech",
     category: "ai-tools",
-    excerpt: "We tested 10 AI news apps on source coverage, summaries, and time-to-caught-up. Trace, Feedly, and Ground News compared for founders.",
-    readTime: "14 min read",
+    excerpt: "6 AI news apps compared for 2026: Trace, Feedly, Ground News, Inshorts, Particle and NewsX. What each costs, where it runs, and who it suits.",
+    readTime: "8 min read",
     date: "June 22, 2026",
+    updated: "October 28, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
   },
   {

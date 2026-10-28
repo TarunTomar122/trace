@@ -39,8 +39,10 @@ const nextConfig: NextConfig = {
       // retired legacy surfaces (redesigned experience lives in /feed)
       { source: '/trending', destination: '/feed', permanent: true },
       { source: '/trending/:topic', destination: '/feed', permanent: true },
-      { source: '/daily', destination: '/feed', permanent: true },
-      { source: '/daily/:date', destination: '/feed', permanent: true },
+      // The old daily pages still earn impressions; send them to the brief
+      // archive, not /feed (robots.txt blocks /feed, so Google lost them).
+      { source: '/daily', destination: '/brief', permanent: true },
+      { source: '/daily/:date', destination: '/brief', permanent: true },
       { source: '/topics/:id', destination: '/feed', permanent: true },
       { source: '/bookmarks', destination: '/feed', permanent: true },
       { source: '/profile', destination: '/feed', permanent: true },
@@ -55,6 +57,12 @@ const nextConfig: NextConfig = {
       { source: '/compare/daily-dev-alternative', destination: '/blog/daily-dev-alternatives', permanent: true },
       { source: '/compare/tldr-newsletter-alternative', destination: '/blog/tldr-newsletter-alternatives', permanent: true },
       { source: '/compare/ground-news-alternative-for-tech', destination: '/blog/ground-news-alternatives-for-tech', permanent: true },
+      // Old URLs Search Console still reports as 404s.
+      { source: '/use-cases/trace-for-:who', destination: '/use-cases/for-:who', permanent: true },
+      { source: '/solutions/stop-info-overload', destination: '/solutions/info-overload', permanent: true },
+      { source: '/research', destination: '/blog', permanent: true },
+      { source: '/research/:slug', destination: '/blog', permanent: true },
+      { source: '/Home', destination: '/', permanent: true },
       {
         source: "/:path+/",
         destination: "/:path+",

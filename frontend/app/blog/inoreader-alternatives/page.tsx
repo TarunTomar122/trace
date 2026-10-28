@@ -424,7 +424,7 @@ export default function BlogPost() {
             <ul className="space-y-2">
               <li>
                 <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Feedly Alternatives: 7 Free Options That Are Actually Better →
+                  Free Feedly Alternatives: 7 Options Compared →
                 </Link>
               </li>
               <li>

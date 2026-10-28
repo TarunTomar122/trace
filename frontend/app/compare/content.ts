@@ -248,7 +248,7 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "ai-news-aggregator",
-    relatedRoundup: { href: "/blog/best-ai-news-apps-2026", label: "Best AI news apps in 2026: 10 tools compared" },
+    relatedRoundup: { href: "/blog/best-ai-news-apps-2026", label: "Best AI news apps in 2026: 6 apps compared" },
     related: ["best-tech-news-app", "hacker-news-digest", "trace-vs-google-news"],
     title: "AI News Aggregator With Real Context | Trace",
     description:

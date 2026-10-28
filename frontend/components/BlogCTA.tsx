@@ -17,8 +17,22 @@ function feedHref(slug: string, location: string) {
  * the old end-of-article link to the feed). Server-rendered for everyone; after hydration,
  * readers already subscribed on this device lose the ask (the end card keeps its feed link).
  */
+type BriefPreview = { date: string; label: string; stories: { title: string; href: string }[] };
+
+// Both cards on a page share one request for the latest brief's headlines.
+let briefPreview: Promise<BriefPreview | null> | null = null;
+function loadBriefPreview(): Promise<BriefPreview | null> {
+  briefPreview ??= fetch("/api/public/brief-preview")
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => (data && data.preview ? (data.preview as BriefPreview) : null))
+    .catch(() => null);
+  return briefPreview;
+}
+
 export function BlogEmailCard({ slug, placement }: { slug: string; placement: "intro" | "end" }) {
   const [hidden, setHidden] = useState(false);
+  // The newest brief's top headlines: what the email is, before we ask for an address.
+  const [preview, setPreview] = useState<BriefPreview | null>(null);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -35,6 +49,16 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     focusDone.current = false;
     doneRef.current?.focus();
   }, [status]);
+
+  useEffect(() => {
+    let live = true;
+    void loadBriefPreview().then((value) => {
+      if (live) setPreview(value);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isNewsletterSubscribed()) setHidden(true);
@@ -107,6 +131,23 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       <div className="bl-mail-title">
         The 10 stories that matter in tech and AI, every morning. Free.
       </div>
+      {preview && status !== "done" && (
+        <div className="bl-mail-preview">
+          <div className="bl-mail-preview-label">In the brief for {preview.label}:</div>
+          <ol>
+            {preview.stories.map((story) => (
+              <li key={story.href}>
+                <Link
+                  href={story.href}
+                  onClick={() => trackBlogCtaClicked(slug, placement === "end" ? "article_end" : "article_intro", "brief_preview")}
+                >
+                  {story.title}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {status === "done" ? (
         <div
           ref={doneRef}

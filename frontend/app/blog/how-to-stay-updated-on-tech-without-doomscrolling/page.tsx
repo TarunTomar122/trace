@@ -270,7 +270,7 @@ export default function BlogPost() {
               </li>
               <li>
                 <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best Feedly alternatives for tech news →
+                  Free Feedly Alternatives: 7 Options Compared →
                 </Link>
               </li>
             </ul>

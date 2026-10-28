@@ -17,11 +17,15 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Best Feedly alternatives for tech news (2026) | Trace",
+  title: "Free Feedly Alternatives: 7 Options Compared (2026) | Trace",
   description:
-    "Outgrowing Feedly? Compare 7 readers — Trace, Inoreader, NewsBlur — for founders who want AI summaries without managing RSS.",
+    "7 Feedly alternatives you can start free in 2026: Inoreader, NewsBlur, Miniflux, NetNewsWire, Fluent Reader, Reeder, and Trace, a free AI tech news brief.",
   keywords: [
+    "feedly alternative",
     "feedly alternatives",
+    "feedly alternative free",
+    "free alternative to feedly",
+    "feedly free alternative",
     "feedly alternatives free",
     "feedly alternatives reddit",
     "feedly alternative android",
@@ -37,14 +41,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Best Feedly alternatives for tech news (2026)",
+    title: "Free Feedly Alternatives: 7 Options Compared (2026)",
     description:
-      "Outgrowing Feedly? Compare 7 readers — Trace, Inoreader, NewsBlur — if you want AI summaries without managing RSS.",
+      "7 Feedly alternatives you can start free in 2026, from Inoreader and NewsBlur to NetNewsWire, with prices and who each one suits.",
     url: `${SITE_BASE_URL}/blog/feedly-alternatives`,
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-05-04T00:00:00Z",
-    modifiedTime: "2026-09-18T00:00:00Z",
+    modifiedTime: "2026-10-28T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [
       {
@@ -57,9 +61,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Best Feedly alternatives for tech news (2026)",
+    title: "Free Feedly Alternatives: 7 Options Compared (2026)",
     description:
-      "Outgrowing Feedly? Compare 7 readers for founders who want AI summaries without managing RSS.",
+      "7 Feedly alternatives you can start free in 2026, with prices and who each one suits.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -67,12 +71,12 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Feedly Alternatives: 7 Free Options That Are Actually Better (2026)",
+    headline: "Free Feedly Alternatives: 7 Options Compared (2026)",
     description:
-      "Comprehensive comparison of the best free Feedly alternatives for 2026, including Trace, Inoreader, NewsBlur, Miniflux, Reeder, NetNewsWire, and Fluent Reader.",
+      "Seven Feedly alternatives you can start free in 2026: Inoreader, NewsBlur, Miniflux, NetNewsWire, Fluent Reader, Reeder, and Trace, with prices and who each one suits.",
     url: `${SITE_BASE_URL}/blog/feedly-alternatives`,
     datePublished: "2026-05-04T00:00:00Z",
-    dateModified: "2026-09-18T00:00:00Z",
+    dateModified: "2026-10-28T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -87,22 +91,22 @@ export default function BlogPost() {
     {
       question: "What is the best free alternative to Feedly?",
       answer:
-        "Trace is the best free Feedly alternative for quick AI-powered catch-up. It aggregates news from 100+ sources and creates 30-second summaries with zero setup. For RSS power users, Inoreader offers advanced filtering. For open source fans, NewsBlur is the best choice.",
+        "It depends on what you want from Feedly. For a free RSS reader with more on the free plan, Inoreader (150 feeds). For free and open source, NetNewsWire on Mac and iOS, Fluent Reader on Windows and macOS, or Miniflux if you self-host. If you would rather not manage feeds at all, Trace is a free, open-source tech and AI news brief that groups each story once from 100+ sources.",
     },
     {
       question: "Why should I switch from Feedly to another RSS reader?",
       answer:
-        "Feedly's AI summaries require a Pro plan at $7/month. Its free tier is limited to 100 sources, and the interface can feel overwhelming for beginners. Alternatives like Trace offer AI summaries for free, while Inoreader provides more advanced filtering options.",
+        "Feedly's free plan is limited to 100 sources and 3 folders, search is a paid feature, and its AI assistant, Leo, is on the Pro+ plan. Inoreader includes more on its free plan, open-source readers cost nothing, and Trace includes its summaries for free.",
     },
     {
       question: "Is Trace better than Feedly?",
       answer:
-        "If you want zero-setup AI summaries from 100+ sources right away, Trace is better than Feedly. Trace is free for everyone: every story, Pulse, the archive, and a daily email you can customize. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
+        "They do different jobs. Trace is the better fit if you want a ready-made, summarized brief of tech and AI news with no setup. It is free for everyone: every story, Pulse, the archive, and a daily email you can customize. Feedly is the better fit if you want to choose every source and read everything those sources publish.",
     },
     {
       question: "Are there any completely free RSS readers like Feedly?",
       answer:
-        "Yes. Trace (web, free for everyone), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
+        "Yes. NetNewsWire (Mac and iOS) and Fluent Reader (Windows and macOS) are free and open source, and Miniflux and NewsBlur are free if you self-host them. Inoreader, NewsBlur and Feedly also have free hosted plans with source limits. Trace is free too, but it is a news brief rather than an RSS reader.",
     },
   ]);
 
@@ -147,12 +151,10 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Feedly Alternatives: 7 Free Options That Are Actually Better (2026)
+            Free Feedly Alternatives: 7 Options Compared (2026)
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <span>
-              <time dateTime="2026-05-04">May 4, 2026</time>
-            </span>
+            <span>Updated <time dateTime="2026-10-28">October 28, 2026</time></span>
             <span>8 min read</span>
             <span>By <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400">Tarun Tomar</a></span>
           </div>
@@ -160,10 +162,14 @@ export default function BlogPost() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Feedly is great, but it&apos;s not for everyone. Maybe you want better
-            AI summaries, a simpler interface, or just something free that
-            actually works. Here are 7 Feedly alternatives that are worth
-            trying.
+            Looking for a free Feedly alternative? All seven below are free to
+            start: NetNewsWire and Fluent Reader are free, open-source RSS apps,
+            Miniflux is free if you host it yourself, Inoreader and NewsBlur
+            have free plans, and Reeder is a free download with a paid
+            subscription. The seventh, Trace, is not an RSS reader: it
+            is a free, open-source tech and AI news brief that groups each story
+            once, however many outlets cover it, and can email it to you each
+            morning.
           </p>
 
           <BlogEmailCard slug="feedly-alternatives" placement="intro" />
@@ -172,18 +178,18 @@ export default function BlogPost() {
             Why Look for Feedly Alternatives?
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Feedly has 15M+ users and is the most popular RSS reader. But it
-            has drawbacks:
+            Feedly is one of the most widely used RSS readers, and its free plan
+            is enough for many people. The usual reasons to look elsewhere:
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>AI summaries require Pro plan ($7/month)</li>
-            <li>Steep learning curve for beginners</li>
-            <li>Free tier limited to 100 sources</li>
-            <li>Can feel overwhelming with too many features</li>
+            <li>The free plan stops at 100 sources and 3 folders</li>
+            <li>Search is a paid feature</li>
+            <li>The AI assistant, Leo, is only on the Pro+ plan</li>
+            <li>Each outlet&apos;s version of the same story shows up separately</li>
           </ul>
           <p className="text-gray-600 dark:text-gray-400">
-            If you&apos;re looking for something simpler, faster, or free, these
-            Feedly alternatives are worth checking out.
+            If you want more on a free plan, open-source software, or a summary
+            instead of a feed, one of these should fit.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -204,7 +210,7 @@ export default function BlogPost() {
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Quick Catch-Up</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ 30-second reads</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ Free, one per story</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td>
@@ -216,7 +222,7 @@ export default function BlogPost() {
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">NewsBlur</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $36/year</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Open Source Fans</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✗</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ (Archive plan)</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Miniflux</td>
@@ -226,7 +232,7 @@ export default function BlogPost() {
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Reeder</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">$6.99 one-time</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $14.99/year</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Apple Users</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✗</td>
                 </tr>
@@ -253,15 +259,18 @@ export default function BlogPost() {
             <strong>Price:</strong> Free
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            If you&apos;re tired of setting up RSS feeds and just want to stay
-            informed, Trace is the best Feedly alternative. It uses AI to
-            aggregate news from 100+ sources and groups related coverage into
-            one ranked briefing.
+            If you mostly use Feedly to keep up with tech and AI news and are
+            tired of maintaining feeds, Trace takes a different approach. It
+            reads 100+ sources for you and groups each story once, however many
+            outlets cover it, with a short summary and links to every source.
+            It does not import OPML or follow your own feeds, so it replaces
+            Feedly only if a ranked brief suits you better than every post from
+            your own list.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>No setup required — open the briefing and go</li>
-            <li>AI summaries from 100+ trusted sources</li>
-            <li>Personalized feed based on your role</li>
+            <li>No setup required: pick a few topics, or just open the brief</li>
+            <li>Each story grouped once across 100+ sources, with a summary</li>
+            <li>Optional daily email around 8:30am UK time</li>
             <li>Free for everyone, open source</li>
           </ul>
           <InlineTraceCTA
@@ -291,11 +300,13 @@ export default function BlogPost() {
             3. NewsBlur — Best Open Source Option
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (self-hosted) | $36/year hosted
+            <strong>Price:</strong> Free (64 sites, or self-hosted) | Premium $36/year | Premium Archive $99/year
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            NewsBlur is open source and can be self-hosted. It&apos;s the best
-            Feedly alternative for privacy-conscious users.
+            NewsBlur is open source under the MIT license and can be
+            self-hosted. The hosted free plan follows up to 64 sites, and the
+            Premium Archive plan adds a full archive, Ask AI and a daily
+            briefing. A good fit for privacy-conscious readers.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -313,11 +324,13 @@ export default function BlogPost() {
             5. Reeder — Best for Apple Users
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> $6.99 one-time
+            <strong>Price:</strong> Free download | subscription $1.99/month or $14.99/year (US App Store)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Reeder is beautifully designed for Mac and iOS. It&apos;s the best
-            Feedly alternative if you&apos;re deep in the Apple ecosystem.
+            Reeder is a carefully designed reader for iPhone, iPad and Mac. The
+            current app moved to a subscription in 2024; the older
+            one-time-purchase version is still sold separately as Reeder
+            Classic. A good fit if you are deep in the Apple ecosystem.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -338,8 +351,9 @@ export default function BlogPost() {
             <strong>Price:</strong> Free
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Fluent Reader is a desktop RSS reader with a clean interface. It&apos;s
-            the best Feedly alternative for desktop users.
+            Fluent Reader is a free, open-source desktop RSS reader for Windows
+            and macOS with a clean interface. It is free to download from its
+            GitHub releases. A good fit if you read on a desktop.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
