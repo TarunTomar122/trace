@@ -79,7 +79,7 @@ Two related warm-up settings:
   `EMAIL_SENDER_BREVO=newsletter@mail.yourtrace.online` and the Brevo route
   authenticates the same way the MTA route does. Leave it unset until Brevo
   accepts the address: Brevo refuses senders it has not verified.
-- `EMAIL_REPLY_TO` (default `support@yourtrace.online`) is the reply path. The
+- `EMAIL_REPLY_TO` (default `tomartarun2001@gmail.com`, the founder's inbox; there is no mailbox at yourtrace.online) is the reply path. The
   sending host is a send-only null client — `mail.yourtrace.online` publishes no
   MX — so without it every reply bounces, and a sender nobody can reply to reads
   as bulk.

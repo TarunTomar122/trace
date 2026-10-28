@@ -136,10 +136,10 @@ def reply_to() -> str:
     """Where a reader's reply goes.
 
     Our sending host is a send-only null client: mail.yourtrace.online has no
-    MX, so a missing Reply-To means every reply bounces. The root domain does
-    accept mail, so the default points at a real mailbox there.
+    MX, so a missing Reply-To means every reply bounces. There is no mailbox at
+    yourtrace.online either, so the default is the founder's own inbox.
     """
-    return (os.getenv("EMAIL_REPLY_TO", "support@yourtrace.online") or "").strip()
+    return (os.getenv("EMAIL_REPLY_TO", "tomartarun2001@gmail.com") or "").strip()
 
 
 def brevo_sender() -> tuple[str, str]:
