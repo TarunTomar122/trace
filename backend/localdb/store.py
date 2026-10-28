@@ -250,16 +250,22 @@ class LocalDocumentStore:
         root = parts[0]
         prefix = valid_path + "/"
         clauses, params = [], []
+        # SQLite's statistics make documents_is_active look unselective (most
+        # rows share a value), so it would scan the whole collection instead;
+        # name the index when the filter is exactly what it covers.
+        use_index = ""
         for field_path, expected in equals or []:
             pushed = sql_equality(field_path, expected)
             if pushed:
                 clauses.append(pushed[0])
                 params.extend(pushed[1])
+                if field_path == "is_active" and not isinstance(expected, str) and not use_index:
+                    use_index = " INDEXED BY documents_is_active"
         connection = self._connect()
         try:
             rows = connection.execute(
-                "SELECT path, data_json, document_hash, updated_at FROM documents "
-                "WHERE collection = ? AND path LIKE ? ESCAPE '\\'"
+                "SELECT path, data_json, document_hash, updated_at FROM documents" + use_index
+                + " WHERE collection = ? AND path LIKE ? ESCAPE '\\'"
                 + "".join(f" AND {clause}" for clause in clauses)
                 + " ORDER BY path",
                 (root, prefix.replace("%", "\\%").replace("_", "\\_") + "%", *params),
