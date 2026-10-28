@@ -12,10 +12,12 @@ import { listEditionDates } from '@/lib/daily-editions'
 export const revalidate = 3600
 
 
+// Not v3_trending_pool: it holds 50,000+ documents (250+ MB) and LocalDB
+// reads every one to answer a limit(250), so the sitemap timed out on it, and
+// an arbitrary 250 of them was no signal to Google anyway.
 const ARTICLE_POOLS = [
   { collection: 'v3_for_you_pool', prefix: 'fy' },
   { collection: 'v3_deep_dive_pool', prefix: 'dd' },
-  { collection: 'v3_trending_pool', prefix: 'tr' },
 ] as const
 
 type SitemapTopicCandidate = {
@@ -84,6 +86,7 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
     try {
       const snapshot = await adminFirestore
         .collection(pool.collection)
+        .select('title', 'summary.short_article') // what isIndexableArticle reads; ~60x less to send
         .limit(250)
         .get()
 
