@@ -3545,8 +3545,14 @@ ${retentionCss}
 .xw .ret-sotd-shot,
 .xw .ret-sotd.lead .ret-sotd-shot { width: 100%; max-width: none; height: 340px; margin: 0 0 22px; }
 .xw .ret-sotd-copy { padding: 0 18px; }
+/* The feed is a full-screen shell; behind it, the page is white, not the site's cream. */
+body:has(> .xw) { background: #ffffff; }
 @media (max-width: 687px) {
   .xw, .xw .main { height: 100dvh; }
+  /* Pinned to the visible screen: in-app browsers (X's link preview) can size or
+     offset the page differently, which left a cream band above the topic chips. */
+  .xw { position: fixed; inset: 0; height: auto; }
+  .xw .main { height: 100%; }
   .xw .head {
     height: auto; min-height: 53px; flex-wrap: wrap;
     padding: 10px 14px 8px; gap: 8px 10px; align-items: center;
