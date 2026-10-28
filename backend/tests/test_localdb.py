@@ -210,5 +210,64 @@ class LocalDBTest(unittest.TestCase):
                 server.server_close()
 
 
+class EqualityPrefilterTests(unittest.TestCase):
+    """Equality filters narrowed in SQLite must give the same answers as Python alone."""
+
+    def setUp(self):
+        from datetime import datetime, timezone
+
+        from backend.localdb.firestore import LocalFirestoreClient
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.client = LocalFirestoreClient(Path(self.tmp.name) / "db.sqlite3")
+        pool = self.client.collection("pool")
+        pool.document("a").set({"is_active": True, "lane": "ai", "n": 1})
+        pool.document("b").set({"is_active": False, "lane": "ai", "n": 2})
+        pool.document("c").set({"is_active": 1, "lane": "markets", "n": 2.0})  # Python: 1 == True
+        pool.document("d").set({"lane": "ai"})  # field missing
+        pool.document("e").set({"is_active": True, "when": datetime(2026, 10, 28, tzinfo=timezone.utc)})
+        pool.document("f").set({"meta": {"kind": "x"}, "is_active": "true"})
+        pool.document("a").collection("child").document("z").set({"is_active": True})  # not a direct child
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def ids(self, query, prefilter=True):
+        store = self.client._store
+        if not prefilter:
+            store.supports_equality_prefilter = False
+        try:
+            return sorted(doc.id for doc in query.stream())
+        finally:
+            store.supports_equality_prefilter = True
+
+    def assertSame(self, query, expected):
+        self.assertEqual(self.ids(query), expected)
+        self.assertEqual(self.ids(query, prefilter=False), expected)
+
+    def test_bool_matches_python_equality(self):
+        pool = self.client.collection("pool")
+        self.assertSame(pool.where("is_active", "==", True), ["a", "c", "e"])
+        self.assertSame(pool.where("is_active", "==", False), ["b"])
+
+    def test_strings_numbers_nested_and_combined(self):
+        pool = self.client.collection("pool")
+        self.assertSame(pool.where("lane", "==", "ai"), ["a", "b", "d"])
+        self.assertSame(pool.where("n", "==", 2), ["b", "c"])
+        self.assertSame(pool.where("meta.kind", "==", "x"), ["f"])
+        self.assertSame(pool.where("is_active", "==", "true"), ["f"])
+        self.assertSame(pool.where("is_active", "==", True).where("lane", "==", "ai"), ["a"])
+
+    def test_timestamps_still_match_their_string_form(self):
+        pool = self.client.collection("pool")
+        self.assertSame(pool.where("when", "==", "2026-10-28T00:00:00+00:00"), ["e"])
+
+    def test_other_operators_and_odd_paths_fall_back(self):
+        pool = self.client.collection("pool")
+        self.assertSame(pool.where("n", ">=", 2), ["b", "c"])
+        self.assertSame(pool.where("is_active", "==", None), [])
+        self.assertSame(pool.where("weird-key", "==", "x"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

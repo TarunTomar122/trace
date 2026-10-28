@@ -245,7 +245,8 @@ class Query:
         return clone
 
     def stream(self, **_kwargs: Any) -> Iterator[DocumentSnapshot]:
-        documents = self._client._documents_for_query(self._collection_path, self._collection_group)
+        equals = [(field, expected) for field, operator, expected in self._filters if operator == "=="]
+        documents = self._client._documents_for_query(self._collection_path, self._collection_group, equals)
         for field_path, operator, expected in self._filters:
             documents = [
                 document
@@ -384,15 +385,23 @@ class LocalFirestoreClient:
         row = self._store.get(reference.path)
         return DocumentSnapshot(reference, row["data"] if row else None)
 
-    def _documents_for_query(self, collection_path: str, collection_group: bool) -> list[dict[str, Any]]:
+    def _documents_for_query(
+        self, collection_path: str, collection_group: bool, equals: list[tuple[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
         if collection_group:
             return [
                 {"path": row["path"], "id": row["path"].rsplit("/", 1)[-1], "data": row["data"]}
                 for row in self._store.iter_collection_group_documents(collection_path)
             ]
+        # The SQLite store can narrow equality filters first (stream() still
+        # applies every filter in Python); other stores list everything.
+        if equals and getattr(self._store, "supports_equality_prefilter", False):
+            rows = self._store.list_collection_documents(collection_path, equals=equals)
+        else:
+            rows = self._store.list_collection_documents(collection_path)
         return [
             {"path": row["path"], "id": row["path"].rsplit("/", 1)[-1], "data": row["data"]}
-            for row in self._store.list_collection_documents(collection_path)
+            for row in rows
         ]
 
     def _write(self, operation: dict[str, Any]) -> None:

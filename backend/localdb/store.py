@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hmac
 import json
+import math
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,7 +15,36 @@ from .codec import canonical_json, denormalise_value, stable_document_hash
 from .paths import validate_collection_name, validate_document_path, validate_local_file_path, validate_path_prefix
 
 
+_FIELD_SEGMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def sql_equality(field_path: str, expected: Any) -> tuple[str, list[Any]] | None:
+    """A SQL prefilter for `field == expected`, or None when it can't be pushed down.
+
+    It must keep every document Python's `==` keeps (it may keep more: the
+    query still filters in Python afterwards). So True matches true, 1 and 1.0
+    like Python does, and a string also lets through tagged objects
+    (timestamps, dates, references), which read back as strings.
+    """
+    parts = field_path.split(".")
+    if field_path == "__name__" or not all(_FIELD_SEGMENT.match(part) for part in parts):
+        return None
+    # The path goes into the SQL as a literal (segments are checked above) so
+    # SQLite can use an expression index on it, like documents_is_active.
+    extract = f"json_extract(data_json, '$.{'.'.join(parts)}')"
+    if isinstance(expected, bool):
+        return f"{extract} = ?", [1 if expected else 0]
+    if isinstance(expected, int) or (isinstance(expected, float) and math.isfinite(expected)):
+        return f"{extract} = ?", [expected]
+    if isinstance(expected, str):
+        return f"({extract} = ? OR json_type(data_json, '$.{'.'.join(parts)}') = 'object')", [expected]
+    return None
+
+
 class LocalDocumentStore:
+    # LocalFirestoreClient pushes simple equality filters down to SQL when set.
+    supports_equality_prefilter = True
+
     def __init__(self, db_path: str | Path):
         self.db_path = validate_local_file_path(db_path)
         if self.db_path.exists() and self.db_path.is_dir():
@@ -47,6 +78,12 @@ class LocalDocumentStore:
             )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS documents_collection_path ON documents(collection, path)"
+            )
+            # The pipeline asks big pools for is_active == true every run; without
+            # this, SQLite reads every document (250+ MB for v3_trending_pool).
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS documents_is_active "
+                "ON documents(collection, json_extract(data_json, '$.is_active'))"
             )
         finally:
             connection.close()
@@ -195,8 +232,14 @@ class LocalDocumentStore:
         self,
         collection_path: str,
         limit: int | None = None,
+        equals: list[tuple[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        """List direct children of a root or nested Firestore collection."""
+        """List direct children of a root or nested Firestore collection.
+
+        `equals` is a list of (field path, value) pairs SQLite checks first, so
+        a filtered query on a big collection doesn't parse every document in
+        Python; filters that can't be expressed in SQL are skipped here.
+        """
 
         valid_path = validate_path_prefix(collection_path)
         parts = valid_path.split("/")
@@ -206,12 +249,20 @@ class LocalDocumentStore:
             raise ValueError("limit must be a non-negative integer")
         root = parts[0]
         prefix = valid_path + "/"
+        clauses, params = [], []
+        for field_path, expected in equals or []:
+            pushed = sql_equality(field_path, expected)
+            if pushed:
+                clauses.append(pushed[0])
+                params.extend(pushed[1])
         connection = self._connect()
         try:
             rows = connection.execute(
                 "SELECT path, data_json, document_hash, updated_at FROM documents "
-                "WHERE collection = ? AND path LIKE ? ESCAPE '\\' ORDER BY path",
-                (root, prefix.replace("%", "\\%").replace("_", "\\_") + "%"),
+                "WHERE collection = ? AND path LIKE ? ESCAPE '\\'"
+                + "".join(f" AND {clause}" for clause in clauses)
+                + " ORDER BY path",
+                (root, prefix.replace("%", "\\%").replace("_", "\\_") + "%", *params),
             )
             documents = [
                 self._row(row)
