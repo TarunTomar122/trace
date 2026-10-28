@@ -5,7 +5,7 @@ import Link from 'next/link';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { isNewsletterSubscribed, onNewsletterSubscribed } from '@/lib/newsletter-local';
 import { trackFeedItemClicked, trackSponsoredToolClicked } from '@/lib/posthog';
-import { recordSponsorClick, sponsorHref } from '@/lib/sponsor-link';
+import { recordSponsorClick, sponsorBlurb, sponsorHref } from '@/lib/sponsor-link';
 import { faviconUrl } from '@/lib/topic-icons';
 
 // The edition page's right rail (wide screens): the sponsor cards, then the
@@ -46,7 +46,6 @@ export function RailSponsorCard({ sponsor, editionDate, position }: { sponsor: R
         });
       }}
     >
-      <span className="br-sponsor-label">Sponsored</span>
       <span className="br-sponsor-head">
         {domain && (
           // eslint-disable-next-line @next/next/no-img-element -- sponsor favicon
@@ -54,7 +53,7 @@ export function RailSponsorCard({ sponsor, editionDate, position }: { sponsor: R
         )}
         <span className="br-sponsor-title">{sponsor.title}</span>
       </span>
-      {sponsor.sub && <span className="br-sponsor-sub">{sponsor.sub}</span>}
+      {sponsor.sub && <span className="br-sponsor-sub">{sponsorBlurb(sponsor.sub)}</span>}
       <span className="br-sponsor-visit">Visit website ↗</span>
     </a>
   );

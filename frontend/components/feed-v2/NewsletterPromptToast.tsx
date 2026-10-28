@@ -84,23 +84,35 @@ export default function NewsletterPromptToast({
         close('dismissed');
       }}
     >
-      <div className="rounded-[10px] border border-[#dfe3fb] bg-[#edeffd] p-4 shadow-[0_12px_40px_rgba(10,10,10,0.14)]">
-        <div className="flex items-start justify-between gap-3">
-          <p id="nl-toast-title" aria-live="polite" className="pt-1 text-[15px] font-bold leading-snug text-[#0a0a0a]">
-            {status === 'done' ? message : 'Want this in your email daily?'}
-          </p>
-          <button
-            ref={closeBtnRef}
-            type="button"
-            onClick={() => close(status === 'done' ? 'subscribed' : 'dismissed')}
-            aria-label="Close"
-            className="-mr-2 -mt-2 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[4px] border-none bg-transparent text-[20px] leading-none text-[#323232] transition-colors hover:bg-[#dfe3fb] hover:text-[#0a0a0a]"
-          >
-            ×
-          </button>
-        </div>
+      <div className="relative overflow-hidden rounded-[14px] border border-[#e5e5e5] bg-white px-5 pb-4 pt-[18px] shadow-[0_18px_50px_rgba(10,10,10,0.16),0_2px_6px_rgba(10,10,10,0.05)]">
+        {/* the site's lavender, as a thin band: ties the card to the brief without filling it */}
+        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[5px] bg-[#c9cff7]" />
+        <button
+          ref={closeBtnRef}
+          type="button"
+          onClick={() => close(status === 'done' ? 'subscribed' : 'dismissed')}
+          aria-label="Close"
+          className="absolute right-2 top-2.5 flex h-9 w-9 items-center justify-center rounded-full border-none bg-transparent text-[18px] leading-none text-[#767676] transition-colors hover:bg-[#f2f2f2] hover:text-[#0a0a0a]"
+        >
+          ×
+        </button>
+        <p className="m-0 text-[11px] font-bold uppercase tracking-[0.12em] text-[#1634cc]">The daily brief</p>
+        <p
+          id="nl-toast-title"
+          aria-live="polite"
+          className="m-0 mt-1.5 pr-8 text-[25px] font-medium leading-[1.08] tracking-[-0.01em] text-[#0a0a0a]"
+          style={{ fontFamily: 'var(--font-hp-serif), Georgia, "Times New Roman", serif' }}
+        >
+          {status === 'done' ? 'You’re in.' : 'Tech and AI news, every morning'}
+        </p>
+        <p className="m-0 mt-2 text-[14px] leading-[1.45] text-[#4a4a4a]">
+          {status === 'done' ? message : 'The stories that matter, summed up in one short email. Free.'}
+        </p>
         {status !== 'done' && (
-          <form onSubmit={submit} className="mt-2 flex gap-2">
+          <form
+            onSubmit={submit}
+            className="mt-3.5 flex h-11 overflow-hidden rounded-[8px] border border-[#c7c7c7] bg-white transition-shadow focus-within:border-[#1634cc] focus-within:ring-[3px] focus-within:ring-[#1634cc]/15"
+          >
             <input
               ref={inputRef}
               type="email"
@@ -110,22 +122,24 @@ export default function NewsletterPromptToast({
               placeholder="you@example.com"
               aria-label="Email address"
               autoComplete="email"
-              className="h-10 min-w-0 flex-1 rounded-[3px] border border-[#8f8f8f] bg-white px-3 text-[16px] text-[#0a0a0a] outline-none focus:border-[#1634cc] focus:ring-[3px] focus:ring-[#1634cc]/20 sm:text-[14px]"
+              className="min-w-0 flex-1 border-none bg-transparent px-3.5 text-[16px] text-[#0a0a0a] outline-none placeholder:text-[#9a9a9a] sm:text-[14.5px]"
             />
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="h-10 flex-shrink-0 rounded-[3px] border-none bg-[#1634cc] px-4 text-[14px] font-bold text-white transition-colors hover:bg-[#102798] disabled:opacity-70"
+              className="m-1 flex-shrink-0 rounded-[6px] border-none bg-[#1634cc] px-4 text-[14px] font-semibold text-white transition-colors hover:bg-[#102798] disabled:opacity-70"
             >
               {status === 'loading' ? 'Subscribing…' : 'Subscribe'}
             </button>
           </form>
         )}
-        {status === 'error' && (
-          <p role="alert" className="mt-2 text-[13px] font-semibold text-[#971111]">
+        {status === 'error' ? (
+          <p role="alert" className="m-0 mt-2 text-[13px] font-semibold text-[#971111]">
             {message}
           </p>
-        )}
+        ) : status !== 'done' ? (
+          <p className="m-0 mt-2 text-[12px] text-[#767676]">No spam. Unsubscribe anytime.</p>
+        ) : null}
       </div>
     </aside>
   );

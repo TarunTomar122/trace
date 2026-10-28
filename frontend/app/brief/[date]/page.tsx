@@ -146,6 +146,8 @@ export default async function DailyEditionPage({ params }: Props) {
           {/* Wide screens only: the sponsors, then the subscribe card, sticky like the contents column. */}
           <aside className="br-rail-col" aria-label="Sponsor and subscribe">
             <div className="br-rail">
+              {/* One label for the group; each card still says "Sponsored" to screen readers. */}
+              {railSponsors.length > 0 && <p className="br-sponsor-label br-sponsors-label">Sponsored</p>}
               {railSponsors.map((sponsor, index) => (
                 <RailSponsorCard key={sponsor.id} sponsor={sponsor} editionDate={date} position={index + 1} />
               ))}

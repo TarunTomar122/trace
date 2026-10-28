@@ -26,6 +26,12 @@ export function sponsorHref(url: string, placement: SponsorPlacement): string {
   }
 }
 
+/** A sponsor's description as shown: first letter capitalised; what they submitted is unchanged. */
+export function sponsorBlurb(text: string): string {
+  const trimmed = (text || '').trim();
+  return trimmed ? trimmed[0].toLocaleUpperCase('en-US') + trimmed.slice(1) : '';
+}
+
 /** Adds the click to the sponsor's count; survives the tab opening the sponsor's site. */
 export function recordSponsorClick(sponsorId: string, placement: SponsorPlacement): void {
   try {

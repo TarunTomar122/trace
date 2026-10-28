@@ -124,6 +124,7 @@ export const BRIEF_CSS = `
   background: #fff; color: var(--hp-ink); text-decoration: none; transition: border-color 0.15s ease;
 }
 .hp .br-sponsor:hover { border-color: #c7c7c7; }
+.hp .br-sponsors-label { margin: 0 0 -8px 2px; }
 .hp .br-sponsor-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hp-muted); }
 .hp .br-sponsor-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .hp .br-sponsor-head img { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; }

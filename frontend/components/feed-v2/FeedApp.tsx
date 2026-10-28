@@ -78,7 +78,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BriefArt } from '@/components/feed-v2/home-art';
-import { recordSponsorClick, sponsorHref, SPONSOR_SLOTS } from '@/lib/sponsor-link';
+import { recordSponsorClick, sponsorBlurb, sponsorHref, SPONSOR_SLOTS } from '@/lib/sponsor-link';
 
 export interface CoverageLink {
   title: string;
@@ -1854,6 +1854,8 @@ export default function FeedApp({
         <div className="rail">
           <div className="rail-head">
             <h2 className="rail-title">Tools</h2>
+            {/* Every tool here is a sponsor: one label for the group, not one per row. */}
+            {homeSponsors.length > 0 && <span className="sponsor-label rail-sponsored">Sponsored</span>}
           </div>
           <div className="rail-items">
             {homeSponsors.map((sponsor, sponsorIndex) => (
@@ -1864,11 +1866,17 @@ export default function FeedApp({
                 position={sponsorIndex + 1}
                 feedDate={feedDate}
                 variant="tools"
+                showLabel={false}
               />
             ))}
           </div>
           {homeSponsors.length < SPONSOR_SLOTS && (
-            <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
+            <PromoSlot
+              monthlyReach={monthlyReach}
+              placement="tools_rail"
+              compact={homeSponsors.length > 0}
+              onOpen={() => setPromoOpen(true)}
+            />
           )}
         </div>
       </aside>
@@ -1997,6 +2005,16 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
         <button className="promo-pay" onClick={pay} disabled={busy}>
           {busy ? 'Opening checkout…' : signedIn ? 'Submit' : 'Sign in to continue'}
         </button>
+        <p className="promo-support">
+          <a
+            href={AUDIENCE_PROOF_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => trackPromoCtaClicked({ placement: 'promote_modal', cta: 'view_audience_proof' })}
+          >
+            See our audience numbers
+          </a>
+        </p>
         <p className="promo-support">Support throughout your month: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
       </div>
     </div>
@@ -2041,12 +2059,15 @@ function SponsoredToolLink({
   position,
   feedDate,
   variant,
+  showLabel = true,
 }: {
   sponsor: PromotedTool;
   placement: 'desktop_tools' | 'home_feed_end' | 'pulse_mobile';
   position: number;
   feedDate: string;
   variant: 'feed' | 'tools' | 'mobile';
+  /** Off where a group label covers it; on wherever the row sits among stories. */
+  showLabel?: boolean;
 }) {
   return (
     <a
@@ -2069,21 +2090,41 @@ function SponsoredToolLink({
         });
       }}
     >
-      <span className="sponsor-label">Sponsored</span>
+      {showLabel && <span className="sponsor-label">Sponsored</span>}
       <span className="sponsored-tool-heading">
         <RailLogo item={{ url: sponsor.url, source: '' } as PulseItem} />
         <span className="sponsor-title" title={sponsor.title} style={{ display: 'block', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sponsor.title}</span>
       </span>
-      {sponsor.sub ? <span className="sponsor-desc">{sponsor.sub}</span> : null}
+      {sponsor.sub ? <span className="sponsor-desc">{sponsorBlurb(sponsor.sub)}</span> : null}
       <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
     </a>
   );
 }
 
 
-/** The open sponsor slot as a Trace ticket: lavender stub, blue stamp, serif line. */
-function PromoSlot({ monthlyReach, placement, onOpen }: { monthlyReach: number; placement: string; onOpen: () => void }) {
+/**
+ * The open sponsor slot. With no sponsors it's a Trace ticket (stamp, serif
+ * line, button) so the rail isn't empty; under paying sponsors it's one quiet
+ * row, so it doesn't outshine them.
+ */
+function PromoSlot({ monthlyReach, placement, compact, onOpen }: { monthlyReach: number; placement: string; compact: boolean; onOpen: () => void }) {
   const reach = monthlyReach > 0 ? fmtReach(monthlyReach) : null;
+  if (compact) {
+    return (
+      <button
+        className="promo-row"
+        type="button"
+        onClick={() => {
+          const props = { placement, cta: 'feature_my_tool_compact' };
+          trackPromoCtaClicked(props);
+          trackPromoModalOpened(props);
+          onOpen();
+        }}
+      >
+        Your tool here · $19/mo <ArrowUpRight size={13} aria-hidden="true" />
+      </button>
+    );
+  }
   return (
     <div className="promo-slot">
       <div className="promo-ticket">
@@ -2107,7 +2148,7 @@ function PromoSlot({ monthlyReach, placement, onOpen }: { monthlyReach: number; 
       </div>
       <a
         className="promo-proof-link"
-        href="https://us.posthog.com/shared/nvQIXZmOZ9ZJLv_WNXFS9sYW0nn52Q"
+        href={AUDIENCE_PROOF_URL}
         target="_blank"
         rel="noreferrer"
         aria-label="View Trace’s public audience dashboard"
@@ -2118,6 +2159,8 @@ function PromoSlot({ monthlyReach, placement, onOpen }: { monthlyReach: number; 
     </div>
   );
 }
+
+const AUDIENCE_PROOF_URL = 'https://us.posthog.com/shared/nvQIXZmOZ9ZJLv_WNXFS9sYW0nn52Q';
 
 function SourceStack({ sources }: { sources: string[] }) {
   const shown = sources.slice(0, 3);
@@ -3183,6 +3226,14 @@ const css = `
 .xw .sponsored-tool-row:hover .sponsor-visit { color: var(--blue-hover); }
 .xw .pulse-title { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; text-overflow: ellipsis; white-space: nowrap; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
+.xw .rail-sponsored { flex: none; }
+.xw .promo-row {
+  display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--line);
+  background: transparent; color: var(--text-3); cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 16px;
+  text-align: left; transition: color 0.15s ease;
+}
+.xw .promo-row:hover { color: var(--text); }
+.xw .promo-row:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .xw .promo-slot { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-top: 1px solid var(--line); }
 /* a Trace ticket, quiet on the white rail: dashed edge, ink stamp, outlined button */
 .xw .promo-ticket {
