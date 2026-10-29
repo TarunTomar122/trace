@@ -180,6 +180,9 @@ def _dedupe_articles_keep_order(
     return [merged[url] for url in order]
 
 
+_BARE_AMPERSAND = re.compile(r"&(?!#[0-9]+;|#x[0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]*;)")
+
+
 def _first_text(node: ET.Element, paths: list[str]) -> str:
     for path in paths:
         found = node.find(path)
@@ -229,7 +232,12 @@ def _extract_from_rss_or_atom(
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
-        return []
+        # A common feed bug is a bare "&" (e.g. <category>FM&M</category>),
+        # which breaks the whole document; escape those and try once more.
+        try:
+            root = ET.fromstring(_BARE_AMPERSAND.sub("&amp;", xml_text))
+        except ET.ParseError:
+            return []
 
     articles: list[dict[str, str]] = []
 

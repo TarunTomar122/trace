@@ -63,6 +63,11 @@ EXPECTED_SOURCES = {
         "type": "rss",
         "interest_id": "robotics",
     },
+    "Humanoids Daily": {
+        "url": "https://www.humanoidsdaily.com/feed.xml",
+        "type": "rss",
+        "interest_id": "robotics",
+    },
     "New Atlas Robotics": {
         "url": "https://newatlas.com/robotics/index.rss",
         "type": "rss",
@@ -85,10 +90,10 @@ REJECTED_SOURCES = {
     "NVIDIA Technical Blog",
     "Rest of World",
     # Robotics candidates that failed the check: raw preprints, SEO filler,
-    # malformed XML, or no working feed.
+    # or no working feed. (Humanoids Daily was here for malformed XML; the
+    # link fetcher now repairs its bare "&".)
     "arXiv cs.RO",
     "Robotics & Automation News",
-    "Humanoids Daily",
     "Interesting Engineering",
     "Robotics 24/7",
 }
@@ -172,6 +177,15 @@ class TrendingSourceConfigTests(unittest.TestCase):
             "U.S. Army awards Anduril $99M contract for autonomous ground robots",
         ):
             self.assertFalse(_title_has_excluded_keywords(news, excluded), news)
+
+    def test_parser_repairs_a_bare_ampersand_but_not_a_broken_feed(self) -> None:
+        rss = (
+            "<rss><channel><item><title>Q&amp;A &#38; more</title>"
+            "<link>https://example.com/a</link><category>FM&M</category></item></channel></rss>"
+        )
+        items = _extract_from_rss_or_atom(rss, "https://example.com/feed.xml")
+        self.assertEqual([(i["url"], i["title"]) for i in items], [("https://example.com/a", "Q&A & more")])
+        self.assertEqual(_extract_from_rss_or_atom("<rss><item>broken<</rss>", "https://example.com/"), [])
 
     def test_parser_normalizes_representative_rss_and_atom_items(self) -> None:
         rss = """\

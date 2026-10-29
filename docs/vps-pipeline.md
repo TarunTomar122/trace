@@ -347,8 +347,8 @@ tail -50 ~/trace/logs/postkit.log
   Nielsen Norman Group, Design Milk, Core77, Creative Bloq, Webdesigner Depot.
   Tech adds Engadget, Gizmodo, Tom's Hardware, MacRumors, CNET News.
   Robotics: The Robot Report, IEEE Spectrum Robotics, TechCrunch Robotics,
-  Waymo Blog, Humanoid Robotics Technology, New Atlas Robotics, and The Verge
-  robot and autonomous-cars tags.
+  Waymo Blog, Humanoid Robotics Technology, Humanoids Daily, New Atlas
+  Robotics, and The Verge robot and autonomous-cars tags.
 - Cross-source quality filters drop entertainment/culture items, investment
   advice/listicles ("Buy These 8 Stocks"), and finance-brand blogs from any
   lane. Named entities are discovered per run: tokens appearing in only a few
