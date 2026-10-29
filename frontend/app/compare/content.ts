@@ -368,7 +368,7 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-inoreader",
-    relatedRoundup: { href: "/blog/inoreader-alternatives", label: "Inoreader alternatives: 6 options for every use case" },
+    relatedRoundup: { href: "/blog/inoreader-alternatives", label: "Inoreader alternatives: 8 options compared" },
     related: ["rss-reader-alternative", "trace-vs-readwise-reader", "trace-vs-google-news"],
     title: "Trace vs Inoreader | Comparison & Alternative | Trace",
     description:

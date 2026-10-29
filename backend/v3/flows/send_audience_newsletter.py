@@ -52,6 +52,7 @@ from v3.lib.send_worthy import (  # noqa: E402
     SEND_WORTHY_PROMPT_VERSION,
     judge_send_worthy,
 )
+from v3.lib import indexnow  # noqa: E402
 from v3.lib.repeats import judge_repeats  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
@@ -1775,6 +1776,8 @@ def send_audience_newsletter(
         except Exception as exc:  # noqa: BLE001
             published = 0
             _log(f"publishing {EDITIONS_COLLECTION}/{target_date} failed: {exc}")
+        if published:
+            indexnow.submit([f"/brief/{target_date}", "/brief"], log=_log)
         if publish_only:
             return {
                 "success": published > 0,

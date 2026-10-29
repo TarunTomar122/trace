@@ -241,7 +241,7 @@ export default function BlogPost() {
             <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-3 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>Read Next</h3>
             <ul className="space-y-2">
               <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Free Feedly Alternatives: 7 Options Compared →</Link></li>
-              <li><Link href="/blog/inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Inoreader Alternatives: 6 Better Options →</Link></li>
+              <li><Link href="/blog/inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Inoreader Alternatives: 8 Options Compared →</Link></li>
               <li><Link href="/blog/best-rss-reader-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The 5 Best RSS Reader Apps in 2026 →</Link></li>
             </ul>
           </div>

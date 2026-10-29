@@ -14,12 +14,13 @@ export type StandaloneBlogPost = {
 export const standaloneBlogPosts: StandaloneBlogPost[] = [
   {
     slug: "inoreader-alternatives",
-    title: "Inoreader Alternatives: 6 Better Options for Every Use Case (2026)",
+    title: "Inoreader Alternatives: 8 Options Compared (2026)",
     tag: "Comparisons",
     category: "comparisons",
-    excerpt: "Compare six Inoreader alternatives, including Trace, Feedly, and NewsBlur, and choose the right news reader for your workflow.",
-    readTime: "11 min read",
+    excerpt: "8 Inoreader alternatives compared for 2026: Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader, NetNewsWire and Trace, with prices and free plans.",
+    readTime: "10 min read",
     date: "June 22, 2026",
+    updated: "October 29, 2026",
     image: "https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=1200&h=630&fit=crop&auto=format",
   },
   {

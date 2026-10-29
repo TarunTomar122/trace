@@ -163,3 +163,43 @@ Third-party guides differ on details, so follow the live form:
 | Test cases | Positive: "What happened in tech today?", "Top 3 AI stories with sources", "Any new open-source developer tools?", "What are developers discussing this week?", "Give me the daily brief for a founder". Negative: "Post this to my Trace account" (read-only, should decline), "What was the top story on 1 Jan 2020?" (no archive tool), "Book me a flight" (out of scope) |
 | Demo video / screenshots | Record the connect flow and one tool call in ChatGPT |
 | Domain verification | The form gives a token to host under `/.well-known/` on `www.yourtrace.online`. Add it as a small route handler next to `frontend/app/.well-known/oauth-authorization-server/route.ts` and deploy before submitting. |
+
+# General listings (beyond MCP)
+
+> **Status (2026-10-29).** The four PRs opened on 2026-10-29 come from the
+> owner's GitHub account; each discloses authorship and that an AI assistant
+> prepared it (#379 predates this and has no such line). Forms were free,
+> needed no account, and used `tomartarun2001@gmail.com`.
+>
+> | Listing | Status |
+> | --- | --- |
+> | zudochkin/awesome-newsletters | PR https://github.com/zudochkin/awesome-newsletters/pull/379 (Technology in General), open since 2026-10-22 |
+> | unicodeveloper/awesome-nextjs (11k stars) | PR https://github.com/unicodeveloper/awesome-nextjs/pull/710 (Apps, after Relate) |
+> | sdil/open-production-web-projects | PR https://github.com/sdil/open-production-web-projects/pull/355 (Javascript → NextJS, appended) |
+> | AboutRSS/ALL-about-RSS (6k stars) | PR https://github.com/AboutRSS/ALL-about-RSS/pull/167 (✳ Information Aggregators, appended; one maintainer, review takes weeks) |
+> | steven2358/awesome-generative-ai (12.7k stars) | PR https://github.com/steven2358/awesome-generative-ai/pull/1927 (DISCOVERIES.md → Productivity; the main list needs 1,000 followers; FIFO queue of 1,000+ open PRs) |
+> | opensourcealternative.to | Submitted as an alternative to Feedly, free waitlist (6+ months): https://www.opensourcealternative.to/project/trace shows "under review" |
+> | Launching Next | Submitted free (queue about 4 months; ignore the $99 fast-track offer). Submission id 170496 |
+> | canivibecodeit | PR #85 closed in August; don't resubmit |
+> | awesome-selfhosted | Skip until the first release is 4 months old (create a GitHub release now so the clock starts) |
+> | ikaijua/Awesome-AITools (AI News & Information) | Not opened: CONTRIBUTING requires user numbers (MAU or total users). Open it once you have figures to quote; edit both READMEs and CHANGELOG.md, run `scripts/format_readmes.py` |
+> | alternbits/awesome-ai-newsletters | Not opened: no merges since July |
+> | FutureTools | Owner: free, no account, but the form has a captcha |
+> | AlternativeTo, SaaSHub, OpenAlternative, Product Hunt, Show HN, Bing Webmaster Tools, Indie Hackers, DEV, DevHunt, BetaList | Owner: need an account (copy below) |
+
+## Shared copy
+
+| Field | Value |
+| --- | --- |
+| Name | Trace |
+| URL | https://www.yourtrace.online |
+| Tagline (≤ 60) | Daily tech and AI news, grouped and sourced |
+| Alt tagline | A free, open-source daily brief of tech and AI news |
+| Short description | Trace reads 100+ tech sources every morning (news sites, Hacker News, Reddit, Product Hunt, GitHub and newsletters), groups the articles about the same event into one story, ranks the stories and summarises each with every source linked. Read it on the web, as a daily email, or through your AI assistant. Free and open source (AGPL-3.0), self-hostable with Docker Compose. |
+| Categories | News aggregator, Tech news, AI news, Newsletters; then Productivity or Developer tools where there is no news category |
+| Tags | tech news, AI news, news aggregator, daily brief, newsletter, open source, self-hosted, MCP, RSS, summarization |
+| Alternative to | Techmeme, Feedly, Inoreader, Google News, Flipboard, Artifact, TLDR newsletter |
+| Platforms | Web, Chrome extension (new tab), self-hosted; Android exists but the focus is web |
+| Pricing | Free, no paid plan (sponsored tool slots exist on the website, so don't tick "ad-free") |
+| Repo / license | https://github.com/TarunTomar122/trace, AGPL-3.0 |
+| Contact | tomartarun2001@gmail.com |

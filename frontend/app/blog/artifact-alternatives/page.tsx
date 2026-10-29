@@ -246,7 +246,7 @@ export default function BlogPost() {
             <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-3 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>Read Next</h3>
             <ul className="space-y-2">
               <li><Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">Best AI News Apps in 2026 →</Link></li>
-              <li><Link href="/blog/ai-news-digest-tools" className="text-blue-600 dark:text-blue-400 hover:underline">The Best AI-Powered News Digest Tools in 2026 →</Link></li>
+              <li><Link href="/blog/ai-news-digest-tools" className="text-blue-600 dark:text-blue-400 hover:underline">Best AI News Digest Tools in 2026: 8 Compared →</Link></li>
               <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News Alternatives: 6 Better Options →</Link></li>
             </ul>
           </div>

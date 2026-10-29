@@ -1169,16 +1169,16 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "ai-news-digest-tools",
-    title: "Best AI news digest tools in 2026",
-    subtitle: "AI summaries are everywhere now. These are the tools that actually get them right — with context, accuracy, and usefulness.",
+    title: "Best AI News Digest Tools in 2026: 8 Compared",
+    subtitle: "Eight tools that summarize the news for you, compared on what they read, how they summarize, and what they cost.",
     tag: "AI & Tech",
     category: "ai-tools",
     excerpt:
-      "We tested 10+ AI news digest tools on accuracy, context, and time-to-caught-up. Trace, Perplexity, and the few that summarize model launches without the fluff.",
+      "8 AI news digest tools compared for 2026: Trace, Perplexity, ChatGPT tasks, Particle, Feedly, Inoreader, NewsBlur and DIY digests, with prices.",
     author: "Trace Editorial",
-    readTime: "11 min read",
+    readTime: "12 min read",
     date: "May 1, 2026",
-    updated: "October 19, 2026",
+    updated: "October 29, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
     relatedSlugs: [
       "best-ai-news-apps-2026",
@@ -1187,152 +1187,215 @@ export const blogPosts: BlogPost[] = [
     ],
     sources: [
       {
-        title: "Infodemic overview and definition",
-        url: "https://www.who.int/health-topics/infodemic/understanding-the-infodemic-and-misinformation-in-the-fight-against-covid-19",
-        publisher: "World Health Organization"
+        title: "Daily Briefing: a personalized summary of your news",
+        url: "https://blog.newsblur.com/2026/03/25/daily-briefing/",
+        publisher: "NewsBlur"
       },
       {
-        title: "Understanding the Infodemic and Misinformation (WHO)",
-        url: "https://www.who.int/health-topics/infodemic",
-        publisher: "World Health Organization"
+        title: "Inoreader plans and pricing",
+        url: "https://www.inoreader.com/pricing",
+        publisher: "Inoreader"
+      },
+      {
+        title: "OpenAI is retiring ChatGPT Pulse and replacing it with scheduled tasks",
+        url: "https://www.digit.in/news/general/openai-is-retiring-chatgpt-pulse-and-replacing-it-with-scheduled-tasks-here-is-why.html",
+        publisher: "Digit"
+      },
+      {
+        title: "Trace for AI agents (MCP server setup)",
+        url: "https://www.yourtrace.online/agents",
+        publisher: "Trace"
       }
+    ],
+    faqs: [
+      {
+        question: "What is the best AI news digest tool?",
+        answer:
+          "It depends on what you want summarized. For tech and AI news with no setup, Trace is a free, open-source daily brief that groups each story once across 100+ sources. For general news, Particle. To summarize feeds you choose yourself, NewsBlur's Daily Briefing, Feedly's Leo, or Inoreader's summaries, all on paid plans. For questions on demand, Perplexity.",
+      },
+      {
+        question: "Are there free AI news digest tools?",
+        answer:
+          "Yes. Trace is free with every feature included, including the daily email. Perplexity and Particle have free plans with paid upgrades. The AI features in Feedly, Inoreader and NewsBlur are on paid plans, and ChatGPT's scheduled tasks need a paid ChatGPT plan.",
+      },
+      {
+        question: "What happened to ChatGPT Pulse?",
+        answer:
+          "OpenAI launched Pulse, a personalized morning brief for Pro subscribers, in September 2025 and retired it in mid-2026. It pointed users to scheduled tasks instead, which can run a prompt such as a daily news summary at a set time on paid ChatGPT plans.",
+      },
+      {
+        question: "Can I get a news digest inside Claude or ChatGPT?",
+        answer:
+          "Yes. Trace runs a read-only MCP server: paste its URL into Claude, ChatGPT, Cursor or another client that supports remote MCP servers, sign in with Google, and your assistant can read the day's brief. You can also ask a chatbot with web search for a summary, though it only covers what it finds when you ask.",
+      },
     ],
     sections: [
       {
         paragraphs: [
-          "AI news summaries are having a moment. Every news app now claims to use AI to 'summarize the day's most important stories.' Browser extensions offer one-click TLDRs of articles. Even your email client probably has an AI summary button now. But the quality varies wildly — some tools hallucinate facts, others strip away crucial context, and a select few are genuinely transformative in how they help you understand the news.",
-          "The promise of AI news digests is compelling: instead of reading 20 articles about the same topic, you read one AI-generated summary that captures the key points from multiple sources. In theory, this saves enormous time and improves understanding by giving you a synthesized, balanced picture. A well-executed AI digest can compress a 45-minute news catch-up into 10 minutes while improving comprehension.",
-          "In practice, many AI digest tools fall short. They summarize one article at a time without comparing sources, so you lose the benefit of multi-perspective understanding. They miss nuance and caveats — the 'ifs,' 'buts,' and 'according tos' that separate journalism from press releases. They can't reliably distinguish between a major story and a press release dressed up as news. Some even hallucinate: inventing quotes, misattributing claims, or conflating related but distinct stories.",
-          "After testing 10+ AI-powered news tools throughout 2025-2026, here are the ones that actually get it right — plus the frameworks you need to evaluate AI digests for yourself. For context on the broader news aggregation ecosystem, see our [full comparison of tech news aggregators](/blog/best-tech-news-aggregator-apps)."
+          "The best AI news digest tool depends on what you want summarized. For tech and AI news with no setup, [Trace](/feed) is a free, open-source brief that groups each story once across 100+ sources and summarizes it. For general news, Particle. To have AI summarize feeds you already follow, NewsBlur's Daily Briefing, Feedly's Leo or Inoreader's summaries, all on paid plans. For questions on demand, Perplexity. And to build your own, ChatGPT's scheduled tasks or an assistant connected to a news source.",
+          "One change since the last version of this guide: ChatGPT Pulse, OpenAI's personalized morning brief, was retired in mid-2026, and OpenAI now points people to scheduled tasks instead. We cover both below.",
+          "How we picked: we compared each tool on what it reads, whether it summarizes one article at a time or the whole story across outlets, whether it links to its sources, how it reaches you, and price. We rechecked plans, prices and product status in October 2026. Plans change, so confirm on each site before you pay. We build Trace, so weigh our view of it accordingly. For tools without AI summaries, see our [comparison of tech news aggregators](/blog/best-tech-news-aggregator-apps)."
+        ]
+      },
+      {
+        heading: "Quick Comparison",
+        bullets: [
+          "Trace: free, open source. Tech and AI news from 100+ sources, one summary per story across outlets. Web, daily email, MCP server for AI assistants.",
+          "Perplexity: free plan, Pro $20/month. On-demand answers with citations, plus a Discover news feed.",
+          "ChatGPT scheduled tasks: paid ChatGPT plans. A prompt you write, run daily. OpenAI's suggested replacement for ChatGPT Pulse, retired in 2026.",
+          "Particle: free, Particle+ $2.99/month. General news, with coverage from several outlets combined into one summary. iOS, Android and web.",
+          "Feedly with Leo: Leo is on the Pro+ plan. AI filtering and summaries of RSS feeds you choose.",
+          "Inoreader: AI article summaries on Pro, from €6.67/month billed yearly. Summaries of articles in your own feeds.",
+          "NewsBlur Daily Briefing: Premium Archive, $99/year. An AI summary of your top stories from your own feeds, by email on a schedule.",
+          "Do it yourself: API or model costs plus your time. Full control over sources, prompt and delivery."
         ]
       },
       {
         heading: "What Separates Good AI Digests from Bad Ones",
         paragraphs: [
-          "Good AI news digests share three essential characteristics: multi-source synthesis, context preservation, and accuracy. Let's break down what each means in practice and how to evaluate it.",
-          "Multi-source synthesis means the AI compares coverage from different publications and identifies consensus, disagreement, and unique angles. A summary that only reads one article is just a TLDR — it doesn't help you understand the story. True multi-source synthesis tells you: 'Three major publications report this event similarly, but The Verge focuses on UX implications while Ars Technica questions the technical claims.' This meta-analysis is what you'd do manually if you had the time — the AI does it automatically.",
-          "Context preservation means the AI doesn't strip away the 'why' and 'what this means' that determine whether information is actionable. The best digests explain not just what happened, but why it matters, who it affects, what the consensus view is, and what might happen next. A summary that says 'Apple released a new chip' is useless — one that adds 'which doubles GPU performance and positions Apple to compete in local AI inference, according to three independent benchmarks' is valuable.",
-          "Accuracy is the non-negotiable baseline. While AI hallucination rates have dropped significantly with newer models (GPT-4 and Claude 3.5 show dramatic improvements in factual grounding), some tools still invent quotes, misattribute sources, or conflate related but distinct stories. The best tools have explicit factuality guardrails: they cite specific sources for each claim, avoid declarative statements on contested topics, and flag uncertainty when sources disagree.",
-          "Beyond these three core characteristics, good AI digests also handle source attribution transparently. Instead of stating claims as facts ('The merger was valued at $10 billion'), they attribute claims to sources ('According to Bloomberg, the merger was valued at approximately $10 billion, though TechCrunch reports a figure closer to $8 billion'). This attribution lets you evaluate credibility and follow up on claims that seem questionable."
+          "Three things matter most: what gets summarized, whether you can check it, and whether it ends.",
+          "What gets summarized. A tool that summarizes one article at a time still shows you the same story five times when five outlets cover it, and each summary carries one outlet's framing. A tool that groups the coverage first can tell you what most outlets agree on, where they differ, and which details only one source reports.",
+          "Whether you can check it. Language models still get details wrong: numbers, version names, who said what. A good digest attributes claims to named sources and links to them, so you can read the original when a detail matters. Be wary of summaries that state contested claims as settled fact or give no sources at all.",
+          "Whether it ends. A digest should save time. One that takes five minutes and stops is doing its job; one that leads into an endless feed is a news app with a summary on top."
         ]
       },
       {
-        heading: "Detailed Tool-by-Tool Analysis",
+        heading: "1. Trace — Best for Daily Tech and AI News",
         paragraphs: [
-          "Here's how the top AI news digest tools in 2026 actually perform, based on hands-on testing. We evaluated each tool on multi-source synthesis, context preservation, accuracy, and overall user experience."
-        ]
-      },
-      {
-        heading: "1. Trace — Best for Daily Multi-Source Tech News Digests",
-        paragraphs: [
-          "Trace is purpose-built for the problem most AI digest tools ignore: single-source summaries give you a compressed version of one article, but understanding comes from comparison. Trace's approach is fundamentally multi-source — it scans 100+ curated tech publications, groups related coverage into topic pages, and generates AI summaries that synthesize across sources rather than summarizing them individually.",
-          "The result reads differently from a standard AI summary. Instead of 'Today, Company X announced Product Y,' you get something closer to: 'Company X announced Product Y, covered by 12 major publications. The consensus is that this is a significant improvement in [area], though The Verge notes concerns about [issue] and Ars Technica's benchmarks show [data point]. Hacker News comments are split between [viewpoint 1] and [viewpoint 2].' This is a fundamentally more useful format than any single-article summary.",
-          "Trace also integrates community discussion links (Reddit, Hacker News) directly into topic pages, giving you the practitioner perspective alongside journalistic coverage. Every feature, including AI summaries, is included, and Trace is free for everyone and open source."
+          "Trace reads 100+ tech and AI sources, groups each story once however many outlets cover it, ranks the day's stories, and gives each one a short summary with key points, a timeline, and links to every source and to the Reddit and Hacker News discussion where there is one. The day's brief takes about five minutes.",
+          "You can read it on the web, get it by email around 8:30am UK time (you choose the topics and how many stories), or connect it to an AI assistant: Trace runs a read-only MCP server that Claude, ChatGPT, Cursor and other clients can use after a Google sign-in. [Set it up here](/agents).",
+          "Trace is free for everyone, with every feature included, and open source under the AGPL. It covers tech and AI only, so pair it with something else for general news."
         ],
         bullets: [
-          "Multi-source synthesis: Excellent — built from the ground up to compare sources rather than summarize individual articles",
-          "Context preservation: Strong — AI summaries include consensus/disagreement, key context, and community reactions",
-          "Accuracy: Good — all claims are visibly attributed to specific sources, though AI can occasionally oversimplify complex technical topics",
-          "Best for: Daily tech news catch-up, anyone who wants multi-perspective understanding without managing feeds"
+          "Price: Free",
+          "Summarizes: The whole story across outlets, with every source linked",
+          "Reaches you by: Web, daily email, Chrome new tab, Android app, MCP server",
+          "Best for: Developers, founders and anyone who follows tech and AI news and wants to be done in a few minutes"
         ]
       },
       {
-        heading: "2. Perplexity AI — Best for On-Demand News Research",
+        heading: "2. Perplexity — Best for On-Demand News Questions",
         paragraphs: [
-          "Perplexity serves a different use case from most tools on this list. It's not a passive news digest — it's a research assistant you query when you want to understand a specific topic. Ask 'What happened in AI this week?' or 'Summarize the latest NVIDIA GPU announcement from multiple sources,' and Perplexity returns a cited, reasonably accurate summary with links to original sources.",
-          "Perplexity's strength is its research model: it explicitly searches the web for current information, synthesizes across multiple results, and cites every claim with a link to the source. This transparency makes it easier to verify claims and follow up on interesting threads. The citation format is particularly valuable — you can click through to see exactly where each piece of information came from.",
-          "The limitation is that Perplexity is pull-based, not push-based. You have to know what to ask about. For staying current on broad tech news, a push-based digest tool (Trace, Feedly's AI, a newsletter) is more effective because it surfaces stories you wouldn't have known to query. Perplexity shines as a complement: use a daily digest for breadth, and query Perplexity when you need to go deep on a specific story or topic. For guidance on building daily briefing habits, see our [daily tech briefing guide](/blog/daily-tech-briefing-guide)."
+          "Perplexity is an answer engine rather than a digest: ask 'What happened with the latest Nvidia earnings?' and it searches the web, writes a summary, and cites its sources inline. Its Discover tab adds a feed of news stories by topic that you can tune to your interests.",
+          "The limit is that it mostly waits for you to ask. For staying current on a whole field, a digest that surfaces stories you did not know to ask about works better. Perplexity is a good complement: read a daily digest for breadth, then ask Perplexity when one story needs a closer look."
         ],
         bullets: [
-          "Multi-source synthesis: Strong — explicitly searches and synthesizes across web sources, with citations for every claim",
-          "Context preservation: Good — provides direct source links for follow-up, though summaries can vary in depth depending on the query",
-          "Accuracy: Very strong — transparent sourcing makes verification easy, hallucination rates are lower than most competitors",
-          "Best for: On-demand research, deep dives on specific stories, fact-checking claims seen in other sources"
+          "Price: Free plan with limited advanced searches; Pro $20/month or $200/year",
+          "Summarizes: Whatever its search finds for your question, with inline citations",
+          "Reaches you by: Web, desktop and mobile apps",
+          "Best for: Research on a specific story, checking a claim, following up on something you read"
         ]
       },
       {
-        heading: "3. Particle News — Best for Personalized AI Briefings",
+        heading: "3. ChatGPT Scheduled Tasks — Best for a Prompt You Control",
         paragraphs: [
-          "Particle News takes the personalization-first approach. It learns your interests over time (which topics you read, which you scroll past, which you save) and tailors your daily briefing accordingly. The design is clean and the summaries are well-written, with original reporting mixed into the AI-generated content.",
-          "The personalization is genuinely effective — after about a week of use, your briefing feels distinctly relevant to your interests. The design also respects attention well: there's a clear 'you're done' signal at the end of each briefing, avoiding the infinite scroll problem that plagues many news apps.",
-          "Where Particle falls short is on multi-source synthesis. While it summarizes well, it tends to treat each article individually rather than comparing across publications. You'll get a good summary of each article, but you won't get the synthesis that tells you where sources agree and disagree. It's also a newer entrant with a smaller source library than more established competitors."
+          "OpenAI launched ChatGPT Pulse in September 2025 as a personalized morning brief for Pro subscribers, then retired it in mid-2026. Its suggested replacement is scheduled tasks: you write a prompt such as 'Every weekday at 8am, summarize the most important AI news from the last 24 hours, with links', and ChatGPT runs it on schedule and notifies you.",
+          "Scheduled tasks are on paid ChatGPT plans (Go, Plus, Pro, Business and Enterprise when we checked). The quality depends on your prompt and on what ChatGPT's web search turns up that morning, so the results can vary from day to day. Ask for links in the prompt so you can check details."
         ],
         bullets: [
-          "Multi-source synthesis: Moderate — individual article summaries are good but cross-source comparison is limited",
-          "Context preservation: Good — summaries are contextual and well-written, though individual article focus limits the bigger picture",
-          "Accuracy: Good — summaries are grounded in source articles, though the smaller source library means narrower coverage",
-          "Best for: Users who want personalized daily briefings that learn their preferences, casual readers who value design quality"
+          "Price: Included with paid ChatGPT plans",
+          "Summarizes: What its web search finds for your prompt",
+          "Reaches you by: ChatGPT app and notifications",
+          "Best for: People who already pay for ChatGPT and want a digest on a niche topic"
         ]
       },
       {
-        heading: "4. Notion AI / ChatGPT / Claude — Best for DIY News Digests",
+        heading: "4. Particle — Best for General News",
         paragraphs: [
-          "If you're technically inclined, building your own AI news digest pipeline gives you maximum flexibility. The approach: use an RSS reader (Inoreader, Feedly) or a news API to collect articles, feed them to an LLM (ChatGPT, Claude, or API-based models) with a well-crafted prompt, and receive a daily digest delivered to your preferred channel (email, Slack, Notion).",
-          "The prompt engineering is the critical piece. A good prompt specifies: synthesize across sources rather than summarizing individually, attribute every claim to a specific source, highlight where sources disagree, note what's still unknown or developing, and organize by topic rather than by publication. With GPT-4 or Claude 3.5, this produces surprisingly good results.",
-          "The trade-off is setup and maintenance. Building this pipeline takes 2-4 hours initially, and you'll need to maintain it (update sources, tweak prompts, handle API changes). For most people, a dedicated tool like Trace or Perplexity is the better cost-benefit ratio. But for power users with specific needs — tracking niche topics, custom formatting requirements, integration with existing workflows — the DIY approach can be worth it. For a simpler starting point, see our [guide to building an effective daily briefing](/blog/daily-tech-briefing-guide)."
+          "Particle, from a team of former Twitter engineers, combines coverage from several outlets into one short summary of each story, with the sources listed underneath. It has features such as Opposite Sides, which sets out opposing views on a story, audio summaries, and Podcast Clips, which places relevant podcast excerpts beside stories.",
+          "It launched on the web in 2025 and on Android in 2026, alongside its iOS app. It covers general news, so tech is one section among many."
         ],
         bullets: [
-          "Multi-source synthesis: Varies — with good prompt engineering, can be excellent; with basic prompts, it's single-article summarization only",
-          "Context preservation: Varies — depends entirely on prompt quality and source selection, can be tuned to your specific needs",
-          "Accuracy: Varies — LLMs can hallucinate even with good prompts; requires verification of key claims",
-          "Best for: Technical users who want complete control and are comfortable with API integration, prompt engineering, and ongoing maintenance"
+          "Price: Free; Particle+ $2.99/month or $29.99/year",
+          "Summarizes: The whole story across outlets",
+          "Reaches you by: iOS, Android and web",
+          "Best for: General news readers who want short, sourced summaries"
         ]
       },
       {
-        heading: "AI Digest Accuracy: Evaluation Criteria and Red Flags",
+        heading: "5. Feedly with Leo — Best for AI on Top of RSS",
         paragraphs: [
-          "How do you know if an AI digest is trustworthy? Here's a practical evaluation framework you can apply to any AI news tool, along with specific red flags to watch for.",
-          "Evaluation Criterion 1 — Source Attribution: Does the summary tell you which specific sources contributed each claim? 'According to The Verge, the device uses a new display technology' is trustworthy. 'The device uses a new display technology' (with no attribution) is not. Good AI digests make it trivially easy to trace every factual claim back to its origin.",
-          "Evaluation Criterion 2 — Uncertainty Handling: Does the AI acknowledge when sources disagree or when information is preliminary? The sentence 'multiple outlets report the acquisition, but terms remain unconfirmed and at least one source disputes the valuation figure' shows good uncertainty handling. The sentence 'Company A acquired Company B for $500M' (when only one source reports this) is a red flag.",
-          "Evaluation Criterion 3 — Technical Accuracy: For tech topics specifically, does the AI get technical details right? Test this by reading a summary of a topic you know deeply and checking for errors. Common AI mistakes include: confusing similar technologies (e.g., conflating different versions of a standard), getting numeric details wrong (GPU core counts, benchmark numbers), and mischaracterizing technical trade-offs.",
-          "Evaluation Criterion 4 — Recency: Does the AI digest include the latest developments, or is it summarizing hours-old or days-old coverage? Breaking tech news evolves rapidly — a good digest should reflect the most current understanding, not just the initial reports.",
-          "Red flags to watch for: Declarative statements without attribution ('This changes everything'), conflation of opinion and fact (presenting a tech reviewer's opinion as established fact), missing contradictory evidence (reporting a positive review without mentioning known issues), and lack of dates or timestamps on summaries. If a digest tool consistently exhibits these red flags, find an alternative.",
-          "For a broader perspective on how curation and filtering protect against AI errors, see our [analysis of context and AI fatigue](/blog/ai-fatigue-return-of-context)."
+          "Feedly is a long-running RSS reader, and Leo is its AI assistant. Leo can prioritize articles about topics you train it on, mute what you do not want, and summarize articles. It works on the feeds you choose, so the digest is only as good as your source list.",
+          "Leo is on the Pro+ plan; the free plan covers 100 sources without it, and search needs at least Pro. If Feedly's price is the issue, see our [free Feedly alternatives](/blog/feedly-alternatives)."
+        ],
+        bullets: [
+          "Price: Free plan without AI; Leo on Pro+ (check feedly.com for current prices)",
+          "Summarizes: Individual articles from your feeds",
+          "Reaches you by: Web, iOS and Android apps",
+          "Best for: People who already keep a careful RSS list and want AI filtering on top"
         ]
       },
       {
-        heading: "Pricing Comparison: What You Get at Each Tier",
+        heading: "6. Inoreader — Best for Power Users of RSS",
         paragraphs: [
-          "AI digest tools span a wide range of pricing models — from free and open-source to premium subscriptions. Here's how the costs compare and what you get at each level.",
-          "Free: Trace (AI summaries, multi-source topic pages, Pulse, archive, and agent access, all included), Perplexity (limited queries per day, basic search/summarization). These cover the needs of most individual users who want AI-powered news without a monthly commitment.",
-          "Mid-tier ($8-15/month): Feedly Pro ($8/month for AI summaries, search, 1,000 sources), Inoreader Pro ($9.99/month for AI summaries, rules engine, monitoring), Particle News premium features. These are appropriate for professionals who consume tech news as part of their job and need advanced features.",
-          "Premium / Team ($15-30/month): Feedly Pro+ ($15/month for AI feeds, team sharing, newsletter integration), Inoreader Business plans, enterprise AI digest services. These make sense for teams that need shared news monitoring, custom AI models, or API access.",
-          "DIY cost ($0-20/month + time): Building your own pipeline costs API credits (GPT-4 at roughly $0.01-0.03 per summary, or Claude at similar rates) plus 2-4 hours of initial setup and occasional maintenance. For a daily digest covering 20-30 stories, expect $5-15/month in API costs. The real cost is time — both setup and the ongoing mental overhead of maintaining your own system.",
-          "Value assessment: For most individual tech professionals, Trace + the free tier of Perplexity cover daily news catch-up and on-demand research. Add a paid plan only if you need specific features (advanced rules in Inoreader, team sharing in Feedly Pro+) or if you outgrow the free tier limits. The DIY approach is rarely cost-effective for individuals but can make sense for teams with unique requirements."
+          "Inoreader added AI article summaries in 2025 under the name Inoreader Intelligence. On the Pro plan you can summarize an article or ask a question about it, alongside Inoreader's rules, filters and keyword monitoring feeds. Multi-article reports are a separate add-on.",
+          "As with Feedly, it summarizes what is in your feeds, one article at a time. If you are weighing it against other readers, see our [Inoreader alternatives](/blog/inoreader-alternatives)."
+        ],
+        bullets: [
+          "Price: Free plan without AI; Pro from €6.67/month billed yearly, or €8.99 monthly",
+          "Summarizes: Individual articles from your feeds",
+          "Reaches you by: Web, iOS and Android apps",
+          "Best for: Researchers and analysts who monitor specific sources and keywords"
         ]
       },
       {
-        heading: "How AI Digests Handle Breaking News — With Real Examples",
+        heading: "7. NewsBlur Daily Briefing — Best Digest of Your Own Feeds",
         paragraphs: [
-          "Breaking news is the hardest test for AI digest tools. When a major story breaks, multiple sources publish within minutes, details evolve rapidly, early reports are often incomplete or wrong, and the AI needs to balance speed with accuracy. Here's how different approaches handle this challenge.",
-          "The single-source problem in breaking news: Most AI digest tools summarize articles individually as they appear. When a breaking story hits, the tool might summarize the first article it finds — which could be an early, incomplete report from one publication. Hours later, when more detailed coverage emerges from multiple sources with corrected facts, the user has already seen (and potentially internalized) the incomplete early summary. This is a structural flaw in single-source digest tools.",
-          "Multi-source tools handle breaking news better: Trace, Techmeme, and similar tools group related coverage and update their topic pages as new information comes in. Instead of an early single-source summary that ages poorly, you get an evolving topic page that adds new coverage, updates the AI summary as consensus emerges, and transparently shows what's confirmed vs still developing. This preserves the speed benefit of AI while adding the accuracy benefit of multi-source verification.",
-          "Real example — Major product launches: When Apple launches a new product, the first 30 minutes produce dozens of articles. A single-source AI digest might summarize the first TechCrunch article (focused on specs), missing The Verge's hands-on impressions, Ars Technica's technical analysis, and the consensus-building that happens as more publications publish. A multi-source digest, by contrast, can say: 'Initial reports from 12 major publications confirm the specs. Hands-on impressions from The Verge and Engadget are positive about [feature] but note [issue]. Ars Technica's technical benchmarks show [data]. Hacker News discussion focuses on [technical concern].' This is dramatically more useful.",
-          "Real example — Security vulnerabilities: When the xz backdoor was discovered in 2024, early reports were confused about the scope, the timeline, and the responsible party. An AI digest that summarized the first article (which had an incomplete picture) would have misinformed readers. A multi-source approach that tracked coverage as it evolved could show the developing consensus: initially 'unclear scope,' then 'affects specific distros,' then the full picture as multiple security researchers confirmed details. This trajectory is exactly what multi-source digests are designed to capture.",
-          "The key takeaway: for breaking news, multi-source synthesis isn't a nice-to-have — it's essential for accuracy. Single-source AI summaries during breaking events are actively harmful because they freeze incomplete information. Choose tools that group and update coverage rather than summarizing articles individually."
+          "NewsBlur, an open-source RSS reader, added a Daily Briefing in March 2026. It scores the stories in your feeds using what you read and what you have trained it to like, then writes a summary in sections such as top stories, long reads and widely covered stories. You choose the style (bullets, prose or headlines only), the language model that writes it, and whether it arrives once, twice or three times a day, or weekly, including by email.",
+          "It is the closest thing on this list to Trace for people who want to keep their own sources. The full briefing needs the Premium Archive plan; free users see a short preview."
+        ],
+        bullets: [
+          "Price: Premium Archive $99/year (the free plan follows 64 sites, with only a preview of the briefing)",
+          "Summarizes: The top stories from your own feeds",
+          "Reaches you by: Web, iOS and Android apps, email",
+          "Best for: RSS readers who want a scheduled AI summary of the sources they already follow"
         ]
       },
       {
-        heading: "DIY vs. Ready-Made AI Digest Tools: Which Is Right for You?",
+        heading: "8. Build Your Own Digest",
         paragraphs: [
-          "The AI news digest landscape splits into two fundamentally different approaches: ready-made tools (Trace, Perplexity, Particle) and DIY pipelines (using APIs and prompt engineering). Here's how to decide which path makes sense for you.",
-          "Ready-made tools win on convenience. You sign up, and within minutes you're getting AI-powered news digests. The tool handles source discovery, content fetching, AI processing, formatting, and delivery. You get the benefit of product teams that have spent thousands of hours optimizing the AI's behavior, handling edge cases, and improving accuracy. The trade-off is less control: you're limited to the sources and summarization styles the tool supports, and you can't customize the output format or delivery method.",
-          "DIY pipelines win on flexibility. You control every dimension: which sources to include, how the AI processes content (your exact prompt), how summaries are formatted, and where they're delivered. You can build custom integrations with your existing tools (Slack, Notion, email workflows). The trade-off is significant setup and maintenance overhead. A well-built DIY pipeline takes 2-4 hours to set up initially, plus ongoing maintenance (updating sources, tweaking prompts as AI models change, handling API updates and breaking changes).",
-          "When DIY makes sense: You have very specific source requirements that no existing tool covers (niche academic journals, internal company blogs, specialized industry publications). You need custom formatting or delivery that no tool supports (specific Slack channel formatting, integration with internal knowledge bases). You're tracking hyper-specific keywords across sources and need full control over filtering logic. You're a developer who enjoys building tools and doesn't mind the maintenance overhead.",
-          "When ready-made tools make more sense: You want to get started in minutes, not hours. You value reliability — dedicated tools are less likely to break when APIs change or models update. You want the benefit of ongoing improvement (product teams continuously refine their AI behavior). You'd rather spend your technical energy on your actual work rather than maintaining a news pipeline. For 90%+ of tech professionals, a ready-made tool provides 95% of the value at 5% of the effort.",
-          "The best advice: start with a ready-made tool. If you find yourself consistently thinking 'I wish the summary included X' or 'I wish it covered source Y,' that's your signal that a DIY approach might be worth the investment. But most people never hit that threshold — a good ready-made digest covers their needs entirely."
+          "If no tool covers your sources, you can build a digest yourself: collect articles from RSS feeds or a news API, send them to a language model with a prompt that asks it to group stories, attribute every claim, and note where sources disagree, then deliver the result by email or Slack. Gemini's scheduled actions and ChatGPT's scheduled tasks are lighter versions of the same idea, without the code.",
+          "A middle path is to connect an assistant to a source that already does the grouping. With [Trace's MCP server](/agents), you can ask Claude or ChatGPT to 'summarize today's Trace brief for a backend engineer' or 'list today's AI model releases', and it works from the same grouped, sourced stories as the brief.",
+          "The trade-off is upkeep. A pipeline needs maintaining as feeds, APIs and models change, and language models still get details wrong, so keep links to the sources in the output."
+        ],
+        bullets: [
+          "Price: Model or API costs, plus your time",
+          "Summarizes: Whatever you feed it, the way you prompt it",
+          "Reaches you by: Wherever you send it",
+          "Best for: Niche topics no tool covers, and people who enjoy building their own tools"
         ]
       },
       {
-        heading: "Building Your AI News Workflow",
+        heading: "Also Worth Knowing",
         paragraphs: [
-          "The ideal workflow combines AI speed with human judgment. AI handles the heavy lifting of aggregation, triage, and summarization. You handle the judgment calls about what matters and what to act on. Here's how to structure it:",
-          "Start your day with an AI digest for breadth — scan the top 10-15 stories in 5 minutes using a multi-source tool like Trace. For each story, you get the consensus view, the different perspectives, and quick community reactions. This replaces the 20-30 minutes you'd spend checking individual sources and reading duplicate coverage.",
-          "For stories that matter to your work, use the AI summary to decide whether to go deeper. If the AI summary tells you 'multiple publications agree on X, but disagree on Y, and the community is discussing Z,' you know exactly what to investigate further. Click through to the original sources for the specific details that affect your decisions. See our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) for a complete workflow framework.",
-          "Use on-demand AI tools like Perplexity for research — when you need to understand a topic quickly, ask for a cited summary rather than reading a search page worth of links. This is especially powerful for competitive research ('summarize competitor X's product launch coverage'), technical research ('how does the new chip architecture compare to previous generations'), and fact-checking ('what are the actual reported numbers vs the claims in this press release').",
-          "Save long-form articles for weekend deep reads. AI digests are great for staying current, but they can't replace the depth and nuance of spending 30 minutes with a well-researched piece. During the week, use your digest tool's save/bookmark feature to collect articles for your weekend reading session. This separation — breadth on weekdays, depth on weekends — prevents both information overload and shallow understanding.",
-          "The meta-skill to develop: you should spend more time evaluating whether a piece of information is trustworthy and relevant than you spend consuming it. AI digests accelerate consumption — your responsibility is to maintain judgment quality even as consumption speed increases. Always ask: what sources are behind this summary? Are they credible? What's missing? What assumptions are being made? Use AI as an accelerator, not a replacement, for your own critical thinking.",
-          "For further reading on building sustainable information habits, check our [guide to beating information overload](/blog/information-overload-solutions) and our analysis of [why multi-source curation matters](/blog/signal-over-noise-curation)."
+          "Ground News compares how outlets across the political spectrum cover the same story, with an AI summary of how the coverage differs on stories with enough sources. It is aimed at general and political news rather than tech; we cover it in our [best AI news apps](/blog/best-ai-news-apps-2026) guide.",
+          "Gemini's Daily Brief, free in the US since September 2026, is a summary of your own email, calendar and tasks rather than a news digest. Artifact, the AI news app from Instagram's founders, closed in early 2024. And as above, ChatGPT Pulse was retired in 2026."
+        ]
+      },
+      {
+        heading: "How to Check an AI Digest Before You Trust It",
+        paragraphs: [
+          "A quick test works for any tool: read its summary of a story you know well. Check the numbers, the names and versions of products, and who said what. If it gets those right on stories you know, it is more likely to get them right on stories you do not.",
+          "Look for attribution. 'According to The Verge, the device uses a new display' can be checked; 'the device uses a new display' with no source cannot. The better tools link every story to its sources.",
+          "Look at how it handles uncertainty. When outlets disagree or details are unconfirmed, a good summary says so rather than picking one version. Be wary of summaries that present one reviewer's opinion as fact or leave out known problems.",
+          "Check the date. Breaking stories change over the first few hours, and an early summary can freeze an incomplete picture. When the xz backdoor was found in 2024, early reports were unclear about which systems were affected; the picture became clear only as more researchers published. Tools that group coverage and update the story as new reports arrive handle this better than tools that summarize the first article they see.",
+          "For more on why context matters, see our [analysis of context and AI fatigue](/blog/ai-fatigue-return-of-context)."
+        ]
+      },
+      {
+        heading: "Ready-Made or DIY: Which Should You Use?",
+        paragraphs: [
+          "Start with a ready-made tool. It takes minutes, someone else maintains it, and you can judge the output on real days of news before investing any time.",
+          "Move to DIY, or to a feed-based digest like NewsBlur's, if you keep wishing the digest covered a particular source or topic: niche journals, internal blogs, or a specific set of competitors. That is the signal that your own source list matters more than convenience.",
+          "Many people end up with two layers: a daily digest for breadth, and an on-demand tool like Perplexity, or the original articles, for the few stories that affect their work."
+        ]
+      },
+      {
+        heading: "Building Your AI News Routine",
+        paragraphs: [
+          "Read one digest in the morning for breadth, and give it a fixed time limit. For tech and AI, that can be the [Trace brief](/feed) or its daily email.",
+          "For the one or two stories that matter to your work, open the original sources. The summary tells you what to look at; the reporting has the details.",
+          "Save long pieces for a set reading time later in the week rather than reading them during your catch-up. See our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) for a full routine, and our [guide to beating information overload](/blog/information-overload-solutions) if the problem is volume rather than tools."
         ]
       }
     ]
