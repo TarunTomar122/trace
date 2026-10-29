@@ -5,7 +5,7 @@ For reels made outside the automatic pipeline (built in HyperFrames each day):
   cd backend
   ../.venv/bin/python -m v3.flows.share_reel_file --slug 2026-10-29-anthropic-ipo \
       --video /tmp/reel.mp4 --cover /tmp/cover.jpg --caption-file /tmp/caption.txt \
-      --title "Anthropic files for its IPO" --url https://...          # add --dry-run to stop before Buffer
+      --cover-at 7.5 --title "Anthropic files for its IPO" --url https://...          # add --dry-run to stop before Buffer
 
 The files are served from INSTAGRAM_MEDIA_DIR like the daily reel, shared as an
 Instagram reel labelled AI-generated (the voice is), and logged in
@@ -29,13 +29,37 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
-from v3.flows.post_instagram import instagram_channel, wait_until_sent  # noqa: E402
-from v3.flows.post_reel import COLLECTION, host_reel, share_reel  # noqa: E402
+from v3.flows.post_instagram import REFUSED_TYPES, BufferRefused, buffer, instagram_channel, wait_until_sent  # noqa: E402
+from v3.flows.post_reel import COLLECTION, host_reel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
 
 def _log(message: str) -> None:
     print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] [reel-file] {message}", flush=True)
+
+
+def share(channel_id: str, caption: str, video_url: str, cover_ms: int) -> str:
+    """Create the reel post. Buffer takes no cover image: it picks a frame at cover_ms."""
+    data, errors = buffer(
+        """mutation($input: CreatePostInput!) { createPost(input: $input) {
+            __typename
+            ... on PostActionSuccess { post { id status } }
+            ... on MutationError { message }
+        } }""",
+        {"input": {
+            "channelId": channel_id, "text": caption, "schedulingType": "automatic", "mode": "shareNow",
+            "needsApproval": False,
+            "assets": [{"video": {"url": video_url, "metadata": {"thumbnailOffset": cover_ms}}}],
+            "metadata": {"instagram": {"type": "reel", "shouldShareToFeed": True, "isAiGenerated": True}},
+        }},
+    )
+    result = data.get("createPost") or {}
+    if (result.get("post") or {}).get("id"):
+        return result["post"]["id"]
+    detail = f"{result.get('__typename') or ''}: {result.get('message') or errors or result}"[:500]
+    if result.get("__typename") in REFUSED_TYPES:
+        raise BufferRefused(f"Buffer refused the reel ({detail})")
+    raise RuntimeError(f"Buffer returned no post id ({detail})")
 
 
 def run(args: argparse.Namespace) -> int:
@@ -62,7 +86,7 @@ def run(args: argparse.Namespace) -> int:
     ref.set({"date": now.strftime("%Y-%m-%d"), "slug": args.slug, "kind": "hand-made", "status": "sharing",
              "caption": caption, "video_url": video_url, "created_at": now.isoformat(),
              "stories": [{"title": args.title, "url": args.url}], "buffer_post_id": None}, merge=True)
-    post_id = share_reel(instagram_channel(), caption, video_url, cover_url)
+    post_id = share(instagram_channel(), caption, video_url, int(args.cover_at * 1000))
     ref.set({"buffer_post_id": post_id, "status": "shared"}, merge=True)
     _log(f"shared to Buffer as {post_id}; waiting for Instagram")
     state = wait_until_sent(post_id)
@@ -80,6 +104,7 @@ def main() -> None:
     parser.add_argument("--caption-file", required=True)
     parser.add_argument("--title", required=True, help="the story's headline (for the repeat check)")
     parser.add_argument("--url", default="", help="the story's main source URL")
+    parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")
     parser.add_argument("--dry-run", action="store_true")
     sys.exit(run(parser.parse_args()))
 
