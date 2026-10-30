@@ -8,9 +8,11 @@ For reels made outside the automatic pipeline (built in HyperFrames each day):
       --cover-at 7.5 --title "Anthropic files for its IPO" --url https://...          # add --dry-run to stop before Buffer
 
 The files are served from INSTAGRAM_MEDIA_DIR like the daily reel, shared as an
-Instagram reel labelled AI-generated (the voice is), and logged in
-`instagram_reels/{slug}` with the story, so post_reel's repeat check sees it.
-A slug that already has a Buffer post is refused, so a rerun can't double-post.
+Instagram reel labelled AI-generated (the voice is), then to TikTok as well when
+a TikTok channel is connected in Buffer, and logged in `instagram_reels/{slug}`
+with the story, so post_reel's repeat check sees it.
+A slug that already has an Instagram post is never posted there again; a rerun
+only tries TikTok (if that one is not already up), e.g. once TikTok is connected.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
-from v3.flows.post_instagram import REFUSED_TYPES, BufferRefused, buffer, instagram_channel, wait_until_sent  # noqa: E402
+from v3.flows.post_instagram import create_post, instagram_channel, share_to_tiktok, wait_until_sent  # noqa: E402
 from v3.flows.post_reel import COLLECTION, host_reel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
@@ -38,28 +40,9 @@ def _log(message: str) -> None:
     print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] [reel-file] {message}", flush=True)
 
 
-def share(channel_id: str, caption: str, video_url: str, cover_ms: int) -> str:
-    """Create the reel post. Buffer takes no cover image: it picks a frame at cover_ms."""
-    data, errors = buffer(
-        """mutation($input: CreatePostInput!) { createPost(input: $input) {
-            __typename
-            ... on PostActionSuccess { post { id status } }
-            ... on MutationError { message }
-        } }""",
-        {"input": {
-            "channelId": channel_id, "text": caption, "schedulingType": "automatic", "mode": "shareNow",
-            "needsApproval": False,
-            "assets": [{"video": {"url": video_url, "metadata": {"thumbnailOffset": cover_ms}}}],
-            "metadata": {"instagram": {"type": "reel", "shouldShareToFeed": True, "isAiGenerated": True}},
-        }},
-    )
-    result = data.get("createPost") or {}
-    if (result.get("post") or {}).get("id"):
-        return result["post"]["id"]
-    detail = f"{result.get('__typename') or ''}: {result.get('message') or errors or result}"[:500]
-    if result.get("__typename") in REFUSED_TYPES:
-        raise BufferRefused(f"Buffer refused the reel ({detail})")
-    raise RuntimeError(f"Buffer returned no post id ({detail})")
+def video_asset(video_url: str, cover_ms: int) -> dict:
+    """Buffer takes no cover image for a video: it picks the frame at cover_ms."""
+    return {"video": {"url": video_url, "metadata": {"thumbnailOffset": cover_ms}}}
 
 
 def run(args: argparse.Namespace) -> int:
@@ -71,8 +54,13 @@ def run(args: argparse.Namespace) -> int:
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
     if existing.get("buffer_post_id"):
-        _log(f"{args.slug} was already shared ({existing['buffer_post_id']}, {existing.get('status')}); not posting again")
-        return 1
+        _log(f"{args.slug} is already on Instagram ({existing['buffer_post_id']}, {existing.get('status')}); "
+             "only TikTok is tried")
+        if existing.get("video_url") and existing.get("caption") and not args.dry_run:
+            cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
+            share_to_tiktok(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)],
+                            (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
+        return 0
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         shutil.copyfile(args.video, work / "reel.mp4")
@@ -84,15 +72,18 @@ def run(args: argparse.Namespace) -> int:
         return 0
     now = datetime.now(timezone.utc)
     ref.set({"date": now.strftime("%Y-%m-%d"), "slug": args.slug, "kind": "hand-made", "status": "sharing",
-             "caption": caption, "video_url": video_url, "created_at": now.isoformat(),
+             "caption": caption, "video_url": video_url, "cover_ms": int(args.cover_at * 1000), "created_at": now.isoformat(),
              "stories": [{"title": args.title, "url": args.url}], "buffer_post_id": None}, merge=True)
-    post_id = share(instagram_channel(), caption, video_url, int(args.cover_at * 1000))
+    asset = video_asset(video_url, int(args.cover_at * 1000))
+    post_id = create_post(instagram_channel(), caption, [asset],
+                          {"instagram": {"type": "reel", "shouldShareToFeed": True, "isAiGenerated": True}})
     ref.set({"buffer_post_id": post_id, "status": "shared"}, merge=True)
     _log(f"shared to Buffer as {post_id}; waiting for Instagram")
     state = wait_until_sent(post_id)
     ref.set({"status": state.get("status") or "unknown", "external_link": state.get("externalLink") or "",
              "error": state.get("error") or ""}, merge=True)
     _log(f"Buffer says {state.get('status')} {state.get('externalLink') or ''}")
+    share_to_tiktok(ref, caption, [asset], args.title, ai_generated=True)
     return 0 if state.get("status") == "sent" else 1
 
 

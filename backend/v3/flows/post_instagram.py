@@ -11,7 +11,10 @@ story slide (its first paragraphs, as the feed splits them) for each, all in
 one theme (a light one in the morning, rotating by day; dark in the evening;
 see instagram_slides.theme_for), writes the JPEGs where
 Caddy serves them (INSTAGRAM_MEDIA_DIR -> INSTAGRAM_MEDIA_URL), shares the
-carousel now through Buffer and waits until Buffer reports it sent.
+carousel now through Buffer and waits until Buffer reports it sent. When a
+TikTok channel is connected in Buffer, the same slides then go there as a
+photo post (best effort, never failing the run; see share_to_tiktok). A
+re-run of a slot that is already on Instagram only retries TikTok.
 
 Every post is logged in `instagram_posts/{date}-{slot}`. A slot is posted
 again only when nothing can have gone out (see RETRY), so a re-run or retry
@@ -422,8 +425,8 @@ def _read(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]
     return data
 
 
-def instagram_channel() -> str:
-    configured = os.getenv("BUFFER_INSTAGRAM_CHANNEL_ID", "").strip()
+def _channel(service: str, env_name: str) -> str | None:
+    configured = os.getenv(env_name, "").strip()
     if configured:
         return configured
     for org in _read("{ account { organizations { id } } }")["account"]["organizations"]:
@@ -432,13 +435,25 @@ def instagram_channel() -> str:
             {"o": org["id"]},
         )["channels"]
         for channel in channels:
-            if channel["service"] == "instagram" and not channel["isDisconnected"] and not channel["isLocked"]:
+            if channel["service"] == service and not channel["isDisconnected"] and not channel["isLocked"]:
                 return channel["id"]
-    raise BufferRefused("no connected Instagram channel in Buffer")
+    return None
 
 
-def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
-    """Create the post; BufferRefused when nothing was created, RuntimeError when unsure."""
+def instagram_channel() -> str:
+    channel_id = _channel("instagram", "BUFFER_INSTAGRAM_CHANNEL_ID")
+    if not channel_id:
+        raise BufferRefused("no connected Instagram channel in Buffer")
+    return channel_id
+
+
+def tiktok_channel() -> str | None:
+    """The TikTok channel, if one is connected (posting there is optional)."""
+    return _channel("tiktok", "BUFFER_TIKTOK_CHANNEL_ID")
+
+
+def create_post(channel_id: str, caption: str, assets: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
+    """Share a post now; BufferRefused when nothing was created, RuntimeError when unsure."""
     data, errors = buffer(
         """mutation($input: CreatePostInput!) { createPost(input: $input) {
             __typename
@@ -451,9 +466,8 @@ def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
             "schedulingType": "automatic",
             "mode": "shareNow",
             "needsApproval": False,
-            "assets": [{"image": {"url": url}} for url in image_urls],
-            # Several images make a carousel; Buffer's Instagram types are post, story and reel.
-            "metadata": {"instagram": {"type": "post", "shouldShareToFeed": True}},
+            "assets": assets,
+            "metadata": metadata,
         }},
     )
     result = data.get("createPost") or {}
@@ -465,6 +479,12 @@ def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
     if kind in REFUSED_TYPES or (errors and not kind and codes <= REFUSED_CODES):
         raise BufferRefused(f"Buffer refused the post ({detail})")
     raise RuntimeError(f"Buffer returned no post id ({detail})")
+
+
+def share_now(channel_id: str, caption: str, image_urls: list[str]) -> str:
+    # Several images make a carousel; Buffer's Instagram types are post, story and reel.
+    return create_post(channel_id, caption, [{"image": {"url": url}} for url in image_urls],
+                       {"instagram": {"type": "post", "shouldShareToFeed": True}})
 
 
 def post_state(post_id: str) -> dict[str, Any]:
@@ -520,6 +540,74 @@ def refresh(ref: Any, record: dict[str, Any]) -> dict[str, Any]:
     return {**record, **fields}
 
 
+TIKTOK_MAX_HASHTAGS = 5  # Buffer refuses TikTok posts with more
+TIKTOK_WAIT = 240  # seconds; the service also waits for Instagram inside its 30 min
+
+
+def tiktok_caption(caption: str) -> str:
+    """The caption with at most five hashtags: the first four and the last (#yourtrace)."""
+    lines = caption.split("\n")
+    tag_lines = [i for i, line in enumerate(lines) if line.strip() and all(w.startswith("#") for w in line.split())]
+    tags = [w for i in tag_lines for w in lines[i].split()]
+    if len(tags) <= TIKTOK_MAX_HASHTAGS:
+        return caption
+    keep = tags[: TIKTOK_MAX_HASHTAGS - 1] + tags[-1:]
+    for i in tag_lines:
+        lines[i] = " ".join(w for w in lines[i].split() if w in keep and not keep.remove(w))
+    return "\n".join(line for i, line in enumerate(lines) if i not in tag_lines or line)
+
+
+def _tiktok_log(message: str) -> None:
+    print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] [tiktok] {message}", flush=True)
+
+
+def share_to_tiktok(ref: Any, caption: str, assets: list[dict[str, Any]], title: str, ai_generated: bool) -> None:
+    """Share the same post to TikTok too, when a TikTok channel is connected.
+
+    Best effort: Instagram is the main channel, so this logs problems and never
+    raises. It keeps its own tiktok_* fields on the record. A TikTok post that
+    may exist is never made again; one Buffer refused or failed to publish is
+    tried again on the next run of the same slot or reel.
+    """
+    try:
+        _share_to_tiktok(ref, caption, assets, title, ai_generated)
+    except Exception as exc:
+        _tiktok_log(f"skipped after an error (Instagram is unaffected): {exc}")
+
+
+def _share_to_tiktok(ref: Any, caption: str, assets: list[dict[str, Any]], title: str, ai_generated: bool) -> None:
+    record = ref.get().to_dict() or {}
+    status = record.get("tiktok_status")
+    if record.get("tiktok_post_id") and status not in RETRY:
+        # Still on its way when an earlier run stopped waiting: see where it got to.
+        state = post_state(record["tiktok_post_id"])
+        if state:
+            status = _state_fields(state)["status"]
+            ref.set({f"tiktok_{k}": v for k, v in _state_fields(state).items() if k != "updated_at"}, merge=True)
+    if status not in RETRY | {None}:
+        return
+    channel_id = tiktok_channel()
+    if not channel_id:
+        return
+    ref.set({"tiktok_status": "posting", "tiktok_post_id": None, "tiktok_error": ""}, merge=True)
+    try:
+        post_id = create_post(channel_id, tiktok_caption(caption), assets,
+                              {"tiktok": {"title": title[:90], "isAiGenerated": ai_generated}})
+    except BufferRefused as exc:
+        ref.set({"tiktok_status": "failed", "tiktok_error": str(exc)[:500]}, merge=True)
+        _tiktok_log(f"post refused: {exc}")
+        return
+    except Exception as exc:
+        ref.set({"tiktok_status": "unknown", "tiktok_error": str(exc)[:500]}, merge=True)
+        _tiktok_log(f"post may or may not exist, not retrying (check Buffer): {exc}")
+        return
+    ref.set({"tiktok_post_id": post_id, "tiktok_status": "shared"}, merge=True)
+    _tiktok_log(f"shared to Buffer as {post_id}; waiting")
+    fields = _state_fields(wait_until_sent(post_id, timeout=TIKTOK_WAIT))
+    ref.set({f"tiktok_{k}": v for k, v in fields.items() if k != "updated_at"}, merge=True)
+    _tiktok_log(f"{fields['status']} {fields['external_link']} {fields['error']}")
+
+
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
@@ -539,6 +627,10 @@ def run(args: argparse.Namespace) -> int:
         existing = refresh(ref, existing)
         if existing.get("status") not in RETRY:
             _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
+            if existing.get("image_urls") and existing.get("caption"):
+                # TikTok may have failed or been connected later: it gets the same slides.
+                share_to_tiktok(ref, existing["caption"], [{"image": {"url": u}} for u in existing["image_urls"]],
+                                existing.get("tiktok_title") or (existing.get("headlines") or [""])[0], ai_generated=False)
             return 0
 
     topics, feed_date = load_topics(store, now)
@@ -573,6 +665,7 @@ def run(args: argparse.Namespace) -> int:
         "lanes": [s["lane"] for s in stories],
         "url_keys": sorted({k for s in stories for k in s["url_keys"]}),
         "caption": caption,
+        "tiktok_title": hook or stories[0]["headline"],
         "updated_at": now.isoformat(),
     }
 
@@ -610,6 +703,7 @@ def run(args: argparse.Namespace) -> int:
     fields = _state_fields(wait_until_sent(post_id))
     ref.set(fields, merge=True)
     _log(f"{doc_id}: {fields['status']} {fields['external_link']} {fields['error']}")
+    share_to_tiktok(ref, caption, [{"image": {"url": url}} for url in image_urls], record["tiktok_title"], ai_generated=False)
     # Only a publish error is worth the service's retry; anything else is live or on its way.
     return 1 if fields["status"] == "error" else 0
 

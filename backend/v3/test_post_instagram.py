@@ -326,6 +326,9 @@ class BufferTests(unittest.TestCase):
             self.assertEqual(ig.wait_until_sent("p1")["status"], "sent")
 
 
+sent = {"status": "sent", "externalLink": "https://ig/p/1"}
+
+
 class RunSafetyTests(unittest.TestCase):
     def args(self, **overrides):
         return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False, **overrides})
@@ -335,13 +338,73 @@ class RunSafetyTests(unittest.TestCase):
         self.date, _ = ig.slot_for(datetime.now(timezone.utc))
         self.docs = self.store.db.data.setdefault(ig.COLLECTION, {})
 
-    def run_job(self, share, **kwargs):
+    def run_job(self, share, tiktok=None, states=None, **kwargs):
         with patch.object(ig, "V3Store", return_value=self.store), patch.object(ig, "fetch_image", side_effect=picture), \
                 patch("openai.OpenAI", side_effect=RuntimeError("offline")), patch.object(ig, "host_slides", return_value=["u"] * 10), \
                 patch.object(ig, "prune_media"), patch.object(ig, "instagram_channel", return_value="chan"), \
+                patch.object(ig, "tiktok_channel", return_value=tiktok), \
                 patch.object(ig, "share_now", **share) as share_mock, \
-                patch.object(ig, "wait_until_sent", return_value={"status": "sent", "externalLink": "https://ig/p/1"}):
+                patch.object(ig, "create_post", return_value="t1") as self.tiktok_post, \
+                patch.object(ig, "post_state", side_effect=lambda i: (states or {}).get(i, sent)), \
+                patch.object(ig, "wait_until_sent", side_effect=lambda i, **_: (states or {}).get(i, sent)):
             return ig.run(self.args(**kwargs)), share_mock
+
+    def test_slides_also_go_to_tiktok_when_connected(self):
+        code, _ = self.run_job({"return_value": "p1"}, tiktok="tt")
+        doc = self.docs[f"{self.date}-am"]
+        self.assertEqual((code, doc["status"], doc["tiktok_post_id"], doc["tiktok_status"]), (0, "sent", "t1", "sent"))
+        channel, _, assets, metadata = self.tiktok_post.call_args.args
+        self.assertEqual((channel, assets[0], metadata["tiktok"]["isAiGenerated"]), ("tt", {"image": {"url": "u"}}, False))
+        self.assertTrue(0 < len(metadata["tiktok"]["title"]) <= 90)
+
+    def test_no_tiktok_channel_means_instagram_only(self):
+        code, _ = self.run_job({"return_value": "p1"})
+        self.assertEqual(code, 0)
+        self.tiktok_post.assert_not_called()
+        self.assertNotIn("tiktok_status", self.docs[f"{self.date}-am"])
+
+    def test_an_instagram_retry_does_not_post_tiktok_twice(self):
+        code, _ = self.run_job({"return_value": "p1"}, tiktok="tt", states={"p1": {"status": "error"}})
+        self.assertEqual(code, 1)
+        self.tiktok_post.assert_called_once()
+        code, share = self.run_job({"return_value": "p2"}, tiktok="tt")
+        self.assertEqual(code, 0)
+        share.assert_called_once()
+        self.tiktok_post.assert_not_called()
+
+    def test_a_rerun_after_instagram_only_adds_tiktok(self):
+        self.run_job({"return_value": "p1"})
+        self.tiktok_post.assert_not_called()
+        code, share = self.run_job({"return_value": "p2"}, tiktok="tt")
+        self.assertEqual(code, 0)
+        share.assert_not_called()
+        self.tiktok_post.assert_called_once()
+        self.assertEqual(self.docs[f"{self.date}-am"]["tiktok_status"], "sent")
+
+    def test_a_tiktok_post_that_later_failed_is_tried_again(self):
+        self.run_job({"return_value": "p1"}, tiktok="tt", states={"t1": {"status": "sending"}})
+        self.assertEqual(self.docs[f"{self.date}-am"]["tiktok_status"], "sending")
+        self.run_job({"return_value": "p2"}, tiktok="tt")  # still on its way: left alone
+        self.tiktok_post.assert_not_called()
+        self.run_job({"return_value": "p2"}, tiktok="tt", states={"t1": {"status": "error"}})
+        self.tiktok_post.assert_called_once()
+
+    def test_tiktok_errors_never_escape(self):
+        broken = MagicMock()
+        broken.get.side_effect = RuntimeError("firestore down")
+        ig.share_to_tiktok(broken, "caption", [], "title", ai_generated=False)
+
+    def test_tiktok_captions_keep_at_most_five_hashtags(self):
+        caption = "Hook #notatag\n\nBody\n\n#a #b #c #d #e #f #g #yourtrace"
+        self.assertEqual(ig.tiktok_caption(caption), "Hook #notatag\n\nBody\n\n#a #b #c #d #yourtrace")
+        self.assertEqual(ig.tiktok_caption("x\n#a #b"), "x\n#a #b")
+
+    def test_a_tiktok_refusal_never_fails_the_run(self):
+        with patch.object(ig, "create_post", side_effect=ig.BufferRefused("no")):
+            doc = FakeDoc(self.store.db, ig.COLLECTION, "x")
+            with patch.object(ig, "tiktok_channel", return_value="tt"):
+                ig.share_to_tiktok(doc, "caption", [], "title", ai_generated=False)
+        self.assertEqual(self.docs["x"]["tiktok_status"], "failed")
 
     def test_refused_post_is_marked_failed_and_retried(self):
         code, _ = self.run_job({"side_effect": ig.BufferRefused("bad input")})
@@ -366,8 +429,7 @@ class RunSafetyTests(unittest.TestCase):
 
     def test_a_post_still_on_its_way_is_re_read(self):
         self.docs[f"{self.date}-am"] = {"date": self.date, "status": "sending", "buffer_post_id": "p0"}
-        with patch.object(ig, "post_state", return_value={"status": "sent", "externalLink": "https://ig/p/0"}):
-            code, share = self.run_job({"return_value": "p1"})
+        code, share = self.run_job({"return_value": "p1"}, states={"p0": {"status": "sent", "externalLink": "https://ig/p/0"}})
         self.assertEqual(code, 0)
         share.assert_not_called()
         self.assertEqual(self.docs[f"{self.date}-am"]["external_link"], "https://ig/p/0")

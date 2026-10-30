@@ -184,7 +184,17 @@ tail -50 ~/trace/logs/sponsor-welcome.log
   created a post (a timeout, Buffer's `UNEXPECTED`) is logged as `unknown` and
   never retried, so check Buffer by hand. Drafts, approvals and posts still
   sending count as posted, and the next run re-reads their status.
-- Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` (see `.env.example`).
+- TikTok: when a TikTok channel is connected in Buffer, the same slides go
+  there as a photo post after Instagram (`share_to_tiktok`). The caption keeps
+  at most 5 hashtags (Buffer's TikTok limit) and the hook is the title. It is
+  best effort: a TikTok problem never fails the run. It is tracked in
+  `tiktok_*` fields on the same record; a refusal or publish error is tried
+  again on the next run of the slot (a run of a slot already on Instagram
+  only tries TikTok); a post that may exist is never made again. Hand-made
+  reels (`v3.flows.share_reel_file`) go to TikTok the same way, labelled
+  AI-generated, and rerunning one that is already on Instagram only tries TikTok.
+- Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` and
+  `BUFFER_TIKTOK_CHANNEL_ID` (see `.env.example`).
 
 ### Daily reel (`trace-reel.timer`, 14:00 GMT)
 
