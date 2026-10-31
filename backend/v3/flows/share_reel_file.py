@@ -14,9 +14,8 @@ with the story, so post_reel's repeat check sees it.
 A slug that already has an Instagram post is never posted there again; a rerun
 only tries TikTok (if that one is not already up), e.g. once TikTok is connected.
 
---tiktok-video sends TikTok its own file (the same reel with the voice only):
-TikTok mutes API posts whose background music it can't clear, and it muted
-every reel that carried the generated music bed.
+--tiktok-video sends TikTok its own file instead of the Instagram one (e.g. the
+reel without its music bed).
 """
 
 from __future__ import annotations
