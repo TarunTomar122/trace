@@ -357,6 +357,27 @@ class RunSafetyTests(unittest.TestCase):
         self.assertEqual((channel, assets[0], metadata["tiktok"]["isAiGenerated"]), ("tt", {"image": {"url": "u"}}, False))
         self.assertTrue(0 < len(metadata["tiktok"]["title"]) <= 90)
 
+    def test_a_muted_tiktok_video_is_flagged(self):
+        page = ('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+                + json.dumps({"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": {"itemMute": True}}}}})
+                + "</script>")
+        link = "https://tiktok.com/@yourtrace.news/video/1"
+        with patch.object(ig.requests, "get", return_value=MagicMock(text=page)):
+            code, _ = self.run_job({"return_value": "p1"}, tiktok="tt", states={"t1": {"status": "sent", "externalLink": link}})
+        self.assertEqual((code, self.docs[f"{self.date}-am"]["tiktok_muted"]), (0, True))
+
+    def test_tiktok_muted_reads_the_post_page(self):
+        def page(mute):
+            item = {"itemMute": True} if mute else {}
+            return MagicMock(text='<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">' + json.dumps(
+                {"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": item}}}}) + "</script>")
+        link = "https://www.tiktok.com/@yourtrace.news/video/7702827468062723335"
+        with patch.object(ig.requests, "get", side_effect=[page(True), page(False)]):
+            self.assertEqual((ig.tiktok_muted(link), ig.tiktok_muted(link)), (True, False))
+        with patch.object(ig.requests, "get", side_effect=RuntimeError("offline")), patch.object(ig.time, "sleep"):
+            self.assertIsNone(ig.tiktok_muted(link))
+        self.assertIsNone(ig.tiktok_muted("https://www.instagram.com/reel/x/"))
+
     def test_no_tiktok_channel_means_instagram_only(self):
         code, _ = self.run_job({"return_value": "p1"})
         self.assertEqual(code, 0)

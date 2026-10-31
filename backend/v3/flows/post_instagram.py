@@ -606,6 +606,38 @@ def _share_to_tiktok(ref: Any, caption: str, assets: list[dict[str, Any]], title
     fields = _state_fields(wait_until_sent(post_id, timeout=TIKTOK_WAIT))
     ref.set({f"tiktok_{k}": v for k, v in fields.items() if k != "updated_at"}, merge=True)
     _tiktok_log(f"{fields['status']} {fields['external_link']} {fields['error']}")
+    muted = tiktok_muted(fields["external_link"])
+    if muted is not None:
+        ref.set({"tiktok_muted": muted}, merge=True)
+        _tiktok_log(f"MUTED by TikTok (sound not available): {fields['external_link']}" if muted
+                    else "audio ok (not muted)")
+
+
+TIKTOK_VIDEO = re.compile(r"^https://(www\.)?tiktok\.com/@[\w.]+/video/\d+")
+
+
+def tiktok_muted(link: str, tries: int = 3, wait: int = 30) -> bool | None:
+    """Whether TikTok muted a published video ("This sound isn't available").
+
+    Reads the public post page (itemMute in its rehydration data). None when the
+    link isn't a TikTok video or the page couldn't be read; never raises.
+    """
+    if not TIKTOK_VIDEO.match(link or ""):
+        return None
+    for attempt in range(tries):
+        if attempt:
+            time.sleep(wait)
+        try:
+            html = requests.get(link, timeout=20, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                              "(KHTML, like Gecko) Chrome/130 Safari/537.36"}).text
+            found = re.search(r'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', html, re.S)
+            item = json.loads(found.group(1))["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
+            return bool(item.get("itemMute"))
+        except Exception:
+            continue
+    _tiktok_log(f"couldn't read {link} to check its sound")
+    return None
 
 
 # ---------------------------------------------------------------------------
