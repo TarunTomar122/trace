@@ -16,6 +16,11 @@ TikTok channel is connected in Buffer, the same slides then go there as a
 photo post (best effort, never failing the run; see share_to_tiktok). A
 re-run of a slot that is already on Instagram only retries TikTok.
 
+trace-tiktok-carousel.timer adds two TikTok-only carousels at 13:00 and 16:30
+UK time (`--tiktok-only`, slots t1 and t2), so TikTok gets four a day. They
+pick stories the same way and never repeat one already posted; their record's
+status follows the TikTok post.
+
 Every post is logged in `instagram_posts/{date}-{slot}`. A slot is posted
 again only when nothing can have gone out (see RETRY), so a re-run or retry
 does not double-post. Live runs by hand should go through the service
@@ -142,6 +147,15 @@ def slot_for(now: datetime) -> tuple[str, str]:
     """(London date, "am"/"pm") for a run at `now`."""
     local = now.astimezone(LONDON)
     return local.strftime("%Y-%m-%d"), "am" if local.hour < 14 else "pm"
+
+
+TIKTOK_SLOTS = ("t1", "t2")
+
+
+def tiktok_slot_for(now: datetime) -> tuple[str, str]:
+    """(London date, "t1"/"t2") for a TikTok-only run at `now` (13:00 and 16:30)."""
+    local = now.astimezone(LONDON)
+    return local.strftime("%Y-%m-%d"), "t1" if local.hour < 15 else "t2"
 
 
 # ---------------------------------------------------------------------------
@@ -647,8 +661,12 @@ def tiktok_muted(link: str, tries: int = 3, wait: int = 30) -> bool | None:
 
 def run(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc)
-    date, slot = slot_for(now)
+    tiktok_only = args.tiktok_only or args.slot in TIKTOK_SLOTS
+    date, slot = tiktok_slot_for(now) if tiktok_only else slot_for(now)
     slot = args.slot or slot
+    if tiktok_only and slot not in TIKTOK_SLOTS:
+        _log(f"--tiktok-only needs slot t1 or t2 (got {slot})")
+        return 1
     # --force never touches the slot's own record, so a live post's history stays.
     doc_id = f"{date}-{slot}" + (f"-{now:%H%M%S}" if args.force else "")
     store = V3Store()
@@ -657,6 +675,10 @@ def run(args: argparse.Namespace) -> int:
     existing = ref.get().to_dict() if not (args.dry_run or args.force) else None
     if existing:
         existing = refresh(ref, existing)
+        if tiktok_only and existing.get("status") not in RETRY:
+            _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
+            return _tiktok_only_share(ref, existing["caption"], existing.get("image_urls") or [],
+                                      existing.get("tiktok_title") or "") if existing.get("caption") else 0
         if existing.get("status") not in RETRY:
             _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
             if existing.get("image_urls") and existing.get("caption"):
@@ -678,7 +700,7 @@ def run(args: argparse.Namespace) -> int:
     theme = theme_for(date, slot)
     cover = Cover(
         date_label=datetime.strptime(date, "%Y-%m-%d").strftime("%A, %B %-d"),
-        when="morning" if slot == "am" else "evening",
+        when={"am": "morning", "pm": "evening"}.get(slot, "afternoon"),
         headlines=[s["headline"] for s in stories],
     )
     slides = render_carousel(
@@ -713,6 +735,10 @@ def run(args: argparse.Namespace) -> int:
 
     prune_media(now)
     image_urls = host_slides(slides, f"{doc_id}-{uuid.uuid4().hex[:8]}")
+    if tiktok_only:
+        ref.set({**record, "channel": "tiktok", "status": "posting", "image_urls": image_urls,
+                 "created_at": now.isoformat(), "external_link": "", "error": ""}, merge=True)
+        return _tiktok_only_share(ref, caption, image_urls, record["tiktok_title"])
     channel_id = instagram_channel()
     # Clear what an earlier, refused attempt left, so a later refresh can't read its old post.
     ref.set({**record, "status": "posting", "image_urls": image_urls, "created_at": now.isoformat(),
@@ -740,11 +766,26 @@ def run(args: argparse.Namespace) -> int:
     return 1 if fields["status"] == "error" else 0
 
 
+def _tiktok_only_share(ref: Any, caption: str, image_urls: list[str], title: str) -> int:
+    """Post (or re-check) a TikTok-only carousel; its status follows the TikTok post.
+
+    1 (so the service retries) only when nothing went out.
+    """
+    share_to_tiktok(ref, caption, [{"image": {"url": u}} for u in image_urls], title, ai_generated=False)
+    record = ref.get().to_dict() or {}
+    status = record.get("tiktok_status") or "failed"
+    ref.set({"status": status, "external_link": record.get("tiktok_external_link") or "",
+             "error": record.get("tiktok_error") or ""}, merge=True)
+    _log(f"{getattr(ref, 'id', '')}: TikTok only, {status} {record.get('tiktok_external_link') or ''}")
+    return 1 if status in RETRY else 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dry-run", action="store_true", help="render slides and caption locally; no hosting, posting or writes")
     parser.add_argument("--out", default="/tmp/trace-instagram", help="where --dry-run writes the slides")
-    parser.add_argument("--slot", choices=["am", "pm"], help="override the slot worked out from London time")
+    parser.add_argument("--slot", choices=["am", "pm", *TIKTOK_SLOTS], help="override the slot worked out from London time")
+    parser.add_argument("--tiktok-only", action="store_true", help="a TikTok-only carousel (slot t1 or t2 from London time)")
     parser.add_argument("--force", action="store_true", help="post again even if this slot posted (logged separately)")
     sys.exit(run(parser.parse_args()))
 

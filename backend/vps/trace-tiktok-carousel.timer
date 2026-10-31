@@ -1,0 +1,13 @@
+[Unit]
+Description=Post a TikTok-only Trace carousel at 13:00 and 16:30 UK time
+
+[Timer]
+# With trace-instagram's 09:00 and 20:00 carousels, TikTok gets four a day.
+OnCalendar=*-*-* 13:00:00 Europe/London
+OnCalendar=*-*-* 16:30:00 Europe/London
+AccuracySec=1min
+Persistent=false
+Unit=trace-tiktok-carousel.service
+
+[Install]
+WantedBy=timers.target

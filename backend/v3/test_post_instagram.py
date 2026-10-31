@@ -276,7 +276,8 @@ class RenderTests(unittest.TestCase):
 
 class RunTests(unittest.TestCase):
     def args(self, **overrides):
-        return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False, **overrides})
+        return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False,
+                                     "tiktok_only": False, **overrides})
 
     def test_a_slot_that_already_posted_is_skipped(self):
         store = FakeStore([topic(i) for i in range(1, 6)])
@@ -331,7 +332,8 @@ sent = {"status": "sent", "externalLink": "https://ig/p/1"}
 
 class RunSafetyTests(unittest.TestCase):
     def args(self, **overrides):
-        return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False, **overrides})
+        return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False,
+                                     "tiktok_only": False, **overrides})
 
     def setUp(self):
         self.store = FakeStore([topic(2, "ai"), topic(4, "ai"), topic(3, "markets"), topic(5, "startups"), topic(6, "ux-design")])
@@ -377,6 +379,29 @@ class RunSafetyTests(unittest.TestCase):
         with patch.object(ig.requests, "get", side_effect=RuntimeError("offline")), patch.object(ig.time, "sleep"):
             self.assertIsNone(ig.tiktok_muted(link))
         self.assertIsNone(ig.tiktok_muted("https://www.instagram.com/reel/x/"))
+
+    def test_a_tiktok_only_slot_skips_instagram(self):
+        code, share = self.run_job({"return_value": "p1"}, tiktok="tt", slot="t1", tiktok_only=True)
+        doc = self.docs[f"{self.date}-t1"]
+        self.assertEqual((code, doc["status"], doc["channel"], doc["tiktok_post_id"]), (0, "sent", "tiktok", "t1"))
+        share.assert_not_called()
+        # A re-run posts nothing new.
+        code, share = self.run_job({"return_value": "p1"}, tiktok="tt", slot="t1", tiktok_only=True)
+        self.assertEqual(code, 0)
+        share.assert_not_called()
+        self.tiktok_post.assert_not_called()
+
+    def test_a_tiktok_only_slot_retries_when_nothing_went_out(self):
+        code, _ = self.run_job({"return_value": "p1"}, tiktok=None, slot="t2", tiktok_only=True)
+        self.assertEqual((code, self.docs[f"{self.date}-t2"]["status"]), (1, "failed"))
+
+    def test_tiktok_only_stories_are_not_posted_again(self):
+        self.run_job({"return_value": "p1"}, tiktok="tt", slot="t1", tiktok_only=True)
+        self.assertEqual(len(self.docs[f"{self.date}-t1"]["topic_ids"]), 4)
+        # Only one of the five stories is left, too few for the evening carousel.
+        code, share = self.run_job({"return_value": "p2"}, tiktok="tt", slot="pm")
+        self.assertEqual(code, 1)
+        share.assert_not_called()
 
     def test_no_tiktok_channel_means_instagram_only(self):
         code, _ = self.run_job({"return_value": "p1"})

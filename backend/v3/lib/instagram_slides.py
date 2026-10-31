@@ -66,14 +66,18 @@ PALETTES = THEMES
 
 
 def theme_for(date: str, slot: str) -> Theme:
-    """Evening posts are always dark; morning posts rotate the light themes by day."""
-    if slot == "pm":
+    """Evening posts are always dark; morning posts rotate the light themes by day.
+
+    TikTok's extra carousels: t1 (early afternoon) takes the next light theme
+    after the morning's, t2 (late afternoon) is dark.
+    """
+    if slot in ("pm", "t2"):
         return EVENING_THEME
     try:
         day = Date.fromisoformat(date).toordinal()
     except ValueError:
         day = 0
-    return MORNING_THEMES[day % len(MORNING_THEMES)]
+    return MORNING_THEMES[(day + (slot == "t1")) % len(MORNING_THEMES)]
 
 
 @dataclass

@@ -21,6 +21,7 @@ reel without its music bed).
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 import tempfile
@@ -37,6 +38,13 @@ load_dotenv(BACKEND_ROOT.parent / ".env")
 from v3.flows.post_instagram import create_post, instagram_channel, share_to_tiktok, wait_until_sent  # noqa: E402
 from v3.flows.post_reel import COLLECTION, host_reel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
+
+
+# TikTok mutes every video this account posts through Buffer ("This sound isn't
+# available"; tested 2026-10-31 with and without the AI label, music and voice
+# only), so reels go to Instagram only and TikTok gets carousels instead.
+# TIKTOK_REELS=1 sends them to TikTok again.
+REELS_TO_TIKTOK = os.getenv("TIKTOK_REELS") == "1"
 
 
 def _log(message: str) -> None:
@@ -58,8 +66,8 @@ def run(args: argparse.Namespace) -> int:
     existing = ref.get().to_dict() or {}
     if existing.get("buffer_post_id"):
         _log(f"{args.slug} is already on Instagram ({existing['buffer_post_id']}, {existing.get('status')}); "
-             "only TikTok is tried")
-        if existing.get("video_url") and existing.get("caption") and not args.dry_run:
+             + ("only TikTok is tried" if REELS_TO_TIKTOK else "nothing to do"))
+        if REELS_TO_TIKTOK and existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
             tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
             share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
@@ -94,7 +102,8 @@ def run(args: argparse.Namespace) -> int:
     ref.set({"status": state.get("status") or "unknown", "external_link": state.get("externalLink") or "",
              "error": state.get("error") or ""}, merge=True)
     _log(f"Buffer says {state.get('status')} {state.get('externalLink') or ''}")
-    share_to_tiktok(ref, caption, [video_asset(tiktok_url, int(args.cover_at * 1000))], args.title, ai_generated=True)
+    if REELS_TO_TIKTOK:
+        share_to_tiktok(ref, caption, [video_asset(tiktok_url, int(args.cover_at * 1000))], args.title, ai_generated=True)
     return 0 if state.get("status") == "sent" else 1
 
 
