@@ -13,6 +13,10 @@ a TikTok channel is connected in Buffer, and logged in `instagram_reels/{slug}`
 with the story, so post_reel's repeat check sees it.
 A slug that already has an Instagram post is never posted there again; a rerun
 only tries TikTok (if that one is not already up), e.g. once TikTok is connected.
+
+--tiktok-video sends TikTok its own file (the same reel with the voice only):
+TikTok mutes API posts whose background music it can't clear, and it muted
+every reel that carried the generated music bed.
 """
 
 from __future__ import annotations
@@ -58,7 +62,8 @@ def run(args: argparse.Namespace) -> int:
              "only TikTok is tried")
         if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
-            share_to_tiktok(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)],
+            tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
+            share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
                             (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
         return 0
     with tempfile.TemporaryDirectory() as tmp:
@@ -66,14 +71,21 @@ def run(args: argparse.Namespace) -> int:
         shutil.copyfile(args.video, work / "reel.mp4")
         shutil.copyfile(args.cover, work / "cover.jpg")
         video_url, cover_url = host_reel(work, f"reels/{args.slug}")
+        tiktok_url = video_url
+        if args.tiktok_video:
+            shutil.copyfile(args.tiktok_video, work / "reel.mp4")
+            tiktok_url, _ = host_reel(work, f"reels/{args.slug}/tiktok")
     _log(f"hosted {video_url}")
+    if tiktok_url != video_url:
+        _log(f"hosted {tiktok_url} for TikTok")
     if args.dry_run:
         _log("dry run: not sharing")
         return 0
     now = datetime.now(timezone.utc)
     ref.set({"date": now.strftime("%Y-%m-%d"), "slug": args.slug, "kind": "hand-made", "status": "sharing",
              "caption": caption, "video_url": video_url, "cover_ms": int(args.cover_at * 1000), "created_at": now.isoformat(),
-             "stories": [{"title": args.title, "url": args.url}], "buffer_post_id": None}, merge=True)
+             "tiktok_video_url": tiktok_url, "stories": [{"title": args.title, "url": args.url}],
+             "buffer_post_id": None}, merge=True)
     asset = video_asset(video_url, int(args.cover_at * 1000))
     post_id = create_post(instagram_channel(), caption, [asset],
                           {"instagram": {"type": "reel", "shouldShareToFeed": True, "isAiGenerated": True}})
@@ -83,7 +95,7 @@ def run(args: argparse.Namespace) -> int:
     ref.set({"status": state.get("status") or "unknown", "external_link": state.get("externalLink") or "",
              "error": state.get("error") or ""}, merge=True)
     _log(f"Buffer says {state.get('status')} {state.get('externalLink') or ''}")
-    share_to_tiktok(ref, caption, [asset], args.title, ai_generated=True)
+    share_to_tiktok(ref, caption, [video_asset(tiktok_url, int(args.cover_at * 1000))], args.title, ai_generated=True)
     return 0 if state.get("status") == "sent" else 1
 
 
@@ -95,6 +107,7 @@ def main() -> None:
     parser.add_argument("--caption-file", required=True)
     parser.add_argument("--title", required=True, help="the story's headline (for the repeat check)")
     parser.add_argument("--url", default="", help="the story's main source URL")
+    parser.add_argument("--tiktok-video", help="a separate file for TikTok (e.g. voice only, no music)")
     parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")
     parser.add_argument("--dry-run", action="store_true")
     sys.exit(run(parser.parse_args()))
