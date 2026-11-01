@@ -64,11 +64,11 @@ def run(args: argparse.Namespace) -> int:
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
     if existing.get("buffer_post_id"):
-        _log(f"{args.slug} is already on Instagram ({existing['buffer_post_id']}, {existing.get('status')}); "
+        _log(f"{args.slug} already has an Instagram post ({existing['buffer_post_id']}, {existing.get('status')}); "
              "only the other channels are tried")
         if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
-            title = existing.get("youtube_title") or args.title
+            title = args.title or existing.get("youtube_title", "")
             share_to_youtube(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)], title)
             if REELS_TO_TIKTOK:
                 tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
@@ -121,7 +121,7 @@ def main() -> None:
     parser.add_argument("--video", required=True)
     parser.add_argument("--cover", required=True)
     parser.add_argument("--caption-file", required=True)
-    parser.add_argument("--title", required=True, help="the story's headline (for the repeat check)")
+    parser.add_argument("--title", required=True, help="the story's headline: the repeat check and the YouTube title (<= 100 chars)")
     parser.add_argument("--url", default="", help="the story's main source URL")
     parser.add_argument("--tiktok-video", help="a separate file for TikTok (e.g. voice only, no music)")
     parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")

@@ -196,10 +196,16 @@ tail -50 ~/trace/logs/sponsor-welcome.log
   `tiktok_*` fields on the same record; a refusal or publish error is tried
   again on the next run of the slot (a run of a slot already on Instagram
   only tries TikTok); a post that may exist is never made again. Hand-made
-  reels (`v3.flows.share_reel_file`) go to TikTok the same way, labelled
-  AI-generated, and rerunning one that is already on Instagram only tries TikTok.
-- Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID` and
-  `BUFFER_TIKTOK_CHANNEL_ID` (see `.env.example`).
+  reels (`v3.flows.share_reel_file`) went to TikTok the same way until
+  2026-10-31. TikTok muted them, so now they only go there with `TIKTOK_REELS=1`.
+- YouTube Shorts (since 2026-11-01): `share_reel_file` posts each hand-made
+  reel to the YouTube channel ("Tech & AI Updates") after Instagram, through
+  the same best-effort helper and `youtube_*` fields. The post is public,
+  in Science & Technology, with the AI-voice disclosure. `--title` is the
+  YouTube title and the caption is the description, minus "(link in bio)".
+  Rerunning a reel that is already on Instagram adds it to YouTube.
+- Env: `BUFFER_API_KEY`, optional `BUFFER_INSTAGRAM_CHANNEL_ID`,
+  `BUFFER_TIKTOK_CHANNEL_ID` and `BUFFER_YOUTUBE_CHANNEL_ID` (see `.env.example`).
 
 ### Daily reel (`trace-reel.timer`, 14:00 GMT)
 
