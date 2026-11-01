@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldPath } from 'firebase-admin/firestore';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { classifySignupPlatform } from '@/lib/analytics-platform';
 
@@ -70,66 +69,14 @@ export async function GET(request: NextRequest) {
           });
 
     console.log(`Processing ${sourceEntries.length} analytics users (${authUsers.size} auth users, ${usersSnapshot.docs.length} Firestore profiles)...`);
-    const users = await Promise.all(sourceEntries.map(async ({ uid, createdAt }) => {
+    // One row per account from the two bulk reads above. (Per-user feed and
+    // interaction lookups used to run here: 2 queries x 1,300 accounts at once,
+    // which the LocalDB answered with 502s and a 49s response; nothing read them.)
+    const users = sourceEntries.map(({ uid, createdAt }) => {
       const data = firestoreProfiles.get(uid) || {};
 
       const platform = classifySignupPlatform(data);
       
-      // Get latest feed (single query, avoid scanning all feeds)
-      let feedItemCount = 0;
-      let latestFeedDate = null;
-      try {
-        if (adminFirestore) {
-          const latestFeed = await adminFirestore
-            .collection('user_feeds')
-            .doc(uid)
-            .collection('daily')
-            .orderBy(FieldPath.documentId(), 'desc')
-            .limit(1)
-            .get();
-
-          if (!latestFeed.empty) {
-            const latestDoc = latestFeed.docs[0];
-            const feedData = latestDoc.data();
-            feedItemCount = feedData?.items?.length || 0;
-            latestFeedDate = latestDoc.id;
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching feed for user ${uid}:`, error);
-      }
-
-      // Get interactions count (single query, avoid scanning all days)
-      let interactionCount = 0;
-      let lastInteractionDate = null;
-      let totalInteractionCount = 0;
-      try {
-        if (adminFirestore) {
-          const today = new Date().toISOString().split('T')[0];
-          
-          const latestInteractions = await adminFirestore
-            .collection('user_interactions')
-            .doc(uid)
-            .collection('daily')
-            .orderBy(FieldPath.documentId(), 'desc')
-            .limit(1)
-            .get();
-
-          if (!latestInteractions.empty) {
-            const latestDoc = latestInteractions.docs[0];
-            const data = latestDoc.data();
-            const itemsCount = data?.items?.length || 0;
-            lastInteractionDate = latestDoc.id;
-            totalInteractionCount = itemsCount;
-            if (latestDoc.id === today) {
-              interactionCount = itemsCount;
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching interactions for user ${uid}:`, error);
-      }
-
       return {
         uid,
         name: data.name || data.displayName || 'No name',
@@ -140,11 +87,6 @@ export async function GET(request: NextRequest) {
         willCancelAt: data.willCancelAt || null,
         subscriptionId: data.subscriptionId || null,
         trialEndDate: data.trialEndDate || null,
-        feedItemCount,
-        latestFeedDate,
-        interactionCount, // Today's interactions
-        totalInteractionCount, // All-time interactions
-        lastInteractionDate,
         // Prefer Firebase Auth creation time when available, otherwise fall back to profile createdAt.
         createdAt: createdAt || null,
         onboardedAt: data.onboardedAt?.toDate?.() ? data.onboardedAt.toDate().toISOString() : data.onboardedAt || null,
@@ -154,16 +96,13 @@ export async function GET(request: NextRequest) {
         referralSource: data.referralSource || null,
         platform,
       };
-    }));
+    });
 
     const totalUsers = users.length;
 
     // Calculate summary stats
     const onboardedUsers = users.filter(u => u.onboarded);
     const subscribedUsers = users.filter(u => ['trial', 'active'].includes(u.subscriptionStatus) || ['trial', 'active'].includes(u.appSubscriptionStatus));
-    const onboardedWithNoFeed = onboardedUsers.filter(u => u.feedItemCount === 0);
-    const subscribedWithNoFeed = subscribedUsers.filter(u => u.feedItemCount === 0);
-    const subscribedWithInteractions = subscribedUsers.filter(u => u.interactionCount > 0);
     const scheduledCancellations = subscribedUsers.filter(u => Boolean(u.willCancelAt));
     const today = new Date();
     
@@ -221,16 +160,7 @@ export async function GET(request: NextRequest) {
       trialUsers: trialUsers.length,
       paidSubscribers: paidSubscribers.length,
       giftedSubscriptions: giftedSubscriptions.length,
-      onboardedWithNoFeed: onboardedWithNoFeed.length,
-      subscribedWithNoFeed: subscribedWithNoFeed.length,
-      subscribedWithInteractions: subscribedWithInteractions.length,
       scheduledCancellations: scheduledCancellations.length,
-      avgFeedItems: subscribedUsers.length > 0 
-        ? (subscribedUsers.reduce((sum, u) => sum + u.feedItemCount, 0) / subscribedUsers.length).toFixed(1)
-        : 0,
-      avgTodayInteractions: subscribedUsers.length > 0
-        ? (subscribedUsers.reduce((sum, u) => sum + u.interactionCount, 0) / subscribedUsers.length).toFixed(1)
-        : 0,
       platformBreakdown,
       referralBreakdown,
     };

@@ -537,6 +537,11 @@ export default function AnalyticsPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Email first: it's what gets checked most, and it loads on its own
+            while the account analytics below are still fetching. */}
+        <div className="mb-12">
+          <LocalDbPanels />
+        </div>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-[60vh]">
             <RefreshCw size={24} className="text-blue-500 animate-spin mb-4" />
@@ -1239,7 +1244,6 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            <LocalDbPanels />
           </div>
         )}
       </main>

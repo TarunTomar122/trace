@@ -14,28 +14,15 @@ import {
 } from 'recharts';
 import { Database, Mail, RefreshCw, Activity, MousePointerClick } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import EmailOverview, { type EmailOverviewData } from './EmailOverview';
 
 type Series = Record<string, number>;
 
 type LocalDbAnalytics = {
+  overview: EmailOverviewData['overview'];
   generatedAt: string;
   localdbUrl: string;
   counts: Record<string, number>;
-  audience: {
-    profiles: number;
-    onboarded: number;
-    pro: number;
-    free: number;
-    freeStale: number;
-    paidActive: number;
-    trial: number;
-    earlyAdopter: number;
-    email: { on: number; off: number; unset: number };
-    landingSubscribers: number;
-    landingActive: number;
-    landingEffective: number;
-    effectiveSend: { pro: number; free: number; landing: number };
-  };
   engagement: {
     dau: number;
     wau: number;
@@ -63,9 +50,30 @@ type LocalDbAnalytics = {
     emailSends: Series;
     emailOpens: Series;
     emailClicks: Series;
+    newSubs: Series;
+    unsubscribes: Series;
+    suppressed: Series;
+    emailVisits: Series;
     activityDays: string[];
     reads: Series;
     interactions: Series;
+  };
+  growth: {
+    newSubs: number;
+    newSubsStillOn: number;
+    sources: [string, number][];
+    unsubscribes: number;
+    suppressed: number;
+    suppressedReasons: [string, number][];
+    listActive: number;
+    accountsDailyOn: number;
+    accountsDailyOff: number;
+    topicsPicked: number;
+    winbackSends: Record<string, number>;
+    emailVisitors: number | null;
+    lastSendDate: string;
+    lastSendBuckets: [string, number][];
+    recentSignups: { at: string; email: string; source: string; active: boolean; hasAccount: boolean }[];
   };
   email: {
     totals: {
@@ -112,6 +120,14 @@ type LocalDbAnalytics = {
   ops: { job: string; lastRunAt: string; status: string }[];
   promoted: [string, number][];
   notes: string[];
+};
+
+// What each bucket and signup source means, in the page's words.
+const BUCKET_LABELS: Record<string, string> = {
+  member: 'Account holders',
+  landing: 'Email-only subscribers',
+  winback: 'Win-back',
+  welcome: 'Welcome emails',
 };
 
 const CARD = 'bg-white dark:bg-white/5 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-sm';
@@ -213,18 +229,6 @@ export default function LocalDbPanels() {
     [data]
   );
 
-  const emailActivity = useMemo(
-    () =>
-      data
-        ? toChart(data.series.days, {
-            Sent: data.series.emailSends,
-            Opens: data.series.emailOpens,
-            Clicks: data.series.emailClicks,
-          })
-        : [],
-    [data]
-  );
-
   if (!user) return null;
 
   return (
@@ -233,7 +237,7 @@ export default function LocalDbPanels() {
         <div className="flex items-center gap-3">
           <Database size={18} className="text-blue-500" />
           <div>
-            <h2 className="text-sm font-semibold">VPS LocalDB (live)</h2>
+            <h2 className="text-sm font-semibold">Live data</h2>
             <p className="text-xs text-secondary/50">
               {data?.localdbUrl || '—'}
               {data ? ` · snapshot ${new Date(data.generatedAt).toLocaleTimeString()}` : ''}
@@ -261,99 +265,14 @@ export default function LocalDbPanels() {
 
       {data ? (
         <>
-          <Card
-            title="Newsletter audience"
-            icon={<Mail size={16} />}
-            hint="What tomorrow's send resolves to, from the same data the flow reads"
-          >
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat label="Pro (gets 10)" value={data.audience.effectiveSend.pro} hint={`${data.audience.paidActive} paid · ${data.audience.trial} trial · ${data.audience.earlyAdopter} early adopter`} />
-              <Stat label="Free (gets 5)" value={data.audience.effectiveSend.free} hint={`${data.audience.freeStale} skipped as inactive >7d`} />
-              <Stat
-                label="Landing (gets 5)"
-                value={data.audience.effectiveSend.landing}
-                hint={`${data.audience.landingActive} active · ${data.audience.landingSubscribers} total signups`}
-              />
-              <Stat
-                label="Email prefs"
-                value={`${data.audience.email.on} on`}
-                hint={`${data.audience.email.off} off · ${data.audience.email.unset} unset (defaults on)`}
-              />
-            </div>
-          </Card>
+          <EmailOverview data={data} />
 
-          <Card
-            title="Daily email delivery"
-            icon={<Mail size={16} />}
-            hint={
-              data.email.totals.lastSendAt
-                ? `email_sends — last attempt ${new Date(data.email.totals.lastSendAt).toLocaleString()}`
-                : 'email_sends — nothing recorded yet'
-            }
-          >
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat
-                label="Sent"
-                value={data.email.totals.sent}
-                hint={`${data.email.totals.recipients} unique recipients`}
-              />
-              <Stat
-                label="Failed"
-                value={data.email.totals.failed}
-                hint={`${data.email.totals.fallbacks} fell back to Brevo`}
-              />
-              <Stat
-                label="Openers"
-                value={data.email.totals.openers}
-                hint={`${data.email.totals.openRate}% of sends · ${data.email.totals.openEvents} open events`}
-              />
-              <Stat
-                label="Clickers"
-                value={data.email.totals.clickers}
-                hint={`${data.email.totals.clickRate}% of sends · ${data.email.totals.clickEvents} click events`}
-              />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {data.email.transport.map(([name, count]) => (
-                <span
-                  key={name}
-                  className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600"
-                >
-                  via {name}: {count}
-                </span>
-              ))}
-              {data.email.dkim.map(([name, count]) => (
-                <span
-                  key={name}
-                  className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-secondary/70 dark:bg-white/10"
-                >
-                  dkim {name}: {count}
-                </span>
-              ))}
-            </div>
-          </Card>
+          <div className="pt-4">
+            <h3 className="text-sm font-semibold text-secondary/70">Details</h3>
+            <p className="text-xs text-secondary/50">The raw send log, for checking a specific email or reader</p>
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card
-              title="Email engagement (30d)"
-              icon={<MousePointerClick size={16} />}
-              hint="Sends against opens and clicks (Brevo's, synced each morning)"
-            >
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={emailActivity}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,120,120,0.15)" />
-                    <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={4} />
-                    <YAxis tick={{ fontSize: 10 }} width={28} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 12 }} />
-                    <Line type="monotone" dataKey="Sent" stroke="#1d9bf0" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Opens" stroke="#17bf63" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Clicks" stroke="#f5a623" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
             <Card title="Per bucket (30d)" icon={<Mail size={16} />} hint="Who got it and how many of them acted on it">
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1 text-xs font-semibold text-secondary/60">
@@ -372,7 +291,7 @@ export default function LocalDbPanels() {
                     key={row.bucket}
                     className="flex items-center justify-between rounded-xl border border-black/5 px-4 py-2 text-xs dark:border-white/5"
                   >
-                    <span className="font-semibold capitalize">{row.bucket}</span>
+                    <span className="font-semibold">{BUCKET_LABELS[row.bucket] || row.bucket}</span>
                     <span className="flex gap-6 tabular-nums">
                       <span className="w-24 text-right">{row.sent}</span>
                       {row.tracked ? (
@@ -418,7 +337,7 @@ export default function LocalDbPanels() {
                             {row.sentAt ? new Date(row.sentAt).toLocaleString() : '—'}
                           </td>
                           <td className="max-w-[180px] truncate py-2 pr-3">{row.to}</td>
-                          <td className="py-2 pr-3 capitalize">{row.bucket || '—'}</td>
+                          <td className="py-2 pr-3">{BUCKET_LABELS[row.bucket] || row.bucket || '—'}</td>
                           <td className="py-2 pr-3">{row.transport}</td>
                           <td className="py-2 pr-3">{row.dkim}</td>
                           <td className="py-2">
@@ -466,7 +385,7 @@ export default function LocalDbPanels() {
                       <span className="min-w-0">
                         <span className="block truncate text-secondary/70">{row.target}</span>
                         <span className="text-secondary/40">
-                          {row.at ? new Date(row.at).toLocaleString() : '—'} · {row.bucket}
+                          {row.at ? new Date(row.at).toLocaleString() : '—'} · {BUCKET_LABELS[row.bucket] || row.bucket}
                         </span>
                       </span>
                     </li>
