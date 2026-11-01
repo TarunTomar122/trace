@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pull Brevo's view of our mail back into the database.
 
-Brevo carries the mail routed to it (member, win-back, welcome) and tracks it
+Brevo carries the mail routed to it (member, win-back, welcome, landing) and tracks it
 itself, but none of that reached our database. A reader who unsubscribed
 through Gmail's button or Brevo's own link stayed on our list (Brevo then
 quietly blocked every later send), and opens and clicks only lived in Brevo.

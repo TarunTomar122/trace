@@ -114,6 +114,11 @@ and sends one welcome to each new reader:
   run and 30 an hour. Over the hourly cap the log says PAUSED: look at the
   signup form for bot traffic.
 - `welcome` must be in `EMAIL_BREVO_BUCKETS` so first emails go through Brevo.
+  Live value since 2026-11-01: `member,winback,welcome,landing`. `landing` was
+  added so the homepage list gets Brevo open and click data, since our own
+  tracking is off. Brevo's free plan allows 300 a day, shared with
+  market-movers, which sends about 20-40. If Brevo refuses a send, nothing
+  falls back to our MTA: the send is logged as failed.
 
 Setup (once):
 

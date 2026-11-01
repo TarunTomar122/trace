@@ -56,19 +56,22 @@ empty by default:
 | Variable | Routes to Brevo |
 |---|---|
 | `EMAIL_BREVO_DOMAINS` | receivers at those domains (`gmail.com,outlook.com`) |
-| `EMAIL_BREVO_BUCKETS` | recipients in those audience buckets (`pro`) |
+| `EMAIL_BREVO_BUCKETS` | recipients in those audience buckets (`member,winback,welcome,landing`) |
 
-`EMAIL_BREVO_BUCKETS=pro` is the current shape: paying readers go out over
-Brevo's established relay while our own IP builds history on the free and
-landing buckets. That also keeps the MTA at a low, steady daily volume instead
+Since 2026-11-01 the live value is `member,winback,welcome,landing`, so
+every daily goes over Brevo and has open and click data (our own tracking is
+off). Brevo's free plan allows 300 a day, shared with market-movers. Before
+going free it was `pro`: paying readers went out over Brevo's established
+relay while our own IP built history on the free and landing buckets. That also keeps the MTA at a low, steady daily volume instead
 of one cold blast, which is what Gmail was objecting to (`421-4.7.28 unusual
 rate of mail originating from your IP`) on day one.
 
 Add domains to `EMAIL_BREVO_DOMAINS` while a receiver is still policing the new
 domain, and drop entries as Postmaster Tools shows reputation recovering.
-Neither lever can silently lose mail: `brevo_can_send()` checks the account
-balance first and falls back to our own MTA, recording the reason in the send
-log's `note`.
+`brevo_can_send()` checks the account balance once per run. At zero it skips
+the Brevo route and uses our own MTA, recording the reason in the send log's
+`note`. A send that Brevo refuses mid-run does not fall back and is logged as
+`failed`. A send Brevo accepts and then drops is logged as `sent`.
 
 Two related warm-up settings:
 
