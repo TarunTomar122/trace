@@ -60,10 +60,6 @@ def video_asset(video_url: str, cover_ms: int) -> dict:
 
 
 def run(args: argparse.Namespace) -> int:
-    caption = Path(args.caption_file).read_text().strip()
-    if not caption or len(caption) > 2200:
-        _log(f"caption must be 1-2200 characters (got {len(caption)})")
-        return 1
     store = V3Store()
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
@@ -79,6 +75,11 @@ def run(args: argparse.Namespace) -> int:
                 share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
                                 (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
         return 0
+    # Checked after the rerun case: a rerun uses the stored caption and files.
+    caption = Path(args.caption_file).read_text().strip()
+    if not caption or len(caption) > 2200:
+        _log(f"caption must be 1-2200 characters (got {len(caption)})")
+        return 1
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         shutil.copyfile(args.video, work / "reel.mp4")
