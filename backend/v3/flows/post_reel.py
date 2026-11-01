@@ -4,12 +4,14 @@
   ../.venv/bin/python -m v3.flows.post_reel --dry-run      # make the reel in REEL_WORK_DIR, no hosting or posting
   ../.venv/bin/python -m v3.flows.post_reel                # make it, host it, share it now
 
-trace-reel.timer runs it at 14:00 GMT. Each run takes today's top 3 AI stories
-(feed order) and the 2 non-AI stories covered by the most outlets, skipping
-anything a reel used in the last few days. v3.lib.reel_video writes a plain
+trace-reel.timer runs it at 14:00 GMT. Each run shortlists the best-covered
+stories of the last 24 hours in any category (one per event, skipping anything
+a reel used in the last few days) and has the script model pick the 5 most
+interesting, falling back to coverage order. v3.lib.reel_video writes a plain
 newsreader script for them (checked for facts and AI-sounding phrasing),
-generates two pictures per story and Elliot's voice through Runway, and renders
-a 1080x1920 MP4 with subtitles. The file is served by Caddy from
+generates two pictures per story and Elliot's voice through Runway, fetches each
+story's company logo from Wikimedia Commons, and renders a 1080x1920 MP4 with
+subtitles. The file is served by Caddy from
 INSTAGRAM_MEDIA_DIR and shared through Buffer as an Instagram reel, labelled as
 AI-generated.
 
@@ -68,9 +70,11 @@ from v3.lib.instagram_slides import without_missing_glyphs  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
 COLLECTION = "instagram_reels"
-AI_STORIES = 3
-OTHER_STORIES = 2
+STORIES = 5
 MIN_STORIES = 4
+# Stories updated within this window are eligible; the editor chooses from the best-covered few.
+RECENT_HOURS = 24
+SHORTLIST = 12
 # A story a reel used is not used again for this long.
 REPEAT_WINDOW_DAYS = 3
 WORK_DIR = Path(os.getenv("REEL_WORK_DIR", str(BACKEND_ROOT.parent / "reel-work"))).expanduser()
@@ -98,15 +102,49 @@ def recent_reels(store: V3Store, now: datetime) -> list[dict[str, Any]]:
     return [doc for doc in docs if doc.get("status") not in RETRY]
 
 
+# Words that say nothing about which event a headline is about. Checked in base form ("files", "filed" -> "file").
 STOPWORDS = {"the", "and", "for", "its", "new", "now", "has", "are", "was", "with", "from", "over", "into", "after",
-             "amid", "says", "will", "more", "than", "this", "that", "their", "about", "launches", "launch",
-             "unveils", "announces", "plans", "major", "offers", "targets", "reveals", "addresses", "issues"}
+             "amid", "say", "says", "said", "will", "more", "than", "this", "that", "their", "about", "launch", "unveil", "announce",
+             "plan", "major", "offer", "target", "reveal", "address", "issue", "file", "display", "feature",
+             "billion", "million", "trillion", "invest", "investment", "secure", "fund", "funding", "raise", "round",
+             "series", "deal", "stake", "record", "value", "valuation", "model", "tool", "enhance", "update", "upgrade",
+             # headline openers that aren't the company ("Report: Apple ...", "AI Startup Mistral ...")
+             "report", "reports", "exclusive", "breaking", "startup", "analysis", "opinion", "source", "watch"}
+AMOUNT = re.compile(r"[$€£]\s?(\d[\d,]*(?:\.\d+)?)\s*(trillion|billion|million|bn|tn|[mbk])?\b", re.I)
+
+
+def _base_forms(word: str) -> set[str]:
+    """The word and its base forms of 4+ letters ("files" -> "file", "secured" -> "secure"). Shorter bases are
+    left out so names survive: "Ford" is not "for", "News" is not "new"."""
+    forms = {word}
+    for end in ("s", "es", "ed", "d"):
+        if len(word) - len(end) >= 4 and word.endswith(end):
+            forms.add(word[: -len(end)])
+    return forms
+
+
+def _stem_list(title: str) -> list[str]:
+    """Distinctive words in order (plural "s" dropped), plus amounts like "$13 billion" as one token ("13b")."""
+    out: list[str] = []
+    for w in re.findall(r"[a-z0-9]+", title.lower().replace("'s ", " ")):
+        if len(w) < 3 or w.isdigit() or _base_forms(w) & STOPWORDS:
+            continue
+        stem = w[:-1] if len(w) > 3 and w.endswith("s") else w
+        if stem not in out:
+            out.append(stem)
+    for number, unit in AMOUNT.findall(title):
+        out.append(f"{number.replace(',', '')}{(unit or '')[:1].lower()}")
+    return out
 
 
 def _stems(title: str) -> set[str]:
-    words = re.findall(r"[a-z0-9]+", title.lower())
-    return {w[:-1] if len(w) > 3 and w.endswith("s") else w
-            for w in words if len(w) >= 3 and w not in STOPWORDS and not w.isdigit()}
+    return set(_stem_list(title))
+
+
+def _lead(title: str) -> str:
+    """The headline's first distinctive word, usually the company: "Apple Launches ..." -> "apple"."""
+    words = _stem_list(title)
+    return words[0] if words else title.lower()
 
 
 def same_story(a: dict[str, Any], b: dict[str, Any]) -> bool:
@@ -128,13 +166,31 @@ def _coverage(topic: dict[str, Any]) -> int:
         return 1
 
 
-def pick_reel_stories(
-    topics: list[dict[str, Any]], posted: list[dict[str, Any]], ai: int = AI_STORIES, other: int = OTHER_STORIES
-) -> list[dict[str, Any]]:
-    """The top `ai` AI stories in feed order, then the `other` non-AI stories with the most outlets.
+def _updated_hours_ago(topic: dict[str, Any], now: datetime) -> float | None:
+    for field in ("last_updated_at", "first_seen_at"):
+        raw = topic.get(field)
+        try:
+            when = raw if isinstance(raw, datetime) else datetime.fromisoformat(str(raw or "").replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        return (now - when).total_seconds() / 3600
+    return None
+
+
+def _popularity(topic: dict[str, Any]) -> float:
+    try:
+        return float(topic.get("popularity_score") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def reel_candidates(topics: list[dict[str, Any]], posted: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+    """Feed stories updated in the last RECENT_HOURS that a reel can use.
 
     Skips stories a recent reel used, promotional titles, stories the send-worthy
-    judge turned down, ones without a summary, and near-duplicates of a pick.
+    judge turned down, and ones without a summary. A story with no timestamp is kept.
     """
     posted_ids = {i for p in posted for i in p.get("topic_ids") or []}
     posted_urls = {u for p in posted for u in p.get("url_keys") or []}
@@ -146,6 +202,9 @@ def pick_reel_stories(
         paragraphs = _paragraphs(_clean(topic.get("summary")))[:3]
         if not title or not paragraphs or topic.get("jev_send_worthy") == 0 or _looks_promotional(title):
             continue
+        age = _updated_hours_ago(topic, now)
+        if age is not None and age > RECENT_HOURS:
+            continue
         url_keys = {_url_key(a.get("url", "")) for a in topic.get("articles") or [] if isinstance(a, dict)} - {""}
         if topic.get("id") in posted_ids or url_keys & posted_urls or any(_similar(title, old) for old in posted_titles):
             continue
@@ -155,24 +214,88 @@ def pick_reel_stories(
             "lane": str(topic.get("interest_id") or "tech"), "source": _source(topic)[0] or "Trace",
             "coverage": _coverage(topic), "url_keys": sorted(url_keys),
         })
+    return candidates
 
+
+def shortlist(candidates: list[dict[str, Any]], size: int = SHORTLIST) -> list[dict[str, Any]]:
+    """The best-covered stories, one per event: most outlets, then the feed's popularity, then feed order."""
+    ordered = sorted(candidates, key=lambda c: (-c["coverage"], -_popularity(c["topic"]), c["rank"]))
     picked: list[dict[str, Any]] = []
-
-    def take(pool: list[dict[str, Any]], limit: int) -> None:
-        added = 0
-        for story in pool:
-            if added >= limit:
-                break
-            if any(same_story(story, p) for p in picked):
-                continue
+    for story in ordered:
+        if len(picked) >= size:
+            break
+        if not any(same_story(story, p) for p in picked):
             picked.append(story)
-            added += 1
+    return picked
 
-    by_coverage = sorted(candidates, key=lambda c: (-c["coverage"], c["rank"]))
-    take([c for c in candidates if c["lane"] == "ai"], ai)
-    take([c for c in by_coverage if c["lane"] != "ai"], other)
-    # A thin day in one category: fill up with the most-covered stories left.
-    take([c for c in by_coverage if c not in picked], ai + other - len(picked))
+
+EDITOR_PROMPT = """You choose the stories for Trace's daily one-minute news reel on Instagram. The audience is curious
+people who follow tech and business news but are not specialists.
+
+From the shortlist below, choose the {count} most interesting stories of the last 24 hours. Interesting means many
+people would care or be surprised, and something concrete happened: a launch, a deal, a ruling, a decision, a
+number. Prefer real developments over opinion pieces, newsletters, explainers and small funding rounds. AI,
+business, gadgets, apps, robotics and startups count equally; pick on interest, not category.
+
+Make the set varied: never two stories about the same company or the same event, and not all from one category.
+
+Shortlist (key | category | outlets covering it | headline | summary):
+{items}
+
+Return JSON: {{"picks": ["key", ...]}} with exactly {count} keys from the shortlist, most interesting first."""
+
+
+def _brief(text: str, limit: int = 320) -> str:
+    text = text.replace("|", "/")
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + "..."
+
+
+def editor_pick(stories: list[dict[str, Any]], count: int) -> list[int]:
+    """Indexes into `stories`, most interesting first, as the script model judges them.
+
+    Returns only what the model chose (unknown keys dropped); pick_reel_stories fills any gap in coverage order.
+    """
+    count = min(count, len(stories))
+    if len(stories) < MIN_STORIES:
+        return []  # not enough for a reel anyway; don't spend a call
+    items = "\n".join(
+        f"s{k} | {s['lane']} | {s['coverage']} | {_brief(s['title'], 200)} | {_brief(' '.join(s['paragraphs']))}"
+        for k, s in enumerate(stories)
+    )
+    chosen: list[int] = []
+    try:
+        picks = reel_video._ask(EDITOR_PROMPT.format(count=count, items=items), "low").get("picks") or []
+        for key in picks if isinstance(picks, list) else []:
+            match = re.fullmatch(r"s?(\d+)", str(key).strip(), re.I)
+            k = int(match.group(1)) if match else -1
+            if 0 <= k < len(stories) and k not in chosen:
+                chosen.append(k)
+    except Exception as exc:  # the reel still goes out on coverage order
+        _log(f"editor pick failed ({exc}); using coverage order")
+        return []
+    if len(chosen) < count:
+        _log(f"editor picked {len(chosen)} usable stories of {count}; filling in coverage order")
+    return chosen[:count]
+
+
+def pick_reel_stories(
+    topics: list[dict[str, Any]], posted: list[dict[str, Any]], now: datetime | None = None,
+    count: int = STORIES, choose: Any = editor_pick,
+) -> list[dict[str, Any]]:
+    """The `count` most interesting stories of the last day, in any category: one per event and per company.
+
+    The editor's choices come first; coverage order fills the rest. A pick that leads with the same company
+    as an earlier one ("Apple ...", "Apple ...") is skipped, whoever chose it.
+    """
+    short = shortlist(reel_candidates(topics, posted, now or datetime.now(timezone.utc)))
+    order = [k for k in choose(short, count) if 0 <= k < len(short)] if short else []
+    order += [k for k in range(len(short)) if k not in order]
+    picked: list[dict[str, Any]] = []
+    for k in order:
+        if len(picked) >= count:
+            break
+        if _lead(short[k]["title"]) not in {_lead(p["title"]) for p in picked}:
+            picked.append(short[k])
     return picked
 
 
@@ -183,7 +306,7 @@ def caption_for(script: dict[str, Any], stories: list[dict[str, Any]]) -> str:
     lines += [f"{i}. {s['title']}" for i, s in enumerate(spoken, 1)]
     lines += ["", "Every story in full, free, at yourtrace.online (link in bio).",
               "Pictures and voice are AI-generated.", ""]
-    tags = ["#technews", "#ainews"]
+    tags = ["#technews"]
     for story in spoken:
         tag = HASHTAGS.get(story["lane"])
         if tag and tag not in tags:
@@ -290,6 +413,7 @@ def make_reel(stories: list[dict[str, Any]], work: Path, date: str) -> dict[str,
         script_file.write_text(json.dumps(script, indent=1, ensure_ascii=False))
     _log("script: " + reel_video.spoken_text(script))
     reel_video.make_images(script, work)
+    reel_video.make_logos(script, work)
     timings_file = work / "timings.json"
     timings = json.loads(timings_file.read_text()) if timings_file.exists() and (work / "voice.mp3").exists() \
         else reel_video.make_voice(script, work)
@@ -316,18 +440,22 @@ def run(args: argparse.Namespace) -> int:
             _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
             return 0
 
-    topics, feed_date = load_topics(store, now)
-    stories = pick_reel_stories(topics, [] if args.dry_run else recent_reels(store, now))
-    _log(f"feed {feed_date}: {len(topics)} topics, picked {len(stories)}: "
-         + " | ".join(f"[{s['lane']}, {s['coverage']} outlets] {s['title']}" for s in stories))
-    if len(stories) < MIN_STORIES:
-        _log(f"only {len(stories)} usable stories (need {MIN_STORIES}); not posting")
-        return 1
-
     work = WORK_DIR / (doc_id if not args.dry_run else f"{doc_id}-dry")
     prune_work(now)
     if args.dry_run:
         shutil.rmtree(work, ignore_errors=True)  # a dry run always starts fresh
+    topics, feed_date = load_topics(store, now)
+    if (work / "stories.json").exists():  # a retry: same stories as the first run, no new pick
+        stories = resume_stories([], work)
+        verb = "resumed"
+    else:
+        stories = pick_reel_stories(topics, [] if args.dry_run else recent_reels(store, now), now)
+        verb = "picked"
+    _log(f"feed {feed_date}: {len(topics)} topics, {verb} {len(stories)}: "
+         + " | ".join(f"[{s['lane']}, {s['coverage']} outlets] {s['title']}" for s in stories))
+    if len(stories) < MIN_STORIES:
+        _log(f"only {len(stories)} usable stories (need {MIN_STORIES}); not posting")
+        return 1
     stories = resume_stories(stories, work)
     script = make_reel(stories, work, date)
     caption = caption_for(script, stories)

@@ -4,6 +4,7 @@ Used by v3.flows.post_reel. Steps, each its own function so a run can be checked
 
   write_script(stories)            -> script dict (write, then critique facts and style, then revise)
   make_images(script, folder)      -> two pictures per story (Runway, one art direction)
+  make_logos(script, folder)       -> each story's company logo, when Wikimedia Commons has a clean one
   make_voice(script, folder)       -> voice.mp3 + word timings (Runway ElevenLabs v3, OpenAI whisper-1)
   render(script, stories, timings, folder, date_label) -> reel.mp4 and cover.jpg
 
@@ -17,6 +18,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -24,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 FONTS = Path(__file__).resolve().parents[1] / "assets" / "instagram"
 W, H, FPS = 1080, 1920, 30
@@ -37,16 +39,17 @@ VOICE = os.getenv("REEL_VOICE", "Elliot")  # Runway preset; the creator's pick o
 IMAGE_MODEL = os.getenv("REEL_IMAGE_MODEL", "gemini_image3.1_flash")
 RUNWAY = "https://api.dev.runwayml.com/v1"
 SIGN_OFF = "That's Trace for today."
-# A take that runs long is sped up a little (too little to hear); a normal one stays at natural speed.
+# The voice is used as one untouched take. Only a take that runs long is sped up, evenly and by at most
+# MAX_TEMPO; cutting pauses out of it made sentences run into each other and the voice sound spliced.
 TARGET_SECONDS = 52.0
 MAX_TEMPO = 1.12
-MAX_PAUSE = 0.32  # longest gap kept between words, in seconds
 
 ART_DIRECTION = (
     "Editorial illustration for a calm tech news brief. Cinematic, soft directional light, muted blue-grey "
     "palette with one warm amber accent, shallow depth of field, minimal composition, one clear subject. "
     "Objects and places only: no people's faces, no text, letters, numbers, logos or user interfaces. "
-    "Vertical 9:16, subject in the middle third."
+    "One full-bleed photograph filling the whole vertical 9:16 frame: no borders, frames, panels or inset "
+    "pictures. Subject in the middle third."
 )
 
 
@@ -62,7 +65,7 @@ def font(name: str, size: int) -> ImageFont.FreeTypeFont:
 # Script: write -> critique (facts + style) -> revise
 # ---------------------------------------------------------------------------
 
-WRITER_PROMPT = """You write the voiceover for Trace's daily Instagram reel: today's {count} tech stories, read
+WRITER_PROMPT = """You write the voiceover for Trace's daily Instagram reel: today's {count} news stories, read
 aloud by a text-to-speech voice over pictures with subtitles. Trace sounds like a calm radio newsreader
 talking to one person: plain, specific, no performance.
 
@@ -76,8 +79,9 @@ How to write it (and why):
 3. One idea per sentence, 6 to 18 words, with varied lengths. No "which"/"who" clauses: they are hard to follow by ear.
 4. Plain verbs: is, are, has, says, launched, banned.
 5. Only facts that are in the story summaries. If something isn't there, leave it out.
-6. Each story stands alone. Move on with a plain signpost: "Next, OpenAI." "Also today," "In markets,".
-   Only connect two stories if they involve the same company, product or event.
+6. Each story stands alone. Usually just start it with its subject: "Apple launched a new iPad Mini." A plain
+   signpost is fine now and then ("Also today," "In markets," "Finally,"), but never "Next". Only connect two
+   stories if they involve the same company, product or event.
 7. Don't tell the listener what matters or what it means. The facts do that.
 8. The last story ends on a fact. Then the sign-off, exactly: "{sign_off}"
 9. Numbers rounded the way people say them, written in digits so the subtitles read well: "60,000 employees",
@@ -90,12 +94,12 @@ How to write it (and why):
 12. {low} to {high} words in total. Short is better: it's read at a natural pace.
 13. For each story pick the one or two details a normal person would find most interesting. Skip jargon
     (context windows, tokens, benchmarks) unless it is the story itself.
-14. Mix the topics: don't put all the AI stories next to each other.
+14. Mix the topics: don't put stories from the same field or company next to each other.
 
 Here is a script in the right style (from another day; never reuse its facts):
 ---
 Nvidia says its new chips will ship to cloud providers in March, two months later than planned.
-The company blamed a packaging problem at its main supplier. Next, Google. It added a coding agent to
+The company blamed a packaging problem at its main supplier. Google added a coding agent to
 Gmail for business accounts, and it can draft replies from a company's own documents. In Europe,
 regulators fined a facial recognition startup about thirty million euros for scraping photos without
 consent. The company says it will appeal. That's Trace for today.
@@ -107,13 +111,14 @@ Return JSON:
  "stories": [
    {{"n": <story number below>,
      "label": "2-3 word tag shown on screen, e.g. 'Qwen file attempt'",
+     "company": "the company or organisation the story is about, written as it usually is (e.g. 'Microsoft',
+                 'T-Mobile'), or '' if there isn't one",
      "text": "this story's sentences. For the hook's story, continue after the hook without repeating it",
      "receipt_phrase": "2-4 words copied exactly from that story's headline to highlight",
-     "stress": ["1-2 single words from this story's text that a newsreader would stress"],
      "stat": {{"value": <number as digits, or null>, "prefix": "e.g. $", "unit": "e.g. employees / times faster",
               "label": "short caption for the number", "word": "the number as it appears in your text, e.g. '60,000' or '$699'"}},
      "shots": ["picture 1: a specific, concrete scene that shows this story at a glance (an object or place with
-                the story's key detail visible), no people or text",
+                the story's key detail visible), no people, text, logos or brand marks",
                "picture 2: a different close-up detail from the same scene"]}}
  ],
  "outro": "{sign_off}"
@@ -147,12 +152,11 @@ Check every sentence and list each problem:
    the company or people involved.
 5. Voice punctuation: dashes, semicolons, colons, brackets, ellipses, curly quotes, and anything a voice can't
    read aloud (subreddit names like r/..., @handles, URLs, slashes).
-6. Rhythm: a sentence over 20 words, or two sentences in a row starting with the same words (signposts like
-   "Next, OpenAI." are fine and are not fragments).
+6. Rhythm: a sentence over 20 words, two sentences in a row starting with the same words, or a story starting
+   with "Next" (start it with its subject instead; "Also today," and "Finally," are fine).
 7. Ending: the last story must end on a fact, then exactly "{sign_off}"
 8. Length: {low}-{high} words across hook, story texts and outro (count them). Jargon a normal listener wouldn't follow.
-9. Fields: every story used exactly once; receipt_phrase must appear in that story's headline; stress words must
-   appear in that story's text; stat.word must appear in that story's text, and if the number is only in the hook
+9. Fields: every story used exactly once; receipt_phrase must appear in that story's headline; stat.word must appear in that story's text, and if the number is only in the hook
    the fix is to set stat.value to null, never to repeat the number.
 Only list real problems a careful editor would fix; don't nitpick. If the script is fine, return no problems.
 Return JSON: {{"word_count": <int>, "problems": [{{"quote": "...", "issue": "...", "fix": "..."}}]}}"""
@@ -182,6 +186,12 @@ BANNED = re.compile(
     r"up for debate|in a world where)\b|[—–;:…()\[\]/@]",
     re.I,
 )
+
+
+# "Next, Apple." between stories sounds read off a list; the user asked for it never to be used.
+NEXT = re.compile(
+    r"^\W*next\b(?!\s+(?:week|weekend|month|year|quarter|day|time|generation|season|summer|winter|spring|fall|"
+    r"autumn|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|[-.]\w)", re.I)
 
 
 def word_range(count: int) -> tuple[int, int]:
@@ -224,6 +234,9 @@ def script_problems(script: dict[str, Any], count: int) -> list[dict[str, str]]:
         return problems
     if any(SIGN_OFF.lower().rstrip(".") in str(st.get("text") or "").lower() for st in script["stories"]):
         problems.append({"quote": SIGN_OFF, "issue": "the sign-off belongs only in outro", "fix": "remove it from the story"})
+    if any(NEXT.search(str(st.get("text") or "")) for st in script["stories"]):
+        problems.append({"quote": "Next,", "issue": "stories never move on with 'Next'",
+                         "fix": "start the story with its subject"})
     text = spoken_text(script)
     found = sorted({m.group(0) for m in BANNED.finditer(text)})
     if found:
@@ -268,8 +281,8 @@ def clean_script(script: dict[str, Any]) -> dict[str, Any]:
                  "label": str(stat.get("label") or "")[:80], "word": str(stat.get("word") or "")} if value is not None else {"value": None}
         stories.append({
             "n": _int(st.get("n")), "label": label, "text": re.sub(r"\s+", " ", str(st.get("text") or "")).strip(),
+            "company": re.sub(r"\s+", " ", str(st.get("company") or "")).strip()[:30],
             "receipt_phrase": str(st.get("receipt_phrase") or "")[:60],
-            "stress": [str(w) for w in st.get("stress") or [] if isinstance(w, (str, int, float))][:2] if isinstance(st.get("stress"), list) else [],
             "stat": stats, "shots": shots,
         })
     return {"hook": re.sub(r"\s+", " ", str(script.get("hook") or "")).strip(), "stories": stories, "outro": SIGN_OFF}
@@ -372,6 +385,132 @@ def make_images(script: dict[str, Any], folder: Path) -> None:
             raise RuntimeError(f"picture {n} {kind} failed: {error}")
 
 
+WIKIDATA = "https://www.wikidata.org/w/api.php"
+COMMONS = "https://commons.wikimedia.org/w/api.php"
+WIKI_HEADERS = {"User-Agent": "TraceReel/1.0 (https://yourtrace.online)"}
+LOGO_SECONDS = 60  # all logo lookups for one reel together; past this the cards show names
+
+
+def logo_files(claims: list[dict[str, Any]]) -> list[str]:
+    """Commons file names from a Wikidata logo (P154) claim list: the current logo first, then newest first."""
+    def start(claim: dict[str, Any]) -> str:
+        q = (claim.get("qualifiers") or {}).get("P580") or [{}]
+        return str(((q[0].get("datavalue") or {}).get("value") or {}).get("time") or "")
+
+    usable = [c for c in claims if c.get("rank") != "deprecated" and (c.get("mainsnak") or {}).get("datavalue")]
+    ordered = sorted(usable, key=lambda c: (c.get("rank") == "preferred", "P582" not in (c.get("qualifiers") or {}),
+                                            start(c)), reverse=True)
+    return [str(c["mainsnak"]["datavalue"]["value"]) for c in ordered]
+
+
+BUSINESS = re.compile(
+    r"compan|corporat|business|startup|manufactur|developer|service|network|platform|brand|retail|maker|firm|"
+    r"operator|website|software|laborator|organi[sz]ation|multinational|conglomerate|bank|airline|carrier|"
+    r"publisher|provider|exchange|automaker|chain", re.I)
+
+
+def logo_entity(company: str, hits: list[dict[str, Any]]) -> list[str]:
+    """Wikidata search hits that are this company: named exactly so (or "Arm" -> "Arm Holdings") and described
+    as a company, service or brand. Exact names first. "X" finds the social network, not XML; "Arm" finds
+    Arm Holdings, not the US Military Academy (matched through its alias "Army")."""
+    want = company.lower().strip()
+    exact, prefixed = [], []
+    for hit in hits:
+        label = str(hit.get("label") or "").lower()
+        if not BUSINESS.search(str(hit.get("description") or "")):
+            continue
+        if label == want:
+            exact.append(hit["id"])
+        elif label.startswith(want + " ") or label.startswith(want + ","):
+            prefixed.append(hit["id"])
+    return exact + prefixed
+
+
+def logo_mark(im: Image.Image) -> Image.Image:
+    """The logo for a dark card: black, grey and white parts turn near-white, colours stay. Apple's black apple
+    turns white; Microsoft's squares and Nvidia's green eye keep their colour; Telegram's white plane stays
+    visible on its blue disc instead of the whole badge becoming a white blob."""
+    rgb = im.convert("RGB")
+    _, sat, val = rgb.convert("HSV").split()
+    neutral = Image.eval(sat, lambda v: 255 if v < 70 else 0)
+    dark = Image.eval(val, lambda v: 255 if v < 80 else 0)
+    to_white = Image.composite(Image.new("L", im.size, 255), neutral, dark)
+    out = Image.composite(Image.new("RGB", im.size, (245, 245, 245)), rgb, to_white)
+    out = out.convert("RGBA")
+    out.putalpha(im.getchannel("A"))
+    return out
+
+
+def usable_logo(im: Image.Image) -> Image.Image | None:
+    """The logo trimmed to its marks, or None if it can't sit on a dark card: no transparent background, or a
+    block that fills its box and would show as a near-white slab once its plain parts turn white."""
+    alpha = im.getchannel("A")
+    box = alpha.getbbox()
+    if not box or alpha.getextrema()[0] == 255:
+        return None
+    im = im.crop(box)
+    solid = im.getchannel("A").point(lambda a: 255 if a > 128 else 0)
+    filled = solid.histogram()[255] / (im.width * im.height)
+    marked = logo_mark(im).convert("L").point(lambda v: 255 if v > 235 else 0)
+    whitish = Image.composite(marked, Image.new("L", im.size, 0), solid).histogram()[255] / max(1, solid.histogram()[255])
+    return None if filled > 0.9 and whitish > 0.6 else im
+
+
+def _fetch_logo(company: str, deadline: float) -> Image.Image | None:
+    """The company's current logo, from its Wikidata entry (the first search hit that has one), via Commons."""
+    import io
+
+    def get(url: str, **params: Any) -> Any:
+        timeout = max(1.0, min(20.0, deadline - time.time()))
+        return requests.get(url, params={**params, "format": "json"}, headers=WIKI_HEADERS, timeout=timeout).json()
+
+    ids = logo_entity(company, get(WIKIDATA, action="wbsearchentities", search=company, language="en", type="item",
+                                   limit=10).get("search", []))
+    if not ids:
+        return None
+    entities = get(WIKIDATA, action="wbgetentities", ids="|".join(ids), props="claims").get("entities", {})
+    files = next((logo_files(entities[i]["claims"]["P154"]) for i in ids
+                  if (entities.get(i, {}).get("claims") or {}).get("P154")), [])
+    for name in files[:4]:
+        if time.time() > deadline:
+            break
+        try:
+            pages = list(get(COMMONS, action="query", prop="imageinfo", iiprop="url", iiurlwidth=900,
+                             titles=f"File:{name}").get("query", {}).get("pages", {}).values())
+            info = (pages[0].get("imageinfo") or [{}])[0] if pages else {}
+            url = info.get("thumburl") or info.get("url")
+            if not url:
+                continue
+            data = requests.get(url, headers=WIKI_HEADERS, timeout=max(1.0, min(30.0, deadline - time.time()))).content
+            logo = usable_logo(Image.open(io.BytesIO(data)).convert("RGBA"))
+        except Exception:  # noqa: BLE001 - not an image; try the next file
+            continue
+        if logo is not None:
+            return logo
+    return None
+
+
+def make_logos(script: dict[str, Any], folder: Path) -> None:
+    """logo-<n>.png for each story whose company has a usable logo on Wikidata/Commons; the card shows the
+    company's name when there isn't one. A failed or slow lookup never stops the reel."""
+    deadline = time.time() + LOGO_SECONDS
+    for st in script["stories"]:
+        company, path = st.get("company") or "", folder / f"logo-{st['n']}.png"
+        if not company or path.exists():
+            continue
+        if time.time() > deadline:
+            _log(f"logo lookups ran out of time; {company} gets its name")
+            continue
+        try:
+            logo = _fetch_logo(company, deadline)
+            if logo is not None:
+                logo.save(path)
+        except Exception as exc:  # noqa: BLE001
+            _log(f"logo lookup for {company} failed: {exc}")
+            continue
+        _log(f"logo for {company}: {'found' if logo is not None else 'none, using the name'}")
+
+
 def _norm(word: str) -> str:
     return re.sub(r"[^a-z0-9]", "", word.lower())
 
@@ -414,31 +553,15 @@ def _duration(path: Path) -> float:
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)]).strip())
 
 
-def keep_spans(heard: list[dict[str, Any]], total: float, pause: float = MAX_PAUSE) -> list[tuple[float, float]]:
-    """Audio to keep so that no gap between words is longer than `pause` (half kept on each side)."""
-    spans, start = [], 0.0
-    for cur, nxt in zip(heard, heard[1:]):
-        if nxt["s"] - cur["e"] > pause:
-            spans.append((start, cur["e"] + pause / 2))
-            start = nxt["s"] - pause / 2
-    spans.append((start, min(total, (heard[-1]["e"] if heard else total) + 0.4)))
-    return [(a, b) for a, b in spans if b > a]
-
-
 def heard_share(script: dict[str, Any], heard: list[dict[str, Any]]) -> float:
     said = [_norm(w) for _, text in segments(script) for w in text.split()]
     matcher = difflib.SequenceMatcher(None, said, [_norm(h["w"]) for h in heard], autojunk=False)
     return sum(n for _, _, n in matcher.get_matching_blocks()) / max(1, len(said))
 
 
-def remap(t: float, spans: list[tuple[float, float]], tempo: float) -> float:
-    """A time in the raw take -> the same moment in the trimmed, sped-up voice."""
-    out = 0.0
-    for a, b in spans:
-        if t <= a:
-            break
-        out += min(t, b) - a
-    return out / tempo
+def voice_tempo(duration: float) -> float:
+    """1.0 for a normal take; a long one is sped up just enough to reach TARGET_SECONDS, at most MAX_TEMPO."""
+    return max(1.0, min(MAX_TEMPO, duration / TARGET_SECONDS))
 
 
 MIN_HEARD = 0.85  # share of script words whisper must hear, or the take dropped lines
@@ -454,9 +577,7 @@ def make_voice(script: dict[str, Any], folder: Path) -> dict[str, Any]:
 
 
 def _make_voice_once(script: dict[str, Any], folder: Path) -> tuple[dict[str, Any], float]:
-    """voice.mp3 and timings.json. ElevenLabs leaves about a second between sentences and newsreader
-    sentences are short, so pauses over MAX_PAUSE are cut using whisper's word times. A take still
-    over TARGET_SECONDS is sped up by at most MAX_TEMPO."""
+    """voice.mp3 (the whole script in one take, never cut) and timings.json from whisper's word times."""
     raw, voice = folder / "voice-raw.mp3", folder / "voice.mp3"
     _download(_runway("text_to_speech", {"model": "eleven_v3", "promptText": spoken_text(script),
                                          "voice": {"type": "runway-preset", "presetId": VOICE}}), raw)
@@ -468,18 +589,15 @@ def _make_voice_once(script: dict[str, Any], folder: Path) -> tuple[dict[str, An
     heard = [{"w": w.word, "s": float(w.start), "e": float(w.end)} for w in result.words or []]
     if not heard:
         raise RuntimeError("whisper heard no words in the voice")
-    spans = keep_spans(heard, _duration(raw))
-    kept = sum(b - a for a, b in spans)
-    tempo = max(1.0, min(MAX_TEMPO, kept / TARGET_SECONDS))
-    # atrim + concat (aselect ignores the ranges on this audio)
-    pieces = "".join(f"[0]atrim={a:.3f}:{b:.3f},asetpts=PTS-STARTPTS[p{i}];" for i, (a, b) in enumerate(spans))
-    joined = "".join(f"[p{i}]" for i in range(len(spans))) + f"concat=n={len(spans)}:v=0:a=1"
-    graph = pieces + joined + (f",atempo={tempo:.3f}" if tempo > 1.01 else "") + "[out]"
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-filter_complex", graph, "-map", "[out]",
-                    "-b:a", "160k", str(voice)], check=True)
-    _log(f"voice {_duration(raw):.1f}s raw, {kept:.1f}s after pauses, {tempo:.2f}x -> {_duration(voice):.1f}s")
-    moved = [{"w": h["w"], "s": remap(h["s"], spans, tempo), "e": remap(h["e"], spans, tempo)} for h in heard]
-    words = align(script, moved)
+    tempo = voice_tempo(_duration(raw))
+    if tempo > 1.01:
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af", f"atempo={tempo:.3f}",
+                        "-b:a", "160k", str(voice)], check=True)
+    else:
+        tempo = 1.0
+        shutil.copyfile(raw, voice)
+    _log(f"voice {_duration(raw):.1f}s, {tempo:.2f}x -> {_duration(voice):.1f}s")
+    words = align(script, [{"w": h["w"], "s": h["s"] / tempo, "e": h["e"] / tempo} for h in heard])
     timings = {"duration": _duration(voice), "words": words}
     (folder / "timings.json").write_text(json.dumps(timings))
     return timings, heard_share(script, heard)
@@ -495,11 +613,10 @@ def ease(x: float) -> float:
     return x * x * (3 - 2 * x)
 
 
-def cover_fit(im: Image.Image, w: int, h: int, zoom: float, pan: float = 0.0) -> Image.Image:
+def cover_fit(im: Image.Image, w: int, h: int, zoom: float) -> Image.Image:
     s = max(w / im.width, h / im.height) * zoom
     cw, ch = w / s, h / s
-    x0 = (im.width - cw) / 2 * (1 + pan * 0.6)
-    y0 = (im.height - ch) / 2
+    x0, y0 = (im.width - cw) / 2, (im.height - ch) / 2
     return im.resize((w, h), Image.BILINEAR, box=(x0, y0, x0 + cw, y0 + ch))
 
 
@@ -515,8 +632,23 @@ def wrap(text: str, f: ImageFont.FreeTypeFont, width: int) -> list[str]:
     return lines + ([cur] if cur else [])
 
 
+def fade(layer: Image.Image, alpha: float) -> Image.Image:
+    layer = layer.copy()
+    layer.putalpha(layer.getchannel("A").point(lambda a: int(a * alpha)))
+    return layer
+
+
+CHARCOAL, INK = (24, 25, 28), (22, 22, 22)
+
+
 class Reel:
-    """Shots per story (picture, source card, stat card, picture) cut on word boundaries."""
+    """The calm charcoal look. Each story opens on its company's logo card, then its picture (toned down, slowly
+    pushing in), a tilted source card with a highlighter, the other picture, and a number counting up inside a
+    ring of dots, then an end card under the sign-off. Small subtitles sit in a dark pill. Cuts fall on word
+    boundaries and a picture never follows itself."""
+
+    PUSH = 0.045  # each picture pushes in this much over its shot, steadily
+    FIRST_CARD, CARD = 1.7, 1.35  # seconds on the logo card: the opening one, then each later story's
 
     def __init__(self, script: dict[str, Any], stories: list[dict[str, Any]], timings: dict[str, Any],
                  folder: Path, date_label: str):
@@ -525,29 +657,53 @@ class Reel:
         self.words, self.audio_dur = timings["words"], timings["duration"]
         self.count = len(script["stories"])
         self.f = {
-            "sub": font("Inter-SemiBold.ttf", 60),
-            "tag": font("Inter-Bold.ttf", 30),
-            "mark": font("RobotoSerif-Display-700.ttf", 40),
-            "pub": font("Inter-Bold.ttf", 30),
+            "sub": font("Inter-SemiBold.ttf", 44),
+            "credit": font("Inter-SemiBold.ttf", 24),
+            "kick": font("Inter-SemiBold.ttf", 34),
+            "name": font("Inter-Bold.ttf", 120),
+            "pub": font("RobotoSerif-Display-700.ttf", 40),
             "date": font("Inter-SemiBold.ttf", 30),
-            "head": font("RobotoSerif-Display-700.ttf", 58),
-            "stat": font("RobotoSerif-Display-700.ttf", 230),
-            "unit": font("Inter-Bold.ttf", 60),
-            "statlabel": font("Inter-SemiBold.ttf", 46),
+            "card": font("RobotoSerif-Display-700.ttf", 54),
+            "statlabel": font("Inter-SemiBold.ttf", 28),
+            "mark": font("RobotoSerif-Display-700.ttf", 150),
         }
-        self.img = {(int(st["n"]), kind): Image.open(folder / f"picture-{st['n']}-{kind}.png").convert("RGB")
-                    for st in script["stories"] for kind in ("hero", "detail")}
-        self.blur = {k: cover_fit(im, W, H, 1.1).filter(ImageFilter.GaussianBlur(24)) for k, im in self.img.items()}
-        g = Image.new("L", (1, H))
+        self.img = {}
+        for st in script["stories"]:
+            for kind in ("hero", "detail"):
+                im = Image.open(folder / f"picture-{st['n']}-{kind}.png").convert("RGB")
+                self.img[(int(st["n"]), kind)] = ImageEnhance.Brightness(ImageEnhance.Color(im).enhance(0.55)).enhance(0.86)
+        self.logos = {int(st["n"]): self._mark(st, folder) for st in script["stories"]}
+        g = Image.new("L", (1, H))  # darken the top and bottom so text reads over any picture
         for y in range(H):
             top = 150 * max(0.0, 1 - y / 520) ** 1.6
             low = 175 * max(0.0, min(1.0, (y - 820) / 560)) ** 1.3
             g.putpixel((0, y), int(max(top, low)))
         self.grad = g.resize((W, H))
         self.black = Image.new("RGB", (W, H), (0, 0, 0))
+        self.grid = Image.new("RGB", (W, H), CHARCOAL)
+        d = ImageDraw.Draw(self.grid)
+        for y in range(0, H, 54):
+            for x in range(27, W, 54):
+                d.ellipse((x - 1.5, y - 1.5, x + 1.5, y + 1.5), fill=(46, 47, 52))
+        self.dur = self.audio_dur + 0.5
         self.groups = self._subtitle_groups()
         self.shots = self._shots()
-        self.dur = self.audio_dur + 0.5
+
+    def _mark(self, st: dict[str, Any], folder: Path) -> Image.Image:
+        """The story's logo (plain parts in white, colours kept), or its company's name (else label) in type."""
+        path = folder / f"logo-{st['n']}.png"
+        if path.exists():
+            logo = Image.open(path).convert("RGBA")
+            scale = min(600 / logo.width, 300 / logo.height)
+            logo = logo.resize((max(1, int(logo.width * scale)), max(1, int(logo.height * scale))), Image.LANCZOS)
+            return logo_mark(logo)
+        name = st.get("company") or st.get("label") or ""
+        f = self.f["name"]
+        while f.getlength(name) > W - 160 and f.size > 60:
+            f = font("Inter-Bold.ttf", f.size - 8)
+        mark = Image.new("RGBA", (int(f.getlength(name)) + 8, 170), (0, 0, 0, 0))
+        ImageDraw.Draw(mark).text((4, 85), name, font=f, anchor="lm", fill=(245, 245, 245, 255))
+        return mark
 
     # ----- timing -----------------------------------------------------------
     def seg_order(self) -> list[str]:
@@ -574,7 +730,7 @@ class Reel:
         return exact or (next((w for w in words if _norm(w["w"]).startswith(key)), None) if len(key) >= 3 else None)
 
     def _subtitle_groups(self) -> list[list[int]]:
-        """Phrases of up to six words that fit on one line; split at sentence ends and story changes."""
+        """Phrases of up to six words that fit on one line; split at commas, sentence ends and story changes."""
         groups: list[list[int]] = []
         cur: list[int] = []
         for i, w in enumerate(self.words):
@@ -593,62 +749,113 @@ class Reel:
                 groups[k].insert(0, groups[k - 1].pop())
         return groups
 
-    def _split(self, cuts: list[tuple[str, float, float]], seg: str, longest: float = 3.6):
-        """Break picture shots longer than `longest` at word starts, alternating hero and detail."""
-        starts = [w["s"] - 0.06 for w in self.seg_words(seg)]
-        out = []
-        for kind, t0, t1 in cuts:
-            if kind not in ("hero", "detail") or t1 - t0 <= longest:
-                out.append((kind, t0, t1))
-                continue
-            parts = max(2, round((t1 - t0) / 3.0))
-            marks = [t0]
-            for k in range(1, parts):
-                target = t0 + (t1 - t0) * k / parts
-                near = min(starts, key=lambda x: abs(x - target)) if starts else target
-                if marks[-1] + 1.2 < near < t1 - 1.2:
-                    marks.append(near)
-            marks.append(t1)
-            other = "detail" if kind == "hero" else "hero"
-            out += [(kind if k % 2 == 0 else other, marks[k], marks[k + 1]) for k in range(len(marks) - 1)]
-        return out
-
     def _shots(self) -> list[dict[str, Any]]:
+        """Per story: logo card -> picture -> source card -> other picture -> number card, or, when the number
+        comes early in the story, logo card -> picture -> number card -> source card -> other picture. Then an
+        end card under the sign-off.
+
+        The hook belongs to the first story. A number card always gets 1.4s to count up, running into the next
+        story if it must. A picture held over 4.6s is split with the story's other picture, and a picture never
+        follows itself.
+        """
         shots: list[dict[str, Any]] = []
-        first = int(self.script["stories"][0]["n"])
-        _, hook_end = self.seg_span("hook")
-        for kind, t0, t1 in self._split([("hero", 0.0, hook_end)], "hook"):
-            shots.append({"kind": kind, "t0": t0, "t1": t1, "n": first, "i": None})
+
+        def add(kind: str, t0: float, t1: float, n: int, i: int) -> None:
+            if t1 - t0 > 0.05:
+                shots.append({"kind": kind, "t0": t0, "t1": t1, "n": n, "i": i})
+
+        carry = 0.0  # where the previous story's last shot ended
         for i, st in enumerate(self.script["stories"]):
-            seg, n = f"s{i}", int(st["n"])
+            n, seg = int(st["n"]), f"s{i}"
             a, b = self.seg_span(seg)
             ws = self.seg_words(seg)
-            sentence_starts = [ws[k]["s"] - 0.08 for k in range(1, len(ws)) if re.search(r"[.!?]$", ws[k - 1]["w"])]
-            card_at = sentence_starts[0] if sentence_starts and sentence_starts[0] - a > 1.6 else a + min(2.6, (b - a) * 0.3)
-            card_end = max(card_at + 1.2, min(card_at + 3.0, b - 1.2))
-            # never the same picture twice in a row
-            opening = "hero" if shots[-1]["kind"] != "hero" or shots[-1]["n"] != n else "detail"
-            cuts = [(opening, a, card_at), ("receipt", card_at, min(card_end, b))]
-            t = min(card_end, b)
+            if i == 0:
+                a, ws = 0.0, self.seg_words("hook") + ws
+            a = max(a, carry)
+            b = max(b, a)
+            card = min(self.FIRST_CARD if i == 0 else self.CARD, (b - a) * 0.4) if b - a >= 2.5 else 0.0
             stat = st.get("stat") or {}
             hit = self.find_word(seg, stat.get("word", "")) if _number(stat.get("value")) is not None else None
-            rest = "detail" if opening == "hero" else "hero"
-            if hit and hit["s"] - 0.2 >= t - 0.05 and hit["s"] + 2.4 <= b + 0.3:
-                if hit["s"] - 0.2 - t > 0.6:
-                    cuts.append((rest, t, hit["s"] - 0.2))
-                    rest = opening
-                cuts.append(("stat", hit["s"] - 0.2, min(b, hit["s"] + 2.4)))
-                t = min(b, hit["s"] + 2.4)
-            if b - t > 0.3:
-                cuts.append((rest, t, b))
-            stress = [self.find_word(seg, s) for s in st.get("stress") or []]
-            for kind, t0, t1 in self._split(cuts, seg):
-                shots.append({"kind": kind, "t0": t0, "t1": t1, "n": n, "i": i,
-                              "stress": [w for w in stress if w and t0 <= w["s"] < t1]})
-        outro_start, outro_end = self.seg_span("outro")
-        # The reel ends on its opening picture, so a replay runs on without a jump.
-        shots.append({"kind": "hero", "t0": outro_start, "t1": outro_end + 1.0, "n": first, "i": None, "still": True})
-        return shots
+            if hit and card and hit["s"] - 0.2 < a + card:  # the number is said during the logo card
+                card = max(0.8, hit["s"] - 0.2 - a) if hit["s"] - 0.2 - a >= 0.8 else card
+            add("logo", a, a + card, n, i)
+            t, used = a + card, []
+            at = max(t, hit["s"] - 0.2) if hit else 0.0
+            if hit and at - t < 2.8:  # an early number: its card comes before the source card
+                if at - t > 0.8:
+                    add("hero", t, at, n, i)
+                    used.append("hero")
+                else:
+                    at = t
+                t = max(min(b, hit["s"] + 2.4), at + 1.4)
+                b = max(b, t)
+                add("stat", at, t, n, i)
+                if b - t >= 1.6:
+                    card_end = b if b - (t + 2.8) < 0.8 else t + 2.8
+                    add("receipt", t, card_end, n, i)
+                    t = card_end
+            else:
+                starts = [w["s"] - 0.08 for k, w in enumerate(ws) if k and re.search(r"[.!?]$", ws[k - 1]["w"])]
+                later = [x for x in starts if t + 1.6 <= x <= b - 2.0]
+                card_at = later[0] if later else max(t + 1.4, min(b - 2.0, t + (b - t) * 0.35))
+                if hit:
+                    card_at = max(t + 1.4, min(card_at, at - 1.6))
+                card_at = min(card_at, b)
+                card_end = min(card_at + 2.8, b, at if hit else b)
+                if card_end - card_at < 1.2:  # no room for the source card: the picture holds instead
+                    card_at = card_end
+                add("hero", t, card_at, n, i)
+                used.append("hero")
+                add("receipt", card_at, card_end, n, i)
+                t = max(t, card_end)
+                if hit:
+                    if at - t > 0.8:
+                        add("detail", t, at, n, i)
+                        used.append("detail")
+                    elif shots:
+                        shots[-1]["t1"] = at
+                    t = max(min(b, hit["s"] + 2.4), at + 1.4)
+                    b = max(b, t)
+                    add("stat", at, t, n, i)
+            rest = "detail" if used == ["hero"] else "hero"
+            if b - t > 0.8:
+                add(rest, t, b, n, i)
+            elif shots:
+                shots[-1]["t1"] = max(shots[-1]["t1"], b)
+            carry = max(b, shots[-1]["t1"] if shots else b)
+        first = int(self.script["stories"][0]["n"]) if self.script["stories"] else next(iter(self.stories))
+        spoken = [w["e"] for w in self.words if w["seg"] != "outro"]
+        end_at = max(self.seg_span("outro")[0], carry, max(spoken) if spoken else 0.0)
+        if shots:
+            shots[-1]["t1"] = end_at
+        self.dur = max(self.dur, end_at + 1.0)  # a late number card can't squeeze out the end card
+        shots.append({"kind": "end", "t0": end_at, "t1": self.dur + 1.0, "n": first, "i": None})
+
+        last: dict[int, str] = {}
+        for k, shot in enumerate(shots):  # after a card, come back on the picture not just seen
+            if shot["kind"] in ("hero", "detail"):
+                if k and shots[k - 1]["kind"] not in ("hero", "detail") and last.get(shot["i"]) == shot["kind"]:
+                    shot["kind"] = "detail" if shot["kind"] == "hero" else "hero"
+                last[shot["i"]] = shot["kind"]
+        word_starts = [w["s"] - 0.06 for w in self.words]
+        split: list[dict[str, Any]] = []
+        for k, shot in enumerate(shots):
+            if shot["kind"] in ("hero", "detail") and shot["t1"] - shot["t0"] > 4.6 and word_starts:
+                mid = min(word_starts, key=lambda x: abs(x - (shot["t0"] + shot["t1"]) / 2))
+                other = "detail" if shot["kind"] == "hero" else "hero"
+                following = shots[k + 1] if k + 1 < len(shots) else {}
+                if shot["t0"] + 1.8 < mid < shot["t1"] - 1.5 and (following.get("kind"), following.get("n")) != (other, shot["n"]):
+                    split += [dict(shot, t1=mid), dict(shot, kind=other, t0=mid)]
+                    continue
+            split.append(shot)
+        out: list[dict[str, Any]] = []
+        for shot in split:  # never the same picture twice in a row: hold the first one instead
+            prev = out[-1] if out else None
+            if prev and shot["kind"] in ("hero", "detail") and (prev["kind"], prev["n"]) == (shot["kind"], shot["n"]):
+                prev["t1"] = shot["t1"]
+                continue
+            out.append(shot)
+        return out
 
     def shot_at(self, t: float) -> dict[str, Any]:
         current = self.shots[0]
@@ -659,136 +866,154 @@ class Reel:
 
     # ----- drawing ----------------------------------------------------------
     def picture(self, shot: dict[str, Any], t: float) -> Image.Image:
-        """Settles 1.05 -> 1.0 after the cut, drifts slightly, punches in on stressed words."""
         local, dur = t - shot["t0"], max(shot["t1"] - shot["t0"], 1.0)
-        if shot.get("still"):
-            zoom, pan = 1.05, 0.0
-        else:
-            punch = max([0.07 * ease((t - w["s"]) / 0.2) for w in shot.get("stress") or [] if t >= w["s"]] or [0.0])
-            zoom = 1.0 + 0.05 * (1 - ease(local / 0.35)) + 0.025 * local / dur + punch
-            pan = 0.25 * math.sin(shot["n"] * 1.7 + (3 if shot["kind"] == "detail" else 0)) * local / dur
-        im = cover_fit(self.img[(shot["n"], shot["kind"])], W, H, zoom, pan)
-        return Image.composite(self.black, im, self.grad)
+        im = cover_fit(self.img[(shot["n"], shot["kind"])], W, H, 1.0 + self.PUSH * min(1.0, local / dur))
+        im = Image.composite(self.black, im, self.grad)
+        ImageDraw.Draw(im).text((64, TOP_SAFE + 10), "Illustration", font=self.f["credit"], fill=(190, 190, 190))
+        return im
+
+    def logo_card(self, shot: dict[str, Any], local: float) -> Image.Image:
+        """The company's logo (or name) rising in, a yellow rule drawing out under it, and where we are."""
+        bg = self.grid.copy()
+        mark = self.logos[shot["n"]]
+        a = ease(local / 0.3)
+        y = int(800 - mark.height / 2 + 30 * (1 - a))
+        bg.paste(mark, ((W - mark.width) // 2, y), fade(mark, a))
+        d = ImageDraw.Draw(bg)
+        line = ease((local - 0.2) / 0.5)
+        d.rectangle((W // 2 - 140 * line, y + mark.height + 60, W // 2 + 140 * line, y + mark.height + 66), fill=YELLOW)
+        i = shot["i"]
+        label = (f"Today on Trace  ·  {self.date_label}" if i == 0
+                 else f"{i + 1} of {self.count}  ·  {self.script['stories'][i]['label']}")
+        d.text((W // 2, y + mark.height + 130), label, font=self.f["kick"], anchor="mm", fill=(200, 200, 204))
+        return bg
 
     def receipt(self, n: int, local: float) -> Image.Image:
-        """Source card: publisher, date and the headline in our type, highlighter on the key phrase."""
+        """Source card, slightly tilted: publisher, date and the headline, a highlighter over the key phrase."""
         st = next(s for s in self.script["stories"] if int(s["n"]) == n)
         story = self.stories[n]
-        bg = Image.blend(self.blur[(n, "hero")], self.black, 0.35).convert("RGBA")
-        cw, x0 = W - 128, 64
-        lines = wrap(story["title"], self.f["head"], cw - 88)[:4]
-        ch = 120 + len(lines) * 74 + 60
-        y0 = int(560 + 60 * (1 - ease(local / 0.3)))
+        bg = self.grid.convert("RGBA")
+        cw = W - 150
+        lines = wrap(story["title"], self.f["card"], cw - 100)[:4]
+        ch = 150 + len(lines) * 70 + 70
         card = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
         cd = ImageDraw.Draw(card)
-        cd.rounded_rectangle((0, 0, cw, ch), 28, fill=(255, 255, 255, 255))
-        cd.text((44, 64), story["source"].upper()[:34], font=self.f["pub"], anchor="lm", fill=(10, 10, 10))
-        cd.text((cw - 44, 64), self.date_label, font=self.f["date"], anchor="rm", fill=(118, 118, 118))
-        cd.line((44, 104, cw - 44, 104), fill=(229, 229, 229), width=3)
-        phrase = [w for w in (st.get("receipt_phrase") or "").lower().split() if w]
-        sweep = ease((local - 0.35) / 0.5)
-        y = 130
+        cd.rounded_rectangle((0, 0, cw, ch), 10, fill=(250, 249, 245, 255))
+        source = str(story.get("source") or "")
+        while cd.textlength(source, font=self.f["pub"]) > cw - 260 and len(source) > 4:
+            source = source[:-2].rstrip() + "…"
+        cd.text((50, 70), source, font=self.f["pub"], anchor="lm", fill=INK)
+        cd.text((cw - 50, 70), self.date_label, font=self.f["date"], anchor="rm", fill=(120, 120, 120))
+        cd.line((50, 118, cw - 50, 118), fill=(220, 218, 212), width=2)
+        phrase = [w for w in re.findall(r"[\w$€£.,'-]+", (st.get("receipt_phrase") or "").lower().replace("’", "'"))
+                  if len(w) > 2 or w.isdigit() or w in ("ai", "us", "uk", "eu")]
+        sweep = ease((local - 0.4) / 0.5)
+        y = 146
         for line in lines:
-            low = line.lower()
+            low = line.lower().replace("’", "'")
             for word in phrase if sweep > 0 else []:
-                j = low.find(word)
+                found = re.search(rf"(?<![\w]){re.escape(word)}(?![\w])", low)
+                j = found.start() if found else -1
                 if j >= 0:
-                    wx = 44 + cd.textlength(line[:j], font=self.f["head"])
-                    ww = cd.textlength(line[j:j + len(word)], font=self.f["head"])
-                    cd.rectangle((wx - 4, y + 18, wx + 4 + ww * sweep, y + 70), fill=YELLOW)
-            cd.text((44, y), line, font=self.f["head"], fill=(10, 10, 10))
-            y += 74
-        shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        ImageDraw.Draw(shadow).rounded_rectangle((x0, y0 + 18, x0 + cw, y0 + ch + 18), 28, fill=(0, 0, 0, 120))
-        bg.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(26)))
-        alpha = ease(local / 0.2)
-        card.putalpha(card.getchannel("A").point(lambda a: int(a * alpha)))
-        bg.alpha_composite(card, (x0, y0))
+                    x = 50 + cd.textlength(line[:j], font=self.f["card"])
+                    width = cd.textlength(line[j:j + len(word)], font=self.f["card"])
+                    cd.rectangle((x - 4, y + 16, x + 4 + width * sweep, y + 66), fill=YELLOW)
+            cd.text((50, y), line, font=self.f["card"], fill=INK)
+            y += 70
+        a = ease(local / 0.25)
+        tilted = card.rotate(-1.6 + 0.5 * ease(local / 0.6), Image.BICUBIC, expand=True)
+        shadow = Image.new("RGBA", tilted.size, (0, 0, 0, 0))
+        shadow.putalpha(tilted.getchannel("A").point(lambda v: int(v * 0.55)))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(22))
+        x0, y0 = (W - tilted.width) // 2, int(620 + 50 * (1 - a))
+        bg.alpha_composite(fade(shadow, a), (x0, y0 + 24))
+        bg.alpha_composite(fade(tilted, a), (x0, y0))
         return bg.convert("RGB")
 
     def stat(self, n: int, local: float) -> Image.Image:
+        """The story's number counting up inside a ring of dots that lights up yellow as it counts."""
         st = next(s for s in self.script["stories"] if int(s["n"]) == n)["stat"]
-        bg = Image.blend(self.blur[(n, "detail")], self.black, 0.45)
+        bg = self.grid.copy()
         d = ImageDraw.Draw(bg)
+        p = ease(local / 1.1)
+        cx, cy, total = W // 2, 790, 220
+        for k in range(total):
+            ring, angle = k % 4, (k // 4) / (total / 4) * 2 * math.pi - math.pi / 2
+            r = 200 + ring * 28
+            x, y = cx + r * math.cos(angle), cy + r * math.sin(angle)
+            lit = k < int(total * p)
+            rad = 6 if lit else 4
+            d.ellipse((x - rad, y - rad, x + rad, y + rad), fill=YELLOW if lit else (60, 61, 66))
         raw = str(st["value"]).replace(",", "")
         value = _number(raw) or 0.0
-        if raw.endswith(".0"):
-            raw = raw[:-2]
+        raw = raw[:-2] if raw.endswith(".0") else raw
         decimals = len(raw.split(".")[1]) if "." in raw else 0
-        shown = f"{value * ease(local / 0.7):,.{decimals}f}"
-        number = f"{st.get('prefix') or ''}{shown}"
-        size = 230
-        while font("RobotoSerif-Display-700.ttf", size).getlength(number) > W - 140 and size > 120:
-            size -= 10
-        d.text((W // 2, 760), number, font=font("RobotoSerif-Display-700.ttf", size), anchor="mm", fill=(255, 255, 255))
+        shown = value if abs(value) < 20 else value * p  # "$2 trillion" shouldn't count 0, 1, 2
+        number = f"{st.get('prefix') or ''}{shown:,.{decimals}f}"
+        size = 150
+        while font("RobotoSerif-Display-700.ttf", size).getlength(number) > 340 and size > 60:
+            size -= 6
+        d.text((cx, cy - 20), number, font=font("RobotoSerif-Display-700.ttf", size), anchor="mm", fill=(250, 250, 250))
         if st.get("unit"):
-            d.text((W // 2, 920), str(st["unit"])[:32], font=self.f["unit"], anchor="mm", fill=YELLOW)
-        y = 1010
-        for line in wrap(str(st.get("label") or ""), self.f["statlabel"], W - 220)[:2]:
-            d.text((W // 2, y), line, font=self.f["statlabel"], anchor="mm", fill=(215, 215, 215))
-            y += 60
+            d.text((cx, cy + 70), str(st["unit"])[:22], font=self.f["kick"], anchor="mm", fill=YELLOW)
+        label = str(st.get("label") or "")
+        while self.f["statlabel"].getlength(label) > 330 and len(label) > 4:
+            label = label[:-2].rstrip() + "…"
+        d.text((cx, cy + (120 if st.get("unit") else 80)), label, font=self.f["statlabel"], anchor="mm", fill=(170, 170, 176))
         return bg
 
-    def top(self, im: Image.Image, t: float, story: int | None) -> None:
-        """Progress (one segment per story), the wordmark, and the story's tag."""
-        d = ImageDraw.Draw(im)
-        gap, x0, x1 = 12, 64, W - 64
-        seg_w = (x1 - x0 - gap * (self.count - 1)) / self.count
-        for k in range(self.count):
-            a, b = self.seg_span(f"s{k}")
-            fill = max(0.0, min(1.0, (t - a) / max(0.1, b - a)))
-            sx = x0 + k * (seg_w + gap)
-            d.rounded_rectangle((sx, TOP_SAFE, sx + seg_w, TOP_SAFE + 6), 3, fill=(95, 95, 98))
-            if fill > 0:
-                d.rounded_rectangle((sx, TOP_SAFE, sx + max(6, seg_w * fill), TOP_SAFE + 6), 3, fill=(255, 255, 255))
-        d.text((64, TOP_SAFE + 52), "Trace", font=self.f["mark"], anchor="lm", fill=(255, 255, 255))
-        if story is not None:
-            label = f"{story + 1}/{self.count}  {self.script['stories'][story]['label']}"
-            while d.textlength(label, font=self.f["tag"]) > W - 64 - 260 and len(label) > 8:
-                label = label[:-2].rstrip() + "…"  # keep clear of the wordmark
-            w = d.textlength(label, font=self.f["tag"])
-            d.rounded_rectangle((W - 64 - w - 32, TOP_SAFE + 26, W - 64, TOP_SAFE + 78), 12, fill=YELLOW)
-            d.text((W - 64 - w - 16, TOP_SAFE + 52), label, font=self.f["tag"], anchor="lm", fill=(10, 10, 10))
-
     def subtitle(self, im: Image.Image, t: float) -> None:
-        """One line, sentence case, soft shadow; words brighten as they're spoken."""
+        """One line, sentence case, in a dark pill."""
         g = next((g for g in self.groups if self.words[g[0]]["s"] - 0.08 <= t <= self.words[g[-1]]["e"] + 0.25), None)
         if not g:
             return
-        f = self.f["sub"]
-        toks = [self.words[i]["w"] for i in g]
-        x = (W - f.getlength(" ".join(toks))) / 2
-        layer = Image.new("RGBA", (W, 200), (0, 0, 0, 0))
-        ImageDraw.Draw(layer).text((x, 70), " ".join(toks), font=f, fill=(0, 0, 0, 210))
-        layer = layer.filter(ImageFilter.GaussianBlur(10))
+        text = " ".join(self.words[i]["w"] for i in g)
+        width = self.f["sub"].getlength(text)
+        layer = Image.new("RGBA", (W, 120), (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
-        for k, i in enumerate(g):
-            said = t >= self.words[i]["s"] - 0.04
-            d.text((x, 66), toks[k], font=f, fill=(255, 255, 255, 255 if said else 140))
-            x += f.getlength(toks[k] + " ")
-        im.paste(layer, (0, SUB_Y - 100), layer)
+        d.rounded_rectangle(((W - width) / 2 - 22, 22, (W + width) / 2 + 22, 98), 10, fill=(10, 10, 12, 175))
+        d.text((W / 2, 60), text, font=self.f["sub"], anchor="mm", fill=(245, 245, 245))
+        im.paste(layer, (0, SUB_Y - 20), layer)
+
+    def end_card(self, local: float) -> Image.Image:
+        """Under the sign-off: the Trace wordmark and where to read every story."""
+        bg = self.grid.copy()
+        d = ImageDraw.Draw(bg)
+        a = ease(local / 0.3)
+        y = int(780 + 30 * (1 - a))
+        shade = tuple(int(c + (245 - c) * a) for c in CHARCOAL)
+        d.text((W // 2, y), "Trace", font=self.f["mark"], anchor="mm", fill=shade)
+        line = ease((local - 0.2) / 0.5)
+        d.rectangle((W // 2 - 140 * line, y + 110, W // 2 + 140 * line, y + 116), fill=YELLOW)
+        d.text((W // 2, y + 180), "Every story in full at yourtrace.online", font=self.f["kick"], anchor="mm",
+               fill=tuple(int(c + (200 - c) * a) for c in CHARCOAL))
+        return bg
 
     def draw(self, shot: dict[str, Any], t: float) -> Image.Image:
+        local = t - shot["t0"]
+        if shot["kind"] == "end":
+            return self.end_card(local)
+        if shot["kind"] == "logo":
+            return self.logo_card(shot, local)
         if shot["kind"] == "receipt":
-            return self.receipt(shot["n"], t - shot["t0"])
+            return self.receipt(shot["n"], local)
         if shot["kind"] == "stat":
-            return self.stat(shot["n"], t - shot["t0"])
+            return self.stat(shot["n"], local)
         return self.picture(shot, t)
 
     def frame(self, t: float) -> Image.Image:
         shot = self.shot_at(t)
         im = self.draw(shot, t)
         idx = self.shots.index(shot)
-        if idx and t - shot["t0"] < 0.12:  # a short dissolve so cuts don't flash
-            im = Image.blend(self.draw(self.shots[idx - 1], t), im, ease((t - shot["t0"]) / 0.12))
-        self.top(im, t, shot.get("i"))
+        if idx and t - shot["t0"] < 0.2:  # a short dissolve so cuts don't flash
+            im = Image.blend(self.draw(self.shots[idx - 1], t), im, ease((t - shot["t0"]) / 0.2))
         self.subtitle(im, t)
         return im
 
 
 def render(script: dict[str, Any], stories: list[dict[str, Any]], timings: dict[str, Any], folder: Path,
            date_label: str) -> Path:
-    """folder/reel.mp4 (H.264 + AAC, 30fps) and folder/cover.jpg (the opening frame)."""
+    """folder/reel.mp4 (H.264 + AAC, 30fps) and folder/cover.jpg (the opening logo card)."""
     reel = Reel(script, stories, timings, folder, date_label)
     out = folder / "reel.mp4"
     frames = int(reel.dur * FPS)
@@ -800,12 +1025,10 @@ def render(script: dict[str, Any], stories: list[dict[str, Any]], timings: dict[
         "-movflags", "+faststart", str(out),
     ], stdin=subprocess.PIPE)
     started = time.time()
+    reel.draw(reel.shots[0], 1.0).save(folder / "cover.jpg", "JPEG", quality=90)  # the opening card, no subtitle
     assert ffmpeg.stdin is not None
     for k in range(frames):
-        frame = reel.frame(k / FPS)
-        if k == int(0.6 * FPS):
-            frame.save(folder / "cover.jpg", "JPEG", quality=90)
-        ffmpeg.stdin.write(frame.tobytes())
+        ffmpeg.stdin.write(reel.frame(k / FPS).tobytes())
     ffmpeg.stdin.close()
     if ffmpeg.wait() != 0:
         raise RuntimeError("ffmpeg failed to encode the reel")

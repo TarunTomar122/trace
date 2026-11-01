@@ -205,21 +205,32 @@ tail -50 ~/trace/logs/sponsor-welcome.log
 
 `v3.flows.post_reel` posts one Instagram reel a day through the same Buffer channel:
 
-- Stories: today's top 3 AI stories in feed order, plus the 2 non-AI stories covered by the most
-  outlets (`source_count`). Promos, stories the send-worthy judge turned down, stories without a
-  summary, near-duplicates and anything a reel used in the last 3 days are skipped. At least 4 are
-  needed to post.
+- Stories: the 5 most interesting stories updated in the last 24 hours, in any category. The 12
+  covered by the most outlets (`source_count`, then `popularity_score`), one per event, go to
+  gpt-6.1-terra as an editor, which picks 5 for a general tech-and-business audience, never two on
+  the same company or event. If that call fails, the top 5 by coverage are used. Promos, stories
+  the send-worthy judge turned down, stories without a summary and anything a reel used in the last
+  3 days are skipped. At least 4 are needed to post.
 - Script (`backend/v3/lib/reel_video.py`): gpt-6.1-terra writes a plain newsreader script (90-110
-  words for 5 stories, mixed order, "That's Trace for today." at the end). A critic pass checks it
+  words for 5 stories, mixed order, stories start with their subject and never with "Next",
+  "That's Trace for today." at the end). A critic pass checks it
   against the summaries and a list of AI-sounding phrasing, and a reviser fixes it, up to 3 rounds.
-  Banned words, dashes and the length are also checked in code.
-- Pictures: two per story from Runway (`REEL_IMAGE_MODEL`), one art direction, no faces or text.
-  Voice: Runway's ElevenLabs v3 preset `REEL_VOICE` (Elliot), long pauses trimmed. A take over 52s
-  is sped up by at most 1.12x. Subtitle timings come from whisper-1.
-- Video: 1080x1920 H.264, rendered with Pillow and ffmpeg. Per story there's a picture, a source card
-  (publisher, date, headline, highlighter), a number card when the script says a number, then more
-  pictures, cut at word boundaries. Subtitles, tags and the progress bar stay inside Instagram's safe
-  area. The last frame matches the first, so it loops.
+  Banned words, dashes, a story opening with "Next" and the length are also checked in code.
+- Pictures: two per story from Runway (`REEL_IMAGE_MODEL`), one art direction, no faces, text or logos.
+  Voice: Runway's ElevenLabs v3 preset `REEL_VOICE` (Elliot), the whole script in one take that is
+  never cut (cutting pauses made it sound spliced). A take over 52s is sped up evenly, by at most
+  1.12x. Subtitle timings come from whisper-1.
+- Logos: the script names each story's company, and `make_logos` takes its current logo from the
+  company's Wikidata entry (P154, the preferred one first) via Commons. Logos without a transparent
+  background, or app icons that fill their box, are skipped. With no usable logo, the card shows the
+  company's name in type. Lookups are capped at 60s per reel.
+- Video: 1080x1920 H.264, rendered with Pillow and ffmpeg in a calm charcoal look. Each story opens
+  on its company's logo card, then its picture (toned down, pushing in slowly), a tilted source card
+  (publisher, date, headline, highlighter), the other picture, and a number counting up inside a
+  ring of dots when the script says a number. An early number gets its card before the source card.
+  An end card ("Trace", yourtrace.online) sits under the sign-off, and the cover is the opening logo
+  card. Cuts fall at word boundaries and a picture never follows itself. Small one-line subtitles
+  sit in a dark pill inside Instagram's safe area.
 - Work files are kept in `REEL_WORK_DIR/{date}/` for 7 days, so a retry resumes from the saved script,
   pictures and voice. The MP4 and cover are served from `/var/www/trace-social/reel-{date}-{id}/`.
 - It's shared as an Instagram reel labelled AI-generated, logged in `instagram_reels/{date}` with the
