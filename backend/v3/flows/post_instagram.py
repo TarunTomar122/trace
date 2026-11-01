@@ -590,41 +590,99 @@ def share_to_tiktok(ref: Any, caption: str, assets: list[dict[str, Any]], title:
 
 
 def _share_to_tiktok(ref: Any, caption: str, assets: list[dict[str, Any]], title: str, ai_generated: bool) -> None:
-    record = ref.get().to_dict() or {}
-    status = record.get("tiktok_status")
-    if record.get("tiktok_post_id") and status not in RETRY:
-        # Still on its way when an earlier run stopped waiting: see where it got to.
-        state = post_state(record["tiktok_post_id"])
-        if state:
-            status = _state_fields(state)["status"]
-            ref.set({f"tiktok_{k}": v for k, v in _state_fields(state).items() if k != "updated_at"}, merge=True)
-    if status not in RETRY | {None}:
+    fields = _share_extra(ref, "tiktok", tiktok_channel, tiktok_caption(caption), assets,
+                          {"tiktok": {"title": title[:90], "isAiGenerated": ai_generated}}, _tiktok_log)
+    if not fields:
         return
-    channel_id = tiktok_channel()
-    if not channel_id:
-        return
-    ref.set({"tiktok_status": "posting", "tiktok_post_id": None, "tiktok_error": ""}, merge=True)
-    try:
-        post_id = create_post(channel_id, tiktok_caption(caption), assets,
-                              {"tiktok": {"title": title[:90], "isAiGenerated": ai_generated}})
-    except BufferRefused as exc:
-        ref.set({"tiktok_status": "failed", "tiktok_error": str(exc)[:500]}, merge=True)
-        _tiktok_log(f"post refused: {exc}")
-        return
-    except Exception as exc:
-        ref.set({"tiktok_status": "unknown", "tiktok_error": str(exc)[:500]}, merge=True)
-        _tiktok_log(f"post may or may not exist, not retrying (check Buffer): {exc}")
-        return
-    ref.set({"tiktok_post_id": post_id, "tiktok_status": "shared"}, merge=True)
-    _tiktok_log(f"shared to Buffer as {post_id}; waiting")
-    fields = _state_fields(wait_until_sent(post_id, timeout=TIKTOK_WAIT))
-    ref.set({f"tiktok_{k}": v for k, v in fields.items() if k != "updated_at"}, merge=True)
-    _tiktok_log(f"{fields['status']} {fields['external_link']} {fields['error']}")
     muted = tiktok_muted(fields["external_link"])
     if muted is not None:
         ref.set({"tiktok_muted": muted}, merge=True)
         _tiktok_log(f"MUTED by TikTok (sound not available): {fields['external_link']}" if muted
                     else "audio ok (not muted)")
+
+
+def _share_extra(ref: Any, prefix: str, channel: Any, caption: str, assets: list[dict[str, Any]],
+                 metadata: dict[str, Any], log: Any) -> dict[str, Any] | None:
+    """Post to a second channel (TikTok, YouTube) once, keeping `{prefix}_*` fields on the record.
+
+    A post that may exist is never made again; one Buffer refused or failed to
+    publish is tried again on the next run. Returns the final state fields when
+    it posted now, else None.
+    """
+    record = ref.get().to_dict() or {}
+    status = record.get(f"{prefix}_status")
+    if record.get(f"{prefix}_post_id") and status not in RETRY:
+        # Still on its way when an earlier run stopped waiting: see where it got to.
+        state = post_state(record[f"{prefix}_post_id"])
+        if state:
+            status = _state_fields(state)["status"]
+            ref.set({f"{prefix}_{k}": v for k, v in _state_fields(state).items() if k != "updated_at"}, merge=True)
+    if status not in RETRY | {None}:
+        return None
+    channel_id = channel()
+    if not channel_id:
+        return None
+    ref.set({f"{prefix}_status": "posting", f"{prefix}_post_id": None, f"{prefix}_error": ""}, merge=True)
+    try:
+        post_id = create_post(channel_id, caption, assets, metadata)
+    except BufferRefused as exc:
+        ref.set({f"{prefix}_status": "failed", f"{prefix}_error": str(exc)[:500]}, merge=True)
+        log(f"post refused: {exc}")
+        return None
+    except Exception as exc:
+        ref.set({f"{prefix}_status": "unknown", f"{prefix}_error": str(exc)[:500]}, merge=True)
+        log(f"post may or may not exist, not retrying (check Buffer): {exc}")
+        return None
+    ref.set({f"{prefix}_post_id": post_id, f"{prefix}_status": "shared"}, merge=True)
+    log(f"shared to Buffer as {post_id}; waiting")
+    fields = _state_fields(wait_until_sent(post_id, timeout=TIKTOK_WAIT))
+    ref.set({f"{prefix}_{k}": v for k, v in fields.items() if k != "updated_at"}, merge=True)
+    log(f"{fields['status']} {fields['external_link']} {fields['error']}")
+    return fields
+
+
+YOUTUBE_TITLE_MAX = 100  # YouTube's limit
+YOUTUBE_SCIENCE_TECH = "28"  # YouTube category id
+
+
+def youtube_channel() -> str | None:
+    """The YouTube channel, if one is connected (reels go there as Shorts)."""
+    return _channel("youtube", "BUFFER_YOUTUBE_CHANNEL_ID")
+
+
+def _youtube_text(text: str) -> str:
+    return text.replace("<", "").replace(">", "")  # YouTube rejects angle brackets in titles and descriptions
+
+
+def youtube_caption(caption: str) -> str:
+    """The Instagram caption as a Shorts description: YouTube has no bio link, the URL is right there."""
+    return _youtube_text(caption.replace(" (link in bio)", ""))
+
+
+def youtube_title(title: str) -> str:
+    title = " ".join(_youtube_text(title).split())
+    if len(title) <= YOUTUBE_TITLE_MAX:
+        return title
+    return title[: YOUTUBE_TITLE_MAX - 3].rsplit(" ", 1)[0] + "..."
+
+
+def _youtube_log(message: str) -> None:
+    print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] [youtube] {message}", flush=True)
+
+
+def share_to_youtube(ref: Any, caption: str, assets: list[dict[str, Any]], title: str, ai_generated: bool = True) -> None:
+    """Share a reel to YouTube as a Short too, when a YouTube channel is connected.
+
+    Best effort like share_to_tiktok: logs problems, never raises, keeps its own
+    youtube_* fields on the record.
+    """
+    try:
+        _share_extra(ref, "youtube", youtube_channel, youtube_caption(caption), assets, {"youtube": {
+            "title": youtube_title(title), "categoryId": YOUTUBE_SCIENCE_TECH, "privacy": "public",
+            "madeForKids": False, "notifySubscribers": True, "embeddable": True, "license": "youtube",
+            "isAiGenerated": ai_generated}}, _youtube_log)
+    except Exception as exc:
+        _youtube_log(f"skipped after an error (Instagram is unaffected): {exc}")
 
 
 TIKTOK_VIDEO = re.compile(r"^https://(www\.)?tiktok\.com/@[\w.]+/video/\d+")

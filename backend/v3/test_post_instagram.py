@@ -452,6 +452,48 @@ class RunSafetyTests(unittest.TestCase):
                 ig.share_to_tiktok(doc, "caption", [], "title", ai_generated=False)
         self.assertEqual(self.docs["x"]["tiktok_status"], "failed")
 
+    def share_youtube(self, doc_id="r", channel="yt", states=None, post=None):
+        doc = FakeDoc(self.store.db, ig.COLLECTION, doc_id)
+        states = states or {}
+        with patch.object(ig, "youtube_channel", return_value=channel), \
+                patch.object(ig, "create_post", **(post or {"return_value": "y1"})) as create, \
+                patch.object(ig, "post_state", side_effect=lambda pid: states.get(pid, {"status": "sent"})), \
+                patch.object(ig, "wait_until_sent", side_effect=lambda pid, timeout=0: states.get(pid, {
+                    "status": "sent", "externalLink": "https://youtube.com/shorts/abc"})):
+            ig.share_to_youtube(doc, "Hook\n\nFree at yourtrace.online (link in bio).\n#a #yourtrace", [{"video": {}}],
+                                "Toyota <will> build robotaxis for Waymo")
+        return create
+
+    def test_reels_go_to_youtube_as_public_shorts(self):
+        create = self.share_youtube()
+        channel, caption, assets, meta = create.call_args.args
+        self.assertEqual(channel, "yt")
+        self.assertEqual(caption, "Hook\n\nFree at yourtrace.online.\n#a #yourtrace")
+        self.assertEqual(meta["youtube"]["title"], "Toyota will build robotaxis for Waymo")
+        self.assertEqual((meta["youtube"]["privacy"], meta["youtube"]["madeForKids"], meta["youtube"]["categoryId"]),
+                         ("public", False, "28"))
+        self.assertEqual((self.docs["r"]["youtube_status"], self.docs["r"]["youtube_external_link"]),
+                         ("sent", "https://youtube.com/shorts/abc"))
+
+    def test_youtube_is_skipped_without_a_channel_and_never_posted_twice(self):
+        self.share_youtube(channel=None).assert_not_called()
+        self.assertNotIn("r", self.docs)
+        self.share_youtube().assert_called_once()
+        self.share_youtube().assert_not_called()
+
+    def test_a_youtube_refusal_is_retried_and_errors_never_escape(self):
+        self.share_youtube(post={"side_effect": ig.BufferRefused("no")})
+        self.assertEqual(self.docs["r"]["youtube_status"], "failed")
+        self.share_youtube().assert_called_once()
+        broken = MagicMock()
+        broken.get.side_effect = RuntimeError("firestore down")
+        ig.share_to_youtube(broken, "caption", [], "title")
+
+    def test_youtube_titles_fit_in_100_characters(self):
+        title = ig.youtube_title("word " * 40)
+        self.assertLessEqual(len(title), 100)
+        self.assertTrue(title.endswith("..."))
+
     def test_refused_post_is_marked_failed_and_retried(self):
         code, _ = self.run_job({"side_effect": ig.BufferRefused("bad input")})
         self.assertEqual((code, self.docs[f"{self.date}-am"]["status"]), (1, "failed"))

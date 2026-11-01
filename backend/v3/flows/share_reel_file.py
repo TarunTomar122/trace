@@ -8,11 +8,12 @@ For reels made outside the automatic pipeline (built in HyperFrames each day):
       --cover-at 7.5 --title "Anthropic files for its IPO" --url https://...          # add --dry-run to stop before Buffer
 
 The files are served from INSTAGRAM_MEDIA_DIR like the daily reel, shared as an
-Instagram reel labelled AI-generated (the voice is), then to TikTok as well when
-a TikTok channel is connected in Buffer, and logged in `instagram_reels/{slug}`
-with the story, so post_reel's repeat check sees it.
+Instagram reel labelled AI-generated (the voice is), then as a YouTube Short when
+a YouTube channel is connected in Buffer (and to TikTok with TIKTOK_REELS=1), and
+logged in `instagram_reels/{slug}` with the story, so post_reel's repeat check sees it.
 A slug that already has an Instagram post is never posted there again; a rerun
-only tries TikTok (if that one is not already up), e.g. once TikTok is connected.
+only tries the other channels that aren't up yet (e.g. once YouTube is connected).
+--title is also the YouTube title (at most 100 characters).
 
 --tiktok-video sends TikTok its own file instead of the Instagram one (e.g. the
 reel without its music bed).
@@ -35,7 +36,9 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
-from v3.flows.post_instagram import create_post, instagram_channel, share_to_tiktok, wait_until_sent  # noqa: E402
+from v3.flows.post_instagram import (  # noqa: E402
+    create_post, instagram_channel, share_to_tiktok, share_to_youtube, wait_until_sent,
+)
 from v3.flows.post_reel import COLLECTION, host_reel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
@@ -66,12 +69,15 @@ def run(args: argparse.Namespace) -> int:
     existing = ref.get().to_dict() or {}
     if existing.get("buffer_post_id"):
         _log(f"{args.slug} is already on Instagram ({existing['buffer_post_id']}, {existing.get('status')}); "
-             + ("only TikTok is tried" if REELS_TO_TIKTOK else "nothing to do"))
-        if REELS_TO_TIKTOK and existing.get("video_url") and existing.get("caption") and not args.dry_run:
+             "only the other channels are tried")
+        if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
-            tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
-            share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
-                            (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
+            title = existing.get("youtube_title") or args.title
+            share_to_youtube(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)], title)
+            if REELS_TO_TIKTOK:
+                tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
+                share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
+                                (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
         return 0
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
@@ -91,7 +97,7 @@ def run(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc)
     ref.set({"date": now.strftime("%Y-%m-%d"), "slug": args.slug, "kind": "hand-made", "status": "sharing",
              "caption": caption, "video_url": video_url, "cover_ms": int(args.cover_at * 1000), "created_at": now.isoformat(),
-             "tiktok_video_url": tiktok_url, "stories": [{"title": args.title, "url": args.url}],
+             "tiktok_video_url": tiktok_url, "youtube_title": args.title, "stories": [{"title": args.title, "url": args.url}],
              "buffer_post_id": None}, merge=True)
     asset = video_asset(video_url, int(args.cover_at * 1000))
     post_id = create_post(instagram_channel(), caption, [asset],
@@ -102,6 +108,7 @@ def run(args: argparse.Namespace) -> int:
     ref.set({"status": state.get("status") or "unknown", "external_link": state.get("externalLink") or "",
              "error": state.get("error") or ""}, merge=True)
     _log(f"Buffer says {state.get('status')} {state.get('externalLink') or ''}")
+    share_to_youtube(ref, caption, [asset], args.title)
     if REELS_TO_TIKTOK:
         share_to_tiktok(ref, caption, [video_asset(tiktok_url, int(args.cover_at * 1000))], args.title, ai_generated=True)
     return 0 if state.get("status") == "sent" else 1
