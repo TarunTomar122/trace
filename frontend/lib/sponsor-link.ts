@@ -1,14 +1,15 @@
-// Sponsor links, shared by the feed and the brief pages.
+// Sponsor links, shared by the feed, the brief pages and the daily email.
 //
 // Every sponsor click is counted twice, so the sponsor and Trace see the same
 // traffic: the link carries UTM tags for the sponsor's own analytics, and a
 // beacon to /api/tools/click adds it to our first-party count (the numbers on
-// the sponsor's stats page), next to the PostHog event the caller sends.
+// the sponsor's stats page), next to the PostHog event the caller sends. The
+// daily email has no JavaScript, so its links count through /api/tools/go.
 
-export const SPONSOR_PLACEMENTS = ['desktop_tools', 'home_feed_end', 'pulse_mobile', 'brief_rail'] as const;
+export const SPONSOR_PLACEMENTS = ['desktop_tools', 'home_feed_end', 'pulse_mobile', 'brief_rail', 'email'] as const;
 export type SponsorPlacement = (typeof SPONSOR_PLACEMENTS)[number];
 
-/** How many sponsors show at once (feed and brief); a sale beyond this is refused. */
+/** How many sponsors show at once (feed, brief and email); a sale beyond this is refused. */
 export const SPONSOR_SLOTS = 3;
 
 /** The sponsor's URL with Trace's UTM tags; any tag the sponsor already set is kept. */

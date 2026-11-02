@@ -290,6 +290,69 @@ class RenderTests(unittest.TestCase):
 
 
 
+class SponsorBlockTests(unittest.TestCase):
+    def _store(self, rows, fail=False):
+        class Q:
+            def stream(self_inner):
+                if fail:
+                    raise RuntimeError("firestore down")
+                for doc_id, data in rows:
+                    doc = types.SimpleNamespace(id=doc_id, to_dict=lambda d=data: d)
+                    yield doc
+
+        class C:
+            def where(self_inner, *a, **k):
+                return Q()
+
+        return types.SimpleNamespace(db=types.SimpleNamespace(collection=lambda name: C()))
+
+    def test_only_live_sponsors_show_oldest_first_at_most_three(self):
+        rows = [
+            ("newest0001", {"title": "D", "url": "https://d.co", "created_at": _ago(1)}),
+            ("oldest0001", {"title": "A", "url": "https://a.co", "subtext": "does a", "created_at": _ago(9)}),
+            ("expired001", {"title": "X", "url": "https://x.co", "created_at": _ago(40), "expires_at": _ago(2)}),
+            ("nourl00001", {"title": "Y", "url": "javascript:alert(1)", "created_at": _ago(8)}),
+            ("middle0001", {"title": "B", "url": "https://b.co", "created_at": _ago(5)}),
+            ("middle0002", {"title": "C", "url": "https://c.co", "created_at": _ago(3)}),
+        ]
+        got = N._active_sponsors(self._store(rows))
+        self.assertEqual([s["title"] for s in got], ["A", "B", "C"])
+        self.assertEqual(got[0], {"id": "oldest0001", "title": "A", "domain": "a.co", "sub": "does a"})
+
+    def test_a_firestore_error_never_blocks_the_send(self):
+        self.assertEqual(N._active_sponsors(self._store([], fail=True)), [])
+
+    def test_email_lists_sponsors_with_counted_links_and_the_open_slot(self):
+        sponsors = [{"id": "abc12345", "title": "Calenteri <b>", "domain": "calenteri.com", "sub": "calendar for founders"}]
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "0"}):  # as on the VPS
+            _, html, _ = N._render("member", [("ai", [dict(STORY)])], TODAY, "r@x.com", "tid", sponsors=sponsors)
+        self.assertIn("favicons?domain=calenteri.com", html)
+        self.assertIn(f"{N.APP_URL}/api/tools/go?id=abc12345&p=email&t=tid", html)
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "1"}):  # our own tracker keeps p and t
+            _, wrapped, _ = N._render("member", [("ai", [dict(STORY)])], TODAY, "r@x.com", "tid", sponsors=sponsors)
+        self.assertIn("go%3Fid%3Dabc12345%26p%3Demail%26t%3Dtid", wrapped)
+        self.assertIn("Sponsored", html)
+        self.assertIn("Calenteri &lt;b&gt;", html)
+        self.assertIn("Calendar for founders", html)
+        self.assertIn(f"{N.APP_URL}/feed?from=email&sponsor=open", html)
+
+    def test_blurbs_are_never_cut(self):
+        text = ("share one link and let people book a time with you, with no back-and-forth emails. "
+                "EU-hosted with no third-party trackers, so you stay GDPR-compliant.")
+        self.assertEqual(N._blurb(text), "S" + text[1:])
+
+    def test_the_open_slot_line_hides_when_every_slot_is_sold(self):
+        full = [{"id": f"sponsor{i}x", "title": f"T{i}", "sub": ""} for i in range(N.SPONSOR_SLOTS)]
+        self.assertNotIn("Put your tool here", N._sponsors_html(full))
+        _, _, text = N._render("member", [("ai", [dict(STORY)])], TODAY, "r@x.com", "", sponsors=full)
+        self.assertIn(f"- T0: {N.APP_URL}/api/tools/go?id=sponsor0x&p=email", text)
+
+    def test_with_no_sponsors_only_the_open_slot_line_shows(self):
+        _, html, _ = N._render("landing", [("ai", [dict(STORY)])], TODAY, "r@x.com", "")
+        self.assertNotIn(">Sponsored<", html)
+        self.assertIn("Put your tool here, $19/mo", html)
+
+
 class UnsubscribeHeaderTests(unittest.TestCase):
     def test_every_bucket_gets_the_one_click_endpoint(self):
         # Gmail's one-click POSTs to the header URL; a settings page would ignore it.

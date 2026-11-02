@@ -1218,6 +1218,91 @@ def _cta_html(bucket: str) -> str:
     )
 
 
+SPONSOR_SLOTS = 3  # same as the feed (frontend/lib/sponsor-link.ts)
+# from=email first: the feed then treats the visitor as a subscriber (no sign-up toast over the checkout).
+SPONSOR_SLOT_URL = f"{APP_URL}/feed?from=email&sponsor=open"
+
+
+def _sponsor_go_url(sponsor_id: str, track_id: str = "") -> str:
+    """The counted sponsor link; `t` is the send's id, so a click is tied to the reader's email."""
+    url = f"{APP_URL}/api/tools/go?id={quote(sponsor_id, safe='')}&p=email"
+    return f"{url}&t={quote(track_id, safe='')}" if track_id else url
+
+
+def _active_sponsors(store: FirestoreStore) -> list[dict]:
+    """The sponsors the feed shows: active, not expired, oldest purchase first, at most 3.
+
+    Best effort: the daily goes out without them if Firestore can't say.
+    """
+    try:
+        docs = store.db.collection("promoted_tools").where("status", "==", "active").stream()
+        now = datetime.now(timezone.utc)
+        rows = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            expires = _parse_ts(data.get("expires_at"))
+            if expires and expires <= now:
+                continue
+            title, url = str(data.get("title") or "").strip(), str(data.get("url") or "").strip()
+            if not title or not url.startswith(("http://", "https://")):
+                continue
+            created = _parse_ts(data.get("created_at")) or now
+            domain = (urlparse(url).hostname or "").lower().removeprefix("www.")
+            rows.append((created, {"id": doc.id, "title": title, "domain": domain,
+                                   "sub": str(data.get("subtext") or "").strip()}))
+        rows.sort(key=lambda row: row[0])
+        return [row for _, row in rows[:SPONSOR_SLOTS]]
+    except Exception as exc:  # noqa: BLE001 - never block the send
+        _log(f"sponsors skipped: {exc}")
+        return []
+
+
+def _blurb(text: str) -> str:
+    """The sponsor's description in full (owner: never cut it), first letter capitalised."""
+    text = " ".join(text.split())
+    return text[:1].upper() + text[1:]
+
+
+def _sponsors_html(sponsors: list[dict], track_id: str = "") -> str:
+    """A small "Sponsored" box under the stories: the feed's sponsors, then the open-slot line.
+
+    Sponsor links go through /api/tools/go so the click lands on the sponsor's
+    stats page (placement "email"); the open-slot line opens the checkout.
+    """
+    rows = "".join(
+        '<p style="margin: 0 0 8px 0; font-size: 15px; line-height: 22px; '
+        f'color: {_TEXT}; font-family: {_FONT};">'
+        + (f'<img src="https://www.google.com/s2/favicons?domain={escape(s["domain"])}&amp;sz=64" '
+           'width="18" height="18" alt="" style="display: inline-block; width: 18px; height: 18px; '
+           f'border-radius: 4px; border: 1px solid {_LINE}; background-color: #ffffff; '
+           'vertical-align: -4px; margin-right: 7px;" />' if s.get("domain") else "")
+        # A plain "&" like the email's other own links, so a wrapping tracker keeps every param.
+        + f'<a href="{_sponsor_go_url(s["id"], track_id)}" '
+        f'style="color: {_INK}; font-weight: 650; text-decoration: underline; text-underline-offset: 3px;">'
+        f'{escape(s["title"])}</a>'
+        + (f" &mdash; {escape(_blurb(s['sub']))}" if s["sub"] else "")
+        + "</p>"
+        for s in sponsors
+    )
+    # When every slot is sold the checkout refuses, so the open-slot line goes too.
+    pitch = "" if len(sponsors) >= SPONSOR_SLOTS else (
+        f'<p style="margin: {"4px" if sponsors else "0"} 0 0 0; font-size: 14px; line-height: 21px; '
+        f'color: {_MUTED}; font-family: {_FONT};">'
+        + ("" if sponsors else "Built something for tech people? ")
+        + f'<a href="{SPONSOR_SLOT_URL}" style="color: {_BLUE}; font-weight: 600; '
+        'text-decoration: none;">Put your tool here, $19/mo</a></p>'
+    )
+    label = (
+        '<p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 650; letter-spacing: 0.04em; '
+        f'text-transform: uppercase; color: {_MUTED}; font-family: {_FONT};">Sponsored</p>'
+        if sponsors else ""
+    )
+    return (
+        f'<div style="margin-top: 20px; padding: 14px 16px; border: 1px solid {_LINE}; border-radius: 10px;">'
+        f"{label}{rows}{pitch}</div>"
+    )
+
+
 RATINGS = (
     (5, "\u2605\u2605\u2605\u2605\u2605", "Absolutely Loved It"),
     (4, "\u2605\u2605\u2605\u2605", "Better Than Usual"),
@@ -1367,6 +1452,7 @@ def _render(
     email: str = "",
     track_id: str = "",
     story_format: str = "summaries",
+    sponsors: list[dict] | None = None,
 ) -> tuple[str, str, str]:
     cfg = BUCKETS[bucket]
     story_count = sum(len(group) for _, group in sections)
@@ -1384,7 +1470,7 @@ def _render(
     html = html.replace(
         "{{SECTIONS_HTML}}", _sections_html(bucket, sections, show_summary, show_image)
     )
-    html = _replace_block(html, "CTA", _cta_html(bucket))
+    html = _replace_block(html, "CTA", _cta_html(bucket) + _sponsors_html(sponsors or [], track_id))
     # Feedback block is intentionally hidden for now; the renderer stays in
     # place so it can be switched on with one line.
     html = _replace_block(html, "FEEDBACK", "")
@@ -1414,6 +1500,10 @@ def _render(
     html = _tag_visit_links(html, track_id)
     html = _instrument_tracking(html, track_id)
     text = _text_version(_headline(story_count), sections, date, show_summary, track_id)
+    if sponsors:
+        text += "\n\nSponsored:\n" + "\n".join(
+            f"- {s['title']}: {_sponsor_go_url(s['id'], track_id)}" for s in sponsors
+        )
     return subject, html, text
 
 
@@ -1640,9 +1730,12 @@ def _send_one(
     # Mint the tracking id before rendering so the pixel and the wrapped
     # links carry the same id the send log will record.
     track_id = uuid.uuid4().hex
+    if "sponsors" not in cache:  # once per run
+        cache["sponsors"] = _active_sponsors(store)
     subject, html, text = _render(
         bucket, sections, date, recipient["email"], track_id,
         story_format=recipient.get("format") or "summaries",
+        sponsors=cache["sponsors"],
     )
     if dry_run:
         _log(f"[dry-run] {bucket} -> {recipient['email']} | {subject}")

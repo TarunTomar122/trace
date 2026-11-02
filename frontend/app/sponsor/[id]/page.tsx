@@ -19,6 +19,7 @@ const PLACES: Record<SponsorPlacement, string> = {
   pulse_mobile: 'Feed, top of Top articles (phones)',
   home_feed_end: 'Feed, end of Home',
   brief_rail: 'Daily brief pages',
+  email: 'Daily email',
 };
 
 type Doc = Record<string, unknown>;

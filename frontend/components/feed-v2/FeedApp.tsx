@@ -503,6 +503,20 @@ export default function FeedApp({
     streakRecorded.current = false;
   }, [user?.uid]);
 
+  // The daily email's "Put your tool here" link: open the sponsor checkout.
+  useEffect(() => {
+    if (params.get('sponsor') !== 'open') return;
+    const props = { placement: 'email', cta: 'email_open_slot' };
+    trackPromoCtaClicked(props);
+    trackPromoModalOpened(props);
+    setPromoOpen(true);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sponsor');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+    } catch { /* ignore */ }
+  }, [params]);
+
   useEffect(() => {
     const from = params.get('from');
     // Arriving from the daily email means they already get it: never ask them to sign up.
@@ -1991,7 +2005,7 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
           <h2 className="promo-title">Promote your tool</h2>
           <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
-        <p className="promo-price">$19/month · live in Tools within minutes of payment</p>
+        <p className="promo-price">$19/month · live in Tools and the daily email within minutes of payment</p>
         <label className="promo-label">Tool link
           <input className="promo-input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://yourtool.com" inputMode="url" />
         </label>
