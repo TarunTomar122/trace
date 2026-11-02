@@ -5,6 +5,7 @@ import { sameEvent } from '@/lib/same-event';
 import { selectFromGroups, type PoolStory } from '@/lib/newsletter-select';
 import { isModelRelease, isStaleStory } from '@/lib/feed-ranking';
 import { canonicalLane } from '@/lib/feed-links';
+import { shortBrief } from '@/lib/body-text';
 
 /**
  * Public daily editions: the non-personalised brief the email pipeline
@@ -247,6 +248,9 @@ function topicToPool(raw: unknown): PoolStory[] {
   const id = asText(topic.id);
   if (!lead || !title || !id) return [];
   const url = asText(lead.url);
+  const leadSummary = (lead.summary && typeof lead.summary === 'object' ? lead.summary : {}) as Record<string, unknown>;
+  const leadShort = (leadSummary.short_article && typeof leadSummary.short_article === 'object'
+    ? leadSummary.short_article : {}) as Record<string, unknown>;
   const sources = [...new Set(articles.map((article) => asText(article?.source) || domainOf(asText(article?.url))).filter(Boolean))];
   const verdict = topic.jev_send_worthy;
   // Newest coverage, as the email measures it: a launch older than that
@@ -257,7 +261,15 @@ function topicToPool(raw: unknown): PoolStory[] {
     topic_id: id,
     title,
     url,
-    summary: asText(topic.summary).replace(/\*\*/g, ''),
+    // The email's brief (_candidates in send_audience_newsletter.py): the
+    // lead's card only when it was written for the title shown, else the
+    // overview's first sentences.
+    summary: shortBrief(
+      articles.length === 1 || title.toLowerCase() === asText(leadShort.headline).toLowerCase()
+        ? asText(leadShort.mobile_card_summary).replace(/\*\*/g, '')
+        : '',
+      asText(topic.summary).replace(/\*\*/g, ''),
+    ),
     source_name: asText(lead.source_name) || domainOf(url),
     image: httpsUrl(topic.thumbnail) || httpsUrl(lead.thumbnail),
     sources: sources.slice(0, 4),
@@ -268,7 +280,11 @@ function topicToPool(raw: unknown): PoolStory[] {
     interest_id: asText(topic.interest_id) ? canonicalLane(asText(topic.interest_id)) : '',
     lane_detail: asText(topic.lane_detail).toLowerCase(),
     macro: false,
-    model_release: isModelRelease({ title, tags: Array.isArray(topic.tags) ? topic.tags.map(asText) : [] })
+    model_release: isModelRelease({
+      title,
+      tags: Array.isArray(topic.tags) ? topic.tags.map(asText) : [],
+      coverage: [{ title: asText(lead.title) }],
+    })
       && !isStaleStory(newest),
     send_worthy: typeof verdict === 'number' ? verdict : null,
   }];
@@ -362,7 +378,8 @@ const getLivePool = cache(unstable_cache(readLivePool, ['daily-editions-live-poo
 async function getLiveEdition(): Promise<DailyEdition | null> {
   const live = await getLivePool();
   if (!live) return null;
-  // The landing selection: exactly what a new subscriber would receive.
+  // The landing selection: what a new subscriber would receive (titles and
+  // briefs; the email may still leave out a paraphrased repeat).
   const stories: DailyStory[] = selectFromGroups(live.pool, [], 10, 'landing').flatMap(([lane, group]) =>
     group.map((story) => ({
       title: story.title,

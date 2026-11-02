@@ -5,7 +5,7 @@ import { bodyParagraphs } from '@/lib/body-text';
 
 /**
  * One story in an edition, in the homepage's email look (lib/brief-css.ts):
- * a yellow-marked kicker, the image, a Georgia headline, the whole summary,
+ * a yellow-marked kicker, the image, a Georgia headline, the short summary,
  * then the source row. Title, image and source open the original article.
  */
 export default function BriefStory({

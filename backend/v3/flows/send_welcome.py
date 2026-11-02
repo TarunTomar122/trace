@@ -239,7 +239,8 @@ def todays_stories(now: datetime, store: FirestoreStore | None = None) -> list[d
         if len(picks) < MIN_STORIES:
             return []
         return [
-            {"title": story["title"], "line": _lede(story.get("summary", "")), "url": _app_link(story)}
+            # The daily's short brief when there is one, so the line follows the headline.
+            {"title": story["title"], "line": _lede(story.get("brief") or story.get("summary", "")), "url": _app_link(story)}
             for story in picks[:STORY_COUNT]
         ]
     except Exception as exc:

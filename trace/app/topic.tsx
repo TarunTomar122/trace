@@ -225,7 +225,8 @@ export default function TopicScreen() {
   const isSingletonTopic = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
   const primaryArticle = isSingletonTopic ? (topic.articles?.[0] ?? null) : null;
   const primaryShort = primaryArticle?.summary?.short_article;
-  const displayTitle = decodeHtmlEntities(primaryArticle?.title || topic.title);
+  // Our own headline: the body under it was written as its pair.
+  const displayTitle = decodeHtmlEntities(primaryShort?.headline || primaryArticle?.title || topic.title);
   const displayThumbnail = primaryArticle?.thumbnail || topic.thumbnail;
   const displayBody = primaryShort?.body || topic.summary || '';
   const splitBody = useMemo(() => splitSummaryParagraphs(displayBody), [displayBody]);

@@ -34,20 +34,27 @@ const MODEL_PARAM_SIZE = /(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
 const MODEL_NOUN = /\b(models?|llms?|foundation models?|open[- ]weights?|checkpoints?)\b/i;
 // "Test models before release" uses release as a noun, not a launch.
 const RELEASE_AS_NOUN = /\b(?:(?:before|after|ahead of|prior to|until|delays?|delayed|its|the|their)\s+|pre-\s*)(releases?|launch(?:es)?)\b/gi;
-const MODEL_RELEASE_VERB = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b/i;
+const MODEL_RELEASE_VERB = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|rolls?\s+out|rolled\s+out|debuts?|debuted|open[- ]sourc(?:e|ed|ing))\b/i;
 // "model" alone is too generic (Tesla Model Y), so a textual match also needs
 // an AI-flavoured word next to it.
 const AI_CONTEXT = /\b(ai|a\.i\.|llm|weights?|tokens?|context|inference|benchmarks?|parameters?|multimodal|agents?|agentic|reasoning|coding|prompts?|checkpoints?|open[- ]weights?)\b/i;
 // Named launches that never say "model": "releases Qwen3.8", "unveils Claude Opus 5".
-const NAMED_LAUNCH = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced)\s+(?:[A-Z][\w.-]*\d[\w.-]*|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b/;
+const NAMED_LAUNCH = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|rolls?\s+out|rolled\s+out|debuts?|debuted)\s+(?:[A-Z][\w.-]*\d[\w.-]*|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b/;
 
-/** Lab-blog / param-size launches, not AI-safety or incident coverage. */
+/**
+ * Lab-blog / param-size launches, not AI-safety or incident coverage.
+ * Shown titles are our own headlines, so the lead coverage title (the
+ * publisher's) is checked too, as the email does (_model_release).
+ */
 export function isModelRelease(story: {
   title?: string;
   tags?: string[];
   source?: string;
   body?: string;
+  coverage?: Array<{ title?: string }>;
 }): boolean {
+  const lead = String(story.coverage?.[0]?.title || '');
+  if (lead && lead !== story.title && isModelRelease({ ...story, title: lead, coverage: undefined })) return true;
   const title = String(story.title || '');
   const haystack = `${title} ${(story.tags || []).join(' ')} ${story.body || ''}`;
   if (MODEL_RELEASE_SKIP.test(haystack)) return false;

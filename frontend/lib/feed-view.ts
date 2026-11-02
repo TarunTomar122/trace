@@ -289,7 +289,9 @@ export function mapTrendingToStories(
     return {
       id: it.id || url,
       rank: 0,
-      title: decodeHtmlEntities(it.title || ''),
+      // Our own headline, written as one pair with the body under it (the
+      // body never restates it); the publisher's title stays in coverage.
+      title: decodeHtmlEntities(sa.headline || it.title || ''),
       body: sa.body || it.description || '',
       takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       img: firstThumb(it.thumbnail, it.og_image, it.image),
@@ -336,6 +338,9 @@ function sameEventStory(a: FeedStory, b: FeedStory): boolean {
   if (isSameStoryTitle(a.title, b.title)) return true;
   if (a.coverage.some((link) => link.title && isSameStoryTitle(link.title, b.title))) return true;
   if (b.coverage.some((link) => link.title && isSameStoryTitle(link.title, a.title))) return true;
+  // Shown titles are our own headlines; the publishers' stay in coverage, and
+  // two outlets running the same wire title are still one event.
+  if (a.coverage.some((x) => x.title && b.coverage.some((y) => y.title && isSameStoryTitle(x.title, y.title)))) return true;
   return false;
 }
 

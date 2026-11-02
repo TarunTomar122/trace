@@ -54,11 +54,14 @@ from v3.lib.pulse_sources import (  # noqa: E402
     top_article_feed_caps,
 )
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
+from v3.lib.summarizer import TRENDING_MODEL, trending_request_tuning  # noqa: E402
 
 ROLE_CLASSIFIER_BUCKET = "daily_pulse_role_classifier_v1"
 ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
-ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v6"
-ITEM_SUMMARY_MODEL = "gpt-4o-mini"
+# v7: summaries written as one pair with the title above them (PAIR_RULE), by
+# the trending model (gpt-4o-mini kept restating titles; luna is cheaper too).
+ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v7"
+ITEM_SUMMARY_MODEL = TRENDING_MODEL
 PULSE_SELECTION_ROLE = "developer"
 COMPACT_SUMMARY_SECTIONS = {"tools", "discussions"}
 COMPACT_SUMMARY_MAX_WORDS = 24
@@ -241,13 +244,26 @@ def _normalize_summary_payload(
     }
 
 
+# Every pulse summary is shown right under the item's title (feed and app),
+# so the two are read as one pair: the summary adds what the title leaves out.
+PAIR_RULE = (
+    "The reader sees the item's title right above your text. Never restate or reword the title: "
+    "add what it leaves out (what it is, how it works, the key number, who it is for). "
+    "Use only what the excerpt or snippet says; if they add nothing beyond the title, return an empty body.\n"
+)
+
+
 def _summary_instructions(section: str) -> str:
+    return PAIR_RULE + _section_instructions(section)
+
+
+def _section_instructions(section: str) -> str:
     if section == "discussions":
         return (
             f"Write exactly one sentence of no more than {COMPACT_SUMMARY_MAX_WORDS} words telling a curious reader "
             "what this link is about: the specific news, finding, project, or claim. Name the concrete things.\n"
             "Never write 'this article', 'the post', 'the author', or 'differentiates'. No hype, advice, or call to action.\n"
-            "If the text excerpt is thin or doesn't clearly match the title, stay close to the title rather than guessing details.\n"
+            "If the text excerpt is thin or doesn't clearly match the title, say only what the excerpt supports rather than guessing details.\n"
         )
     if section in COMPACT_SUMMARY_SECTIONS:
         return (
@@ -256,7 +272,7 @@ def _summary_instructions(section: str) -> str:
         )
     return (
         "Write a 180-260 word replacement brief that lets a busy builder skip the original.\n"
-        "Start directly with the central result or argument. Never write meta phrases such as "
+        "Start directly with the central result or argument the title doesn't already state. Never write meta phrases such as "
         "'the article discusses', 'the author explores', or 'the post highlights'.\n"
         "Capture the concrete facts: named people or systems, what changed, how it was done, "
         "the sequence of events, numbers, evidence, constraints, and the outcome.\n"
@@ -285,16 +301,10 @@ def _fallback_summary(section: str, article: dict[str, Any]) -> str:
     # feed boilerplate (Lobsters' "Comments", bare links) is not a description
     if preview.lower() in {"comments", "discussion"} or re.fullmatch(r"https?://\S+", preview):
         preview = ""
-    title = _safe_text(article.get("title", ""))
-    source = _safe_text(article.get("source", ""))
     if preview:
         return _normalize_item_summary(section, preview)
-    if section == "tools":
-        fallback = f"{title} surfaced in {source} today and looks like one of the stronger role-relevant tools or launches."
-        return _normalize_item_summary(section, fallback)
-    if section == "blogs":
-        return f"{title} was one of the more useful reads today from {source}."
-    # Top articles: no line beats a filler line
+    # No line beats a filler line that restates the title shown above it
+    # ("X was one of the more useful reads today"): the card shows the title alone.
     return ""
 
 
@@ -334,6 +344,9 @@ def _summarize_item(
     if section == "blogs" and len(body) < 500 and not (is_video and len(snippet) >= 120):
         _log(f"summary skipped: insufficient source text for {article.get('title', '')[:60]}")
         return _normalize_summary_payload(section, _fallback_summary(section, article))
+    if not body and not snippet:
+        # Only a title to go on: any line would restate or guess, so none.
+        return _normalize_summary_payload(section, "")
     if body:
         prompt_parts.append(f"Article text excerpt: {body[:20000]}")
 
@@ -352,7 +365,7 @@ def _summarize_item(
                 {"role": "system", "content": "Return valid JSON only."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.2,
+            **trending_request_tuning(ITEM_SUMMARY_MODEL),
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -428,7 +441,8 @@ def _item_payload(
             },
         },
         "roles": article.get("roles", []),
-        "reading_time_minutes": max(1, len(summary["body"].split()) // 180),
+        # No summary, no reading time (the card shows the title alone).
+        "reading_time_minutes": max(1, len(summary["body"].split()) // 180) if summary["body"] else 0,
     }
 
 

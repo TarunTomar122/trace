@@ -72,6 +72,11 @@ MEMBER_COUNT = 10
 STORY_COUNT_CHOICES = (5, 10, 15)
 FORMAT_CHOICES = ("summaries", "headlines", "images")
 
+# Each emailed story gets a short summary (_brief), not the feed's full one:
+# the title links to the whole story in the app.
+BRIEF_WORDS = 45
+BRIEF_CARD_MAX_WORDS = 60
+
 # Trace is free: every account reader is a "member" and gets the full edition.
 # Dormant accounts get a short win-back run instead of the daily ("winback").
 # Both share the member layout; landing subscribers keep the short edition.
@@ -246,6 +251,63 @@ def _plain(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _card_summary(value: Any) -> str:
+    """The summarizer's mobile_card_summary (1-2 sentences, written to follow
+    its own headline), if any."""
+    if not isinstance(value, dict):
+        return ""
+    for key in ("short_article", "shortarticle"):
+        short = value.get(key)
+        if isinstance(short, dict):
+            text = _plain(short.get("mobile_card_summary"))
+            if text:
+                return text
+    return ""
+
+
+def _model_release(titles: tuple[str, ...], source_name: str, summary: str) -> bool:
+    """A model launch by our headline or the publisher's title (the lead
+    article's for a topic). Our headlines are reworded, so checking only them
+    would drop launches the publisher's title names plainly."""
+    return any(
+        _looks_like_model_release(title, source_name, summary)
+        for title in dict.fromkeys(t for t in titles if t)
+    )
+
+
+def _own_headline(value: Any) -> str:
+    """The summarizer's headline for a story, written as one pair with its
+    summary (the summary never restates it). Empty if there is none."""
+    if not isinstance(value, dict):
+        return ""
+    for key in ("short_article", "shortarticle"):
+        short = value.get(key)
+        if isinstance(short, dict):
+            text = _plain(short.get("headline"))
+            if text:
+                return text
+    return ""
+
+
+def _brief(card: str, full: str) -> str:
+    """What the email shows for a story: short, never cut mid-sentence.
+
+    The card summary when it is short enough; otherwise the full summary's
+    first whole sentences up to BRIEF_WORDS (always at least one sentence).
+    """
+    if card and len(card.split()) <= BRIEF_CARD_MAX_WORDS:
+        return card
+    kept: list[str] = []
+    words = 0
+    for sentence in _sentences(full):
+        count = len(sentence.split())
+        if kept and words + count > BRIEF_WORDS:
+            break
+        kept.append(sentence)
+        words += count
+    return " ".join(kept)
+
+
 def _summary_text(value: Any) -> str:
     """Stories carry either a string summary or a structured dict.
 
@@ -364,6 +426,18 @@ def _candidates(feed: dict) -> list[dict]:
             "url": url,
             "title": title,
             "summary": summary,
+            # The lead's card was written for the lead's own headline, so it is
+            # the brief only when that is the title shown (a one-article topic,
+            # or a topic falling back to its lead). Otherwise the overview,
+            # written as one pair with the topic title.
+            "brief": _brief(
+                _card_summary(hero.get("summary"))
+                if len(articles) == 1
+                or title.casefold() == _own_headline(hero.get("summary")).casefold()
+                else "",
+                summary,
+            ),
+            "source_title": "",
             "interest_id": interest,
             "lane_detail": str(topic.get("lane_detail") or "").strip().lower(),
             "source_name": _source_name(hero),
@@ -374,8 +448,8 @@ def _candidates(feed: dict) -> list[dict]:
             ),
             "coverage": coverage.get(url, 1),
             "macro": bool(MACRO_RE.search(f"{title} {summary}")),
-            "model_release": _looks_like_model_release(
-                title, _source_name(hero), summary
+            "model_release": _model_release(
+                (title, _plain(hero.get("title"))), _source_name(hero), summary
             ),
             "newest_at": newest,
             "urls": article_urls,
@@ -387,7 +461,10 @@ def _candidates(feed: dict) -> list[dict]:
             continue
         url = str(row.get("url", "")).strip()
         interest = _normalize_trending_interest_id(row.get("interest_id", ""))
-        title = _plain(row.get("title"))
+        # Our own headline (written as one pair with the summary under it),
+        # else the publisher's title.
+        source_title = _plain(row.get("title"))
+        title = _own_headline(row.get("summary")) or source_title
         if not url or url in seen_urls or not interest or not title:
             continue
         seen_urls.add(url)
@@ -398,6 +475,10 @@ def _candidates(feed: dict) -> list[dict]:
             "url": url,
             "title": title,
             "summary": summary,
+            "brief": _brief(_card_summary(row.get("summary")), summary),
+            # The publisher's title: exact-title merging and the repeat check
+            # match on it too (the shown title is our own headline).
+            "source_title": source_title if source_title != title else "",
             "interest_id": interest,
             "lane_detail": str(row.get("lane_detail") or "").strip().lower(),
             "source_name": _source_name(row),
@@ -406,8 +487,8 @@ def _candidates(feed: dict) -> list[dict]:
             "source_count": 1,
             "coverage": coverage.get(url, 1),
             "macro": bool(MACRO_RE.search(f"{title} {summary}")),
-            "model_release": _looks_like_model_release(
-                title, _source_name(row), summary
+            "model_release": _model_release(
+                (title, source_title), _source_name(row), summary
             ),
             "newest_at": _parse_ts(row.get("published_date")),
             "urls": [url],
@@ -503,6 +584,15 @@ def _same_event_summary(a: dict, b: dict) -> bool:
     return len(shared) >= 6 and len(shared) / min(len(tokens_a), len(tokens_b)) >= 0.25
 
 
+def _title_keys(story: dict) -> set[str]:
+    """The story's shown title and the publisher's, casefolded: an exact match
+    on either is the same story."""
+    return {
+        str(story.get(field) or "").casefold()
+        for field in ("title", "source_title")
+    } - {""}
+
+
 def _repeat_tokens(story: dict) -> tuple[set[str], set[str]]:
     """(headline words, headline and summary words) for spotting a repeat."""
     title = str(story.get("title") or "")
@@ -516,6 +606,7 @@ def _overlap(a: set[str], b: set[str]) -> float:
 def _repeat_index(sent: list[dict]) -> dict:
     """The recently sent stories, tokenised once for _sure_repeat and _look_alikes."""
     urls: dict[str, dict] = {}
+    by_title: dict[str, dict] = {}
     stories = []
     titles: set[str] = set()
     for story in sent:
@@ -523,19 +614,21 @@ def _repeat_index(sent: list[dict]) -> dict:
         for url in [story.get("url"), *(extra if isinstance(extra, list) else [])]:
             if isinstance(url, str) and url:
                 urls.setdefault(url, story)
+        for key in _title_keys(story):
+            by_title.setdefault(key, story)
         title = str(story.get("title") or "").casefold()
         if title not in titles:  # a story two dailies carried is asked about once
             titles.add(title)
             stories.append((story, title, *_repeat_tokens(story)))
-    return {"urls": urls, "stories": stories}
+    return {"urls": urls, "titles": by_title, "stories": stories}
 
 
 def _sure_repeat(story: dict, index: dict) -> dict | None:
-    """The sent story with this one's lead link or headline."""
+    """The sent story with this one's lead link or headline (ours or the publisher's)."""
     if story.get("url") in index["urls"]:
         return index["urls"][story["url"]]
-    title = str(story.get("title") or "").casefold()
-    return next((sent for sent, sent_title, *_ in index["stories"] if title and title == sent_title), None)
+    titles = index.get("titles") or {}
+    return next((titles[key] for key in sorted(_title_keys(story)) if key in titles), None)
 
 
 def _look_alikes(story: dict, index: dict) -> list[dict]:
@@ -600,7 +693,7 @@ def _story_groups(
     groups: list[dict] = []
     for cand in ranked:
         target = next((group for group in groups if
-                       cand["title"].casefold() == group["title"].casefold()
+                       _title_keys(cand) & _title_keys(group)
                        or _same_event_summary(cand, group)), None)
         if target is None:
             groups.append({
@@ -613,7 +706,7 @@ def _story_groups(
         # Only an exact-headline twin's links join the group's: tomorrow a link in
         # `urls` is a repeat outright, and a story merged by the looser same-event
         # check may be different news that never went out under its own headline.
-        if cand["title"].casefold() == target["title"].casefold():
+        if _title_keys(cand) & _title_keys(target):
             target["urls"] += [url for url in cand["urls"] if url not in target["urls"]]
         for domain in cand["sources"]:
             if domain not in target["sources"]:
@@ -1046,8 +1139,13 @@ def _favicon_stack(sources: list[str]) -> str:
     return f'<span style="white-space: nowrap;">{icons}</span>'
 
 
+def _shown_summary(story: dict) -> str:
+    """The summary readers see: the short brief, else the full summary."""
+    return str(story.get("brief") or story.get("summary") or "")
+
+
 def _clean_summary(text: str) -> str:
-    """Collapse whitespace. Summaries are always published in full."""
+    """Collapse whitespace. Never truncates: shortening is _brief's job."""
     return re.sub(r"\s+", " ", text or "").strip()
 
 
@@ -1059,12 +1157,12 @@ def _u16(value: str) -> int:
 
 
 def _sentences(text: str) -> list[str]:
-    """A summary's sentences; abbreviations (U.S., 5.1, initials) never split."""
+    """A summary's sentences; abbreviations (U.S., 5 p.m., 5.1, initials) never split."""
     clean = re.sub(r"\s+", " ", text or "").strip()
     if not clean:
         return []
     clean = re.sub(
-        r"\b(U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc|e\.g|i\.e)\.",
+        r"\b(U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc|e\.g|i\.e|a\.m|p\.m)\.",
         lambda m: m.group(0).replace(".", _ABBR_DOT), clean, flags=re.I,
     )
     clean = re.sub(r"\b([A-Z])\.", lambda m: m.group(1) + _ABBR_DOT, clean)
@@ -1077,7 +1175,8 @@ def _paragraphs(text: str) -> list[str]:
     """Split a summary into short paragraphs, like the feed's story view.
 
     Port of bodyParagraphs (frontend/lib/body-text.ts): sentences grouped up
-    to ~38 words / 230 chars, abbreviations (U.S., 5.1, initials) never split.
+    to ~38 words / 230 chars, abbreviations (U.S., 5 p.m., 5.1, initials)
+    never split.
     Keep the two in step so the builder preview matches the email.
     """
     paras: list[str] = []
@@ -1111,7 +1210,7 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
     app_link = _app_link(story)
     image_url = str(story.get("image") or "") if show_image else ""
     original = escape(story["url"])
-    # The feed's story layout: byline, title, full summary, inset image.
+    # The feed's story layout: byline, title, short summary (_brief), inset image.
     image = (
         f'<a href="{original}" style="display: block; margin: 14px 0 0 0; text-decoration: none;">'
         f'<img src="{escape(image_url)}" alt="" width="584" '
@@ -1141,7 +1240,7 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
         + "".join(
             f'<p style="margin: {10 if index == 0 else 12}px 0 0 0; font-size: 16px; color: {_TEXT}; '
             f'line-height: 25px; font-family: {_FONT};">{escape(para)}</p>'
-            for index, para in enumerate(_paragraphs(story["summary"]) if show_summary else [])
+            for index, para in enumerate(_paragraphs(_shown_summary(story)) if show_summary else [])
         )
         + image
         + "</td>"
@@ -1523,8 +1622,8 @@ def _text_version(
     for _, stories in sections:
         for story in stories:
             lines.append(story["title"])
-            if show_summary and story.get("summary"):
-                lines.extend(f"   {para}" for para in _paragraphs(story["summary"]))
+            if show_summary and _shown_summary(story):
+                lines.extend(f"   {para}" for para in _paragraphs(_shown_summary(story)))
             count = int(story.get("source_count") or 1)
             lines.append(
                 f"   {story['source_name']}"
@@ -1624,6 +1723,7 @@ def _sent_record(groups: list[dict], sections_seen: list[list[tuple[str, list[di
             for story in stories:
                 out.setdefault(story["url"], {
                     "title": story["title"],
+                    "source_title": story.get("source_title", ""),
                     "summary": _clean_summary(story.get("summary", ""))[:400],
                     "url": story["url"],
                     "urls": list(story.get("urls") or [story["url"]])[:SENT_URLS],
@@ -1658,7 +1758,7 @@ POOL_FIELDS = (
 def _web_story(story: dict, lane: str) -> dict:
     return {
         "title": story["title"],
-        "summary": _clean_summary(story.get("summary", "")),
+        "summary": _clean_summary(_shown_summary(story)),
         "url": story["url"],
         "source_name": story.get("source_name", ""),
         "image": story.get("image", ""),
@@ -1685,7 +1785,7 @@ def _publish_edition(store: FirestoreStore, groups: list[dict], date: str) -> in
     pool = [
         {
             **{field: group.get(field) for field in POOL_FIELDS},
-            "summary": _clean_summary(group.get("summary", "")),
+            "summary": _clean_summary(_shown_summary(group)),
             "sources": list(group.get("sources") or [])[:4],
         }
         for group in groups

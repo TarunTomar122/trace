@@ -181,8 +181,10 @@ function getTopicDisplay(topic: TrendingTopic) {
   return {
     isSingleton,
     article,
-    title: article?.title || topic.title,
-    summary: article?.summary?.short_article?.subtitle || article?.summary?.short_article?.body || topic.summary || '',
+    // Our own headline and the card written to follow it (the card never
+    // restates it); the subtitle restates the headline, so it is not shown.
+    title: article?.summary?.short_article?.headline || article?.title || topic.title,
+    summary: article?.summary?.short_article?.mobile_card_summary || article?.summary?.short_article?.body || topic.summary || '',
     thumbnail: article?.thumbnail || topic.thumbnail,
     readingTime: article?.summary?.reading_time_minutes,
   };
@@ -1236,7 +1238,8 @@ export default function UnifiedFeedScreen() {
         const topic = section.topic;
         const deckOverview = getTopicOverviewForDeck(topic);
         const primaryArticle = topic.articles?.[0];
-        const shareTitle = primaryArticle?.title || topic.title;
+        // The headline shown on the card (ours for one-article topics).
+        const shareTitle = getTopicDisplay(topic).title;
         const shareUrl = buildTopicCardShareUrl(topic, primaryArticle) || '';
         return wrap(
           <DeckStoryCard

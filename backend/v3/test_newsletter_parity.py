@@ -45,6 +45,9 @@ PARAGRAPH_SAMPLES = [
     "on the news. Traders now price a cut in December, e.g. at the next meeting. Bond yields fell "
     "for a third day, and the dollar slipped against the euro and the yen. Analysts were split!",
     "No final punctuation in this one but it keeps going for quite a while without stopping at all",
+    "Apple trades at 36 times earnings after a 25% rally since late June, nearly double the S&P 500. "
+    "Investors now wait for the fiscal fourth-quarter report on Monday at 5 p.m. ET, and the stock "
+    "moved 2% in after-hours trading at 7 a.m. on Tuesday as analysts revised their targets upward.",
     "🚀🚀 Launch day for the new model 🚀. " * 12,
 ]
 
@@ -123,8 +126,41 @@ class ParityTests(unittest.TestCase):
         actual = json.loads(result.stdout)
         for text, got in zip(PARAGRAPH_SAMPLES, actual):
             self.assertEqual(_paragraphs(text), got, text[:60])
+        # "5 p.m. ET" and "7 a.m." stay inside their sentences.
+        from v3.flows.send_audience_newsletter import _sentences
+        self.assertEqual(len(_sentences(PARAGRAPH_SAMPLES[5])), 2)
         # The long sample really is split, not one wall of text.
         self.assertGreater(len(_paragraphs(PARAGRAPH_SAMPLES[2])), 1)
+
+
+    def test_email_brief_matches_web_brief(self):
+        from v3.flows.send_audience_newsletter import _brief
+
+        cases = [
+            ["", ""],
+            ["A short card.", "Full one. Full two."],
+            ["word " * 61, "First sentence has five words. " * 20],
+            ["", "x " * 80 + "end. Second one."],
+            ["", PARAGRAPH_SAMPLES[4]],
+            ["", PARAGRAPH_SAMPLES[5]],
+        ]
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", BRIEF_RUNNER % json.dumps(TS_BODY_TEXT.as_uri())],
+            input=json.dumps(cases), capture_output=True, text=True, check=True,
+        )
+        for (card, full), got in zip(cases, json.loads(result.stdout)):
+            self.assertEqual(_brief(" ".join(card.split()), full), got, (card[:30], full[:30]))
+
+
+BRIEF_RUNNER = """
+import { shortBrief } from %s;
+const cases = JSON.parse(await new Promise((resolve) => {
+  let data = '';
+  process.stdin.on('data', (chunk) => { data += chunk; });
+  process.stdin.on('end', () => resolve(data));
+}));
+process.stdout.write(JSON.stringify(cases.map(([card, full]) => shortBrief(card, full))));
+"""
 
 
 if __name__ == "__main__":

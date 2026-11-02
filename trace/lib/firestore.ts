@@ -269,7 +269,8 @@ export interface FeedItem {
   summary?: {
     short_article?: {
       subtitle?: string;
-      headline?: string;  // For trending carousel
+      headline?: string;  // Our own headline; body and mobile_card_summary are written to follow it
+      mobile_card_summary?: string;
       slides?: string[];  // For trending carousel
       outline?: string[];
       body?: string;

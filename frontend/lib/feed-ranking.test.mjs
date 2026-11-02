@@ -223,3 +223,17 @@ test('isModelRelease accepts param-size launches and skips incident coverage', (
   assert.equal(isModelRelease({ source: 'AI/TLDR Models', title: 'Needle 2' }), true);
   assert.equal(isModelRelease({ title: 'OpenAI Unveils Alarming AI Model Misalignment Incidents' }), false);
 });
+
+test('isModelRelease also reads the lead coverage title and rollout verbs', () => {
+  // Our own headline is reworded; the publisher's title still names the launch.
+  assert.equal(isModelRelease({
+    title: 'Google tests Carbon with cyber defenders',
+    body: 'The AI models are in limited testing.',
+    coverage: [{ title: 'Google launches Gemini 4 Argon and Carbon AI models' }],
+  }), true);
+  assert.equal(isModelRelease({ title: 'Google rolls out Gemini 4 Argon', body: 'An AI model for coding.' }), true);
+  assert.equal(isModelRelease({
+    title: 'Judge lets NAACP case against xAI proceed',
+    coverage: [{ title: 'Judge lets NAACP case against xAI proceed' }],
+  }), false);
+});

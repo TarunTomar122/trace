@@ -19,6 +19,22 @@ from openai import OpenAI
 
 MODEL = "gpt-4o-mini"
 FOR_YOU_PROSE_MODEL = "gpt-6.1-terra"
+# Trending briefs (the feed and the daily email). gpt-4o-mini kept restating the
+# headline in the summary under it; in a 2026-11-02 test on 15 emailed stories
+# gpt-6-luna fixed that (0/15 vs 11/15) at a lower price than gpt-4o-mini.
+# A reasoning model: no temperature, low effort keeps it cheap. TRACE_TRENDING_MODEL
+# overrides it (a rollback needs no deploy); bump the trending cache buckets too
+# if the new model should rewrite what is already cached.
+TRENDING_MODEL = os.getenv("TRACE_TRENDING_MODEL", "").strip() or "gpt-6-luna"
+TRENDING_REASONING_EFFORT = "low"
+
+
+def trending_request_tuning(model: str = "") -> dict[str, Any]:
+    """Sampling settings for a trending call: reasoning models take an effort
+    and no temperature; older chat models take a temperature."""
+    if (model or TRENDING_MODEL).startswith(("gpt-5", "gpt-6", "o1", "o3", "o4")):
+        return {"reasoning_effort": TRENDING_REASONING_EFFORT}
+    return {"temperature": TEMPERATURE}
 TEMPERATURE = 0.3
 TIMEOUT = 45
 
@@ -26,7 +42,8 @@ SUMMARY_SYSTEM_PROMPT = """You are a rigorous editor at Trace, a professional te
 You return valid JSON only. No markdown code fences.
 Your summaries must be source-faithful, concrete, and dense with specific facts.
 Never write generic news filler, throat-clearing openers, or commentary that adds no new information.
-Body and key_takeaways must complement each other: the body tells the story; takeaways add distinct facts not already in the body."""
+Body and key_takeaways must complement each other: the body tells the story; takeaways add distinct facts not already in the body.
+Readers always see the story's headline right above your summary (the feed, the article page, the app, the daily email), so the summary must never restate or reword the headline: open with what the headline leaves out."""
 
 # ---------------------------------------------------------------------------
 # Technical depth detection from user profile
@@ -79,7 +96,7 @@ Return JSON with EXACT structure:
     "subtitle": "One sentence capturing the central idea or tension",
     "key_takeaways": ["4-6 concrete points with real specifics from the source"],
     "body": "Informative summary in markdown (see rules below)",
-    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -144,7 +161,7 @@ Return JSON with EXACT structure:
     "key_takeaways": ["4-6 specific, actionable takeaways"],
     "body": "Thorough analysis in markdown — see rules below",
     "why_it_matters": "2-3 sentences on the bigger-picture significance",
-    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -176,6 +193,13 @@ The reader wants two complementary layers that together feel fuller than a typic
 
 The body and takeaways must do different jobs. Do not make the takeaways restate the body.
 
+HEADLINE AND SUMMARY ARE ONE PAIR:
+Readers see your headline first, then the summary right under it (in the feed
+and in the daily email). The headline says what happened. Everything under it
+is read straight after, so it must add what the headline does not say: the key
+detail, number, how it works, or why it matters. The source's own title below
+is only a source; never reuse it as the headline.
+
 SOURCE:
 Title: {title}
 URL: {url}
@@ -187,7 +211,7 @@ Return JSON with EXACT structure:
   "interest_id": "One canonical interest id from the allowed list below",
   "short_article": {{
     "subtitle": "One short factual line (max 14 words) saying what changed",
-    "headline": "Short factual overlay headline (6-10 words max)",
+    "headline": "The headline readers see above the summary: a plain, factual news headline (6-12 words) saying who did what. No clickbait, no colon subtitle, no quote marks",
     "key_takeaways": [
       "3-5 one-sentence bullets with only additional concrete details"
     ],
@@ -196,8 +220,8 @@ Return JSON with EXACT structure:
       "Slide 2: The strongest supporting detail or concrete consequence (25-40 words)",
       "Slide 3 (optional): A second concrete detail only if it adds real information (20-35 words)"
     ],
-    "body": "A natural news paragraph, 3-5 sentences and about 100-160 words, that reads like a strong article lead",
-    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core news. Be concrete and punchy.",
+    "body": "A natural news paragraph, 3-5 sentences and about 100-160 words, read right after the headline: it opens with the most important fact the headline does not already say",
+    "mobile_card_summary": "1-2 sentences, max 45 words, plain prose — no markdown. Read right after the headline: add the key detail and why it matters. Never restate the headline.",
     "outline": []
   }},
   "reading_time_minutes": <estimated int>
@@ -255,8 +279,10 @@ RULES:
 - Never return legacy labels like technology, business-market, engineering, experience, leadership, productivity, climate, health, or web3.
 - Write like a sharp reporter, not a marketer.
 - The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
-- In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
-- Start the body with the strongest fact, demand, or development — not throat-clearing like "As X floods Y..." or "Users are calling for..."
+- In the body, cover what the headline leaves out: the main actors beyond the headline, and the most important concrete details and consequences from the source.
+- The headline already says who did what. The body's first sentence and the mobile_card_summary must not say it again in other words: open with the strongest fact the headline leaves out (the key number, how it works, who is affected, what changes).
+- Never open the body or mobile_card_summary with the headline's subject doing the headline's action ("Meituan has launched...", "OpenAI has unveiled...", "X has raised...") when the headline already says that.
+- No throat-clearing openers like "As X floods Y..." or "Users are calling for..."
 - Include the single best number, percentage, or date from the source in the body when one exists.
 - Do not write a generic first sentence followed by filler. Every sentence in the body must add real information.
 - Never write "Critics argue", "paying lip service", "underscores a trend", or other commentary that adds no new fact.
@@ -292,6 +318,16 @@ BAD KEY TAKEAWAY EXAMPLES:
 - The deal is part of a broader trend of investor interest.
 - Current AI labeling efforts on platforms like YouTube and Instagram are ineffective. (BAD if the body already says labeling is ineffective)
 
+The pair examples below show the shape only. Use facts from the SOURCE above, never from the examples.
+
+GOOD HEADLINE + SUMMARY PAIR:
+headline: Meituan launches LongCat-2.5 AI model for long coding tasks
+mobile_card_summary: It has 1.6 trillion parameters but uses only 48 billion at a time, and was trained on long, multi-step coding jobs. It's on Meituan's API now, with GitHub and Hugging Face releases planned.
+
+BAD HEADLINE + SUMMARY PAIR (the summary repeats the headline):
+headline: Meituan launches LongCat-2.5 AI model for long coding tasks
+mobile_card_summary: Meituan has launched LongCat-2.5, a multimodal AI model designed for extended coding tasks.
+
 BAD BODY EXAMPLE:
 "As AI-generated content floods social media, users are calling for platforms to introduce filters. Current labeling systems have proven ineffective. Critics argue that without user-controlled filtering options, platforms are merely paying lip service to the issue."
 """
@@ -316,7 +352,7 @@ Return JSON with EXACT structure:
     "subtitle": "One sentence capturing the main point — can use technical terms",
     "key_takeaways": ["3-4 key points — specific, technical, actionable"],
     "body": "Concise summary in markdown (see rules below)",
-    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -351,7 +387,7 @@ Return JSON with EXACT structure:
     "subtitle": "One sentence capturing the main point in plain language",
     "key_takeaways": ["3-4 key points — clear, practical insights"],
     "body": "Clear summary in markdown (see rules below)",
-    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -635,7 +671,9 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     if feed_type == "trending":
         # v14: robotics replaces engineering as a lane, so v13 cached
         # classifications regenerate (robot stories sat in ai/startups/tech).
-        return "trending_v14"  # stronger relevance gate for professional/news lane fit
+        # v15: headline + summary written as one pair (the summary never
+        # restates the headline readers see above it); cards always written.
+        return "trending_v15"
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -844,6 +882,15 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     return parsed
 
 
+def _summary_model(feed_type: str, output_format: str = "") -> str:
+    """The model generate_summary uses (and the cache records) for a feed type."""
+    if feed_type == "trending":
+        return TRENDING_MODEL
+    if feed_type != "deep_dives" and output_format != "cards":
+        return FOR_YOU_PROSE_MODEL
+    return MODEL
+
+
 def _get_client() -> OpenAI | None:
     key = os.getenv("OPENAI_API_KEY", "").strip()
     return OpenAI(api_key=key) if key else None
@@ -925,6 +972,7 @@ def generate_summary(
             '    "key_takeaways": ["..."],\n'
             '    "slides": ["Slide 1: ...", "Slide 2: ..."],\n'
             '    "body": "...",\n'
+            '    "mobile_card_summary": "...",\n'
             '    "outline": []\n'
             '  }},\n'
             '  "reading_time_minutes": <estimated int>\n'
@@ -952,9 +1000,7 @@ def generate_summary(
         content=content[:16000],
     )
 
-    model_name = MODEL
-    if feed_type not in ("trending", "deep_dives") and output_format != "cards":
-        model_name = FOR_YOU_PROSE_MODEL
+    model_name = _summary_model(feed_type, output_format)
 
     try:
         t0 = time.time()
@@ -970,7 +1016,9 @@ def generate_summary(
             "response_format": {"type": "json_object"},
             "timeout": TIMEOUT,
         }
-        if model_name != FOR_YOU_PROSE_MODEL:
+        if feed_type == "trending":
+            request_kwargs.update(trending_request_tuning(model_name))
+        elif model_name != FOR_YOU_PROSE_MODEL:
             request_kwargs["temperature"] = TEMPERATURE
         resp = client.chat.completions.create(**request_kwargs)
         elapsed = time.time() - t0
@@ -1021,11 +1069,12 @@ def get_or_generate_summary(
 
     summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth, output_format=output_format)
     if summary:
-        store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
+        store.save_cached_summary_v2(url, cache_bucket, summary, _summary_model(feed_type, output_format))
         return summary, False
     if error.startswith("rejected:"):
         store.save_cached_summary_v2(
-            url, cache_bucket, _rejection_payload(error.split(":", 1)[1]), MODEL
+            url, cache_bucket, _rejection_payload(error.split(":", 1)[1]),
+            _summary_model(feed_type, output_format),
         )
         return None, False
 
@@ -1144,12 +1193,13 @@ def batch_presummarize(
         try:
             summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth, output_format=output_format)
             if summary:
-                store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
+                store.save_cached_summary_v2(url, cache_bucket, summary, _summary_model(feed_type, output_format))
                 summary_map[url] = summary
                 return "generated", title[:50]
             if error.startswith("rejected:"):
                 store.save_cached_summary_v2(
-                    url, cache_bucket, _rejection_payload(error.split(":", 1)[1]), MODEL
+                    url, cache_bucket, _rejection_payload(error.split(":", 1)[1]),
+                    _summary_model(feed_type, output_format),
                 )
                 summary_map[url] = None
                 return "rejected", f"{title[:40]}: {error}"

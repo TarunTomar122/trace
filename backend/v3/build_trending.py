@@ -44,7 +44,12 @@ load_dotenv(BACKEND_ROOT.parent / ".environment")
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import batch_presummarize, generate_summary  # noqa: E402
+from v3.lib.summarizer import (  # noqa: E402
+    TRENDING_MODEL,
+    batch_presummarize,
+    generate_summary,
+    trending_request_tuning,
+)
 from v3.lib.interest_notifications import send_interest_notifications  # noqa: E402
 from v3.lib.diversity import (  # noqa: E402
     STOPWORDS as DIVERSITY_STOPWORDS,
@@ -495,7 +500,7 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
     # Named launches that never say "model": "<verb> Qwen3.8", "<verb> GPT-5".
     named_launch = re.search(
         r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
-        r"ships?|shipped|introduces?|introduced)\s+"
+        r"ships?|shipped|introduces?|introduced|rolls?\s+out|rolled\s+out|debuts?|debuted)\s+"
         r"(?:[A-Z][\w.-]*\d[\w.-]*"          # Qwen3.8, GPT-5
         r"|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b",  # Claude Opus 5
         title_text,
@@ -540,7 +545,8 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
     )
     has_verb = re.search(
         r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
-        r"ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b",
+        r"ships?|shipped|introduces?|introduced|rolls?\s+out|rolled\s+out|debuts?|debuted|"
+        r"open[- ]sourc(?:e|ed|ing))\b",
         verb_text,
         re.I,
     )
@@ -1389,6 +1395,21 @@ def _build_topic_timeline(
     return events
 
 
+def _lead_short_article(
+    items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> dict[str, Any] | None:
+    """The short_article of the best-ranked article that has a summary."""
+    for item in items:
+        summary = summary_map.get(str(item.get("url", "")).strip())
+        short = summary.get("short_article") if isinstance(summary, dict) else None
+        if not isinstance(short, dict):
+            continue
+        if str(short.get("body", "") or "").strip() or str(short.get("subtitle", "") or "").strip():
+            return short
+    return None
+
+
 def _lead_article_overview(
     items: list[dict[str, Any]],
     summary_map: dict[str, dict[str, Any] | None],
@@ -1400,17 +1421,26 @@ def _lead_article_overview(
     model call still leaves a real summary of the story rather than filler.
     Raw page content is never used: it is scraped navigation and bylines.
     """
-    for item in items:
-        summary = summary_map.get(str(item.get("url", "")).strip())
-        short = summary.get("short_article") if isinstance(summary, dict) else None
-        if not isinstance(short, dict):
-            continue
-        overview = str(short.get("body", "") or "").strip() or str(short.get("subtitle", "") or "").strip()
-        if not overview:
-            continue
-        takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
-        return overview, [str(point).strip() for point in takeaways if str(point).strip()][:5]
-    return "", []
+    short = _lead_short_article(items, summary_map)
+    if short is None:
+        return "", []
+    overview = str(short.get("body", "") or "").strip() or str(short.get("subtitle", "") or "").strip()
+    takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
+    return overview, [str(point).strip() for point in takeaways if str(point).strip()][:5]
+
+
+def _lead_article_headline(
+    items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> str:
+    """Our own headline for the article _lead_article_overview shows.
+
+    The summarizer writes headline and summary as one pair (the summary never
+    restates it), so a topic showing the lead's summary shows this headline,
+    not the publisher's title. Empty when the summary has none.
+    """
+    short = _lead_short_article(items, summary_map)
+    return str((short or {}).get("headline", "") or "").strip()
 
 
 # What the old template fallback wrote. Cached overviews like this are retried.
@@ -1429,7 +1459,8 @@ def _topic_cache_key(items: list[dict[str, Any]]) -> str:
         )
     )
     digest = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:40] if signature else "empty"
-    return f"trending_topic_v3:{digest}"
+    # v4: the overview never restates the title (the two are one pair).
+    return f"trending_topic_v4:{digest}"
 
 
 TOPIC_OVERVIEW_PROMPT = """You are a news editor writing a concise brief for a trending topic.
@@ -1439,6 +1470,11 @@ The reader wants two layers:
 2. A few skim bullets for readers who want only the most important extra details.
 
 The overview and the bullets must do different jobs. Do not make the bullets restate the overview.
+
+The title and the overview are one pair: readers see the title, then the
+overview right under it (in the feed and in the daily email). The title says
+what happened, so the overview must not say it again; it adds what the title
+leaves out.
 
 Given these timeline events, produce:
 1. A short natural headline
@@ -1451,14 +1487,15 @@ TIMELINE:
 Return JSON:
 {{
   "title": "Short natural headline (e.g. 'US-Iran Strikes Escalate', 'Apple Launches M5 Lineup')",
-  "overview": "2-3 sentences. What happened, who was involved, and the most important concrete detail.",
+  "overview": "2-3 sentences, read right after the title. Open with the most important concrete detail the title does not say; never restate the title.",
   "key_points": ["Specific fact with number or name", "Another concrete detail", "..."]
 }}
 
 RULES:
 - Title reads like a real news headline — NOT "X and Y" style
 - Overview is 2-3 sentences, should read like a natural paragraph, and should carry the core substance of the story
-- Overview must name the main entities involved when they are present in the timeline: companies, products, people, countries, places, agencies, or other specific nouns central to the story
+- The overview's first sentence must not restate the title in other words. Never open with the title's subject doing the title's action ("OpenAI has launched...", "X has raised...") when the title already says that; open with the key number, how it works, who is affected, or what changes
+- Name the other entities that matter when they are present in the timeline: companies, products, people, countries, places, agencies, or other specific nouns central to the story
 - Every sentence in the overview must add new information. Do not write a generic opener plus filler.
 - Use **bold** for key names, numbers, and prices in bullet points
 - Bullet points should be specific and scannable — include the actual names, products, places, dates, prices, counts, or other concrete facts when they appear in the timeline
@@ -1471,6 +1508,16 @@ RULES:
 - Write each bullet as one complete sentence with real information, not fragments and not mini-paragraphs.
 - If there are no good additive bullets, return an empty list instead of repeating the overview.
 - No commentary, predictions, or "what this means for the industry" fluff
+
+The examples below show the shape only. Use facts from the TIMELINE above, never from the examples.
+
+GOOD TITLE + OVERVIEW:
+title: North Korea Linked to $6.3 Billion Binance Crypto Heist
+overview: The FBI blames the group TraderTraitor. North Korea-linked hackers caused 76% of all crypto hack losses in the first four months of the year.
+
+BAD (the overview repeats the title):
+title: North Korea Linked to $6.3 Billion Binance Crypto Heist
+overview: North Korean hackers are suspected of a record $6.3 billion theft from Binance.
 """
 
 
@@ -1732,7 +1779,11 @@ def _build_singleton_topic_overview(
     fallback_title: str,
     summary_map: dict[str, dict[str, Any] | None],
 ) -> tuple[str, str, list[str], bool]:
-    title = str(item.get("title", "")).strip() or fallback_title
+    title = (
+        _lead_article_headline([item], summary_map)
+        or str(item.get("title", "")).strip()
+        or fallback_title
+    )
     overview, key_points = _lead_article_overview([item], summary_map)
     return title, overview, key_points, bool(overview)
 
@@ -1818,8 +1869,10 @@ def _build_topic_overview(
             )
 
     lead_overview, lead_points = _lead_article_overview(items, summary_map)
+    # The lead's summary goes with the lead's own headline (one pair).
+    lead_title = (_lead_article_headline(items, summary_map) if lead_overview else "") or fallback_title
     if not timeline:
-        return fallback_title, lead_overview, lead_points, False
+        return lead_title, lead_overview, lead_points, False
 
     timeline_text = _build_topic_prompt_context(items, timeline, summary_map)
 
@@ -1834,12 +1887,14 @@ def _build_topic_overview(
     try:
         t0 = _time.time()
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            # The same model as the article briefs (summarizer.TRENDING_MODEL):
+            # gpt-4o-mini kept restating the title in the overview.
+            model=TRENDING_MODEL,
             messages=[
                 {"role": "system", "content": "Return valid JSON only."},
                 {"role": "user", "content": TOPIC_OVERVIEW_PROMPT.format(timeline=timeline_text)},
             ],
-            temperature=0.3,
+            **trending_request_tuning(TRENDING_MODEL),
             response_format={"type": "json_object"},
             timeout=45,
         )
@@ -1860,10 +1915,10 @@ def _build_topic_overview(
     except Exception as exc:
         _log(f"  Topic overview LLM failed for {topic_id}: {exc}")
         # Not cached, so the next run writes the real overview.
-        return fallback_title, lead_overview, lead_points, False
+        return lead_title, lead_overview, lead_points, False
 
     if not overview:
-        return fallback_title, lead_overview, lead_points, False
+        return lead_title, lead_overview, lead_points, False
 
     overview, key_points = _normalize_topic_overview_output(
         overview=overview,

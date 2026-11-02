@@ -50,7 +50,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn('"Figure raises $1B for its humanoids" -> robotics', TRENDING_BRIEF)
 
     def test_cached_classifications_regenerate(self) -> None:
-        self.assertEqual(_cache_bucket("trending"), "trending_v14")
+        self.assertEqual(_cache_bucket("trending"), "trending_v15")
 
     def test_build_maps_cached_engineering_to_tech(self) -> None:
         self.assertEqual(_normalize_trending_interest_id("engineering"), "tech")

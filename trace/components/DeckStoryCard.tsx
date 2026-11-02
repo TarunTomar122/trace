@@ -58,9 +58,12 @@ function isRealImage(url?: string | null): boolean {
 function getTopicDisplay(topic: TrendingTopic) {
   const isSingleton = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
   const article = isSingleton ? (topic.articles?.[0] ?? null) : null;
+  const short = article?.summary?.short_article;
+  // Our own headline and the card written to follow it (the card never
+  // restates it); the subtitle restates the headline, so it is not shown.
   return {
-    title: article?.title || topic.title,
-    summary: article?.summary?.short_article?.subtitle || article?.summary?.short_article?.body || topic.summary || '',
+    title: short?.headline || article?.title || topic.title,
+    summary: short?.mobile_card_summary || short?.body || topic.summary || '',
     thumbnail: article?.thumbnail || topic.thumbnail,
   };
 }
