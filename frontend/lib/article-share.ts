@@ -40,7 +40,7 @@ export function getPublicStoryCta(options: {
     headerLabel: 'Get started',
     promoTitle: 'Build your own personalized feed',
     promoCopy:
-      'Trace turns the stories you care about into one daily brief — AI summaries, key takeaways, and trending topics picked for you.',
+      'Trace turns the stories you care about into one daily brief — AI summaries and trending topics picked for you.',
     buttonLabel: 'Build my feed',
     showPromo: true,
   };

@@ -224,7 +224,7 @@ export default function AgentsPage() {
               <ul>
                 <li><Check size={17} strokeWidth={2.4} className="ag-yes" aria-hidden="true" />Today’s structured Trace feed</li>
                 <li><Check size={17} strokeWidth={2.4} className="ag-yes" aria-hidden="true" />Grouped news, builds, and conversations</li>
-                <li><Check size={17} strokeWidth={2.4} className="ag-yes" aria-hidden="true" />Summaries, takeaways, timestamps, and source links</li>
+                <li><Check size={17} strokeWidth={2.4} className="ag-yes" aria-hidden="true" />Summaries, timestamps, and source links</li>
               </ul>
             </div>
             <div>

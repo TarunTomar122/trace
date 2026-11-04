@@ -29,7 +29,6 @@ type SitemapTopicCandidate = {
   article_count?: number
   source_count?: number
   timeline?: Array<unknown>
-  key_points?: string[]
   articles?: Array<unknown>
 }
 
@@ -40,7 +39,6 @@ type SitemapArticleCandidate = {
       subtitle?: string
       slides?: string[]
       body?: string
-      key_takeaways?: string[]
       why_it_matters?: string
     }
   }
@@ -65,16 +63,12 @@ function isIndexableArticle(candidate: SitemapArticleCandidate): boolean {
   const slides = Array.isArray(shortArticle?.slides)
     ? shortArticle.slides.map((slide) => normalizeText(slide)).filter(Boolean)
     : []
-  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
-    ? shortArticle.key_takeaways.map((item) => normalizeText(item)).filter(Boolean)
-    : []
 
   return (
     (body.length > 80 && body.toLowerCase() !== title) ||
     (subtitle.length > 40 && subtitle.toLowerCase() !== title) ||
     whyItMatters.length > 40 ||
-    slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title) ||
-    keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title)
+    slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title)
   )
 }
 

@@ -8,7 +8,7 @@ Used by v3.flows.post_reel. Steps, each its own function so a run can be checked
   make_voice(script, folder)       -> voice.mp3 + word timings (Runway ElevenLabs v3, OpenAI whisper-1)
   render(script, stories, timings, folder, date_label) -> reel.mp4 and cover.jpg
 
-Each story dict needs: title, source, paragraphs (list), points (list), lane.
+Each story dict needs: title, source, paragraphs (list), lane.
 """
 
 from __future__ import annotations
@@ -202,7 +202,6 @@ def word_range(count: int) -> tuple[int, int]:
 def stories_block(stories: list[dict[str, Any]]) -> str:
     return "\n\n".join(
         f"{i + 1}. HEADLINE: {s['title']} (source: {s['source']}; topic: {s['lane']})\n" + "\n".join(s["paragraphs"])
-        + "\n" + "\n".join(f"- {p}" for p in s["points"])
         for i, s in enumerate(stories)
     )
 

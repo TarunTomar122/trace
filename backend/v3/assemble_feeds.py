@@ -194,26 +194,8 @@ def _derive_worth_reading_summary(item: dict[str, Any]) -> dict[str, Any]:
     short = summary.get("short_article", {}) if isinstance(summary.get("short_article"), dict) else {}
     subtitle = str(short.get("subtitle", "")).strip()
     body = str(short.get("body", "")).strip()
-    key_takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
 
-    takeaways: list[str] = []
-
-    if key_takeaways:
-        takeaways = [
-            " ".join(str(point).split()).strip()
-            for point in key_takeaways
-            if str(point).strip()
-        ][:3]
-
-    paragraph_sources = [
-        text for text in [
-            subtitle,
-            body,
-        ]
-        if str(text).strip()
-    ]
-    if takeaways:
-        paragraph_sources.extend(takeaways)
+    paragraph_sources = [text for text in [subtitle, body] if str(text).strip()]
 
     paragraphs = _to_paragraphs(paragraph_sources)
     if not paragraphs:
@@ -227,7 +209,6 @@ def _derive_worth_reading_summary(item: dict[str, Any]) -> dict[str, Any]:
 
 def _make_topic_now_entry(topic: dict[str, Any]) -> dict[str, Any]:
     display_summary = str(topic.get("summary", "")).strip()
-    key_points = topic.get("key_points") if isinstance(topic.get("key_points"), list) else []
     normalized_interest = _normalize_interest_id(str(topic.get("interest_id", "")))
     return {
         "id": f"mf_topic_{topic.get('id', '')}",
@@ -240,7 +221,6 @@ def _make_topic_now_entry(topic: dict[str, Any]) -> dict[str, Any]:
         "source_count": topic.get("source_count", 0),
         "article_count": topic.get("article_count", 0),
         "display_summary": display_summary,
-        "display_key_points": [str(point).strip() for point in key_points if str(point).strip()][:3],
     }
 
 
@@ -256,7 +236,6 @@ def _make_worth_reading_entry(item: dict[str, Any]) -> dict[str, Any]:
         "source_count": 1,
         "article_count": 1,
         "display_summary": worth_summary["paragraphs"][0] if worth_summary["paragraphs"] else "",
-        "display_key_points": worth_summary["paragraphs"],
         "worth_reading": worth_summary,
     }
 

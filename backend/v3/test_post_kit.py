@@ -24,10 +24,9 @@ def article(url, source, title="A headline", thumbnail="", when=FRESH):
     return {"url": url, "source_name": source, "title": title, "thumbnail": thumbnail, "published_date": when}
 
 
-def topic(tid, title, sources, summary="Summary sentence one. Sentence two.", points=None, when=FRESH, image=True, **extra):
+def topic(tid, title, sources, summary="Summary sentence one. Sentence two.", when=FRESH, image=True, **extra):
     return {
         "id": tid, "title": title, "interest_id": "ai", "summary": summary, "source_count": len(sources),
-        "key_points": points if points is not None else ["Point one", "Point two"],
         "articles": [article(f"https://{s.lower().replace(' ', '')}.com/{tid}", s, f"{s} on {title}",
                              f"https://img.example/{tid}-{i}.jpg" if image else "", when) for i, s in enumerate(sources)],
         "last_updated_at": when, "first_seen_at": when,

@@ -41,7 +41,6 @@ const elements = {
   readerSource: document.querySelector('#reader-source'),
   readerTitle: document.querySelector('#reader-title'),
   readerBody: document.querySelector('#reader-body'),
-  readerTakeaways: document.querySelector('#reader-takeaways'),
   readerLink: document.querySelector('#reader-link'),
   readerShare: document.querySelector('#reader-share'),
 };
@@ -239,25 +238,14 @@ async function openReader(article) {
   } catch (error) {
       console.error('Trace could not save reading progress', error);
       renderStorageError();
-      elements.readerTakeaways.replaceChildren();
-      elements.readerTakeaways.hidden = true;
       elements.reader.showModal();
       return;
   }
 
   if (access === 'allowed') {
     renderReaderContent(article);
-    elements.readerTakeaways.replaceChildren();
-    article.keyTakeaways.forEach((takeaway) => {
-      const item = document.createElement('li');
-      item.textContent = takeaway;
-      elements.readerTakeaways.append(item);
-    });
-    elements.readerTakeaways.hidden = article.keyTakeaways.length === 0;
   } else {
     renderReadLimit();
-    elements.readerTakeaways.replaceChildren();
-    elements.readerTakeaways.hidden = true;
   }
   elements.reader.showModal();
 }

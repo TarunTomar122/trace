@@ -10,7 +10,6 @@ const GLOBAL_FEED_LOOKBACK_DOCS = 2;
 const MAX_SUMMARY_BODY_CHARS = 2200;
 const MAX_SUMMARY_SUBTITLE_CHARS = 280;
 const MAX_WHY_IT_MATTERS_CHARS = 420;
-const MAX_KEY_TAKEAWAYS = 4;
 const MAX_SOURCES = 5;
 const MAX_SIGNALS = 6;
 const MAX_TOPIC_TIMELINE = 6;
@@ -219,11 +218,6 @@ function sanitizeFeedItem(item: FeedItem): FeedItem {
             ? {
                 subtitle: trimText(shortArticle.subtitle, MAX_SUMMARY_SUBTITLE_CHARS),
                 body: trimText(shortArticle.body, MAX_SUMMARY_BODY_CHARS),
-                key_takeaways: Array.isArray(shortArticle.key_takeaways)
-                  ? shortArticle.key_takeaways
-                      .filter((point): point is string => typeof point === 'string' && point.trim().length > 0)
-                      .slice(0, MAX_KEY_TAKEAWAYS)
-                  : undefined,
                 why_it_matters: trimText(shortArticle.why_it_matters, MAX_WHY_IT_MATTERS_CHARS),
               }
             : undefined,
@@ -249,11 +243,6 @@ function sanitizeTrendingTopic(topic: TrendingTopic): TrendingTopic {
   return {
     ...topic,
     summary: trimText(topic.summary, 700) || '',
-    key_points: Array.isArray(topic.key_points)
-      ? topic.key_points
-          .filter((point): point is string => typeof point === 'string' && point.trim().length > 0)
-          .slice(0, MAX_KEY_TAKEAWAYS)
-      : undefined,
     timeline: sanitizeTopicTimeline(topic.timeline),
     articles: Array.isArray(topic.articles)
       ? topic.articles.slice(0, MAX_TOPIC_ARTICLES).map(sanitizeFeedItem)

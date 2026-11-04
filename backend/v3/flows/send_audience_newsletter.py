@@ -311,7 +311,7 @@ def _brief(card: str, full: str) -> str:
 def _summary_text(value: Any) -> str:
     """Stories carry either a string summary or a structured dict.
 
-    The dict shape (shortarticle/body, headline, slides, keytakeaways ...)
+    The dict shape (shortarticle/body, headline, slides ...)
     must never reach the email as a raw repr.
     """
     if isinstance(value, str):

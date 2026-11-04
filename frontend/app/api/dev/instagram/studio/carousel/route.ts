@@ -80,20 +80,21 @@ function paragraphize(topic: Topic): string {
   const parts: string[] = [];
   const summary = deckLine(String(topic.summary || topic.overview || ''));
   if (summary) parts.push(summary);
-  const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
-  for (const raw of keyPoints.slice(0, 2)) {
-    const point = deckLine(String(raw || ''));
-    if (point) parts.push(point);
-  }
   if (!parts.length) parts.push('This story is gaining momentum across multiple sources and signals today.');
   return parts.slice(0, 3).join('\n\n');
 }
 
 function detailPoints(topic: Topic): string[] {
-  const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
-  const points = keyPoints
+  // Single articles carry their own summary slides; grouped topics use their
+  // lead article's. Lines the intro slide already says are dropped.
+  const lead = Array.isArray(topic.articles) ? topic.articles[0] : undefined;
+  const leadShort = lead && typeof lead === 'object' ? shortArticle(lead as Topic) : {};
+  const leadSlides = Array.isArray(leadShort.slides) ? leadShort.slides : [];
+  const detail = Array.isArray(topic.detail_points) ? topic.detail_points : leadSlides;
+  const intro = paragraphize(topic);
+  const points = detail
     .map((raw) => deckLine(String(raw || '')))
-    .filter(Boolean)
+    .filter((point) => point && !intro.includes(point))
     .slice(0, 3);
   if (points.length > 0) return points;
 
@@ -173,11 +174,8 @@ function trendingItemSummary(item: Topic): string {
   return slides.join(' ') || body || subtitle || deckLine(String(item.description || ''));
 }
 
-function trendingItemKeyPoints(item: Topic): string[] {
+function trendingItemDetailPoints(item: Topic): string[] {
   const short = shortArticle(item);
-  const keyPoints = Array.isArray(short.key_points) ? short.key_points : [];
-  const fromKeys = keyPoints.map((point) => deckLine(String(point || ''))).filter(Boolean).slice(0, 3);
-  if (fromKeys.length) return fromKeys;
   const slides = Array.isArray(short.slides) ? short.slides : [];
   const fromSlides = slides.map((slide) => deckLine(String(slide || ''))).filter(Boolean).slice(0, 3);
   if (fromSlides.length) return fromSlides;
@@ -197,7 +195,7 @@ function standaloneTrendingTopic(item: Topic, index: number): Topic {
     id: rawId,
     title: cleanSentence(String(item.title || '')),
     summary: trendingItemSummary(item),
-    key_points: trendingItemKeyPoints(item),
+    detail_points: trendingItemDetailPoints(item),
     article_count: 1,
     source_count: sourceName ? 1 : 0,
     timeline: sourceName ? [{ id: rawId, source_name: sourceName, article_url: item.url }] : [],
@@ -284,7 +282,7 @@ function titlePromptContext(topic: Topic, index: number): string {
   return [
     `${index} | ${inferCategory(topic).toUpperCase()} | ${norm(String(topic.title || ''))}`,
     summary ? `Summary: ${summary}` : '',
-    points ? `Key points:\n${points}` : '',
+    points ? `Details:\n${points}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -299,17 +297,17 @@ async function aiSmartPickAndRewrite(
   const prompt = `You are a social media editor for Trace, a bold AI/tech news app. Pick the ${count} most juicy, surprising stories from this list and rewrite their headlines to be punchy and fun.
 
 PICK: most surprising, specific, dramatic. Real names, numbers, shocking twists beat vague stories.
-Use the summary/key points to find the weirdest or most specific hook. Do not merely shorten the original title.
+Use the summary/details to find the weirdest or most specific hook. Do not merely shorten the original title.
 
 HEADLINE RULES:
 - 5-8 words max. Short = bold.
 - Conversational and punchy — write like a friend texting you breaking news
 - Use strong active verbs: fired, dropped, banned, bought, leaked, killed, exposed
 - Make it feel urgent or surprising. Raise eyebrows.
-- Prefer concrete details from key points: dollars, percentages, names, deadlines, product names, surprising comparisons
+- Prefer concrete details from the summary and details: dollars, percentages, names, deadlines, product names, surprising comparisons
 - NO purpose clauses ("to improve X", "in order to Y")
 - NO boring filler ("enhances", "improves", "advances", "updates", "boosts")
-- If the key points contain a better hook than the original title, use that.
+- If the details contain a better hook than the original title, use that.
 
 GREAT EXAMPLES:
 - "Google quietly killed your favorite Chrome feature"
@@ -368,7 +366,7 @@ RULES:
 - Conversational — write like a friend texting you breaking news
 - Strong active verbs: fired, dropped, banned, bought, leaked, killed, exposed
 - Make it feel urgent or surprising
-- Use summary/key points to find the funniest, weirdest, or most specific detail
+- Use the summary/details to find the funniest, weirdest, or most specific detail
 - Prefer numbers, names, sharp comparisons, and stakes over generic product wording
 - NO filler: no "enhances", "improves", "advances", "updates", "boosts", "to do X"
 
@@ -503,20 +501,26 @@ function buildSlides(
         ? String(topic.url || '')
         : `${origin}/topics/${encodeURIComponent(topicId)}`,
     };
+    const introBody = paragraphize(topic);
     slides.push({
       ...common,
       id: `${topicId}-intro`,
       slideType: 'story',
-      body: paragraphize(topic),
+      body: introBody,
       imageUrl: String(topic.thumbnail || ''),
     });
-    slides.push({
-      ...common,
-      id: `${topicId}-detail`,
-      slideType: 'detail',
-      body: detailPoints(topic).join('\n\n'),
-      imageUrl: '',
-    });
+    const details = detailPoints(topic);
+    const detailBody = details.join('\n\n');
+    // No detail slide that only repeats the intro (a topic with no slides of its own).
+    if (details.some((point) => !introBody.includes(point))) {
+      slides.push({
+        ...common,
+        id: `${topicId}-detail`,
+        slideType: 'detail',
+        body: detailBody,
+        imageUrl: '',
+      });
+    }
   });
 
   return slides;

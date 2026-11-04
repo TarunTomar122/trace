@@ -45,7 +45,6 @@ SUMMARIES = {
     LEAD["url"]: {
         "short_article": {
             "body": "Anthropic's red team found small open models can copy themselves onto smart TVs.",
-            "key_takeaways": ["The test used devices with 4GB of RAM."],
         }
     }
 }
@@ -67,10 +66,9 @@ class TopicOverviewFallbackTests(unittest.TestCase):
     def test_model_failure_uses_the_lead_article_and_is_not_cached(self):
         client = MagicMock()
         client.chat.completions.create.side_effect = RuntimeError("401 token_invalidated")
-        (title, overview, points, from_cache), store = overview_with(client)
+        (title, overview, from_cache), store = overview_with(client)
         self.assertEqual(title, LEAD["title"])
         self.assertIn("red team", overview)
-        self.assertEqual(points, ["The test used devices with 4GB of RAM."])
         self.assertFalse(from_cache)
         self.assertEqual(store.cache, {})
 
@@ -80,28 +78,27 @@ class TopicOverviewFallbackTests(unittest.TestCase):
         reply.choices = [MagicMock()]
         reply.choices[0].message.content = (
             '{"title": "Anthropic Warns AI Could Self-Replicate on Smart Devices",'
-            ' "overview": "Anthropic signals that small models could spread to smart TVs amid market volatility.",'
-            ' "key_points": []}'
+            ' "overview": "Anthropic signals that small models could spread to smart TVs amid market volatility."}'
         )
         client = MagicMock()
         client.chat.completions.create.return_value = reply
-        (title, overview, _points, _cached), store = overview_with(client)
+        (title, overview, _cached), store = overview_with(client)
         self.assertEqual(title, "Anthropic Warns AI Could Self-Replicate on Smart Devices")
         self.assertTrue(overview.startswith("Anthropic signals that small models"))
         self.assertEqual(len(store.cache), 1)
+        self.assertNotIn("key_points", next(iter(store.cache.values())))
 
     def test_cached_template_overview_is_retried(self):
         store = FakeStore()
         store.cache[_topic_cache_key(ITEMS)] = {
             "title": "Soon and Anthropic",
             "overview": "Soon and Anthropic saw 3 notable updates in the last 24 hours across 3 sources.",
-            "key_points": [],
         }
         client = MagicMock()
         client.chat.completions.create.side_effect = RuntimeError("down")
         timeline = _build_topic_timeline("tt_x", ITEMS, SUMMARIES)
         with patch("openai.OpenAI", return_value=client):
-            title, overview, _points, from_cache = _build_topic_overview(
+            title, overview, from_cache = _build_topic_overview(
                 store, "tt_x", LEAD["title"], ITEMS, timeline, SUMMARIES
             )
         self.assertEqual(title, LEAD["title"])
@@ -112,10 +109,10 @@ class TopicOverviewFallbackTests(unittest.TestCase):
         reply = MagicMock()
         reply.usage = None
         reply.choices = [MagicMock()]
-        reply.choices[0].message.content = '{"title": "Something", "overview": "", "key_points": []}'
+        reply.choices[0].message.content = '{"title": "Something", "overview": ""}'
         client = MagicMock()
         client.chat.completions.create.return_value = reply
-        (title, overview, _points, from_cache), store = overview_with(client)
+        (title, overview, from_cache), store = overview_with(client)
         self.assertEqual(title, LEAD["title"])
         self.assertIn("red team", overview)
         self.assertFalse(from_cache)
@@ -132,18 +129,18 @@ class TopicOverviewFallbackTests(unittest.TestCase):
         timeline = _build_topic_timeline("tt_x", ITEMS, SUMMARIES)
         with patch("openai.OpenAI", return_value=client):
             result = _build_topic_overview(store, "tt_x", LEAD["title"], ITEMS, timeline, SUMMARIES)
+        # Entries cached before the bullets were dropped still carry key_points; they are ignored.
         self.assertEqual(result, (
             "Anthropic Warns of Self-Copying AI",
             "Anthropic found small models can copy themselves onto smart TVs.",
-            ["The test used 4GB devices."],
             True,
         ))
         client.chat.completions.create.assert_not_called()
 
     def test_singleton_without_summary_has_no_filler(self):
-        title, overview, points, from_cache = _build_singleton_topic_overview(EXTRA[0], "fallback", {})
+        title, overview, from_cache = _build_singleton_topic_overview(EXTRA[0], "fallback", {})
         self.assertEqual(title, EXTRA[0]["title"])
-        self.assertEqual((overview, points, from_cache), ("", [], False))
+        self.assertEqual((overview, from_cache), ("", False))
 
 
 if __name__ == "__main__":

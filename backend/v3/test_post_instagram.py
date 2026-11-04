@@ -84,7 +84,6 @@ def topic(i, lane="tech", **extra):
         "id": f"tt_{i}",
         "title": TITLES[i],
         "summary": f"Company {i} shipped a product. It costs ${i}0. Reviews are in.",
-        "key_points": [f"Point one about {i}.", f"Point two about {i}.", f"Point three about {i}."],
         "thumbnail": f"https://img.example/{i}.jpg",
         "interest_id": lane,
         "articles": [{"url": f"https://news.example/story-{i}?utm=x"}],
@@ -140,7 +139,7 @@ class PickTests(unittest.TestCase):
         topics = [
             topic(1), topic(2), topic(3),
             topic(4, jev_send_worthy=0),
-            topic(5, summary="", key_points=[]),
+            topic(5, summary=""),
             topic(6, thumbnail="", articles=[]),
             topic(7),
         ]

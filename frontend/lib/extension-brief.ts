@@ -18,7 +18,6 @@ export type ExtensionArticle = {
   share_url?: string;
   thumbnail?: string;
   published_at?: string;
-  key_takeaways: string[];
 };
 
 export type ExtensionBrief = {
@@ -142,9 +141,6 @@ function toExtensionArticle(item: FeedItem): ExtensionArticle | null {
     content,
     source_url: sourceUrl,
     ...(shareUrl ? { share_url: shareUrl } : {}),
-    key_takeaways: Array.isArray(short?.key_takeaways)
-      ? short.key_takeaways.map(cleanDisplayText).filter(Boolean).slice(0, 4)
-      : [],
     tag,
     ...(source ? { source } : {}),
     ...(thumbnail ? { thumbnail } : {}),

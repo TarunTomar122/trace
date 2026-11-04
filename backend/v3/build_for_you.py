@@ -52,6 +52,7 @@ from v3.lib.pulse_common import (  # noqa: E402
     signal_score as _shared_signal_score,
 )
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
+from v3.lib.summarizer import without_takeaways  # noqa: E402
 from v1.tools.youtube_transcript import fetch_youtube_transcript  # noqa: E402
 
 try:
@@ -369,8 +370,7 @@ TRANSCRIPT:
 Return JSON with EXACT structure:
 {{
   "headline": "Short factual headline",
-  "overview": "2-3 sentence overview focused on what is interesting and why it matters",
-  "key_points": ["3-5 concrete points with specific features, products, numbers, capabilities, tradeoffs, or implications"]
+  "overview": "3-5 sentence overview focused on what is interesting and why it matters, with the specific features, products, numbers, capabilities, or tradeoffs that carry it"
 }}
 
 RULES:
@@ -380,7 +380,6 @@ RULES:
 - Be faithful to the transcript
 - Headline should be short and natural, not clickbait
 - Overview should carry the main value, not just restate the title
-- Key points should be specific and additive, not paraphrases of the overview
 """
 
 
@@ -456,19 +455,12 @@ def _fetch_recent_channel_videos(limit: int = FOR_YOU_VIDEO_SCAN_LIMIT) -> list[
 def _normalize_video_summary(raw: dict[str, Any], transcript: str, source_title: str) -> dict[str, Any]:
     headline = str(raw.get("headline", "")).strip() or source_title
     overview = " ".join(str(raw.get("overview", "")).split()).strip()
-    key_points = raw.get("key_points") if isinstance(raw.get("key_points"), list) else []
-    cleaned_points = [
-        " ".join(str(point).split()).strip()
-        for point in key_points
-        if str(point).strip()
-    ][:5]
     subtitle = _first_sentence(overview) or headline
     return {
         "title": headline,
         "short_article": {
             "subtitle": subtitle,
             "why_it_matters": "",
-            "key_takeaways": cleaned_points,
             "body": overview,
             "bottom_line": "",
         },
@@ -505,7 +497,7 @@ def _generate_daily_video_summary(
             if isinstance(cached_summary, dict):
                 return {
                     "video": video,
-                    "summary": cached_summary,
+                    "summary": without_takeaways(cached_summary),
                     "cached": True,
                 }
 
@@ -1425,7 +1417,6 @@ def _normalize_markdown_brief(markdown: str, role: str = "") -> dict[str, Any]:
         "short_article": {
             "subtitle": subtitle,
             "why_it_matters": "",
-            "key_takeaways": [],
             "body": body,
             "bottom_line": "",
         },

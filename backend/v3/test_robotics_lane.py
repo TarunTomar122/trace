@@ -21,7 +21,7 @@ from v3.lib.summarizer import TRENDING_BRIEF, _cache_bucket, _normalize_trending
 def _summary(interest_id: str) -> dict:
     return {
         "interest_id": interest_id,
-        "short_article": {"subtitle": "Line.", "body": "Body text.", "key_takeaways": []},
+        "short_article": {"subtitle": "Line.", "body": "Body text."},
     }
 
 

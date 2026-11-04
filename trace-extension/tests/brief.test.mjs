@@ -24,7 +24,6 @@ function article(id, channel = 'edition') {
     tag: 'AI',
     source_url: `https://example.com/${id}`,
     source: 'Example',
-    key_takeaways: [],
   };
 }
 

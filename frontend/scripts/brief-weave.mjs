@@ -18,7 +18,6 @@ async function getItems() {
     const sa = it?.summary?.short_article || {};
     return {
       title: it?.title, subtitle: sa.subtitle || '',
-      takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       body: (sa.body || it?.description || '').replace(/\s+/g, ' ').slice(0, 700),
       source: it?.metadata?.why_relevant?.split('•').pop()?.trim() || '',
     };
@@ -67,7 +66,6 @@ async function main() {
   const itemList = items.map((s, i) => {
     const parts = [`[${i + 1}] ${s.title}${s.source ? ` (${s.source})` : ''}`];
     if (s.subtitle) parts.push(`    ${s.subtitle}`);
-    if (s.takeaways.length) parts.push(`    Key: ${s.takeaways.join('; ')}`);
     if (s.body) parts.push(`    ${s.body}`);
     return parts.join('\n');
   }).join('\n\n');

@@ -32,20 +32,19 @@ class DailyPulseSummaryTest(unittest.TestCase):
         text = "First detailed paragraph.\n\nSecond detailed paragraph."
         self.assertEqual(_normalize_item_summary("blogs", text), text)
 
-    def test_blog_prompt_requires_replacement_brief_and_takeaways(self) -> None:
+    def test_blog_prompt_requires_replacement_brief_without_takeaways(self) -> None:
         prompt = _summary_instructions("blogs")
         self.assertIn("replacement brief", prompt)
         self.assertIn("numbers, evidence, constraints", prompt)
-        self.assertIn("key_takeaways array", prompt)
+        self.assertNotIn("key_takeaways", prompt)
         self.assertIn("does not support", prompt)
 
-    def test_flattened_blog_takeaways_are_structured(self) -> None:
+    def test_inline_blog_takeaways_are_cut(self) -> None:
         summary = _normalize_summary_payload(
             "blogs",
             "Concrete brief.\n\nKey takeaways: - First lesson. - Second lesson.",
         )
-        self.assertEqual(summary["body"], "Concrete brief.")
-        self.assertEqual(summary["key_takeaways"], ["First lesson.", "Second lesson."])
+        self.assertEqual(summary, {"body": "Concrete brief."})
 
     def test_builder_focus_prefers_ai_engineering_over_sales_content(self) -> None:
         ai_score = _builder_focus_score({
@@ -105,7 +104,7 @@ class DailyPulseSummaryTest(unittest.TestCase):
     def test_video_summary_uses_official_description(self, openai, _fetch_content) -> None:
         response = SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(
-                content='{"body":"A grounded video brief.","key_takeaways":["One supported takeaway.","Another supported takeaway."]}',
+                content='{"body":"A grounded video brief."}',
             ))]
         )
         openai.return_value.chat.completions.create.return_value = response
@@ -128,8 +127,7 @@ class DailyPulseSummaryTest(unittest.TestCase):
                 "snippet": "The official description explains the model release, its benchmark results, and its practical limits. " * 2,
             },
         )
-        self.assertEqual(summary["body"], "A grounded video brief.")
-        self.assertEqual(len(summary["key_takeaways"]), 2)
+        self.assertEqual(summary, {"body": "A grounded video brief."})
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("v3.build_daily_pulse.fetch_content")
@@ -138,7 +136,7 @@ class DailyPulseSummaryTest(unittest.TestCase):
         fetch_content.return_value = {"content": "Concrete source fact. " * 80}
         response = SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(
-                content='{"body":"Grounded brief.","key_takeaways":["Specific lesson."]}',
+                content='{"body":"Grounded brief."}',
             ))]
         )
         openai.return_value.chat.completions.create.return_value = response
@@ -157,16 +155,14 @@ class DailyPulseSummaryTest(unittest.TestCase):
             {"title": "Test", "source": "Source", "url": "https://example.com"},
         )
 
-        self.assertEqual(summary, {
-            "body": "Grounded brief.",
-            "key_takeaways": ["Specific lesson."],
-        })
+        self.assertEqual(summary, {"body": "Grounded brief."})
         prompt = openai.return_value.chat.completions.create.call_args.kwargs["messages"][1]["content"]
         self.assertIn("Article text excerpt: Concrete source fact.", prompt)
         schema = openai.return_value.chat.completions.create.call_args.kwargs["response_format"]["json_schema"]["schema"]
-        self.assertEqual(schema["properties"]["key_takeaways"]["minItems"], 2)
+        self.assertEqual(schema["required"], ["body"])
+        self.assertNotIn("key_takeaways", schema["properties"])
 
-    @patch("v3.build_daily_pulse._summarize_item", return_value={"body": "One line.", "key_takeaways": []})
+    @patch("v3.build_daily_pulse._summarize_item", return_value={"body": "One line."})
     def test_items_keep_the_hacker_news_submitter(self, _summarize) -> None:
         article = {"title": "A post", "url": "https://a.dev/post", "source": "Hacker News", "signal": "300 points",
                    "thumbnail": "https://a.dev/img.png", "by": "jane"}

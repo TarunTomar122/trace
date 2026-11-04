@@ -102,7 +102,6 @@ export interface FeedStory {
   rank: number;
   title: string;
   body: string;
-  takeaways: string[];
   img: string | null;
   source: string;
   sources: string[];
@@ -2486,16 +2485,6 @@ function Detail({ story, displayRank, onBack, onShare, marked, marks, toggleMark
         {bodyParagraphs(story.body).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
-        {story.takeaways.length > 0 && (
-          <div className="detail-takeaways">
-            <h2 className="section-label">What to know</h2>
-            <ul className="takeaway-list">
-              {story.takeaways.map((t, j) => (
-                <li key={j}>{renderBold(t)}</li>
-              ))}
-            </ul>
-          </div>
-        )}
         {story.img ? <FeedImage src={story.img} className="detail-img detail-img-below" alt="" /> : null}
         <div className="detail-actions">
           <Actions id={story.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
@@ -2862,9 +2851,6 @@ const css = `
   .xw .detail-actions { padding: 2px 14px; }
   .xw .detail-link { margin: 14px; }
   .xw .detail-byline { padding: 14px 14px 0; }
-  .xw .detail-takeaways { margin: 16px 0 0; padding: 0 0 4px; }
-  .xw .detail-takeaways .section-label { margin: 0 14px 8px; }
-  .xw .takeaway-list { padding: 0 14px; }
   .xw .detail-img-below { margin: 14px 14px 8px; width: calc(100% - 28px); }
 }
 
@@ -2992,9 +2978,6 @@ const css = `
   .xw .detail-actions { padding: 2px 14px; }
   .xw .detail-link { margin: 14px; }
   .xw .detail-byline { padding: 14px 14px 0; }
-  .xw .detail-takeaways { margin: 16px 0 0; padding: 0 0 4px; }
-  .xw .detail-takeaways .section-label { margin: 0 14px 8px; }
-  .xw .takeaway-list { padding: 0 14px; }
   .xw .detail-img-below { margin: 14px 14px 8px; width: calc(100% - 28px); }
   .xw .older-sep { margin: 20px 14px 2px; }
   .xw .load-older { width: 100%; margin: 0; padding: 16px 14px; }
@@ -3172,16 +3155,7 @@ const css = `
 .xw .detail-img { width: calc(100% - 36px); max-height: 510px; object-fit: cover; border-radius: 10px; margin: 12px 18px 4px; }
 .xw .detail-sources { margin: 0 18px 4px; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .detail-body { margin: 12px 18px 4px; font-size: 16px; line-height: 25px; color: var(--text); }
-.xw .detail-takeaways { margin: 20px 0 0; padding: 0 0 4px; border: none; border-radius: 0; background: transparent; }
 .xw .detail-img-below { margin: 16px 18px 8px; }
-.xw .detail-takeaways .section-label {
-  margin: 0 18px 8px; padding: 0;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--text-3);
-}
-.xw .takeaway-list { margin: 0; padding: 0 18px; list-style: none; }
-.xw .takeaway-list li { font-size: 15px; line-height: 22px; color: var(--text); padding: 4px 0 4px 18px; position: relative; }
-.xw .takeaway-list li::before { content: ''; position: absolute; left: 2px; top: 12px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
 .xw .detail-actions { padding: 2px 18px; border-bottom: 1px solid var(--line); }
 .xw .detail-actions .actions { max-width: 100%; justify-content: flex-end; gap: 16px; padding: 4px 0; }
 .xw .detail-link {

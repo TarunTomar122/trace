@@ -34,7 +34,6 @@ BRIEF = {
         "subtitle": "A 1.6-trillion-parameter coding model.",
         "body": "It has 1.6 trillion parameters. It is on Meituan's API now.",
         "mobile_card_summary": "It has 1.6 trillion parameters, 48 billion active. It is on the API now.",
-        "key_takeaways": [],
     },
 }
 
@@ -114,11 +113,11 @@ class TopicPairTests(unittest.TestCase):
     def test_overview_uses_luna_and_asks_for_a_pair(self):
         client = MagicMock()
         client.chat.completions.create.return_value = _reply(
-            {"title": "T", "overview": "New detail. Another.", "key_points": []}
+            {"title": "T", "overview": "New detail. Another."}
         )
         timeline = B._build_topic_timeline("tt_x", [LEAD, OTHER], SUMMARIES)
         with patch("openai.OpenAI", return_value=client):
-            title, overview, _, _ = B._build_topic_overview(
+            title, overview, _ = B._build_topic_overview(
                 _Mem(), "tt_x", LEAD["title"], [LEAD, OTHER], timeline, SUMMARIES
             )
         kwargs = client.chat.completions.create.call_args.kwargs
@@ -126,6 +125,7 @@ class TopicPairTests(unittest.TestCase):
         self.assertEqual(kwargs["reasoning_effort"], "low")
         self.assertNotIn("temperature", kwargs)
         self.assertIn("never restate the title", kwargs["messages"][1]["content"])
+        self.assertNotIn("key_points", kwargs["messages"][1]["content"])
         self.assertEqual((title, overview), ("T", "New detail. Another."))
 
     def test_fallback_pairs_the_lead_summary_with_its_own_headline(self):
@@ -133,19 +133,19 @@ class TopicPairTests(unittest.TestCase):
         client.chat.completions.create.side_effect = RuntimeError("down")
         timeline = B._build_topic_timeline("tt_x", [LEAD, OTHER], SUMMARIES)
         with patch("openai.OpenAI", return_value=client):
-            title, overview, _, cached = B._build_topic_overview(
+            title, overview, cached = B._build_topic_overview(
                 _Mem(), "tt_x", LEAD["title"], [LEAD, OTHER], timeline, SUMMARIES
             )
         self.assertEqual((title, overview, cached), ("Our own headline", "The lead's body.", False))
 
     def test_fallback_without_a_lead_summary_keeps_the_fallback_title(self):
-        title, overview, _, _ = B._build_topic_overview(_Mem(), "tt_x", "Fallback", [OTHER], [], {})
+        title, overview, _ = B._build_topic_overview(_Mem(), "tt_x", "Fallback", [OTHER], [], {})
         self.assertEqual((title, overview), ("Fallback", ""))
 
     def test_singleton_shows_our_headline(self):
-        title, overview, _, _ = B._build_singleton_topic_overview(LEAD, "fallback", SUMMARIES)
+        title, overview, _ = B._build_singleton_topic_overview(LEAD, "fallback", SUMMARIES)
         self.assertEqual((title, overview), ("Our own headline", "The lead's body."))
-        title, _, _, _ = B._build_singleton_topic_overview(OTHER, "fallback", SUMMARIES)
+        title, _, _ = B._build_singleton_topic_overview(OTHER, "fallback", SUMMARIES)
         self.assertEqual(title, OTHER["title"])
 
 

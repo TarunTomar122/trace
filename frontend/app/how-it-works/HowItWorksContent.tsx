@@ -32,7 +32,7 @@ const STEPS = [
     num: 3,
     icon: Sparkles,
     title: "AI Summaries",
-    body: "Each story group gets a short brief, key takeaways, and a timeline, so you get the full picture in seconds. Deep dive links are there if you want more, but you won't need them most days.",
+    body: "Each story group gets a short brief and a timeline, so you get the full picture in seconds. Deep dive links are there if you want more, but you won't need them most days.",
   },
   {
     num: 4,
@@ -55,7 +55,7 @@ const FAQS = [
   },
   {
     q: "How is this different from an RSS reader?",
-    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief with key takeaways, and ranks the day so the top stories cover what matters. You read one page, not fifty feeds.",
+    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief, and ranks the day so the top stories cover what matters. You read one page, not fifty feeds.",
   },
   {
     q: "What do I get?",

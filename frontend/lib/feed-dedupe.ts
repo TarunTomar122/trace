@@ -111,7 +111,6 @@ function mergeTopicArticles(
     if (extra.title) target.title = extra.title;
     if (extra.summary) target.summary = extra.summary;
     if (extra.thumbnail) target.thumbnail = extra.thumbnail;
-    if (extra.key_points?.length) target.key_points = extra.key_points;
   }
   target.article_count = target.articles.length;
 }

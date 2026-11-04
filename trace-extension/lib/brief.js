@@ -58,9 +58,6 @@ function normalizeArticle(value, responseVersion = 5) {
     shareUrl: shareUrl ? safeUrl(shareUrl, 'Article share URL') : '',
     source: typeof value.source === 'string' ? value.source.trim() : '',
     publishedAt: typeof value.published_at === 'string' ? value.published_at.trim() : '',
-    keyTakeaways: Array.isArray(value.key_takeaways)
-      ? value.key_takeaways.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim()).slice(0, 4)
-      : [],
     ...(thumbnail ? { thumbnail } : {}),
   };
 }
@@ -73,7 +70,6 @@ export function normalizeBookmarks(value) {
     source_url: article?.sourceUrl,
     share_url: article?.shareUrl,
     published_at: article?.publishedAt,
-    key_takeaways: article?.keyTakeaways,
   })).filter((article) => {
     if (seen.has(article.id)) return false;
     seen.add(article.id);
@@ -105,7 +101,6 @@ export function normalizeRemoteBookmarks(value) {
       shareUrl,
       source: metadata.source || '',
       publishedAt: metadata.timestamp || '',
-      keyTakeaways: [],
       ...(metadata.thumbnail ? { thumbnail: metadata.thumbnail } : {}),
     }];
   }));

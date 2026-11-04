@@ -253,7 +253,6 @@ def pick_stories(
             continue
         candidates.append({
             "topic": topic, "title": title, "paragraphs": paragraphs,
-            "points": [_clean(p) for p in topic.get("key_points") or [] if _clean(p)],
             "url_keys": sorted(url_keys), "lane": str(topic.get("interest_id") or "tech"),
         })
 
@@ -334,7 +333,7 @@ def write_copy(stories: list[dict[str, Any]]) -> str:
     for story in stories:
         story["headline"] = story["title"]
     blocks = "\n\n".join(
-        f"[{i}] {s['title']}\nSummary: {' '.join(s['paragraphs'])}\nKey points: " + " | ".join(s["points"][:5])
+        f"[{i}] {s['title']}\nSummary: {' '.join(s['paragraphs'])}"
         for i, s in enumerate(stories)
     )
     try:

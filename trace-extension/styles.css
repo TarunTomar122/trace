@@ -499,17 +499,6 @@ main {
   font-size: 14px;
 }
 
-#reader-takeaways {
-  display: grid;
-  gap: 10px;
-  margin: 0 0 26px;
-  padding-left: 18px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
-  list-style: disc;
-}
-
 [hidden] {
   display: none !important;
 }

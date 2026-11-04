@@ -35,7 +35,7 @@ const tools = [
   {
     name: 'get_top_tech_news',
     title: 'Top tech news',
-    description: 'Get the top current technology and AI stories, grouped across sources with summaries and key takeaways.',
+    description: 'Get the top current technology and AI stories, grouped across sources with summaries and source links.',
     inputSchema: {
       type: 'object',
       properties: {

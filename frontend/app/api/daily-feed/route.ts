@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
           short_article: {
             body: item.summary?.short_article?.body || '',
             subtitle: item.summary?.short_article?.subtitle || '',
-            key_takeaways: item.summary?.short_article?.key_takeaways || [],
           },
         },
         published_date: item.published_date || '',
@@ -47,7 +46,6 @@ export async function GET(request: NextRequest) {
         summary: topic.summary || '',
         source_count: topic.source_count || 0,
         article_count: topic.article_count || topic.articles?.length || 0,
-        key_points: topic.key_points || [],
       })),
     });
   } catch (error) {

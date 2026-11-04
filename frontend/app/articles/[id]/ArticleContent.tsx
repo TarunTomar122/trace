@@ -33,7 +33,6 @@ interface ArticleData {
       slides?: string[];
       outline?: string[];
       body?: string;
-      key_takeaways?: string[];
       why_it_matters?: string;
     };
     reading_time_minutes?: number;
@@ -93,9 +92,6 @@ export default function ArticleContent({ article }: Props) {
   const shortArticle = article.summary?.short_article;
   const subtitle = normalizeText(shortArticle?.subtitle);
   const bodyContent = buildBodyContent(article);
-  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
-    ? shortArticle!.key_takeaways!.map((item) => normalizeText(item)).filter(Boolean)
-    : [];
   const whyItMatters = normalizeText(shortArticle?.why_it_matters);
   const readingTime = article.summary?.reading_time_minutes || 3;
   const fromParam = searchParams.get("from");
@@ -153,22 +149,6 @@ export default function ArticleContent({ article }: Props) {
         <p className="mb-8 text-sm text-[#6b7280]">
           No summary available. Read the original source.
         </p>
-      )}
-
-      {keyTakeaways.length > 0 && (
-        <div className="mb-8">
-          <h2 className="story-page-section-title">Key takeaways</h2>
-          <div className="space-y-3">
-            {keyTakeaways.map((point, index) => (
-              <div key={index} className="story-page-key-point">
-                <span className="story-page-key-point-dot" />
-                <div className="story-page-body text-[15px]">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {whyItMatters && (
@@ -229,22 +209,6 @@ export default function ArticleContent({ article }: Props) {
         <p className="mb-8 text-sm text-[#6b7280]">
           No summary available. Read the original source.
         </p>
-      )}
-
-      {keyTakeaways.length > 0 && (
-        <div className="mb-8">
-          <h2 className="story-page-section-title">Key takeaways</h2>
-          <div className="space-y-3">
-            {keyTakeaways.map((point, index) => (
-              <div key={index} className="story-page-key-point">
-                <span className="story-page-key-point-dot" />
-                <div className="story-page-body text-[15px]">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {whyItMatters && (

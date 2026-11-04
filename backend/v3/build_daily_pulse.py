@@ -217,31 +217,14 @@ def _normalize_item_summary(section: str, text: str) -> str:
     return _clean_summary_text(text)
 
 
-def _normalize_summary_payload(
-    section: str,
-    body: str,
-    key_takeaways: Any = None,
-) -> dict[str, Any]:
-    points = [
-        _safe_text(point)
-        for point in (key_takeaways if isinstance(key_takeaways, list) else [])
-        if isinstance(point, str) and _safe_text(point)
-    ]
+def _normalize_summary_payload(section: str, body: str) -> dict[str, Any]:
     if section == "blogs":
+        # Older briefs could end with an inline "Key takeaways:" list; cards
+        # no longer show skim bullets, so it is cut.
         marker = re.search(r"\bKey takeaways:\s*", body, flags=re.IGNORECASE)
         if marker:
-            flattened = body[marker.end():]
             body = body[:marker.start()].rstrip()
-            if not points:
-                points = [
-                    _safe_text(point)
-                    for point in re.split(r"(?:^|\s)[-•]\s+", flattened)
-                    if _safe_text(point)
-                ]
-    return {
-        "body": _normalize_item_summary(section, body),
-        "key_takeaways": points[:4] if section == "blogs" else [],
-    }
+    return {"body": _normalize_item_summary(section, body)}
 
 
 # Every pulse summary is shown right under the item's title (feed and app),
@@ -278,8 +261,7 @@ def _section_instructions(section: str) -> str:
         "the sequence of events, numbers, evidence, constraints, and the outcome.\n"
         "For technical stories, include the before/after architecture or process, implementation "
         "details, tradeoffs, failure modes, and what the team would do differently.\n"
-        "Write 3-5 short paragraphs in body and return 2-4 reusable lessons separately "
-        "in the key_takeaways array.\n"
+        "Write 3-5 short paragraphs in body.\n"
         "Be specific and plainspoken. "
         "Do not add facts, conclusions, or advice that the source does not support.\n"
     )
@@ -320,11 +302,7 @@ def _summarize_item(
     if cached:
         summary = cached.get("summary")
         if isinstance(summary, dict) and isinstance(summary.get("body"), str):
-            return _normalize_summary_payload(
-                section,
-                summary["body"],
-                summary.get("key_takeaways"),
-            )
+            return _normalize_summary_payload(section, summary["body"])
 
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
@@ -352,8 +330,7 @@ def _summarize_item(
 
     prompt = (
         _summary_instructions(section)
-        + "Return JSON only with keys body and key_takeaways. body must be one string; "
-        "key_takeaways must be an array of strings and must be empty for compact sections.\n\n"
+        + "Return JSON only with the key body. body must be one string.\n\n"
         + "\n".join(prompt_parts)
     )
 
@@ -375,14 +352,8 @@ def _summarize_item(
                         "type": "object",
                         "properties": {
                             "body": {"type": "string"},
-                            "key_takeaways": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "minItems": 2 if section == "blogs" else 0,
-                                "maxItems": 4 if section == "blogs" else 0,
-                            },
                         },
-                        "required": ["body", "key_takeaways"],
+                        "required": ["body"],
                         "additionalProperties": False,
                     },
                 },
@@ -393,11 +364,7 @@ def _summarize_item(
         generated_body = raw.get("body")
         if not isinstance(generated_body, str):
             raise ValueError("summary body must be a string")
-        summary = _normalize_summary_payload(
-            section,
-            generated_body,
-            raw.get("key_takeaways"),
-        )
+        summary = _normalize_summary_payload(section, generated_body)
         if summary["body"]:
             store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, summary, ITEM_SUMMARY_MODEL)
             return summary
@@ -437,7 +404,6 @@ def _item_payload(
             "short_article": {
                 "title": title,
                 "body": summary["body"],
-                "key_takeaways": summary["key_takeaways"],
             },
         },
         "roles": article.get("roles", []),

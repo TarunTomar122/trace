@@ -12,7 +12,7 @@ Open a new tab and catch up on fresh AI and technology news from Trace.
 
 Trace turns every new tab into a clean feed of current AI and technology news.
 
-Stories are gathered from trusted publications, grouped into one feed, and summarized so you can catch up without opening dozens of tabs. Filter by topic, open a card for the full Trace summary and key takeaways, or jump directly to the original reporting.
+Stories are gathered from trusted publications, grouped into one feed, and summarized so you can catch up without opening dozens of tabs. Filter by topic, open a card for the full Trace summary, or jump directly to the original reporting.
 
 Features:
 

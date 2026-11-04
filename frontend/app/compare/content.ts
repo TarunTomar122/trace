@@ -65,7 +65,7 @@ export const comparePages: ComparePage[] = [
       {
         title: "What you gain",
         body:
-          "You gain grouped topic pages, condensed takeaways, and a reading experience that does not ask you to become your own editor before breakfast.",
+          "You gain grouped topic pages, short briefs, and a reading experience that does not ask you to become your own editor before breakfast.",
       },
     ],
     faq: [
@@ -557,7 +557,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Does Trace have a reading mode like Matter?",
         answer:
-          "No. Trace provides summaries, key points, and source links. It is optimized for speed, not deep reading comfort. Matter is purpose-built for the reading experience.",
+          "No. Trace provides short summaries and source links. It is optimized for speed, not deep reading comfort. Matter is purpose-built for the reading experience.",
       },
     ],
   },
@@ -647,7 +647,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Consistency",
-        trace: "Every story gets the same treatment — summary, key points, timeline",
+        trace: "Every story gets the same treatment — summary, timeline, sources",
         alternative: "Depends on your energy and free time that day",
       },
       {
@@ -792,7 +792,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Reading experience",
-        trace: "Short AI summaries and key points",
+        trace: "Short AI summaries",
         alternative: "Full articles in a clean reading view",
       },
     ],

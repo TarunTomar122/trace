@@ -60,7 +60,7 @@ Long description (≤ 2,000 chars, for the Claude directory and ChatGPT):
 > developers arguing about this week?" with current, sourced stories instead of
 > searching the open web from scratch. Four read-only tools return today's full
 > brief, the top news, notable builds and launches, or practitioner
-> conversations, each with a summary, why it matters, key takeaways and source
+> conversations, each with a summary, why it matters and source
 > links. An optional role (developer, founder, designer, product manager)
 > shapes the selection.
 >

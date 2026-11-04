@@ -125,7 +125,6 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
                 "source_url": url,
                 "trace_url": trace_url,
                 "image_url": image_url,
-                "key_points": topic.get("key_points") or [],
                 "source": "trending_topic",
             }
         )
@@ -157,7 +156,6 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
                     "source_url": source_url,
                     "trace_url": trace_url,
                     "image_url": image_url,
-                    "key_points": [],
                     "source": "trending_item",
                 }
             )
@@ -197,7 +195,6 @@ def _collect_from_role_sections(global_feed: dict[str, Any]) -> list[dict[str, A
                 "source_url": source_url,
                 "trace_url": "",
                 "image_url": image_url,
-                "key_points": [],
                 "source": source,
             }
         )

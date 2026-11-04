@@ -10,7 +10,6 @@ export type PublicFeedCardItem = {
   timestamp?: string;
   thumbnail?: string | null;
   url?: string;
-  keyPoints?: string[];
 };
 
 export type PublicTopicCardItem = {
@@ -19,6 +18,5 @@ export type PublicTopicCardItem = {
   summary?: string;
   sourceCount: number;
   articleCount: number;
-  keyPoints?: string[];
   slug?: string;
 };

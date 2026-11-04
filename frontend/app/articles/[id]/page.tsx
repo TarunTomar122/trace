@@ -39,7 +39,6 @@ interface ArticleData {
       slides?: string[];
       outline?: string[];
       body?: string;
-      key_takeaways?: string[];
       why_it_matters?: string;
     };
     reading_time_minutes?: number;
@@ -68,6 +67,16 @@ function normalizeText(value?: string | null): string {
   return (value || '').replace(/\s+/g, ' ').trim();
 }
 
+/** Subtitle, else the body's first sentence (markdown stripped), else a source line. */
+function articleDescription(article: Pick<ArticleData, 'summary' | 'source_name'>): string {
+  const short = article.summary?.short_article;
+  const subtitle = normalizeText(short?.subtitle);
+  if (subtitle) return subtitle;
+  const body = normalizeText(String(short?.body || '').replace(/[#*_`>]/g, ' '));
+  const firstSentence = body.match(/^.{20,240}?[.!?](?=\s|$)/)?.[0] || body.slice(0, 200);
+  return firstSentence || `Read this article from ${article.source_name || 'Trace'}`;
+}
+
 function hasMeaningfulArticleContent(article: Pick<ArticleData, 'title' | 'summary'>): boolean {
   const title = normalizeText(article.title);
   if (title.length > 0) return true;
@@ -79,17 +88,13 @@ function hasMeaningfulArticleContent(article: Pick<ArticleData, 'title' | 'summa
   const slides = Array.isArray(shortArticle?.slides)
     ? shortArticle!.slides!.map((slide) => normalizeText(slide)).filter(Boolean)
     : [];
-  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
-    ? shortArticle!.key_takeaways!.map((item) => normalizeText(item)).filter(Boolean)
-    : [];
 
   const bodyHasSignal = body.length > 80 && body.toLowerCase() !== title.toLowerCase();
   const subtitleHasSignal = subtitle.length > 40 && subtitle.toLowerCase() !== title.toLowerCase();
   const whyHasSignal = whyItMatters.length > 40;
   const slidesHaveSignal = slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title.toLowerCase());
-  const takeawaysHaveSignal = keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title.toLowerCase());
 
-  return bodyHasSignal || subtitleHasSignal || whyHasSignal || slidesHaveSignal || takeawaysHaveSignal;
+  return bodyHasSignal || subtitleHasSignal || whyHasSignal || slidesHaveSignal;
 }
 
 async function fetchArticleFromPool(poolCollection: string, docId: string): Promise<ArticlePoolDoc | null> {
@@ -201,9 +206,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const description = article.summary?.short_article?.subtitle
-    || article.summary?.short_article?.key_takeaways?.[0]
-    || `Read this article from ${article.source_name || 'Trace'}`;
+  const description = articleDescription(article);
 
   return {
     title: metadataTitle(article.title),
@@ -249,10 +252,7 @@ export default async function PublicArticlePage({ params }: PageProps) {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: article.title,
-    description:
-      article.summary?.short_article?.subtitle ||
-      article.summary?.short_article?.key_takeaways?.[0] ||
-      `Read this article from ${article.source_name || 'Trace'}`,
+    description: articleDescription(article),
     mainEntityOfPage: canonicalUrl,
     datePublished: publishedIso,
     dateModified: publishedIso,

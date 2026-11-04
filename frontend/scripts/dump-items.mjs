@@ -15,7 +15,6 @@ for (const [i, it] of (data.trending || []).slice(0, 6).entries()) {
   console.log(`  why_relevant: ${it?.metadata?.why_relevant || '-'}`);
   console.log(`  subtitle: ${sa.subtitle || '-'}`);
   console.log(`  why_it_matters: ${sa.why_it_matters || '-'}`);
-  console.log(`  key_takeaways: ${(sa.key_takeaways || []).join(' | ') || '-'}`);
   console.log(`  body[0:240]: ${(sa.body || it.description || '').slice(0, 240).replace(/\s+/g, ' ')}`);
   console.log(`  source: ${it?.sources?.[0]?.name || '-'}  | published: ${it?.published_date || it?.metadata?.published_date || '-'}\n`);
 }

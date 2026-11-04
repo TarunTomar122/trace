@@ -268,7 +268,7 @@ export default function BlogPost() {
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
             <li><strong>One entry per story</strong>, with every outlet&apos;s coverage grouped together</li>
-            <li><strong>Summaries, key points and timelines</strong> for each story</li>
+            <li><strong>Summaries and timelines</strong> for each story</li>
             <li><strong>Your topics:</strong> pick a few and the feed is ordered around them</li>
             <li><strong>Optional daily email</strong> around 8:30am UK time</li>
             <li><strong>Free for everyone</strong> and open source</li>

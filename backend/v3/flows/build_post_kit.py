@@ -324,7 +324,6 @@ def _candidate(topic: dict[str, Any]) -> dict[str, Any]:
         "topic_id": str(topic.get("id") or ""),
         "title": _clean(topic.get("title")),
         "summary": _clip(_clean(topic.get("summary")), 600),
-        "key_points": [_clean(p) for p in topic.get("key_points") or [] if _clean(p)][:4],
         "headlines": headlines[:4],
         "url": str(articles[0]["url"]) if articles else "",
         "lead_source": sources[0]["name"] if sources else "",
@@ -346,7 +345,6 @@ def _pool_story(item: dict[str, Any]) -> dict[str, Any]:
         "topic_id": "",
         "title": title,
         "summary": _clip(_clean(item.get("content")), 600),
-        "key_points": [],
         "headlines": [title],
         "url": url,
         "lead_source": source,
@@ -489,7 +487,7 @@ def _chat_json(prompt: str, name: str, schema: dict[str, Any], system: str = X_S
 
 
 def _material(story: dict[str, Any]) -> str:
-    return " ".join([story["title"], story["summary"], *story["key_points"], *story["headlines"]])
+    return " ".join([story["title"], story["summary"], *story["headlines"]])
 
 
 def invented_numbers(text: str, material: str) -> set[str]:
@@ -521,8 +519,6 @@ def _story_lines(stories: list[dict[str, Any]]) -> str:
             # A single article's opening is enough to judge it; topics get their whole summary.
             lines.append(f"    {'Summary' if story['topic_id'] else 'Text'}: "
                          f"{_clip(story['summary'], 360 if story['topic_id'] else 220)}")
-        if story["key_points"]:
-            lines.append(f"    Key points: {' | '.join(story['key_points'][:2])}")
     return "\n".join(lines)
 
 

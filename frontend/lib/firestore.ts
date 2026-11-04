@@ -234,7 +234,6 @@ export interface FeedItem {
       body?: string;
       slides?: string[];
       setup?: string;
-      key_takeaways?: string[];
       why_it_matters?: string;
       learning_cards?: Array<{
         type: 'hook' | 'insight' | 'why' | 'bottom_line';
@@ -302,7 +301,6 @@ export interface TrendingTopic {
   topic_key: string;
   title: string;
   summary: string;
-  key_points?: string[];
   is_featured?: boolean;
   popularity_score?: number;
   article_count?: number;

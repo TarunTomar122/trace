@@ -42,7 +42,6 @@ SUMMARY_SYSTEM_PROMPT = """You are a rigorous editor at Trace, a professional te
 You return valid JSON only. No markdown code fences.
 Your summaries must be source-faithful, concrete, and dense with specific facts.
 Never write generic news filler, throat-clearing openers, or commentary that adds no new information.
-Body and key_takeaways must complement each other: the body tells the story; takeaways add distinct facts not already in the body.
 Readers always see the story's headline right above your summary (the feed, the article page, the app, the daily email), so the summary must never restate or reword the headline: open with what the headline leaves out."""
 
 # ---------------------------------------------------------------------------
@@ -80,9 +79,7 @@ def compute_technical_depth(profile: dict) -> str:
 
 FOR_YOU_SUMMARY = """Write a source-faithful summary for a For You evergreen feed.
 
-The reader wants two complementary layers that together capture much more of the source than a typical short summary:
-1. A readable body with the story, context, and main arguments.
-2. Key takeaways with additional concrete facts they would miss if they only read the body.
+The reader wants a readable body with the story, context, main arguments, and the concrete facts that matter, capturing much more of the source than a typical short summary.
 
 SOURCE:
 Title: {title}
@@ -94,7 +91,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One sentence capturing the central idea or tension",
-    "key_takeaways": ["4-6 concrete points with real specifics from the source"],
     "body": "Informative summary in markdown (see rules below)",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
@@ -103,7 +99,7 @@ Return JSON with EXACT structure:
 
 COVERAGE RULE (VERY IMPORTANT):
 - Before writing, mentally list the distinct facts, claims, examples, numbers, and named entities in the source.
-- Body + key_takeaways together should capture the top 8-12 most important items from that list.
+- The body should capture the top 8-12 most important items from that list.
 - Do not compress the whole article into 3 ideas repeated twice.
 - Missing a major named company, product, number, or specific claim from the source is a failure unless the article is extremely thin.
 
@@ -130,14 +126,6 @@ BODY RULES:
 - You may use a short bullet list for steps, examples, named points, or concrete facts, but only when the source naturally supports it.
 - Plain, strong English.
 - No concluding fluff. No "In summary", "Overall", or "In conclusion".
-
-KEY_TAKEAWAYS RULES:
-- 4-6 takeaways when the source supports them.
-- Each should be one sentence with a concrete fact.
-- Each takeaway must add information not already substantially covered in the body.
-- Prioritize: numbers -> named companies/products/people -> examples -> rollout details -> consequences.
-- Do not paraphrase the body sentence by sentence.
-- Cut any takeaway that's obvious, generic, unsupported, or repetitive.
 """
 
 # ---------------------------------------------------------------------------
@@ -158,7 +146,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One powerful sentence — the core thesis or insight",
-    "key_takeaways": ["4-6 specific, actionable takeaways"],
     "body": "Thorough analysis in markdown — see rules below",
     "why_it_matters": "2-3 sentences on the bigger-picture significance",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
@@ -175,11 +162,6 @@ BODY RULES:
 - Each section should teach something concrete — not just describe
 - NEVER write concluding paragraphs that restate. No "In summary", "Overall". Ever.
 
-KEY_TAKEAWAYS RULES:
-- Concrete and actionable — things the reader can apply or remember
-- Include specifics: tools, numbers, frameworks, names
-- Not vague platitudes like "communication is important"
-
 WHY_IT_MATTERS:
 - Connect to broader trends, career implications, or industry shifts
 - Make the reader feel the significance
@@ -187,11 +169,7 @@ WHY_IT_MATTERS:
 
 TRENDING_BRIEF = """You are a rigorous editor writing a high-signal brief for a fast-moving story.
 
-The reader wants two complementary layers that together feel fuller than a typical news blurb:
-1. A body paragraph that reads naturally and tells the story clearly.
-2. Key takeaways with additional concrete facts they would miss if they only read the body.
-
-The body and takeaways must do different jobs. Do not make the takeaways restate the body.
+The reader wants a body paragraph that reads naturally, tells the story clearly, and carries the concrete facts that matter, so it feels fuller than a typical news blurb.
 
 HEADLINE AND SUMMARY ARE ONE PAIR:
 Readers see your headline first, then the summary right under it (in the feed
@@ -212,9 +190,6 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "One short factual line (max 14 words) saying what changed",
     "headline": "The headline readers see above the summary: a plain, factual news headline (6-12 words) saying who did what. No clickbait, no colon subtitle, no quote marks",
-    "key_takeaways": [
-      "3-5 one-sentence bullets with only additional concrete details"
-    ],
     "slides": [
       "Slide 1: What happened — who, what, and the most important number/name (30-45 words)",
       "Slide 2: The strongest supporting detail or concrete consequence (25-40 words)",
@@ -229,7 +204,7 @@ Return JSON with EXACT structure:
 
 COVERAGE RULE (VERY IMPORTANT):
 - Before writing, mentally list the distinct facts, claims, examples, numbers, and named entities in the source.
-- Body + key_takeaways together should capture the top 8-10 most important items from that list.
+- The body and slides together should capture the top 8-10 most important items from that list.
 - Do not compress the whole article into 3 ideas repeated twice.
 - Missing a major named company, product, number, or specific claim from the source is a failure unless the article is extremely thin.
 
@@ -278,7 +253,7 @@ RULES:
   use tech for broad consumer tech/platform/device/software stories when no narrower lane fits
 - Never return legacy labels like technology, business-market, engineering, experience, leadership, productivity, climate, health, or web3.
 - Write like a sharp reporter, not a marketer.
-- The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
+- The body is the story. It must read naturally as a paragraph, not as disguised bullet points.
 - In the body, cover what the headline leaves out: the main actors beyond the headline, and the most important concrete details and consequences from the source.
 - The headline already says who did what. The body's first sentence and the mobile_card_summary must not say it again in other words: open with the strongest fact the headline leaves out (the key number, how it works, who is affected, what changes).
 - Never open the body or mobile_card_summary with the headline's subject doing the headline's action ("Meituan has launched...", "OpenAI has unveiled...", "X has raised...") when the headline already says that.
@@ -286,11 +261,7 @@ RULES:
 - Include the single best number, percentage, or date from the source in the body when one exists.
 - Do not write a generic first sentence followed by filler. Every sentence in the body must add real information.
 - Never write "Critics argue", "paying lip service", "underscores a trend", or other commentary that adds no new fact.
-- Return 3-5 key takeaways when the source supports them. Prefer fewer only if the article is genuinely thin.
-- Key takeaways are the skim layer. Use them for concrete details a reader might miss if they skip the paragraph.
-- Each key takeaway must add information that is not already substantially covered in the body.
-- Key takeaways must be one complete sentence each, not fragments and not mini-paragraphs.
-- When choosing key takeaways, prefer this order:
+- When choosing what goes in the body, prefer this order:
   1. Exact numbers, prices, percentages, dates, or counts that matter
   2. Named companies, products, people, places, or agencies tied to the event
   3. Concrete deal terms, rollout details, operational effects, or direct consequences stated in the source
@@ -298,9 +269,7 @@ RULES:
 - Use actual names, products, places, numbers, prices, dates, or decisions when present.
 - Never write filler like "ongoing improvements", "this highlights a broader trend", "the update is part of...", or "the redesign was announced on...".
 - Do not speculate. No "could", "may", "might", "expected to", or generic future talk unless the source explicitly says it.
-- Do not include publication dates as a key point unless the timing itself is central to the story.
-- Do not create key takeaways by paraphrasing the body sentence by sentence.
-- If the source has no good additive bullets, return an empty list rather than weak repetition.
+- Do not mention publication dates unless the timing itself is central to the story.
 - slides: Each is a standalone chunk. No headers or labels. Plain prose.
 - 2 slides minimum, 3 only if the story genuinely has a third concrete detail.
 - Include ONE bold stat or name per slide using **bold**
@@ -308,15 +277,11 @@ RULES:
 - Slide 2 = the strongest supporting detail
 - Slide 3 = optional extra concrete detail, not commentary
 
-GOOD KEY TAKEAWAY EXAMPLE:
-- **Google Maps Go** now uses a gradient app icon that matches Google's newer visual system.
-
-BAD KEY TAKEAWAY EXAMPLES:
+BAD FILLER SENTENCES (never write these):
 - The redesign was announced on March 9, 2026.
 - The update is part of ongoing improvements to the app.
 - This could reshape the future of mapping.
 - The deal is part of a broader trend of investor interest.
-- Current AI labeling efforts on platforms like YouTube and Instagram are ineffective. (BAD if the body already says labeling is ineffective)
 
 The pair examples below show the shape only. Use facts from the SOURCE above, never from the examples.
 
@@ -350,7 +315,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One sentence capturing the main point — can use technical terms",
-    "key_takeaways": ["3-4 key points — specific, technical, actionable"],
     "body": "Concise summary in markdown (see rules below)",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
@@ -365,10 +329,6 @@ BODY RULES:
 - Bold key numbers and technical claims
 - NO dumbed-down explanations. Skip "this means..." or "in other words..."
 - NO concluding paragraphs. No "In summary", "Overall". Ever.
-
-KEY_TAKEAWAYS RULES:
-- Technical and specific — include tool names, version numbers, metrics
-- Actionable for practitioners — what can they use or try?
 """
 
 FOR_YOU_ACCESSIBLE = """You are a skilled editor creating a CLEAR summary for a professional learning about this topic.
@@ -385,7 +345,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One sentence capturing the main point in plain language",
-    "key_takeaways": ["3-4 key points — clear, practical insights"],
     "body": "Clear summary in markdown (see rules below)",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card, read right after the title: never restate it; start with what the title leaves out. Be concrete and punchy."
   }},
@@ -400,10 +359,6 @@ BODY RULES:
 - Bold key facts and numbers
 - NO jargon without explanation. But don't over-explain either.
 - NO concluding paragraphs. No "In summary", "Overall". Ever.
-
-KEY_TAKEAWAYS RULES:
-- Practical and understandable — what's the real-world impact?
-- Avoid acronyms unless explained
 """
 
 DEEP_DIVE_DEEP = """You are creating an in-depth breakdown for an experienced technical professional.
@@ -420,7 +375,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One powerful sentence — the core technical thesis",
-    "key_takeaways": ["4-6 specific, technical, actionable takeaways"],
     "body": "Thorough technical analysis in markdown",
     "why_it_matters": "2-3 sentences on industry/technical significance"
   }},
@@ -450,7 +404,6 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One clear sentence — the core insight",
-    "key_takeaways": ["4-6 practical, understandable takeaways"],
     "body": "Thorough but accessible analysis in markdown",
     "why_it_matters": "2-3 sentences on real-world significance"
   }},
@@ -759,44 +712,6 @@ def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: st
     return (url, _cache_bucket(feed_type, technical_depth, output_format))
 
 
-def _normalize_text_for_overlap(value: str) -> str:
-    return re.sub(r"\s+", " ", (value or "")).strip().lower()
-
-
-def _takeaway_overlaps_body(takeaway: str, body: str, threshold: float = 0.55) -> bool:
-    """Return True when a takeaway substantially repeats the body."""
-    takeaway_norm = _normalize_text_for_overlap(takeaway)
-    body_norm = _normalize_text_for_overlap(body)
-    if not takeaway_norm or not body_norm:
-        return False
-    if takeaway_norm in body_norm:
-        return True
-
-    words = [word for word in re.findall(r"[a-z0-9]{5,}", takeaway_norm)]
-    if not words:
-        return takeaway_norm in body_norm
-
-    hits = sum(1 for word in words if word in body_norm)
-    return (hits / len(words)) >= threshold
-
-
-def _dedupe_takeaways_from_body(body: str, takeaways: Any, *, max_items: int = 6) -> list[str]:
-    if not isinstance(takeaways, list):
-        return []
-
-    cleaned: list[str] = []
-    for raw in takeaways:
-        point = str(raw).strip()
-        if not point:
-            continue
-        if _takeaway_overlaps_body(point, body):
-            continue
-        cleaned.append(point)
-        if len(cleaned) >= max_items:
-            break
-    return cleaned
-
-
 def _clean_summary_body(body: str, *, fallback: str = "") -> str:
     body = str(body or "").strip()
     body = re.sub(r"^\s*#+\s*", "", body, flags=re.MULTILINE)
@@ -833,10 +748,10 @@ def _normalize_short_article_summary(
     else:
         body = _clean_summary_body(body, fallback=subtitle or body_fallback)
 
-    takeaways = short.get("key_takeaways")
     short["subtitle"] = subtitle
     short["body"] = body
-    short["key_takeaways"] = _dedupe_takeaways_from_body(body, takeaways)
+    # Summaries no longer carry skim bullets; drop any a model still returns.
+    short.pop("key_takeaways", None)
     parsed["short_article"] = short
     return parsed
 
@@ -908,7 +823,7 @@ def generate_summary(
     Generate a summary using the appropriate prompt for the feed type.
 
     feed_type options:
-    - "default" or "for_you": Standard summary with key_takeaways
+    - "default" or "for_you": Standard summary
     - "deep_dives": Longer, more comprehensive summary
     - "trending": Short news brief
 
@@ -969,7 +884,6 @@ def generate_summary(
             '  "short_article": {{\n'
             '    "subtitle": "...",\n'
             '    "headline": "...",\n'
-            '    "key_takeaways": ["..."],\n'
             '    "slides": ["Slide 1: ...", "Slide 2: ..."],\n'
             '    "body": "...",\n'
             '    "mobile_card_summary": "...",\n'
@@ -988,7 +902,6 @@ def generate_summary(
             'else empty string>",\n'
             '  "short_article": {{\n'
             '    "subtitle": "...",\n'
-            '    "key_takeaways": ["..."],\n'
             '    "body": "..."\n'
             '  }},\n'
             '  "reading_time_minutes": <estimated int>\n'
@@ -1045,6 +958,16 @@ def generate_summary(
     return parsed, ""
 
 
+def without_takeaways(summary: Any) -> Any:
+    """A cached summary minus the skim bullets older prompts wrote
+    (short_article.key_takeaways). Readers no longer see them anywhere."""
+    if isinstance(summary, dict):
+        short = summary.get("short_article")
+        if isinstance(short, dict) and "key_takeaways" in short:
+            summary = {**summary, "short_article": {k: v for k, v in short.items() if k != "key_takeaways"}}
+    return summary
+
+
 def get_or_generate_summary(
     store,  # V3Store
     url: str,
@@ -1065,7 +988,7 @@ def get_or_generate_summary(
         cached_summary = cached.get("summary")
         if _is_rejection(cached_summary):
             return None, True
-        return cached_summary, True
+        return without_takeaways(cached_summary), True
 
     summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth, output_format=output_format)
     if summary:
@@ -1170,7 +1093,7 @@ def batch_presummarize(
         cached = store.get_cached_summary_v2(url, cache_bucket)
         if cached:
             cached_summary = cached.get("summary")
-            summary_map[url] = None if _is_rejection(cached_summary) else cached_summary
+            summary_map[url] = None if _is_rejection(cached_summary) else without_takeaways(cached_summary)
             already_cached += 1
             continue
         tasks.append((url, title, content))

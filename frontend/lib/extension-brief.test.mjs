@@ -16,7 +16,6 @@ function feedItem(id, title, overrides = {}) {
       short_article: {
         subtitle: `${title} summary`,
         body: `${title} full Trace read`,
-        key_takeaways: [`${title} takeaway`],
       },
     },
     ...overrides,
@@ -67,7 +66,8 @@ test('buildExtensionBrief cleans display text and rejects unsafe links', () => {
     { type: 'paragraph', text: 'The - full read' },
     { type: 'list_item', text: 'First point' },
   ]);
-  assert.deepEqual(brief.articles[0].key_takeaways, ['Useful & specific']);
+  // Older summaries still carry skim bullets; the brief no longer passes them on.
+  assert.equal('key_takeaways' in brief.articles[0], false);
 });
 
 test('buildExtensionBrief uses the canonical interest when tags are absent', () => {
@@ -157,7 +157,7 @@ test('buildExtensionBrief preserves every full-read content block', () => {
   const brief = buildExtensionBrief({
     date: '2026-08-05',
     for_you: [feedItem('long-read', 'Long read', {
-      summary: { short_article: { subtitle: 'Summary', body, key_takeaways: [] } },
+      summary: { short_article: { subtitle: 'Summary', body } },
     })],
     trending: [],
   });

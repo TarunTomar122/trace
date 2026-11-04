@@ -486,7 +486,7 @@ export const blogPosts: BlogPost[] = [
         heading: "What structured agent-ready tech news looks like",
         paragraphs: [
           "An agent-ready briefing should be boring in the best way: predictable fields, bounded results, clear timestamps, and links back to evidence. The agent should not have to infer whether a string is a title, a summary, or a source URL.",
-          "Trace returns three explicit sections: top news, builds, and conversations. Each item carries a title and summary, with key takeaways, why-it-matters context, timestamps, and source links when they are available. That lets the model spend its context window comparing and explaining information instead of scraping and cleaning pages."
+          "Trace returns three explicit sections: top news, builds, and conversations. Each item carries a title and summary, with why-it-matters context, timestamps, and source links when they are available. That lets the model spend its context window comparing and explaining information instead of scraping and cleaning pages."
         ]
       },
       {
@@ -762,7 +762,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for AI-Curated Daily Briefings",
         paragraphs: [
-          "Trace takes a fundamentally different approach from traditional RSS readers. Instead of making you curate individual feeds, it scans 100+ sources automatically and groups related stories into topic pages. Each topic page includes an AI-generated summary, key points pulled from multiple outlets, a timeline of how the story developed, and links to community discussions on Reddit and Hacker News.",
+          "Trace takes a fundamentally different approach from traditional RSS readers. Instead of making you curate individual feeds, it scans 100+ sources automatically and groups related stories into topic pages. Each topic page includes an AI-generated summary written from multiple outlets, a timeline of how the story developed, and links to community discussions on Reddit and Hacker News.",
           "Where Trace shines is the morning catch-up. You open the brief, scroll through the day's topic groups, and in about five minutes you're caught up on tech news without having touched a single feed setting. If you prefer, the same brief can arrive by email around 8:30am UK time. The AI summaries are multi-source — they synthesize coverage from different publications rather than summarizing one article at a time — which means you get a more balanced picture of each story. The topic grouping feature for tech news is particularly powerful for identifying which stories have real momentum across the industry.",
           "The community discussion integration is an underrated feature. For each topic, Trace links to relevant Reddit threads and Hacker News discussions, so you can see what practitioners are saying — not just what journalists are writing. Few of the other tools on this list pair the news with community discussion this directly."
         ],
@@ -885,7 +885,7 @@ export const blogPosts: BlogPost[] = [
         heading: "Why We Built Trace for This",
         paragraphs: [
           "We built Trace because existing options fell into two camps: raw RSS readers that felt like work, or algorithmic feeds that optimized for engagement over understanding. We wanted something different — a tool that gave you the efficiency of curation without requiring feed management, and the depth of multi-source comparison without requiring you to read five versions of the same story.",
-          "Trace scans 100+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, key points, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
+          "Trace scans 100+ sources — from TechCrunch to Hacker News to niche developer blogs — and groups related coverage into topic pages. Each page gives you multiple perspectives, an AI summary, a timeline, and links to community discussions on Reddit and HN. The AI doesn't just summarize one article — it reads coverage from different sources and synthesizes a balanced picture that includes what's consensus, what's disputed, and what's still developing.",
           "The aim is a short morning catch-up, about five minutes, that replaces a dozen open tabs, with the information organized the way understanding tends to work: through comparison, context, and community. If you would rather not open anything, the same brief can come to your inbox around 8:30am UK time.",
           "We're biased, obviously, but if you're tired of tab roulette and want a tool that treats your attention as valuable, Trace is free for everyone and open source, so it is an easy place to start. You can also check out our [daily tech briefing guide](/blog/daily-tech-briefing-guide) for tips on building an effective morning news routine, whether you use Trace or another tool."
         ]
@@ -935,7 +935,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for AI-Curated Tech News (Replaces Feedly Entirely)",
         paragraphs: [
-          "Trace isn't an RSS reader — it's an AI-powered news aggregator that takes a fundamentally different approach. Instead of you subscribing to individual feeds, Trace automatically scans 100+ curated tech sources and groups related coverage into topic pages with AI-generated summaries, key points, and community discussion links.",
+          "Trace isn't an RSS reader — it's an AI-powered news aggregator that takes a fundamentally different approach. Instead of you subscribing to individual feeds, Trace automatically scans 100+ curated tech sources and groups related coverage into topic pages with AI-generated summaries and community discussion links.",
           "The key difference from Feedly: you don't manage feeds at all. You open the app, and the day's important tech stories are already organized by topic with multi-source perspectives. This is ideal if you find feed curation tedious, if your interests change frequently, or if you want the contextual depth that comes from seeing how different publications cover the same story.",
           "Trace's AI summaries are also multi-source — they synthesize coverage from different publications rather than summarizing one article at a time. This gives a more balanced picture of each story and helps you quickly understand not just what happened, but what the consensus is, what's disputed, and what the different angles are. Feedly's AI summarizes articles individually, which means you don't get this synthesis effect."
         ],
@@ -1262,7 +1262,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for Daily Tech and AI News",
         paragraphs: [
-          "Trace reads 100+ tech and AI sources, groups each story once however many outlets cover it, ranks the day's stories, and gives each one a short summary with key points, a timeline, and links to every source and to the Reddit and Hacker News discussion where there is one. The day's brief takes about five minutes.",
+          "Trace reads 100+ tech and AI sources, groups each story once however many outlets cover it, ranks the day's stories, and gives each one a short summary, a timeline, and links to every source and to the Reddit and Hacker News discussion where there is one. The day's brief takes about five minutes.",
           "You can read it on the web, get it by email around 8:30am UK time (you choose the topics and how many stories), or connect it to an AI assistant: Trace runs a read-only MCP server that Claude, ChatGPT, Cursor and other clients can use after a Google sign-in. [Set it up here](/agents).",
           "Trace is free for everyone, with every feature included, and open source under the AGPL. It covers tech and AI only, so pair it with something else for general news."
         ],

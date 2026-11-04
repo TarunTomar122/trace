@@ -86,7 +86,7 @@ usefulness 15%, evidence quality 15%), then a popularity score that rewards
 source diversity and recency. A separate send-worthiness score decides what may
 reach the email at all.
 
-**Summarise.** Each card gets an overview and key points written from all of its
+**Summarise.** Each card gets an overview written from all of its
 sources, with every source linked. Summaries are cached by URL, so a story that
 stays on the front page all day is summarised once.
 

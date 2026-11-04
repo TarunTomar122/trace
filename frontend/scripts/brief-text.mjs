@@ -32,7 +32,6 @@ async function getItems() {
       hot: !!it?.metadata?.is_hot, trend_score: it?.metadata?.trend_score || 0,
       published: it.published_date || '',
       subtitle: sa.subtitle || '',
-      takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       body: (sa.body || it.description || '').replace(/\s+/g, ' ').trim(),
     };
   }).filter((x) => x.title);
@@ -113,7 +112,6 @@ About ${profile.minimum.targetWords} words.`;
   const itemList = notes.map((s, i) => {
     const parts = [`[${i + 1}] ${s.title}${s.source ? ` (${s.source})` : ''}`];
     if (s.subtitle) parts.push(`    ${s.subtitle}`);
-    if (s.takeaways.length) parts.push(`    Key: ${s.takeaways.join('; ')}`);
     if (s.body) parts.push(`    ${s.body}`);
     return parts.join('\n');
   }).join('\n\n');

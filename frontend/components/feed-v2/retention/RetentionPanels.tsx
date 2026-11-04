@@ -260,7 +260,7 @@ export const retentionCss = `
 `;
 
 export function storyDek(story: FeedStory): string {
-  const raw = String(story.body || story.takeaways.find(Boolean) || '')
+  const raw = String(story.body || '')
     .replace(/\*\*/g, '')
     .replace(/\s+/g, ' ')
     .trim();

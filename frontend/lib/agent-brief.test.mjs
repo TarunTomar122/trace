@@ -10,7 +10,6 @@ test('buildAgentBrief separates news, builds, and conversations and caps output'
     summary: {
       short_article: {
         subtitle: `${title} summary`,
-        key_takeaways: ['one', 'two'],
         why_it_matters: `${title} matters`,
       },
     },

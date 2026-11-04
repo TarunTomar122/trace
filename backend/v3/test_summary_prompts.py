@@ -25,11 +25,7 @@ from dotenv import load_dotenv
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
 from v3.lib.content import fetch_content  # noqa: E402
-from v3.lib.summarizer import (  # noqa: E402
-    _dedupe_takeaways_from_body,
-    _takeaway_overlaps_body,
-    generate_summary,
-)
+from v3.lib.summarizer import generate_summary  # noqa: E402
 
 FILLER_PATTERNS = [
     r"critics argue",
@@ -102,15 +98,6 @@ def _filler_hits(text: str) -> list[str]:
     return [pat for pat in FILLER_PATTERNS if re.search(pat, lower)]
 
 
-def _overlap_stats(body: str, takeaways: list[str]) -> dict[str, Any]:
-    overlapping = [t for t in takeaways if _takeaway_overlaps_body(t, body)]
-    return {
-        "takeaway_count": len(takeaways),
-        "overlapping_count": len(overlapping),
-        "overlapping": overlapping,
-    }
-
-
 def _print_summary_block(
     *,
     feed_type: str,
@@ -120,30 +107,28 @@ def _print_summary_block(
 ) -> None:
     short = summary.get("short_article") or {}
     body = str(short.get("body", "")).strip()
-    takeaways = short.get("key_takeaways") or []
-    if not isinstance(takeaways, list):
-        takeaways = []
+    slides = short.get("slides") or []
+    if not isinstance(slides, list):
+        slides = []
 
-    combined = body + "\n" + "\n".join(str(t) for t in takeaways)
+    combined = body + "\n" + "\n".join(str(s) for s in slides)
     capture_count, hits, misses = _coverage_hits(combined, must_capture)
-    overlap = _overlap_stats(body, [str(t) for t in takeaways])
     filler = _filler_hits(body)
 
     print(f"\n{'=' * 72}")
     print(f"[{feed_type.upper()}] {title}")
     print(f"{'=' * 72}")
     print(f"Body words: {_word_count(body)}")
-    print(f"Takeaways: {overlap['takeaway_count']} (overlapping: {overlap['overlapping_count']})")
     if must_capture:
         print(f"Coverage: {capture_count}/{len(must_capture)} — hit {hits}, miss {misses}")
     if filler:
         print(f"Filler phrases in body: {filler}")
     print("\n--- BODY ---")
     print(body)
-    print("\n--- KEY TAKEAWAYS ---")
-    for i, point in enumerate(takeaways, 1):
-        flag = " [OVERLAP]" if _takeaway_overlaps_body(str(point), body) else ""
-        print(f"{i}. {point}{flag}")
+    if slides:
+        print("\n--- SLIDES ---")
+        for i, slide in enumerate(slides, 1):
+            print(f"{i}. {slide}")
 
 
 def run_article(article: dict[str, str | list[str]], feed_types: list[str]) -> None:

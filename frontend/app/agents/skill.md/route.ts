@@ -32,7 +32,7 @@ Trace reads 100+ tech sources every morning, groups coverage of the same event i
 
 ## Present it
 
-- Responses have \`feed_date\` and lists of items with \`title\`, \`summary\`, \`why_it_matters\`, \`key_takeaways\`, \`url\` and \`sources\`.
+- Responses have \`feed_date\` and lists of items with \`title\`, \`summary\`, \`why_it_matters\`, \`url\` and \`sources\`.
 - Lead with the 3 to 5 biggest stories: one line each on what happened and why it matters, with a source link.
 - Use only stories and links from the response; never invent either. Mention \`feed_date\` so the user knows how fresh it is.
 - If the tool says no brief is available yet, say so and try again later rather than searching the web for a substitute.

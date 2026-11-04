@@ -2571,21 +2571,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   margin-bottom: 0;
 }
 
-.story-page-key-point {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
-.story-page-key-point-dot {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 9999px;
-  background: var(--story-blue);
-  margin-top: 0.5rem;
-  flex-shrink: 0;
-}
-
 .story-page-timeline-btn {
   display: block;
   width: 100%;

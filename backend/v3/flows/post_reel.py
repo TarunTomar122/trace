@@ -210,7 +210,6 @@ def reel_candidates(topics: list[dict[str, Any]], posted: list[dict[str, Any]], 
             continue
         candidates.append({
             "topic": topic, "rank": rank, "title": title, "paragraphs": paragraphs,
-            "points": [_clean(p) for p in topic.get("key_points") or [] if _clean(p)][:5],
             "lane": str(topic.get("interest_id") or "tech"), "source": _source(topic)[0] or "Trace",
             "coverage": _coverage(topic), "url_keys": sorted(url_keys),
         })
@@ -386,7 +385,7 @@ def prune_work(now: datetime) -> None:
 # ---------------------------------------------------------------------------
 
 
-SAVED_FIELDS = ("rank", "title", "paragraphs", "points", "lane", "source", "coverage", "url_keys")
+SAVED_FIELDS = ("rank", "title", "paragraphs", "lane", "source", "coverage", "url_keys")
 
 
 def resume_stories(stories: list[dict[str, Any]], work: Path) -> list[dict[str, Any]]:

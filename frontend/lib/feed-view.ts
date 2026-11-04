@@ -261,7 +261,6 @@ export function mapTrendingToStories(
       rank: i + 1,
       title: decodeHtmlEntities(topic.title || first.title || ''),
       body: topic.summary || first.summary?.short_article?.body || first.description || '',
-      takeaways: Array.isArray(topic.key_points) ? topic.key_points : [],
       img,
       source,
       sources,
@@ -293,7 +292,6 @@ export function mapTrendingToStories(
       // body never restates it); the publisher's title stays in coverage.
       title: decodeHtmlEntities(sa.headline || it.title || ''),
       body: sa.body || it.description || '',
-      takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       img: firstThumb(it.thumbnail, it.og_image, it.image),
       source,
       sources: domain ? [domain] : [],
@@ -349,7 +347,6 @@ function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
   if (extraRicher) {
     target.title = extra.title || target.title;
     target.body = extra.body || target.body;
-    target.takeaways = extra.takeaways.length ? extra.takeaways : target.takeaways;
     target.source = extra.source || target.source;
     if (extra.img) target.img = extra.img;
     target.cat = extra.cat || target.cat;
@@ -359,7 +356,6 @@ function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
     target.img = extra.img;
   }
   if (!target.body && extra.body) target.body = extra.body;
-  if (!target.takeaways.length && extra.takeaways.length) target.takeaways = extra.takeaways;
 
   const seen = new Set(target.coverage.map((link) => canonicalUrlKey(link.url)).filter(Boolean));
   for (const link of extra.coverage) {

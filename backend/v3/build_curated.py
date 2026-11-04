@@ -437,7 +437,7 @@ def _summarize_curated(
         summary = dict(cached["summary"])
         if isinstance(summary.get("body"), str):
             summary["body"] = _curated_body_text(summary["body"])
-            summary["key_takeaways"] = []
+            summary.pop("key_takeaways", None)
             return summary
 
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -453,7 +453,6 @@ def _summarize_curated(
             "title": _safe_text(fetched.get("title")) or "Curated pick",
             "subtitle": "Curated by the author",
             "body": _curated_body_text(_clean_multiline(note, limit=1200)),
-            "key_takeaways": [],
             "interest_id": manual_interest or "tech",
         }
 
@@ -463,7 +462,6 @@ def _summarize_curated(
             "title": _safe_text(fetched.get("title")) or "Curated pick",
             "subtitle": note or "Picked for Trace curated",
             "body": _curated_body_text(_clean_multiline(note or source_text[:900] or fetched.get("title", ""))),
-            "key_takeaways": [],
             "interest_id": fallback_interest or "tech",
         }
         return fallback
@@ -472,13 +470,12 @@ def _summarize_curated(
     prompt = (
         "You are writing a curated Trace pick from a manually selected link.\n"
         "The editor chose this link; your job is a short teaser so readers can decide whether to open it.\n"
-        "Return JSON with keys: title, subtitle, body, key_takeaways, interest_id.\n"
+        "Return JSON with keys: title, subtitle, body, interest_id.\n"
         "Rules:\n"
         "- `body` must be exactly 2 or 3 sentences, plain prose, one short paragraph, "
         f"and must stay under {CURATED_BODY_CHAR_LIMIT} characters.\n"
         "- Spark curiosity and convey what kind of thing it is — do NOT summarize everything; the link is the main experience.\n"
         "- No bullet lists in body; no 'why it matters' framing; no hype adjectives.\n"
-        "- `key_takeaways` must be an empty array [].\n"
         f"- interest_id must be one of: {', '.join(sorted(VALID_INTEREST_IDS))}.\n"
         f"- If a manual interest is present, prefer it: {provided_interest or 'none'}.\n\n"
         f"Manual note: {note or 'none'}\n"
@@ -510,7 +507,6 @@ def _summarize_curated(
         "title": _safe_text(raw.get("title")) or _safe_text(fetched.get("title")) or "Curated pick",
         "subtitle": _safe_text(raw.get("subtitle")) or note or "Picked for Trace curated",
         "body": _curated_body_text(_clean_multiline(raw.get("body") or note or source_text[:900])),
-        "key_takeaways": [],
         "interest_id": provided_interest or _normalize_interest_id(raw.get("interest_id")) or _infer_interest_from_text(
             " ".join([fetched.get("title", ""), source_text])
         ),
@@ -548,7 +544,6 @@ def _build_feed_item(raw_item: dict[str, Any], fetched: dict[str, Any], summary:
             "short_article": {
                 "subtitle": subtitle,
                 "body": body,
-                "key_takeaways": [],
             },
         },
         "metadata": {

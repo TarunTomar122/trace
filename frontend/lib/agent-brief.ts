@@ -5,7 +5,6 @@ export type AgentBriefItem = {
   title: string;
   summary: string;
   why_it_matters?: string;
-  key_takeaways: string[];
   url?: string;
   sources: Array<{ name: string; title: string; url: string }>;
   published_at?: string;
@@ -31,9 +30,6 @@ function fromFeedItem(item: FeedItem): AgentBriefItem {
     title: cleanText(item.title),
     summary: cleanText(short?.subtitle || item.description || short?.body),
     why_it_matters: cleanText(short?.why_it_matters) || undefined,
-    key_takeaways: Array.isArray(short?.key_takeaways)
-      ? short.key_takeaways.map(cleanText).filter(Boolean).slice(0, 4)
-      : [],
     url: cleanText(item.url) || undefined,
     sources: Array.isArray(item.sources)
       ? item.sources
@@ -55,9 +51,6 @@ function fromTopic(topic: TrendingTopic): AgentBriefItem {
     id: topic.id,
     title: cleanText(topic.title),
     summary: cleanText(topic.summary),
-    key_takeaways: Array.isArray(topic.key_points)
-      ? topic.key_points.map(cleanText).filter(Boolean).slice(0, 4)
-      : [],
     url: cleanText(leadArticle?.url) || undefined,
     sources: (topic.articles || [])
       .flatMap((article) => article.sources || [])
