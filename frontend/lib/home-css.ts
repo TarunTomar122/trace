@@ -247,12 +247,17 @@ export const HOME_CSS = `
   .hp .hp-strip .hp-submit { height: 42px; }
   .hp .hp-hero { padding: 44px 18px 40px; }
   .hp .hp-hero-p { margin-top: 20px; font-size: 17px; }
-  .hp .hp-cards { padding: 0 16px; gap: 12px; }
-  .hp .hp-card { border-width: 6px; }
-  .hp .hp-card-link { min-height: 0; padding: 22px 12px 20px; }
-  .hp .hp-card-title { font-size: 26px; }
-  .hp .hp-art { margin: 8px 0 10px; }
-  .hp .hp-card-text { font-size: 15px; }
+  /* phones: the four products as a compact list (art left, words right), not tall tilted tiles */
+  .hp .hp-cards { grid-template-columns: minmax(0, 1fr); max-width: 520px; padding: 0 16px; gap: 10px; }
+  .hp .hp-card, .hp .hp-card:nth-child(n), .hp .hp-card:hover { transform: none; border-width: 0; border-radius: 14px; }
+  .hp .hp-card-link {
+    display: grid; grid-template-columns: 84px minmax(0, 1fr); column-gap: 14px; align-items: center;
+    min-height: 0; padding: 12px 16px 12px 10px; text-align: left;
+  }
+  .hp .hp-card-link:focus-visible { border-radius: 14px; }
+  .hp .hp-art { grid-column: 1; grid-row: 1 / span 2; width: 84px; margin: 0; }
+  .hp .hp-card-title { grid-column: 2; align-self: end; font-size: 23px; }
+  .hp .hp-card-text { grid-column: 2; align-self: start; margin-top: 3px; font-size: 15px; text-wrap: pretty; }
   .hp .hp-how-wrap { padding: 80px 16px 0; }
   .hp .hp-how { padding: 28px 20px; }
   .hp .hp-how-steps { grid-template-columns: minmax(0, 1fr); gap: 20px; }

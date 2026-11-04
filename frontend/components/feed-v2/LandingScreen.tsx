@@ -158,10 +158,9 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
 
       <div className="hp-top">
         <section className="hp-hero">
-          <h1 className="hp-h1">Fastest way to catch&nbsp;up on tech &amp;&nbsp;AI news</h1>
+          <h1 className="hp-h1">Tech and AI news in five minutes a&nbsp;day</h1>
           <p className="hp-hero-p">
-            From a 5-minute morning email to every new tab, Trace is designed to give you{' '}
-            <strong>the tech and AI stories that matter, grouped and summed up</strong>, without the noise.
+            We read over 100 sources each morning and send you what matters, with a link to every&nbsp;one.
           </p>
         </section>
 
