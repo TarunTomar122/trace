@@ -47,7 +47,7 @@ export default async function DailyArchivePage() {
         <section className="br-hero">
           <h1 className="hp-h1">The Daily Brief</h1>
           <p>
-            The tech and AI stories that mattered, grouped and summed up every morning.{' '}
+            The day’s biggest tech and AI stories, in one short read every morning.{' '}
             <Link href="/brief/customize" className="br-link">Make it yours</Link>
           </p>
         </section>

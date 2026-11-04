@@ -243,6 +243,7 @@ export const HOME_CSS = `
 /* phones */
 @media (max-width: 760px) {
   .hp .hp-strip-in { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px; }
+  .hp .hp-strip-sub { display: none; } /* phones: just the title and the form */
   .hp .hp-strip .hp-input { flex: 1; width: auto; height: 42px; }
   .hp .hp-strip .hp-submit { height: 42px; }
   .hp .hp-hero { padding: 44px 18px 40px; }

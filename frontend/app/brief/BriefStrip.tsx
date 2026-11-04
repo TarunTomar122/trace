@@ -6,7 +6,7 @@ export default function BriefStrip() {
     <section className="hp-strip" id="subscribe" aria-label="Subscribe">
       <div className="hp-strip-in">
         <div>
-          <p className="hp-strip-title">Subscribe to the Trace Daily Brief</p>
+          <p className="hp-strip-title">Subscribe to Trace Daily</p>
           <p className="hp-strip-sub">
             The most important tech and AI stories of the day, summed up. <em>100% free, unsubscribe anytime.</em>{' '}
             <a href="/terms">Terms</a> &amp; <a href="/privacy-policy">Privacy</a>.
