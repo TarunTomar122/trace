@@ -29,7 +29,7 @@ const CARDS = [
 ] as const;
 
 const HOW = [
-  { title: 'Scan', body: 'We read over a hundred tech sources every morning.' },
+  { title: 'Scan', body: 'We check newsrooms, company blogs and research labs for you.' },
   { title: 'Group', body: 'We fold every outlet’s take on a story into one.' },
   { title: 'Summarise', body: 'We sum each one up in a few lines, sources attached.' },
 ];
@@ -160,7 +160,7 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
         <section className="hp-hero">
           <h1 className="hp-h1">Tech and AI news in five minutes a&nbsp;day</h1>
           <p className="hp-hero-p">
-            We read over 100 sources each morning and send you what matters, with a link to every&nbsp;one.
+            We read over 100 sources each morning and bring you what matters, with a link to every&nbsp;source.
           </p>
         </section>
 
