@@ -215,6 +215,10 @@ test('a launch whose newest coverage is over 36 hours old loses its bump', () =>
 
 test('isModelRelease accepts param-size launches and skips incident coverage', () => {
   assert.equal(isModelRelease({ title: 'Bonsai 2 27B' }), true);
+  // Money is never a parameter count, whatever the currency.
+  assert.equal(isModelRelease({ title: 'Drax plans £20B AI datacenter at power station' }), false);
+  assert.equal(isModelRelease({ title: 'AI startup raises €5B', body: 'Its models power agents.' }), false);
+  assert.equal(isModelRelease({ title: 'Nvidia pours $9.2B into AI chips' }), false);
   assert.equal(isModelRelease({ title: 'Meta Unveils Muse Wonder AI Models' }), true);
   assert.equal(isModelRelease({ title: 'Tesla Model Y gets a refresh' }), false);
   assert.equal(isModelRelease({ title: 'UK says it will again test OpenAI and Anthropic AI models before release' }), false);

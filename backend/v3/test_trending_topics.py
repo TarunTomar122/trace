@@ -81,6 +81,10 @@ class TrendingTopicClusteringTests(unittest.TestCase):
 
     def test_model_release_detector(self) -> None:
         self.assertTrue(_looks_like_model_release("Bonsai 2 27B"))
+        # Money is never a parameter count, whatever the currency.
+        self.assertFalse(_looks_like_model_release("Drax plans £20B AI datacenter at power station"))
+        self.assertFalse(_looks_like_model_release("AI startup raises €5B", content="Its models power agents."))
+        self.assertFalse(_looks_like_model_release("Nvidia pours $9.2B into AI chips"))
         self.assertTrue(_looks_like_model_release("Jev coding model launches today"))
         self.assertTrue(_looks_like_model_release(
             "Meta Unveils Muse Wonder AI Models", content="Meta launched its first frontier AI models."))

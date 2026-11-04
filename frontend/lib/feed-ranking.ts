@@ -28,8 +28,9 @@ export function isStaleStory(ts: number | undefined, now: number = Date.now()): 
 }
 
 const MODEL_RELEASE_SKIP = /\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b/i;
-// Parameter counts ("70B model") only — never dollar amounts ("$9.2B project").
-const MODEL_PARAM_SIZE = /(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
+// Parameter counts ("70B model") only — never money in any currency
+// ("$9.2B project", "£20B datacenter", "€5B round").
+const MODEL_PARAM_SIZE = /(?<![$£€¥\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
 // Plurals too: "Meta unveils Muse Wonder AI models" is a launch.
 const MODEL_NOUN = /\b(models?|llms?|foundation models?|open[- ]weights?|checkpoints?)\b/i;
 // "Test models before release" uses release as a noun, not a launch.

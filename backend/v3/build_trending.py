@@ -516,8 +516,10 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
         return False
     if re.search(r"ai/?tldr", source_name or "", re.I):
         return True
-    # Parameter counts ("70B model"), never dollar amounts ("$9.2B project").
-    if re.search(r"(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
+    # Parameter counts ("70B model"), never money in any currency
+    # ("$9.2B project", "£20B datacenter", "€5B round"). Keep in step with
+    # MODEL_PARAM_SIZE in frontend/lib/feed-ranking.ts.
+    if re.search(r"(?<![$£€¥\d.,])\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
         return True
     has_noun = re.search(
         r"\b(models?|llms?|foundation models?|open[- ]weights?|checkpoints?)\b",
