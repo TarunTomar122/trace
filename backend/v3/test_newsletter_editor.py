@@ -95,7 +95,7 @@ class RareTakeTests(unittest.TestCase):
 
         answer = {f"s{i}": {"importance": 90 - i, "release": False, "repeat": False, "event": f"e{i}",
                             "reaction_to": "", "follows": "", "headline": f"H{i}", "short": "s",
-                            "take": f"Why it matters: consequence number {i} for builders.", "one_line": "o",
+                            "take": f"Why it matters: consequence {'abcd'[i]} for builders.", "one_line": "o",
                             "company": "", "outliers": [], "superseded": [], "blurb": f"B{i}."} for i in range(4)}
         with patch.object(E, "_client", return_value=object()), patch.object(E, "_ask", return_value=answer), \
                 patch.object(E, "_fix_restating", return_value=None):
@@ -319,28 +319,196 @@ class ComposeTests(unittest.TestCase):
 class FeedReuseTests(unittest.TestCase):
     """The feed rebuilds every 20 minutes: a story keeps its last write-up for a while."""
 
-    def _store(self, last):
+    def _store(self, records):
+        """A cache holding `records` (each with its edit), filed the way edit_stories files them."""
+        from v3.lib import newsletter_editor as E
+        data = {}
+        for n, r in enumerate(records):
+            ref = f"nl_story:test:{n}"
+            data[ref] = r["edit"]
+            pointer = {k: v for k, v in r.items() if k != "edit"}
+            for u in r["urls"]:
+                data[E._url_key(u)] = {**pointer, "ref": ref}
+
         class Store:
             def get_cached_synthesis(self, key):
-                return last if key.startswith("nl_story_last:") else None
+                return data.get(key)
         return Store()
 
     def _edit(self):
         return {"importance": 80, "headline": "Voters said yes to limits on data centers", "blurb": "Restrictions won.",
                 "event": "data-center-ballots"}
 
-    def test_recent_edit_reused_until_a_new_outlet_covers_it(self):
+    def _record(self, hours_ago=1.0, outlets=3, urls=("a", "b", "c"), sent=("Old story (Monday)",), **extra):
         from datetime import datetime, timedelta, timezone
         from v3.lib import newsletter_editor as E
-        at = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        raw = {"edit": self._edit(), "at": at, "outlets": 3}
-        if not E._valid_edit(raw["edit"]):
+        at = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).isoformat()
+        return {"edit": self._edit(), "at": at, "outlets": outlets, "urls": list(urls),
+                "sent": E._sent_digest(list(sent)), **extra}
+
+    def setUp(self):
+        from v3.lib import newsletter_editor as E
+        if not E._valid_edit(self._edit()):
             self.skipTest("edit fixture doesn't meet _valid_edit's required fields")
-        group = {"topic_id": "t1", "source_count": 3}
-        self.assertIsNotNone(E._recent_edit(self._store(raw), group, 3))
-        self.assertIsNone(E._recent_edit(self._store(raw), {**group, "source_count": 4}, 3))
-        old = {**raw, "at": (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()}
-        self.assertIsNone(E._recent_edit(self._store(old), group, 3))
+
+    def test_write_up_follows_its_articles_not_the_topic_id(self):
+        from v3.lib import newsletter_editor as E
+        sent = ["Old story (Monday)"]
+        store = self._store([self._record()])
+        # One more article from an outlet already counted: a new topic id, the same story.
+        grown = {"topic_id": "tt_new", "source_count": 3, "urls": ["a", "b", "c", "d"]}
+        self.assertIsNotNone(E._recent_edit(store, grown, 24, sent))
+        # Written against other recent emails: the repeat call may differ, so it is redone.
+        self.assertIsNone(E._recent_edit(store, grown, 24, ["Another story (Tuesday)"]))
+        # One article that moved into a different story doesn't carry the old copy along.
+        moved = {"topic_id": "tt_other", "source_count": 3, "urls": ["c", "x", "y", "z"]}
+        self.assertIsNone(E._recent_edit(store, moved, 24, sent))
+
+    def test_two_small_stories_sharing_one_article_are_different(self):
+        from v3.lib import newsletter_editor as E
+        sent = ["Old story (Monday)"]
+        store = self._store([self._record(urls=("a", "b"))])
+        self.assertIsNone(E._recent_edit(store, {"topic_id": "t", "source_count": 2, "urls": ["b", "c"]}, 24, sent))
+        # A one-article story that picked up a second article is still the same story.
+        single = self._store([self._record(urls=("a",), outlets=1)])
+        self.assertIsNotNone(E._recent_edit(single, {"topic_id": "t", "source_count": 1, "urls": ["a", "b"]}, 24, sent))
+
+    def test_new_outlet_refreshes_only_an_older_write_up(self):
+        from v3.lib import newsletter_editor as E
+        sent = ["Old story (Monday)"]
+        wider = {"topic_id": "t", "source_count": 4, "urls": ["a", "b", "c"]}
+        self.assertIsNotNone(E._recent_edit(self._store([self._record(hours_ago=1)]), wider, 24, sent))
+        self.assertIsNone(E._recent_edit(self._store([self._record(hours_ago=3)]), wider, 24, sent))
+        same = {**wider, "source_count": 3}
+        self.assertIsNotNone(E._recent_edit(self._store([self._record(hours_ago=20)]), same, 24, sent))
+        self.assertIsNone(E._recent_edit(self._store([self._record(hours_ago=25)]), same, 24, sent))
+        # The email only takes this morning's write-ups.
+        self.assertIsNone(E._recent_edit(self._store([self._record(hours_ago=8)]), same, E.EMAIL_REUSE_HOURS, sent))
+
+    def test_newest_matching_write_up_wins(self):
+        from v3.lib import newsletter_editor as E
+        old, new = self._record(hours_ago=5, urls=("a", "b", "c")), self._record(hours_ago=1, urls=("b", "c", "d"))
+        new["edit"] = {**new["edit"], "headline": "The newer write-up"}
+        group = {"topic_id": "t", "source_count": 3, "urls": ["a", "b", "c", "d"]}
+        got = E._recent_edit(self._store([old, new]), group, 24, ["Old story (Monday)"])
+        self.assertEqual(got["headline"], "The newer write-up")
+
+    def test_outlier_flags_follow_their_links_when_coverage_reorders(self):
+        from v3.lib import newsletter_editor as E
+        record = self._record(urls=("a", "b", "c"), outliers_urls=["c"], superseded_urls=["a"])
+        record["edit"] = {**record["edit"], "outliers": [2], "superseded": [0]}
+        group = {"topic_id": "t", "source_count": 3, "urls": ["c", "a", "b"], "coverage_urls": ["c", "a", "b"]}
+        got = E._recent_edit(self._store([record]), group, 24, ["Old story (Monday)"])
+        self.assertEqual(got["outliers"], [0])
+        self.assertEqual(got["superseded"], [1])
+
+    def test_edit_stories_reuses_after_an_article_joins_without_a_model_call(self):
+        import json
+        from unittest import mock
+        from v3.lib import newsletter_editor as E
+
+        class Store:
+            def __init__(self):
+                self.data = {}
+
+            def get_cached_synthesis(self, key):
+                return self.data.get(key)
+
+            def cache_synthesis(self, key, value):
+                self.data[key] = value
+
+        answer = {"importance": 80, "repeat": False, "release": False, "event": "e", "reaction_to": "",
+                  "follows": "", "headline": "Data center limits won most local votes",
+                  "short": "Voters limit data centers", "take": "", "one_line": "Most measures passed.",
+                  "company": "", "outliers": [], "superseded": [],
+                  "blurb": "Bans and power caps passed in most towns that voted.", "detail": "More."}
+        calls = []
+
+        class Client:
+            class chat:
+                class completions:
+                    @staticmethod
+                    def create(**kwargs):
+                        calls.append(kwargs["model"])
+                        msg = mock.Mock(content=json.dumps({"s0": answer}))
+                        return mock.Mock(choices=[mock.Mock(message=msg)])
+
+            def with_options(self, **_):
+                return self
+
+        store, sent = Store(), ["Old story (Monday)"]
+        group = {"topic_id": "tt_1", "title": "Voters back limits", "source_count": 2,
+                 "urls": ["a", "b"], "coverage_urls": ["a", "b"], "coverage_titles": ["A", "B"]}
+        with mock.patch.object(E, "_client", return_value=Client()):
+            first = E.edit_stories(store, [group], sent, reuse_hours=24)
+            self.assertEqual(calls, [E.EDITOR_MODEL])
+            grown = {**group, "topic_id": "tt_2", "urls": ["a", "b", "c"], "coverage_urls": ["a", "b", "c"],
+                     "coverage_titles": ["A", "B", "C"]}
+            again = E.edit_stories(store, [grown], sent, reuse_hours=24)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(again["tt_2"]["headline"], first["tt_1"]["headline"])
+        # Nothing filed for reuse when the recent emails couldn't be read.
+        store2 = Store()
+        with mock.patch.object(E, "_client", return_value=Client()):
+            E.edit_stories(store2, [group], [], reuse_hours=24, file_for_reuse=False)
+        self.assertFalse(any(k.startswith("nl_story_url:") for k in store2.data))
+
+    def test_take_kept_only_on_very_important_stories(self):
+        import json
+        from unittest import mock
+        from v3.lib import newsletter_editor as E
+        base = {"repeat": False, "release": False, "event": "", "reaction_to": "", "follows": "",
+                "short": "s", "one_line": "o", "company": "", "outliers": [], "superseded": [],
+                "blurb": "Schools lose Search if they keep Gemini off.", "detail": "d"}
+        result = {
+            "s0": {**base, "importance": 90, "headline": "Google ties Search to AI",
+                   "take": "Why it matters: districts that ban chatbots now pick between policy and their main research tool."},
+            "s1": {**base, "importance": 70, "headline": "A smaller story",
+                   "take": "Why it matters: a niche consequence nobody would guess from the headline at all."},
+        }
+
+        class Client:
+            class chat:
+                class completions:
+                    @staticmethod
+                    def create(**kwargs):
+                        return mock.Mock(choices=[mock.Mock(message=mock.Mock(content=json.dumps(result)))])
+
+            def with_options(self, **_):
+                return self
+
+        class Store:
+            def get_cached_synthesis(self, key):
+                return None
+
+            def cache_synthesis(self, key, value):
+                pass
+
+        groups = [{"topic_id": "g0", "title": "x", "urls": ["u0"]}, {"topic_id": "g1", "title": "y", "urls": ["u1"]}]
+        with mock.patch.object(E, "_client", return_value=Client()):
+            out = E.edit_stories(Store(), groups, [])
+        self.assertTrue(out["g0"]["take"])
+        self.assertEqual(out["g1"]["take"], "")
+
+    def test_feed_passes_recent_emails_and_files_nothing_when_they_cant_be_read(self):
+        from unittest import mock
+        from v3.lib import feed_editor
+        feed = {"trending_topics": [{"id": "a", "title": "x", "articles": [{"url": "u", "title": "t"}]}]}
+        stub = [mock.patch("v3.flows.send_audience_newsletter._candidates", return_value=[{"topic_id": "a"}]),
+                mock.patch("v3.flows.send_audience_newsletter._ranked", side_effect=lambda c: c)]
+        for p in stub:
+            p.start()
+            self.addCleanup(p.stop)
+        with mock.patch("v3.lib.newsletter_editor.edit_stories", return_value={}) as edit, \
+                mock.patch("v3.flows.send_audience_newsletter._recent_sent",
+                           return_value=[{"title": "Old story", "sent_on": "2026-11-02"}]):
+            feed_editor.annotate_feed(object(), feed, limit=5)
+        self.assertEqual(edit.call_args.args[2], ["Old story (Monday)"])
+        self.assertTrue(edit.call_args.kwargs["file_for_reuse"])
+        with mock.patch("v3.lib.newsletter_editor.edit_stories", return_value={}) as edit, \
+                mock.patch("v3.flows.send_audience_newsletter._recent_sent", side_effect=RuntimeError("db")):
+            feed_editor.annotate_feed(object(), feed, limit=5)
+        self.assertFalse(edit.call_args.kwargs["file_for_reuse"])
 
     def test_feed_limit_zero_edits_nothing(self):
         from unittest import mock

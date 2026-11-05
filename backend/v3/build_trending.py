@@ -3030,8 +3030,9 @@ def build_global_feed(
     _log(f"Built {len(headlines)} storyline headlines")
 
     # The editor's judgement and copy on the top stories (v3/lib/feed_editor.py): importance,
-    # event keys, headlines, card blurbs and story-page versions. Cached per story, so a rebuild
-    # only pays for stories whose coverage changed. TRACE_FEED_EDITOR=0 turns it off; a failure
+    # event keys, headlines, card blurbs and story-page versions. A write-up follows the story's
+    # articles (newsletter_editor._recent_edit), so a rebuild only pays for new stories and ones a
+    # new outlet covered more than two hours after their last write-up. TRACE_FEED_EDITOR=0 turns it off; a failure
     # leaves the pipeline's own copy in place.
     if os.getenv("TRACE_FEED_EDITOR", "1") != "0":
         try:

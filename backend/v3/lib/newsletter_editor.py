@@ -1,11 +1,15 @@
 """The daily email's editor: judgement and copy on top of the pipeline's stories.
 
-Two passes, both cached so the publish loop (every ~20 min) rarely pays:
+Two passes, both cached so the publish loop (every ~20 min) rarely pays.
+The story pass runs on the cheaper model (it rewrites dozens of stories a day
+for the feed and the email shares its write-ups); the whole-email passes that
+run a few times a day use the stronger one:
 
 - edit_stories: for each candidate story group, how much it matters to the
-  reader (1-10), whether it really is a new AI model, an event key (so two
+  reader (1-100), whether it really is a new AI model, an event key (so two
   write-ups of one event don't both go out), and our headline + short blurb in
-  one human editor's voice. Cached per story text.
+  one human editor's voice. Cached per story text, and reused while the story
+  stays the same story (see _recent_edit).
 - write_issue: subject line and inbox preheader for one finished selection
   (the email opens on its lead story; nothing restates it above). Cached per
   selection.
@@ -24,15 +28,33 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-EDITOR_MODEL = os.getenv("TRACE_EDITOR_MODEL", "gpt-6.1-sol")
-EDITOR_EFFORT = os.getenv("TRACE_EDITOR_EFFORT", "high")
-# The final whole-email writing pass can use a different model from the story pass.
-WRITER_MODEL = os.getenv("TRACE_WRITER_MODEL", "") or EDITOR_MODEL
+# The story pass: every feed rebuild and the email's head of the pool. Side by side on
+# 2026-11-05's top stories, terra at medium effort wrote as well as sol at high (owner: cut
+# the editor's OpenAI bill), so the many story calls use it.
+EDITOR_MODEL = os.getenv("TRACE_EDITOR_MODEL", "gpt-6.1-terra")
+EDITOR_EFFORT = os.getenv("TRACE_EDITOR_EFFORT", "medium")
+# The whole-email passes (the polish read and the subject line) run a few times a send.
+WRITER_MODEL = os.getenv("TRACE_WRITER_MODEL") or "gpt-6.1-sol"
+WRITER_EFFORT = os.getenv("TRACE_WRITER_EFFORT") or "high"
+# A story's write-up follows its articles, not its topic id (which changes whenever one more
+# article joins): the feed reuses it for up to REUSE_HOURS, and redoes it when a new outlet has
+# covered the story and the write-up is over REFRESH_HOURS old. The 08:30 email only reuses
+# write-ups from the last EMAIL_REUSE_HOURS, so its ratings and time words ("Tuesday's votes",
+# a day-old story rated lower) are from this morning, not last night. Write-ups are also redone
+# once a day when the recent-emails list changes (IST midnight, 18:30 UTC).
+REUSE_HOURS = 24
+EMAIL_REUSE_HOURS = 6
+REFRESH_HOURS = 2
+# "Why it matters" on a story pass: only stories rated at least this high keep one. Feed runs
+# edit small batches, so the per-batch cap alone would leave one on most stories.
+TAKE_MIN_IMPORTANCE = 85
 # Bump when a prompt changes: cached answers are keyed by version.
 STORY_PROMPT_VERSION = "nl-story-v44"
 ISSUE_PROMPT_VERSION = "nl-issue-v15"
 POLISH_PROMPT_VERSION = "nl-write-v20"
-BATCH = 45  # the whole head of the pool in one call: ratings are relative, event keys consistent
+# The whole head of the pool in one call: ratings are relative and event keys consistent within
+# a batch. Reused write-ups come from earlier batches, so ratings mix across runs.
+BATCH = 45
 MAX_TAKES_PER_BATCH = 2  # "Why it matters" lines kept per story batch: rare by design (owner, 2026-11-05)
 MAX_STORIES = 70  # the ranked head of the pool (today's doc plus yesterday's last 24 hours); the rest never reach an email
 
@@ -195,11 +217,12 @@ def _story_key(group: dict[str, Any], sent: list[str]) -> str:
 
 def _ask(
     client: Any, prompt: str, schema: dict[str, Any], name: str, timeout: int = 300, model: str = "",
+    effort: str = "",
 ) -> dict[str, Any]:
     model = model or EDITOR_MODEL
     kwargs: dict[str, Any] = {}
     if model.startswith(("gpt-5", "gpt-6", "o")):
-        kwargs["reasoning_effort"] = EDITOR_EFFORT
+        kwargs["reasoning_effort"] = effort or EDITOR_EFFORT
     # One long call, no retry: a hung API costs the daily at most `timeout`.
     response = client.with_options(max_retries=0 if timeout > 300 else 1).chat.completions.create(
         model=model,
@@ -282,37 +305,100 @@ def _valid_edit(raw: Any) -> dict[str, Any] | None:
     return edit
 
 
-def _last_key(group: dict[str, Any]) -> str:
-    return f"nl_story_last:{STORY_PROMPT_VERSION}:{EDITOR_MODEL}:{_digest(str(group.get('topic_id') or ''))}"
+def _urls(group: dict[str, Any]) -> list[str]:
+    """The story's article links, deduped: what a write-up is filed under."""
+    # `urls` first: a group the email merged from two topics carries both topics' links there.
+    raw = group.get("urls") or group.get("coverage_urls") or [group.get("url")]
+    return list(dict.fromkeys(str(u).strip() for u in raw if str(u or "").strip()))[:14]
 
 
-def _recent_edit(v3_store: Any, group: dict[str, Any], reuse_hours: float) -> dict[str, Any] | None:
-    """The story's last edit when it is under `reuse_hours` old and no new outlet has picked the
-    story up since: a new article from an outlet already counted doesn't need a fresh write-up."""
+def _url_key(url: str) -> str:
+    return f"nl_story_url:{STORY_PROMPT_VERSION}:{EDITOR_MODEL}:{_digest(url)}"
+
+
+def _sent_digest(sent: list[str]) -> str:
+    return _digest(sorted(sent))
+
+
+def _coverage_urls(group: dict[str, Any]) -> list[str]:
+    """The links behind `coverage` in _story_input, position for position."""
+    return [str(u) for u in (group.get("coverage_urls") or [])][:14]
+
+
+def _same_story(before: set[str], now: set[str]) -> bool:
+    """Most of each story's articles are in the other: one more article joining keeps it the
+    same story; one article moving into a different cluster doesn't carry its old copy along."""
+    shared = len(before & now)
+    if shared * 2 < len(before) or shared * 2 < len(now):
+        return False
+    # Two small stories sharing one of their two articles are different stories.
+    return shared >= 2 or min(len(before), len(now)) <= 1
+
+
+def _recent_edit(
+    v3_store: Any, group: dict[str, Any], reuse_hours: float, sent: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """The newest write-up of this same story, when one is fresh enough to reuse.
+
+    Each write-up is filed under every one of its articles' links, pointing at the stored edit.
+    One counts as this story's when the two article sets mostly overlap (_same_story), it was
+    written against the same recent emails (the repeat call depends on them) and it is under
+    `reuse_hours` old, unless a new outlet has covered the story since and it is over
+    REFRESH_HOURS old. Its outlier and corrected-article flags are carried over by link, so
+    they still point at the right articles after the story's coverage list changed.
+    """
+    urls = _urls(group)
+    if not urls:
+        return None
+    now = datetime.now(timezone.utc)
+    digest = _sent_digest(sent or [])
+    best: tuple[datetime, dict[str, Any]] | None = None
+    for url in urls:
+        try:
+            last = v3_store.get_cached_synthesis(_url_key(url))
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(last, dict) or last.get("sent") != digest or not last.get("ref"):
+            continue
+        try:
+            at = datetime.fromisoformat(str(last.get("at")))
+        except ValueError:
+            continue
+        if not _same_story(set(last.get("urls") or []), set(urls)):
+            continue
+        age_h = (now - at).total_seconds() / 3600
+        if age_h > reuse_hours:
+            continue
+        if int(group.get("source_count") or 1) > int(last.get("outlets") or 1) and age_h > REFRESH_HOURS:
+            continue
+        if best is None or at > best[0]:
+            best = (at, last)
+    if best is None:
+        return None
     try:
-        last = v3_store.get_cached_synthesis(_last_key(group))
+        edit = _valid_edit(v3_store.get_cached_synthesis(best[1]["ref"]))
     except Exception:  # noqa: BLE001
         return None
-    if not isinstance(last, dict):
+    if edit is None:
         return None
-    try:
-        age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(str(last.get("at")))).total_seconds() / 3600
-    except ValueError:
-        return None
-    if age_h > reuse_hours or int(group.get("source_count") or 1) > int(last.get("outlets") or 1):
-        return None
-    return _valid_edit(last.get("edit"))
+    position = {u: i for i, u in enumerate(_coverage_urls(group))}
+    for field in ("outliers", "superseded"):
+        edit[field] = sorted(position[u] for u in best[1].get(f"{field}_urls") or [] if u in position)
+    return edit
 
 
 def edit_stories(
     v3_store: Any, groups: list[dict[str, Any]], sent: list[str] | None = None, limit: int = MAX_STORIES,
-    reuse_hours: float = 0, timeout: int = 900,
+    reuse_hours: float = 0, timeout: int = 900, file_for_reuse: bool = True,
 ) -> dict[str, dict[str, Any]]:
     """{topic_id: edit} for the first `limit` groups (already ranked).
 
     `sent` is the headlines the last few dailies carried, for the repeat call.
-    `reuse_hours` (the feed, which rebuilds every 20 minutes) keeps a story's last edit for that
-    long unless a new outlet has covered it, so a busy story isn't rewritten on every rebuild.
+    `reuse_hours` keeps a story's last write-up (the feed's, every 20 minutes, or the email's)
+    for that long; see _recent_edit. The feed and the email pass the same `sent`, so the email
+    reuses what the feed already wrote instead of paying for it again. `file_for_reuse=False`
+    (the recent emails couldn't be read) keeps new write-ups out of that index, so a bad read
+    doesn't replace the good ones.
     A group missing from the result keeps the pipeline's copy and ranking.
     """
     sent = [t for t in dict.fromkeys(sent or []) if t][:80]
@@ -325,7 +411,7 @@ def edit_stories(
             cached = v3_store.get_cached_synthesis(_story_key(group, sent))
         except Exception as exc:  # noqa: BLE001
             _log(f"cache read failed: {type(exc).__name__}")
-        edit = _valid_edit(cached) or (_recent_edit(v3_store, group, reuse_hours) if reuse_hours else None)
+        edit = _valid_edit(cached) or (_recent_edit(v3_store, group, reuse_hours, sent) if reuse_hours else None)
         if edit:
             edits[group["topic_id"]] = edit
         else:
@@ -359,14 +445,20 @@ def edit_stories(
             stories=json.dumps({sid: _story_input(g) for sid, g in ids.items()}, ensure_ascii=False, indent=1),
         )
         try:
-            # The whole pool in one call takes several minutes at high effort.
+            # The whole pool in one call can take a few minutes.
             result = _ask(client, prompt, schema, "stories", timeout=timeout)
         except Exception as exc:  # noqa: BLE001 - unedited stories still go out
             detail = re.sub(r"sk-[\w*-]+", "sk-…", str(exc))[:160]
             _log(f"story pass failed ({type(exc).__name__}: {detail}); the rest go out unedited")
             break
         fresh = {sid: (group, edit) for sid, group in ids.items() if (edit := _valid_edit(result.get(sid)))}
-        # "Why it matters" stays rare: only the most important few of the batch keep one.
+        # "Why it matters" stays rare: only very important stories, the top few of the batch,
+        # and never one that repeats its blurb or carries a number (a fact, not a consequence).
+        for edit in (e for _, e in fresh.values()):
+            take = edit.get("take") or ""
+            if take and (edit["importance"] < TAKE_MIN_IMPORTANCE or re.search(r"\d", take)
+                         or _take_repeats(take, edit["blurb"])):
+                edit["take"] = ""
         with_take = sorted((e for _, e in fresh.values() if e.get("take")), key=lambda e: -e["importance"])
         for extra in with_take[MAX_TAKES_PER_BATCH:]:
             extra["take"] = ""
@@ -375,12 +467,21 @@ def edit_stories(
         for group, edit in fresh.values():
             edits[group["topic_id"]] = edit
             try:
-                v3_store.cache_synthesis(_story_key(group, sent), edit)
-                if reuse_hours:
-                    v3_store.cache_synthesis(_last_key(group), {
-                        "edit": edit, "at": datetime.now(timezone.utc).isoformat(),
-                        "outlets": int(group.get("source_count") or 1),
-                    })
+                key = _story_key(group, sent)
+                v3_store.cache_synthesis(key, edit)
+                if not file_for_reuse:
+                    continue
+                # A small pointer under each article's link; the edit itself is stored once.
+                coverage = _coverage_urls(group)
+                record = {
+                    "ref": key, "at": datetime.now(timezone.utc).isoformat(),
+                    "outlets": int(group.get("source_count") or 1),
+                    "sent": _sent_digest(sent), "urls": _urls(group),
+                    "outliers_urls": [coverage[i] for i in edit.get("outliers") or [] if i < len(coverage)],
+                    "superseded_urls": [coverage[i] for i in edit.get("superseded") or [] if i < len(coverage)],
+                }
+                for url in record["urls"]:
+                    v3_store.cache_synthesis(_url_key(url), record)
             except Exception as exc:  # noqa: BLE001
                 _log(f"cache write failed: {type(exc).__name__}")
     _log(f"edited {len(edits)}/{len(head)} stories ({len(pending)} new)")
@@ -407,7 +508,7 @@ def write_issue(
         {"index": i, "headline": e.get("title", ""), "text": e.get("brief") or e.get("summary", "")}
         for i, e in enumerate(extras or [])
     ]
-    key = f"nl_issue:{ISSUE_PROMPT_VERSION}:{EDITOR_MODEL}:{_digest([rows, extra_rows])}"
+    key = f"nl_issue:{ISSUE_PROMPT_VERSION}:{WRITER_MODEL}:{_digest([rows, extra_rows])}"
     try:
         cached = v3_store.get_cached_synthesis(key)
     except Exception as exc:  # noqa: BLE001
@@ -426,7 +527,7 @@ def write_issue(
         extras=json.dumps(extra_rows, ensure_ascii=False, indent=1) or "[]",
     )
     try:
-        raw = _ask(client, prompt, schema, "issue")
+        raw = _ask(client, prompt, schema, "issue", model=WRITER_MODEL, effort=WRITER_EFFORT)
     except Exception as exc:  # noqa: BLE001
         detail = re.sub(r"sk-[\w*-]+", "sk-…", str(exc))[:160]
         _log(f"issue pass failed ({type(exc).__name__}: {detail})")
@@ -527,7 +628,7 @@ def _fix_restating(client: Any, out: dict[int, dict[str, str]]) -> None:
     stories = {f"s{i}": {"headline": f["headline"], "blurb": f["blurb"]} for i, f in bad.items()}
     try:
         raw = _ask(client, FIX_PROMPT.format(style=STYLE, stories=json.dumps(stories, ensure_ascii=False, indent=1)),
-                   schema, "fix", model=WRITER_MODEL)
+                   schema, "fix")
     except Exception as exc:  # noqa: BLE001
         _log(f"restating fix failed ({type(exc).__name__})")
         return
@@ -578,7 +679,7 @@ def polish_issue(v3_store: Any, stories: list[dict[str, Any]]) -> dict[int, dict
     prompt = POLISH_PROMPT.format(style=STYLE, today=f"{today:%A}, {today:%B} {today.day}",
                                   stories=json.dumps(rows, ensure_ascii=False, indent=1))
     try:
-        raw = _ask(client, prompt, schema, "polish", model=WRITER_MODEL)
+        raw = _ask(client, prompt, schema, "polish", model=WRITER_MODEL, effort=WRITER_EFFORT)
     except Exception as exc:  # noqa: BLE001
         detail = re.sub(r"sk-[\w*-]+", "sk-…", str(exc))[:160]
         _log(f"polish pass failed ({type(exc).__name__}: {detail})")

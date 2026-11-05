@@ -31,12 +31,19 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
 
 - Feed editor: each `trending` run passes its top 60 stories (`TRACE_FEED_EDITOR_LIMIT`) through
   `v3/lib/feed_editor.py`, the same story editor the daily email uses (importance, event key, headline,
-  card blurb, story-page version, rare "Why it matters"). A story keeps its last write-up for 3 hours
-  unless a new outlet covers it, so most runs only edit new stories; the model call gives up after
-  6 minutes and a failure publishes the pipeline's own copy. `TRACE_FEED_EDITOR=0` in `.env` turns it off.
+  card blurb, story-page version, rare "Why it matters"). Write-ups are filed under the story's article
+  links (the topic id changes whenever one more article joins), so a story keeps its write-up for up to
+  24 hours while its articles mostly stay the same, redone when a new outlet covers it and the write-up
+  is over 2 hours old; most runs only edit new stories. The feed passes the same recent-email headlines
+  as the 08:30 send, so the email reuses the feed's write-ups from the last 6 hours instead of paying for
+  them again. When that list changes (IST midnight, 18:30 UTC) the next run rewrites the top stories once. The story pass runs on `gpt-6.1-terra` at medium effort
+  (`TRACE_EDITOR_MODEL`/`TRACE_EDITOR_EFFORT`); the email's whole-issue polish and subject line use
+  `gpt-6.1-sol` at high (`TRACE_WRITER_MODEL`/`TRACE_WRITER_EFFORT`), and the polish runs only for the
+  landing edition and the commonest member selection. The model call gives up after 6 minutes and a failure publishes the
+  pipeline's own copy. `TRACE_FEED_EDITOR=0` in `.env` turns it off.
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
 - Pipeline and pulse timers are **calendar-only** (`OnCalendar` + `Persistent=true`), same as foryou/newsletter. Do not use `OnUnitActiveSec` / `OnBootSec`: a user-systemd restart drops that baseline and the timer sits at `NEXT="-"` until someone kicks it. Calendar + Persistent catch up immediately after the manager comes back.
-- `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so
+- `trace-newsletter.timer` uses `OnCalendar=*-*-* 08:30:00 Europe/London`, so
   DST is handled by systemd; `Persistent=true` catches up a missed run.
 - The newsletter is sent by `backend/v3/flows/send_audience_newsletter.py`, which
   resolves three mutually exclusive buckets and sends **one email per person**:

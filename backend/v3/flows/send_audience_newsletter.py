@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
@@ -120,8 +121,9 @@ TOP_LANE = "top"
 TOP_SLOTS = {"member": 3, "winback": 3, "landing": 3}
 # Lanes group the rest; none takes more than this many before the others had a turn.
 MAX_PER_LANE = 3
-# Whole-email rewrites per send run: one per distinct reader selection, up to this many.
-MAX_POLISH_RUNS = 8
+# Whole-email rewrites per send run: the selections the most readers get (the landing edition,
+# the commonest member mix), up to this many; everyone else gets the story editor's copy.
+MAX_POLISH_RUNS = 2
 # A full email shows these lanes when the pool has a strong story for them, even a
 # single-source one: it takes the slot of the weakest pick from a lane that has others.
 FLOOR_LANES = ("markets", "robotics")
@@ -866,7 +868,11 @@ def _apply_edits(
     Binance heist". Without the editor the groups come back unchanged.
     """
     sent_titles = [_sent_line(s) for s in sent_before or []]
-    edits = newsletter_editor.edit_stories(v3_store, _ranked(groups), sent_titles)
+    # Reuses this morning's feed write-ups of the same stories (same recent emails), so the
+    # send only pays for stories the feed hasn't written up since EMAIL_REUSE_HOURS ago.
+    edits = newsletter_editor.edit_stories(
+        v3_store, _ranked(groups), sent_titles, reuse_hours=newsletter_editor.EMAIL_REUSE_HOURS,
+    )
     if not edits:
         return groups
     stale_before = (now or datetime.now(timezone.utc)) - timedelta(hours=RELEASE_FRESH_HOURS)
@@ -2304,9 +2310,8 @@ def _compose(
     Selections, the editor's issue copy and the closing "One more thing" are
     worked out once per (bucket, interests, count) and kept in `cache`.
     """
-    interests = tuple(recipient.get("interests") or [])
-    count = int(recipient.get("count") or BUCKETS[bucket]["count"])
-    key = (bucket, interests, count)
+    key = _selection_key(bucket, recipient)
+    _, interests, count = key
     if key not in cache:
         cache[key] = _select_from_groups(groups, list(interests), count, bucket)
     stories = [s for _, group in cache[key] for s in group]
@@ -2321,9 +2326,14 @@ def _compose(
         cache["sponsors"] = _active_sponsors(store)
     issue_key = ("issue", *key)
     if issue_key not in cache:  # once per selection; the editor caches it across runs too
-        # The whole-email rewrite runs once per distinct selection (cached across runs too); past
-        # MAX_POLISH_RUNS in one send, readers get the story editor's copy, already edited.
-        polish = bool(v3_store) and cache.get("polish_runs", 0) < MAX_POLISH_RUNS
+        # The whole-email rewrite (cached across runs too) runs for the selections in
+        # polish_keys: the landing edition and the commonest member mix. Everyone else gets the
+        # story editor's copy, already edited. Without polish_keys (a one-off send), the first
+        # MAX_POLISH_RUNS selections.
+        polish = bool(v3_store) and (
+            key in cache["polish_keys"] if "polish_keys" in cache
+            else cache.get("polish_runs", 0) < MAX_POLISH_RUNS
+        )
         if polish:
             cache["polish_runs"] = cache.get("polish_runs", 0) + 1
             # One read of the whole email: vary the rhythm, cut takes that only repeat.
@@ -2374,6 +2384,22 @@ def _compose(
         sponsors=cache["sponsors"],
         issue=cache[issue_key],
     )
+
+
+def _selection_key(bucket: str, recipient: dict) -> tuple:
+    """The key _send_one caches a reader's selection under."""
+    return (bucket, tuple(recipient.get("interests") or []),
+            int(recipient.get("count") or BUCKETS[bucket]["count"]))
+
+
+def _polish_keys(buckets: dict[str, list[dict]]) -> set[tuple]:
+    """The selections the whole-email rewrite goes to: the landing edition (it is also the
+    public web edition) and then the ones the most readers share, MAX_POLISH_RUNS in all."""
+    landing = _selection_key("landing", {})
+    counts = Counter(_selection_key(bucket, r) for bucket, readers in buckets.items()
+                     if bucket in BUCKETS for r in readers)
+    others = [key for key, _ in counts.most_common() if key != landing]
+    return {landing, *others[:MAX_POLISH_RUNS - 1]}
 
 
 def _send_one(
@@ -2552,7 +2578,7 @@ def send_audience_newsletter(
 
     sent = failed = 0
     errors: list[str] = []
-    cache: dict = {}
+    cache: dict = {"polish_keys": _polish_keys(buckets)}
     transports: dict[str, int] = {}
     try:
         for bucket in ("member", "winback", "landing"):

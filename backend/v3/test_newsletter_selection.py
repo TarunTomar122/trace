@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from v3.flows.send_audience_newsletter import _select, _story_groups
+from v3.flows.send_audience_newsletter import _polish_keys, _select, _selection_key, _story_groups
 from v3.flows.send_three_feed_newsletter import _candidate_stories, _pick_items
 
 
@@ -441,6 +441,28 @@ class LaneFloorTests(unittest.TestCase):
         groups.append(g(20, "robotics", 78, sources=1))
         sections = _select_from_groups(groups, [], 10, "member")
         self.assertNotIn("robotics", [lane for lane, _ in sections])  # every pick outranks it
+
+
+class PolishKeysTests(unittest.TestCase):
+    """The whole-email rewrite goes to the selections most readers share."""
+
+    def test_commonest_selections_get_the_rewrite(self):
+        buckets = {
+            "member": [{"interests": ["ai"]}, {"interests": ["ai"]}, {"interests": ["robotics"]}],
+            "winback": [],
+            "landing": [{}, {}, {}, {}],
+        }
+        keys = _polish_keys(buckets)
+        self.assertEqual(len(keys), 2)
+        self.assertIn(_selection_key("landing", {}), keys)
+        self.assertIn(_selection_key("member", {"interests": ["ai"]}), keys)
+        self.assertNotIn(_selection_key("member", {"interests": ["robotics"]}), keys)
+
+    def test_landing_edition_is_always_polished(self):
+        buckets = {"member": [{"interests": ["ai"]}] * 5 + [{"interests": ["robotics"]}] * 4,
+                   "winback": [], "landing": [{"interests": []}]}
+        keys = _polish_keys(buckets)
+        self.assertEqual(keys, {_selection_key("landing", {}), _selection_key("member", {"interests": ["ai"]})})
 
 
 if __name__ == "__main__":

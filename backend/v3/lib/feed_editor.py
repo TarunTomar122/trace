@@ -15,9 +15,9 @@ from typing import Any
 
 from v3.lib import newsletter_editor
 
-# The feed rebuilds every 20 minutes: a story keeps its write-up this long unless a new outlet
-# picks it up, and a slow model call gives up well before the next rebuild.
-REUSE_HOURS = 3
+# The feed rebuilds every 20 minutes: a story keeps its write-up while it stays the same story
+# (newsletter_editor._recent_edit), and a slow model call gives up well before the next rebuild.
+REUSE_HOURS = newsletter_editor.REUSE_HOURS
 TIMEOUT = 360
 # "Why it matters" stays rare on the feed too: only the most important few keep one.
 MAX_TAKES = 2
@@ -27,15 +27,22 @@ def annotate_feed(v3_store: Any, feed: dict[str, Any], limit: int | None = None)
     """`feed` with an `editor` dict on the topics and rows the editor judged: the first `limit`
     in the pipeline's ranking (all of them when None, none when 0)."""
     # Imported here: the send flow imports the editor module at load time.
-    from v3.flows.send_audience_newsletter import _candidates, _ranked
+    from v3.flows.send_audience_newsletter import _candidates, _ranked, _recent_sent, _sent_line, _today_ist
 
     candidates = _candidates(feed)
     ranked = _ranked(candidates)
     count = len(ranked) if limit is None else max(0, min(limit, len(ranked)))
     if not count:
         return feed
+    # The same recent emails the 08:30 send passes, so its editor reuses these write-ups
+    # instead of writing the day's stories again. Best effort: without them the feed still edits.
+    try:
+        sent, read_ok = [_sent_line(s) for s in _recent_sent(v3_store, _today_ist())], True
+    except Exception:  # noqa: BLE001
+        sent, read_ok = [], False
     edits = newsletter_editor.edit_stories(
-        v3_store, ranked, limit=count, reuse_hours=REUSE_HOURS, timeout=TIMEOUT,
+        v3_store, ranked, sent, limit=count, reuse_hours=REUSE_HOURS, timeout=TIMEOUT,
+        file_for_reuse=read_ok,
     )
     with_take = sorted((tid for tid, e in edits.items() if e.get("take")),
                        key=lambda tid: -int(edits[tid].get("importance") or 0))
