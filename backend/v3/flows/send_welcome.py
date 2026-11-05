@@ -10,7 +10,7 @@ whichever way they joined: a marker in `welcome_sends` is written before each
 send, and anyone with a marker that is sending, sent or skipped is never mailed
 again. Someone who subscribed by email and also made an account gets the
 account version once. Accounts wait until they finish onboarding (or 30
-minutes), so the email can say whether their daily brief is on.
+minutes), so the email can say whether their Trace Daily is on.
 
 Only signups since WELCOME_SINCE (the day this shipped) and within the last
 LOOKBACK_DAYS count, so older readers are never mailed and a stopped timer
@@ -74,7 +74,7 @@ RETRY_AFTER = timedelta(minutes=30)
 ACCOUNT_DELAY = timedelta(minutes=30)
 # "Your first brief lands Wednesday" only while the signup is fresh.
 FRESH = timedelta(hours=1)
-# The daily brief goes out at 08:30 Europe/London (trace-newsletter.timer),
+# Trace Daily goes out at 08:30 Europe/London (trace-newsletter.timer),
 # so 8:30 in the UK in summer and winter alike.
 BRIEF_ZONE, BRIEF_HOUR, BRIEF_MINUTE = ZoneInfo("Europe/London"), 8, 30
 BRIEF_TIME_UK = "8:30am UK time"
@@ -204,7 +204,7 @@ def due(marker: dict[str, Any] | None, now: datetime) -> bool:
 
 
 def first_brief_day(joined: datetime) -> str:
-    """Weekday of the first daily brief after `joined`, e.g. "Wednesday".
+    """Weekday of the first Trace Daily after `joined`, e.g. "Wednesday".
 
     A weekday reads right in every timezone; "this morning" doesn't.
     """
@@ -341,15 +341,15 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
         joined = reader.get("joined") or now
         if now - joined <= FRESH:
             day = first_brief_day(joined)
-            subject = f"You're in. Your first Trace brief lands {day}"
+            subject = f"You're in. Your first Trace Daily lands {day}"
             when = _para(
-                f"Your first daily brief lands {day} around {BRIEF_TIME_UK}. One short email a day "
+                f"Your first Trace Daily lands {day} around {BRIEF_TIME_UK}. One short email a day "
                 "with the biggest stories in AI, tech, markets, startups and design."
             )
         else:
-            subject = "You're in. Welcome to the Trace daily brief"
+            subject = "You're in. Welcome to Trace Daily"
             when = _para(
-                f"Your daily brief lands every morning around {BRIEF_TIME_UK}. One short email a day "
+                f"Trace Daily lands every morning around {BRIEF_TIME_UK}. One short email a day "
                 "with the biggest stories in AI, tech, markets, startups and design."
             )
         paragraphs = [
@@ -372,7 +372,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
         subject = "You're in. Welcome to Trace"
         if reader.get("daily"):
             inbox = _para(
-                f"Your daily brief lands every morning around {BRIEF_TIME_UK}, matched to your topics. "
+                f"Trace Daily lands every morning around {BRIEF_TIME_UK}, matched to your topics. "
                 "To change it, head to {}: " + customize + ".",
                 "/brief/customize",
             )

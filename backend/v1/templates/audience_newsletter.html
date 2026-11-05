@@ -29,9 +29,10 @@
         }
     </style>
 </head>
-<!-- The Daily Brief in the site's type and colours (yourtrace.online), on
+<!-- Trace Daily in the site's type and colours (yourtrace.online), on
      plain white: a masthead, then the stories, rules between. -->
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    {{PREHEADER}}
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background-color: #ffffff;">
         <tr>
             <td class="nl-outer" align="center" style="padding: 28px 12px 24px 12px;">
@@ -50,7 +51,7 @@
                                         </a>
                                     </td>
                                     <td style="vertical-align: middle; padding-left: 12px;">
-                                        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 21px; font-weight: 600; color: #0a0a0a;">Trace Daily Brief</p>
+                                        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 21px; font-weight: 600; color: #0a0a0a;">Trace Daily</p>
                                         <p style="margin: 2px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 19px; color: #767676;">{{DATE}}</p>
                                     </td>
                                 </tr>
@@ -62,13 +63,13 @@
                 <!-- Stories -->
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width: 640px;">
 
-                    <!-- Headline + intro -->
+                    <!-- OPENING -->
                     <tr>
-                        <td class="nl-p28" style="padding: 26px 28px 20px 28px; border-bottom: 1px solid #e5e5e5;">
-                            <p class="nl-headline nl-serif" style="margin: 0; font-family: 'Trace Serif', Georgia, 'Times New Roman', serif; font-size: 34px; line-height: 37px; font-weight: 500; letter-spacing: -0.005em; color: #0a0a0a;">{{HEADLINE}}</p>
-                            <p style="margin: 10px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 23px; color: #323232;">{{INTRO}}</p>
+                        <td class="nl-p28" style="padding: {{OPENING_PAD}}; border-bottom: 1px solid #e5e5e5;">
+                            {{OPENING_HTML}}
                         </td>
                     </tr>
+                    <!-- /OPENING -->
 
                     <!-- Stories: one row per section. -->
                     {{SECTIONS_HTML}}
@@ -93,7 +94,7 @@
                     <tr>
                         <td class="nl-p28" style="padding: 22px 28px 24px 28px;">
                             <p style="margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 20px; color: #767676;">
-                                Trace reads 100+ tech sources every morning and keeps the stories that matter.
+                                Trace reads 100+ tech sources every morning and keeps the stories that matter. The summaries are written with AI from the linked reporting; reply to this email if we got something wrong.
                             </p>
                             <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 20px; color: #767676;">
                                 {{FOOTER_LINKS}}

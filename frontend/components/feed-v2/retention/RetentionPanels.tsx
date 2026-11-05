@@ -68,6 +68,28 @@ export const retentionCss = `
 .xw .ret-sotd-faves img + img { margin-left: -5px; }
 .xw .ret-sotd.lead .ret-sotd-title { font-size: 36px; letter-spacing: -0.005em; }
 .xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; -webkit-line-clamp: 3; }
+/* The editor's "Why it matters" under the lead's text, set off by the house yellow. */
+.xw .ret-sotd-take {
+  display: block; margin-top: 10px; padding-left: 10px; border-left: 3px solid #ffef5f;
+  font-size: 14.5px; line-height: 21px; color: var(--text);
+}
+/* The lead's threads (direct reactions to its event): a labelled, indented list that
+   reads as part of the lead, not as separate stories. */
+.xw .ret-sotd-related {
+  list-style: none; margin: 16px 0 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--line);
+}
+.xw .ret-sotd-related-label {
+  font-size: 11.5px; line-height: 16px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-3); margin: 0 0 2px;
+}
+.xw .ret-sotd-related button {
+  display: block; width: 100%; padding: 5px 0; text-align: left; background: none; border: 0;
+  cursor: pointer; font: inherit; color: inherit;
+}
+.xw .ret-sotd-related button:hover .ret-sotd-related-title { text-decoration: underline; }
+.xw .ret-sotd-related-title { font-size: 14px; line-height: 20px; font-weight: 550; color: var(--text); }
+.xw .ret-sotd-related-meta { font-size: 12.5px; color: var(--text-3); }
+.xw .ret-sotd-related-meta::before { content: " · "; }
 .xw .ret-streak-slot {
   padding: 0 12px 8px; flex-shrink: 0;
 }
@@ -259,6 +281,15 @@ export const retentionCss = `
 }
 `;
 
+/** Sentence ends: a stop after a lowercase letter, digit, % or ), with any closing quotes,
+ * then a space and a capital ("$2.85", "2.8 trillion" and "T. Rowe Price" stay whole).
+ * No lookbehind: older Safari can't parse it, and this runs in the client bundle. */
+function splitDekSentences(text: string): string[] {
+  return text
+    .replace(/([a-z0-9%)][.!?]["'\u201d\u2019)\]]*)\s+(?=[A-Z"\u201c(])/g, '$1\u0000')
+    .split('\u0000');
+}
+
 export function storyDek(story: FeedStory): string {
   const raw = String(story.body || '')
     .replace(/\*\*/g, '')
@@ -266,10 +297,44 @@ export function storyDek(story: FeedStory): string {
     .trim();
   // Feed cards are previews: the full story opens on click.
   if (!raw) return '';
-  if (raw.length <= 220) return raw;
+  if (raw.length <= 240) return raw;
+  // A first sentence that only restates the headline is skipped: the card should add a fact.
+  const words = (text: string) => new Set(text.toLowerCase().match(/[a-z0-9$.]{4,}/g) || []);
+  const titleWords = words(story.title || '');
+  const allSentences = splitDekSentences(raw);
+  if (allSentences.length > 1 && titleWords.size) {
+    const first = words(allSentences[0]);
+    const shared = [...first].filter((w) => titleWords.has(w)).length;
+    // ...unless the next one leans on it ("The tracker", "It", "They"), which would dangle alone.
+    const leansBack = /^(?:The|This|These|That|Those|It|Its|They|Their|He|She|Both|Most|Many|Some)\b/.test(allSentences[1]);
+    // A first sentence with a number the headline lacks (the count, the price) is the news, not a restatement.
+    const titleNumbers = new Set(String(story.title || '').match(/\d[\d,.]*/g) || []);
+    const addsNumber = (allSentences[0].match(/\d[\d,.]*/g) || []).some((n) => !titleNumbers.has(n));
+    if (first.size && !leansBack && !addsNumber && shared / Math.min(first.size, titleWords.size) >= 0.6) {
+      return storyDek({ ...story, body: allSentences.slice(1).join(' '), title: '' });
+    }
+  }
+  // Whole sentences only: a preview cut mid-sentence loses the consequence.
+  // Sentence ends: a stop after a lowercase letter or digit, then a space and a capital
+  // ("$2.85", "2.8 trillion" and "T. Rowe Price" stay whole).
+  const sentences = splitDekSentences(raw).map((s) => `${s} `);
+  let dek = '';
+  for (const sentence of sentences) {
+    if (dek && (dek + sentence).length > 240) break;
+    dek += sentence;
+  }
+  if (dek.trim()) return dek.trim();
   const cut = raw.slice(0, 220);
   const at = cut.lastIndexOf(' ');
   return `${(at > 140 ? cut.slice(0, at) : cut).trim()}…`;
+}
+
+/** "Why it matters: Developers lose sites." -> "Developers lose sites." */
+export function plainTake(take: string): string {
+  const rest = take.replace(/^why it matters:\s*/i, '');
+  if (!rest) return take;
+  // Capitalise the opening word, but never a name like iCloud or iOS.
+  return /^[a-z](?![A-Z])/.test(rest) ? rest.charAt(0).toUpperCase() + rest.slice(1) : rest;
 }
 
 export function StoryOfDayCard({
@@ -279,8 +344,12 @@ export function StoryOfDayCard({
   size = 'hero',
   following = false,
   onToggleFollow,
+  related = [],
+  onOpenRelated,
 }: {
   story: FeedStory;
+  related?: FeedStory[];
+  onOpenRelated?: (story: FeedStory) => void;
   onOpen: () => void;
   kicker?: string;
   size?: 'hero' | 'lead';
@@ -324,6 +393,8 @@ export function StoryOfDayCard({
         {dek ? (
           <span className="ret-sotd-dek">{dek}</span>
         ) : null}
+        {/* The yellow rule marks the editor's take; a label on every card reads as a template. */}
+        {story.take ? <span className="ret-sotd-take">{plainTake(story.take)}</span> : null}
         <span className="ret-sotd-meta">
           {favs.length > 0 ? (
             <span className="ret-sotd-faves" aria-hidden="true">
@@ -334,7 +405,8 @@ export function StoryOfDayCard({
             </span>
           ) : null}
           {story.source ? <span>{story.source}</span> : null}
-          {story.time ? <span>· {story.time}</span> : null}
+          {/* With several outlets the time is the newest coverage, not the named outlet's article. */}
+          {story.time ? <span>· {story.sources.length > 1 ? `updated ${story.time}` : story.time}</span> : null}
           {story.sources.length > 1 ? <span>· {story.sources.length} sources</span> : null}
           {story.threadId ? (
             <>
@@ -349,6 +421,22 @@ export function StoryOfDayCard({
             </>
           ) : null}
         </span>
+        {related.length > 0 && onOpenRelated ? (
+          <ul className="ret-sotd-related" aria-label="More on this story">
+            <li className="ret-sotd-related-label" aria-hidden="true">More on this story</li>
+            {related.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpenRelated(item); }}
+                >
+                  <span className="ret-sotd-related-title">{item.title}</span>
+                  <span className="ret-sotd-related-meta">{item.source}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </article>
   );
@@ -424,7 +512,7 @@ export function CaughtUpLaunchpad({
           </button>
         ) : (
           <span className="ret-btn ghost" style={{ cursor: 'default' }}>
-            <Check size={16} /> Daily brief is on — see you tomorrow
+            <Check size={16} /> Trace Daily is on — see you tomorrow
           </span>
         )}
         {showExtension ? (

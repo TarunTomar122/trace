@@ -2,7 +2,7 @@ import { OG, OgMark, OgWordmark } from './og-style';
 
 // The email mock's sections; grey bars stand in for the stories so the static
 // card never shows a stale headline.
-const SECTIONS = ['Model releases', 'Top in AI', 'Top in Markets'];
+const SECTIONS = ['Top stories', 'Model releases', 'More in AI'];
 
 /** Static share card for the site: the homepage line and the morning email beside it. */
 export function OgShareImageBody() {
@@ -39,7 +39,7 @@ export function OgShareImageBody() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 16, borderBottom: `1px solid ${OG.line}` }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 17, fontWeight: 700 }}>Trace Daily Brief</span>
+              <span style={{ fontSize: 17, fontWeight: 700 }}>Trace Daily</span>
               <span style={{ fontSize: 15, color: OG.muted, marginTop: 2 }}>Every morning</span>
             </div>
           </div>

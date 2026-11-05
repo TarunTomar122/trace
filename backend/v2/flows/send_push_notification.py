@@ -280,7 +280,7 @@ def send_daily_reminder() -> dict[str, Any]:
     if not users:
         return {"error": "No users with push enabled"}
     
-    title = "Your Daily Brief is Ready"
+    title = "Trace Daily is ready"
     body = "Fresh articles and insights waiting for you"
     
     tokens = [u["pushToken"] for u in users]

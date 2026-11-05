@@ -8,7 +8,7 @@ import { HOME_FONT_VARS } from '@/lib/home-fonts';
 import { CUSTOMIZE_CSS } from '@/lib/customize-css';
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle, SITE_BASE_URL } from '@/lib/seo';
 
-const TITLE = 'Build your daily brief';
+const TITLE = 'Build your Trace Daily';
 const DESCRIPTION =
   'Choose your topics, how many stories, and how you read them. See exactly what tomorrow morning’s email will look like before you save it.';
 

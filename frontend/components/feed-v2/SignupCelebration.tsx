@@ -98,7 +98,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
           You&rsquo;re in.
         </h2>
         <p className="mx-auto mb-4 max-w-[360px] text-[15.5px] leading-relaxed text-[#323232]">
-          Check your inbox for a welcome email. Your brief arrives every morning around{' '}
+          Check your inbox for a welcome email. Trace Daily arrives every morning around{' '}
           <strong className="text-[#0a0a0a]">8:30am UK time</strong>.
         </p>
 

@@ -29,6 +29,11 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed. The daily push skips a top story that repeats one it pushed in the last 3 days (same link, same headline, or the daily's repeat judge on a look-alike; unjudged look-alikes count as repeats) and records what it sent in `push_notifications_sent/<date>`.
 
+- Feed editor: each `trending` run passes its top 60 stories (`TRACE_FEED_EDITOR_LIMIT`) through
+  `v3/lib/feed_editor.py`, the same story editor the daily email uses (importance, event key, headline,
+  card blurb, story-page version, rare "Why it matters"). A story keeps its last write-up for 3 hours
+  unless a new outlet covers it, so most runs only edit new stories; the model call gives up after
+  6 minutes and a failure publishes the pipeline's own copy. `TRACE_FEED_EDITOR=0` in `.env` turns it off.
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
 - Pipeline and pulse timers are **calendar-only** (`OnCalendar` + `Persistent=true`), same as foryou/newsletter. Do not use `OnUnitActiveSec` / `OnBootSec`: a user-systemd restart drops that baseline and the timer sits at `NEXT="-"` until someone kicks it. Calendar + Persistent catch up immediately after the manager comes back.
 - `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so
@@ -100,7 +105,7 @@ and sends one welcome to each new reader:
   "your first brief lands <weekday> around 8:30am UK time", links to the latest
   brief and `/brief/customize`, and an unsubscribe link;
 - a new web account (`user_profiles.createdAt`, from Google sign-in) gets "your
-  feed is ready" plus either "your daily brief lands every morning" or "set up
+  feed is ready" plus either "your Trace Daily lands every morning" or "set up
   your daily email", by the daily's own opt-in rules. It waits until onboarding
   is done (or 30 minutes) so that line is right. Someone who did both gets the
   account version once. Mobile-app accounts live in Firebase, not LocalDB, so
@@ -423,7 +428,7 @@ tail -50 ~/trace/logs/postkit.log
 
 ## Measured steady-state cost (VPS, 2026-09-03)
 
-Full trending + enrich run: **~77s wall**. Summaries **1 generated / 68
+Full trending + enrich run: **~77s wall** before the feed editor (add a few minutes when many stories are new). Summaries **1 generated / 68
 cached**, overviews **3 generated / 14 cached**, enrichment **+12 outlets in
 ~24s**. A 20-min cadence ≈ ~4 light OpenAI calls per run.
 

@@ -10,7 +10,7 @@ import { TRACE_MCP_URL } from '@/lib/oauth-config';
 type ConsentInfo = { email: string | null; newsletter: NewsletterState; profileReady: boolean };
 
 const NEWSLETTER_COPY: Record<Exclude<NewsletterState, 'will_subscribe'>, string> = {
-  subscribed: "You already get Trace's daily brief by email. Unsubscribe any time; your agent keeps access.",
+  subscribed: "You already get Trace Daily by email. Unsubscribe any time; your agent keeps access.",
   unsubscribed: "Your Trace daily email is off, so connecting won't turn it on. Your agent gets access either way.",
 };
 
@@ -165,7 +165,7 @@ export default function OAuthConsent({ request, client }: { request: Authorizati
       {newsletter === 'will_subscribe' ? (
         <label className="oa-email oa-optin">
           <input type="checkbox" checked={wantsEmail} onChange={(event) => setWantsEmail(event.target.checked)} disabled={busy !== null} />
-          <span>Also send me Trace&apos;s daily brief by email. Unsubscribe any time; your agent keeps access either way.</span>
+          <span>Also send me Trace Daily by email. Unsubscribe any time; your agent keeps access either way.</span>
         </label>
       ) : (
         <p className={`oa-email${newsletter === 'unsubscribed' ? ' muted' : ''}`}>{NEWSLETTER_COPY[newsletter]}</p>

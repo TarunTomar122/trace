@@ -53,7 +53,10 @@ export function isModelRelease(story: {
   source?: string;
   body?: string;
   coverage?: Array<{ title?: string }>;
+  release?: boolean;
 }): boolean {
+  // The editor's call wins when it made one: benchmarks and features are not launches.
+  if (typeof story.release === 'boolean') return story.release;
   const lead = String(story.coverage?.[0]?.title || '');
   if (lead && lead !== story.title && isModelRelease({ ...story, title: lead, coverage: undefined })) return true;
   const title = String(story.title || '');

@@ -136,7 +136,7 @@ export default function HowItWorksContent() {
         </div>
       </section>
 
-      <HpJoinBox heading="Get the brief in your inbox every morning" source="how_it_works" />
+      <HpJoinBox heading="Get Trace Daily in your inbox every morning" source="how_it_works" />
     </>
   );
 }

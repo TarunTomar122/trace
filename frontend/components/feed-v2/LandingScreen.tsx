@@ -22,7 +22,7 @@ const CHROME_URL = 'https://chromewebstore.google.com/detail/trace-ai-tech-news-
 
 
 const CARDS = [
-  { id: 'brief', title: 'Daily Brief', text: '5-minute brief, grouped from 100+ sources', href: '/brief', Art: BriefArt },
+  { id: 'brief', title: 'Trace Daily', text: '5-minute brief, grouped from 100+ sources', href: '/brief', Art: BriefArt },
   { id: 'feed', title: 'The Feed', text: 'Every story ranked, every source attached', href: '/feed?utm_source=site&utm_medium=card', Art: FeedArt },
   { id: 'tab', title: 'New Tab', text: 'Today’s stories in every Chrome tab', href: CHROME_URL, Art: TabArt },
   { id: 'agents', title: 'AI Agents', text: 'Ask Claude or Cursor about today’s news', href: '/agents', Art: AgentArt },
@@ -100,7 +100,7 @@ function demoStories(stories: DailyStory[]): LandingDemoStory[] {
   return real.length >= 4 ? real.slice(0, 6) : LANDING_DEMO_STORIES;
 }
 
-/** The Daily Brief panel: the email's header card over today's top stories. */
+/** The Trace Daily panel: the email's header card over today's top stories. */
 function BriefPreview({ stories }: { stories: { title: string; summary: string }[] }) {
   return (
     <div className="hp-mail" aria-hidden="true">
@@ -108,7 +108,7 @@ function BriefPreview({ stories }: { stories: { title: string; summary: string }
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/trace.webp" alt="" className="hp-mail-logo" />
         <div>
-          <p className="hp-mail-name">Trace Daily Brief</p>
+          <p className="hp-mail-name">Trace Daily</p>
           <p className="hp-mail-promise">100% free <i>·</i> Every morning <i>·</i> Unsubscribe anytime</p>
         </div>
       </div>
@@ -214,8 +214,8 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
 
         <article className="hp-row">
           <div className="hp-row-copy">
-            <p className="hp-kicker"><Mail size={17} strokeWidth={2} aria-hidden="true" /> Daily Brief</p>
-            <h3 className="hp-h3">Stay informed with the Daily Brief</h3>
+            <p className="hp-kicker"><Mail size={17} strokeWidth={2} aria-hidden="true" /> Trace Daily</p>
+            <h3 className="hp-h3">Stay informed with Trace Daily</h3>
             <p>The most important tech and AI stories of the day in a 5-minute brief, grouped, summed up and sent every morning.</p>
             <p className="hp-stat"><SourceFaces /><span><b>100+</b> sources read every morning</span></p>
             <div className="hp-btns">

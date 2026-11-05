@@ -45,7 +45,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
 
           <nav aria-label="Explore" className="space-y-3 text-[14px]">
             <p className={heading}>Explore</p>
-            <Link href="/brief" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Daily Brief</Link>
+            <Link href="/brief" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Trace Daily</Link>
             <a href="/feed" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Feed</a>
             <Link href="/how-it-works" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>How it works</Link>
             <Link href="/agents" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Agents</Link>

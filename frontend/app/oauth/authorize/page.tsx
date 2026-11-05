@@ -11,7 +11,7 @@ import type { OAuthDb } from '@/lib/oauth-tokens';
 
 export const metadata: Metadata = {
   title: 'Connect your agent | Trace',
-  description: 'Let your AI agent read your Trace brief.',
+  description: 'Let your AI agent read Trace Daily.',
   robots: { index: false, follow: false },
 };
 

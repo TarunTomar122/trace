@@ -151,12 +151,12 @@ export default function AgentsPage() {
             <li>
               <p className="ag-step-num" aria-hidden="true">3</p>
               <p className="ag-step-title">Click Allow</p>
-              <p className="ag-step-body">Your agent can read your Trace brief. It can’t change anything, and it refreshes its access on its own.</p>
+              <p className="ag-step-body">Your agent can read Trace Daily. It can’t change anything, and it refreshes its access on its own.</p>
             </li>
           </ol>
           <div className="ag-mail">
             <Mail size={18} aria-hidden="true" />
-            <p><strong>You can also get the daily brief by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 8:30am UK time. Unsubscribe from any email and your agent keeps access. If your daily email is off, connecting leaves it off.</p>
+            <p><strong>You can also get Trace Daily by email.</strong> The Allow page has a box, ticked by default, that sends you Trace’s morning brief around 8:30am UK time. Unsubscribe from any email and your agent keeps access. If your daily email is off, connecting leaves it off.</p>
           </div>
           <p className="ag-fine">To disconnect, remove Trace from your app, which deletes its sign-in there. Access tokens last an hour, and a sign-in that goes unused for 90 days stops working.</p>
         </section>
@@ -181,7 +181,7 @@ export default function AgentsPage() {
             <div className="ag-panel ag-panel-green">
               <div className="ag-card" id="skill">
                 <h3>A skill for personal agents</h3>
-                <p>Teach a personal agent when and how to fetch your brief. The skill works in Claude Code and any agent that reads <code>SKILL.md</code> files.</p>
+                <p>Teach a personal agent when and how to fetch Trace Daily. The skill works in Claude Code and any agent that reads <code>SKILL.md</code> files.</p>
                 <div className="ag-code"><pre>{skillInstall}</pre></div>
                 <Link href="/agents/skill.md" className="ag-link">Read the skill file</Link>
               </div>
@@ -207,7 +207,7 @@ export default function AgentsPage() {
               <div className="ag-channels">
                 <p className="hp-kicker"><Wrench size={16} strokeWidth={2} aria-hidden="true" /> Delivery channels</p>
                 <h3>Telegram, WhatsApp, Discord, Slack</h3>
-                <p>Trace supplies the intelligence. Your bot or agent decides where to send it. Any system that can call MCP or HTTPS can fetch the brief and post it into the channel you already use.</p>
+                <p>Trace supplies the intelligence. Your bot or agent decides where to send it. Any system that can call MCP or HTTPS can fetch Trace Daily and post it into the channel you already use.</p>
               </div>
             </div>
           </details>
@@ -239,7 +239,7 @@ export default function AgentsPage() {
           <p className="ag-text">Machine-readable setup notes: <Link href="/agents/llms.txt">/agents/llms.txt</Link> · <Link href="/privacy-policy">Privacy policy</Link></p>
         </section>
 
-        <HpJoinBox heading="Want the brief in your inbox too?" source="agents" />
+        <HpJoinBox heading="Want Trace Daily in your inbox too?" source="agents" />
       </main>
       </AuthProvider>
       <Footer variant="landing" />

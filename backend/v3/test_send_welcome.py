@@ -151,7 +151,7 @@ class WhatTests(unittest.TestCase):
     def test_newsletter_version(self):
         reader = {"email": "a+b@x.com", "name": "", "kind": "newsletter", "joined": NOW - timedelta(minutes=5)}
         subject, page, text = welcome.render(reader, NOW)
-        self.assertEqual(subject, "You're in. Your first Trace brief lands Thursday")
+        self.assertEqual(subject, "You're in. Your first Trace Daily lands Thursday")
         self.assertTrue(text.startswith("Hi there,"))
         self.assertIn("The latest brief is already up", text)
         self.assertIn("/brief/customize", page)
@@ -161,15 +161,15 @@ class WhatTests(unittest.TestCase):
     def test_a_late_newsletter_welcome_promises_no_first_day(self):
         reader = {"email": "a@x.com", "name": "", "kind": "newsletter", "joined": NOW - timedelta(hours=26)}
         subject, _, text = welcome.render(reader, NOW)
-        self.assertEqual(subject, "You're in. Welcome to the Trace daily brief")
-        self.assertNotIn("first daily brief", text)
+        self.assertEqual(subject, "You're in. Welcome to Trace Daily")
+        self.assertNotIn("first Trace Daily", text)
 
     def test_account_version_says_whether_the_daily_is_on(self):
         reader = {"email": "a@x.com", "name": "MICHELLE Valiukenas", "kind": "account", "joined": NOW, "daily": True}
         subject, page, text = welcome.render(reader, NOW)
         self.assertEqual(subject, "You're in. Welcome to Trace")
         self.assertTrue(text.startswith("Hi Michelle,"))
-        self.assertIn("Your daily brief lands every morning", text)
+        self.assertIn("Trace Daily lands every morning", text)
         self.assertIn(f"{welcome.APP_URL}/feed", page)
         self.assertNotIn("unsubscribe", page.lower())
         _, _, off = welcome.render({**reader, "daily": False}, NOW)
@@ -248,7 +248,7 @@ class StoriesTests(unittest.TestCase):
         reader = {"email": "a@x.com", "name": "Bea", "kind": "account", "joined": NOW, "daily": True}
         _, _, text = welcome.render(reader, NOW, self.stories(feed()))
         self.assertIn("Today's top stories:\n\nAnthropic names a new CFO", text)
-        self.assertIn("Your daily brief lands every morning", text)
+        self.assertIn("Trace Daily lands every morning", text)
         _, _, without = welcome.render(reader, NOW, [])
         self.assertNotIn("top stories", without)
 

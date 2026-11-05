@@ -191,6 +191,9 @@ function normalizePool(raw: unknown): PoolStory[] {
       macro: story.macro === true,
       model_release: story.model_release === true,
       send_worthy: typeof verdict === 'number' ? verdict : null,
+      // The editor's rating and company, so the web picks what the email picks.
+      importance: typeof story.importance === 'number' ? story.importance : null,
+      company: asText(story.company),
     }];
   });
 }

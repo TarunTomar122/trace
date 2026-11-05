@@ -39,7 +39,7 @@ import {
 import { bodyParagraphs } from '@/lib/body-text';
 import { HOME_FONT_VARS } from '@/lib/home-fonts';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
-import { selectBigThings } from '@/lib/big-things';
+import { score as importanceScore, selectBigThings } from '@/lib/big-things';
 import { isFreshRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
 import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
 import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
@@ -63,6 +63,7 @@ import {
   CaughtUpLaunchpad,
   MilestoneModal,
   PulseAfternoonHook,
+  plainTake,
   StoryOfDayCard,
   storyDek,
   StreakPill,
@@ -85,6 +86,8 @@ export interface CoverageLink {
   source: string;
   url: string;
   time: string;
+  /** Later reporting in the same story corrected or walked back this article's claim. */
+  earlier?: boolean;
 }
 
 export interface PromotedTool {
@@ -116,6 +119,20 @@ export interface FeedStory {
   sendWorthy?: number | null;
   /** The thin lane a story was folded out of (THIN_LANE_FOLD in build_trending). */
   laneDetail?: string;
+  /** The editor's 1-100 rating (backend v3/lib/feed_editor.py); absent when it never saw the story. */
+  importance?: number;
+  /** The editor's key for the underlying event: two stories with one key are one story. */
+  event?: string;
+  /** The editor's longer version for the story page (paragraphs separated by blank lines); the card uses `body`. */
+  detail?: string;
+  /** The event key of another story this one is a direct reaction to (bonds falling after a vote). */
+  reactionTo?: string;
+  /** The editor's call on whether this is a new AI model (overrides the title regex). */
+  release?: boolean;
+  /** "Why it matters: ..." from the editor. */
+  take?: string;
+  /** Oldest coverage in ms: when the story was first reported (ts is the newest). */
+  firstTs?: number;
 }
 
 export interface PulseItem {
@@ -158,8 +175,13 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 // security, open-source, policy) are ignored and dropped on the next save.
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups', 'robotics'];
 // Home is the day's big things, picked like the email (selectBigThings) but
-// fifteen deep; the email itself stays at ten by default.
-const HOME_CAP = 15;
+// twenty deep; the email itself stays at ten by default.
+const HOME_CAP = 20;
+// A "Top in X" lead on Home must be this fresh; otherwise the lane gets no lead.
+const LANE_LEAD_MAX_HOURS = 18;
+const LANE_LEAD_MIN_IMPORTANCE = 85;
+const LANE_LEAD_FIRST_REPORTED_HOURS = 30;
+const LANE_LEAD_RATED_HOURS = 12;
 const PER_TAB_STORY_CAP = 15;
 
 
@@ -502,7 +524,7 @@ export default function FeedApp({
     streakRecorded.current = false;
   }, [user?.uid]);
 
-  // The daily email's "Put your tool here" link: open the sponsor checkout.
+  // The daily email's "Sponsor a slot" link: open the sponsor checkout.
   useEffect(() => {
     if (params.get('sponsor') !== 'open') return;
     const props = { placement: 'email', cta: 'email_open_slot' };
@@ -1023,11 +1045,11 @@ export default function FeedApp({
       });
       if (!res.ok) throw new Error(`Profile save failed (${res.status})`);
       trackDailyBriefPreferenceChanged(next, location);
-      showToast(next ? 'Daily brief on — see you tomorrow morning' : 'Daily brief off');
+      showToast(next ? 'Trace Daily on — see you tomorrow morning' : 'Trace Daily off');
       refreshProfile().catch(() => null);
     } catch {
       setDailyOn(!next);
-      showToast('Could not update the daily brief — try again');
+      showToast('Could not update Trace Daily — try again');
     } finally {
       setDailyBusy(false);
     }
@@ -1191,17 +1213,48 @@ export default function FeedApp({
     : sortMode === 'recent'
       ? pickLatestStory(featuredPool)
       : pickStoryOfDay(featuredPool);
+  // The day's lead carries its threads: stories the editor marked as direct reactions to
+  // its event (a market's, a company's) sit under it instead of scattered down the list.
+  const featuredRelated = featuredStory?.event && tab === 'all' && sortMode !== 'recent'
+    ? stories
+        // Both ways: reactions to the lead's event, and the event the lead itself reacts to
+        // (the ballot results sit under the election that caused them, and vice versa).
+        .filter((s) => s.id !== featuredStory.id
+          && (s.reactionTo === featuredStory.event || (!!featuredStory.reactionTo && s.event === featuredStory.reactionTo)))
+        .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))
+        .slice(0, 3)
+    : [];
+  const relatedIds = new Set(featuredRelated.map((s) => s.id));
   const categoryLeadCats = myCats.length
     ? myCats
     : [...new Set(rankedForTab.map((s) => s.cat))];
   const categoryLeads = tab === 'all' && featuredStory && sortMode !== 'recent'
     ? categoryLeadCats.flatMap((cat) => {
-        const pool = featuredPool.filter((s) => s.cat === cat);
-        const lead = pickStoryOfDay(pool);
+        // The featured story is out of its lane's running: the lane leads with its next best.
+        const pool = featuredPool.filter((s) => s.cat === cat && s.id !== featuredStory.id && !relatedIds.has(s.id));
+        // With the editor's ratings a lane leads with its most important fresh story (an IPO
+        // filing over an earnings beat); without them, with the multi-source pick.
+        const now = Date.now();
+        // Fresh means the news, not its latest write-up: a day-old earnings beat with a new
+        // article this morning is not a lane's lead.
+        // A lane earns a "Top in" card only with a story two or more outlets covered and
+        // reported on within LANE_LEAD_RATED_HOURS; otherwise its stories stay in the list.
+        const rated = pool.filter((s) => s.importance !== undefined
+          && s.sources.length >= 2
+          && now - (s.ts || 0) <= LANE_LEAD_RATED_HOURS * 3_600_000
+          && now - (s.firstTs || s.ts || 0) <= LANE_LEAD_FIRST_REPORTED_HOURS * 3_600_000);
+        const anyRated = pool.some((s) => s.importance !== undefined);
+        const lead = rated.length
+          ? rated.reduce((best, s) => (importanceScore(s, now) > importanceScore(best, now) ? s : best))
+          : anyRated ? null : pickStoryOfDay(pool, now, LANE_LEAD_MAX_HOURS);
+        // With the editor's ratings, a lane only gets a lead when it has a story worth one.
+        if (lead && lead.importance !== undefined && lead.importance < LANE_LEAD_MIN_IMPORTANCE) return [];
         return lead && lead.id !== featuredStory.id ? [lead] : [];
       })
+      // The lane cards run most important first, not in lane order.
+      .sort((a, b) => importanceScore(b, Date.now()) - importanceScore(a, Date.now()))
     : [];
-  const pinnedStories = featuredStory ? [featuredStory, ...categoryLeads] : [];
+  const pinnedStories = featuredStory ? [featuredStory, ...featuredRelated, ...categoryLeads] : [];
   const listRows = omitStoryFromRows(
     feedRows,
     pinnedStories.flatMap((story) => [story.id, ...(story.mergedIds || [])]),
@@ -1215,7 +1268,10 @@ export default function FeedApp({
   const listedStories = flattenRows(listRows);
   const releaseHeadings = (() => {
     const now = Date.now();
-    const isRelease = (story: FeedStory) => isFreshRelease(story, now);
+    // The launch panel is for launches with weight: two or more outlets, or one the editor
+    // rated 80+ (a frontier lab's release); a lone minor model card stays in the list.
+    const isRelease = (story: FeedStory) => isFreshRelease(story, now)
+      && (story.sources.length >= 2 || (story.importance ?? 0) >= 80 || story.importance === undefined);
     const firstIndex = listedStories.findIndex(isRelease);
     if (firstIndex === -1) return { firstId: null, afterId: null, ids: new Set<string>() };
     const firstOther = listedStories.slice(firstIndex + 1).find((story) => !isRelease(story));
@@ -1225,6 +1281,27 @@ export default function FeedApp({
       ids: new Set(listedStories.filter(isRelease).map((story) => story.id)),
     };
   })();
+  // Rank labels count only the cards that show one, after the pinned leads, so the
+  // list reads #5, #6, #7 even where grouped headlines (which show no rank) sit between
+  // them. Launches in their panel keep their own numbers: one rank per story.
+  const groupedIds = new Set<string>([
+    ...listRows.flatMap((row) => {
+      if (row.kind === 'story') return [];
+      const members = row.stories.filter((s) => !releaseHeadings.ids.has(s.id));
+      return members.length >= 2 ? members.map((s) => s.id) : [];
+    }),
+  ]);
+  const cardRank = new Map<string, number>();
+  // Number cards in the order they render: the launch panel shows every launch where the
+  // first one would have been, so the later launches move up with it.
+  const renderOrder = listedStories.flatMap((story) => {
+    if (!releaseHeadings.ids.has(story.id)) return [story];
+    return story.id === releaseHeadings.firstId ? listedStories.filter((s) => releaseHeadings.ids.has(s.id)) : [];
+  });
+  for (const story of renderOrder) {
+    // The lead's related lines are part of its card, not ranked slots of their own.
+    if (!groupedIds.has(story.id) && !cardRank.has(story.id)) cardRank.set(story.id, pinnedStories.length - featuredRelated.length + cardRank.size + 1);
+  }
   const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
   const homeSponsors = promoted.slice(0, SPONSOR_SLOTS);
 
@@ -1572,6 +1649,8 @@ export default function FeedApp({
             {featuredStory && (
               <StoryOfDayCard
                 story={featuredStory}
+                related={featuredRelated}
+                onOpenRelated={openStory}
                 kicker={
                   sortMode === 'recent'
                     ? (tab === 'all' ? 'Latest' : `Latest in ${CAT_LABELS[tab] || tab}`)
@@ -1666,7 +1745,7 @@ export default function FeedApp({
                       <StoryCard
                         key={s.id}
                         story={s}
-                        displayRank={viewRank.get(s.id)}
+                        displayRank={cardRank.get(s.id) ?? viewRank.get(s.id)}
                         hideRank={grouped}
                         showImage={showImage}
                         burst={burstId === s.id}
@@ -1686,7 +1765,7 @@ export default function FeedApp({
                     <HeadlineSection key="model-releases" label="Model releases" tone={0}>
                       {listedStories
                         .filter((s) => releaseHeadings.ids.has(s.id))
-                        .map((s) => renderCard(s, true, true))}
+                        .map((s) => renderCard(s, false, true))}
                     </HeadlineSection>
                   );
                   const divider = (
@@ -1925,7 +2004,7 @@ function WelcomeModal({ onClose }: { kind: 'promo'; onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const perks = [
-    'A sponsored spot in Tools on desktop, at the top of Top articles on phones, at the end of Home and on the daily brief pages, for 30 days',
+    'A sponsored spot in Tools on desktop, at the top of Top articles on phones, at the end of Home and on the Trace Daily pages, for 30 days',
     'Clicks tagged utm_source=trace for your analytics, plus a private stats page with our own count (link coming by email)',
     `Support anytime: ${CONTACT_EMAIL}`,
   ];
@@ -2475,23 +2554,24 @@ function Detail({ story, displayRank, onBack, onShare, marked, marks, toggleMark
           <SourceStack sources={story.sources} />
           <span className="detail-src">{story.source}</span>
           <span className="post-dot">·</span>
-          <span className="post-time">{story.time}</span>
+          <span className="post-time">{story.sources.length > 1 ? `updated ${story.time}` : story.time}</span>
           {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
           {story.threadId && <span className="post-group">· Ongoing story</span>}
           <span className="post-spacer" />
           <span className="post-rank">#{displayRank ?? story.rank}</span>
         </div>
         <h1 className="detail-title">{story.title}</h1>
-        {bodyParagraphs(story.body).map((para, pi) => (
+        {(story.detail ? story.detail.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) : bodyParagraphs(story.body)).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
+        {story.take ? <p className="detail-take">{plainTake(story.take)}</p> : null}
         {story.img ? <FeedImage src={story.img} className="detail-img detail-img-below" alt="" /> : null}
         <div className="detail-actions">
           <Actions id={story.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
         </div>
         {story.coverage.length > 0 && (
           <div className="detail-coverage">
-            <h2 className="section-label">Coverage · {story.coverage.length} {story.coverage.length === 1 ? 'source' : 'sources'}</h2>
+            <h2 className="section-label">Coverage · {story.coverage.length} {story.coverage.length === 1 ? 'article' : 'articles'}{story.sources.length > 1 ? ` from ${story.sources.length} outlets` : ''}</h2>
             <ol className="coverage-list">
               {story.coverage.map((c, j) => (
                 <li key={`${c.url}-${j}`}>
@@ -2502,7 +2582,7 @@ function Detail({ story, displayRank, onBack, onShare, marked, marks, toggleMark
                     ) : null}
                     <span className="coverage-main">
                       <span className="coverage-title">{c.title}</span>
-                      <span className="coverage-meta">{c.source}{c.time ? ` · ${c.time}` : ''}</span>
+                      <span className="coverage-meta">{c.source}{c.time ? ` · ${c.time}` : ''}{c.earlier ? ' · Earlier report, since corrected' : ''}</span>
                     </span>
                   </a>
                 </li>
@@ -2712,7 +2792,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, c
             </div>
             <div className="p-row">
               <div className="p-row-main">
-                <span className="p-row-title">Your daily brief</span>
+                <span className="p-row-title">Trace Daily</span>
                 <span className="p-row-sub">{briefSummary || 'Ten stories across all topics, with summaries.'}</span>
               </div>
               <Link className="p-link" href="/brief/customize">Customize</Link>
@@ -3155,6 +3235,7 @@ const css = `
 .xw .detail-img { width: calc(100% - 36px); max-height: 510px; object-fit: cover; border-radius: 10px; margin: 12px 18px 4px; }
 .xw .detail-sources { margin: 0 18px 4px; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .detail-body { margin: 12px 18px 4px; font-size: 16px; line-height: 25px; color: var(--text); }
+.xw .detail-take { margin: 14px 18px 4px; padding-left: 12px; border-left: 3px solid #ffef5f; font-size: 15px; line-height: 23px; color: var(--text); }
 .xw .detail-img-below { margin: 16px 18px 8px; }
 .xw .detail-actions { padding: 2px 18px; border-bottom: 1px solid var(--line); }
 .xw .detail-actions .actions { max-width: 100%; justify-content: flex-end; gap: 16px; padding: 4px 0; }

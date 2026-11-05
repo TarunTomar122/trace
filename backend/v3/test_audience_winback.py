@@ -276,10 +276,14 @@ class RenderTests(unittest.TestCase):
             html = N._sections_html(bucket, sections)
             return re.findall(r'<span style="background-color: #ffef5f; padding: 0 5px;">([^<]+)</span>', html)
 
-        # Landing labels every lane "Top stories": one heading for the run.
-        self.assertEqual(labels("landing"), ["Model releases", "Top stories"])
-        # Members see a heading per topic.
-        self.assertEqual(labels("member"), ["Model releases", "Top in AI", "Top in Markets"])
+        # Landing labels every lane after the lead sections "More stories": one heading for the run.
+        self.assertEqual(labels("landing"), ["Model releases", "More stories"])
+        # Members see a heading per topic: "More in AI" only when a Top story is AI too.
+        self.assertEqual(labels("member"), ["Model releases", "AI", "Markets"])
+        top = [("top", [{**sections[1][1][0], "interest_id": "ai"}]), *sections]
+        self.assertEqual(re.findall(r'<span style="background-color: #ffef5f; padding: 0 5px;">([^<]+)</span>',
+                                    N._sections_html("member", top)),
+                         ["Top stories", "Model releases", "More in AI", "Markets"])
 
     def test_landing_cta_opens_the_brief_builder(self):
         # No send id, so links stay plain instead of going through the tracker.
@@ -343,14 +347,14 @@ class SponsorBlockTests(unittest.TestCase):
 
     def test_the_open_slot_line_hides_when_every_slot_is_sold(self):
         full = [{"id": f"sponsor{i}x", "title": f"T{i}", "sub": ""} for i in range(N.SPONSOR_SLOTS)]
-        self.assertNotIn("Put your tool here", N._sponsors_html(full))
+        self.assertNotIn("Sponsor a slot", N._sponsors_html(full))
         _, _, text = N._render("member", [("ai", [dict(STORY)])], TODAY, "r@x.com", "", sponsors=full)
         self.assertIn(f"- T0: {N.APP_URL}/api/tools/go?id=sponsor0x&p=email", text)
 
     def test_with_no_sponsors_only_the_open_slot_line_shows(self):
         _, html, _ = N._render("landing", [("ai", [dict(STORY)])], TODAY, "r@x.com", "")
         self.assertNotIn(">Sponsored<", html)
-        self.assertIn("Put your tool here, $19/mo", html)
+        self.assertIn("Sponsor a slot, $19/mo", html)
 
 
 class UnsubscribeHeaderTests(unittest.TestCase):

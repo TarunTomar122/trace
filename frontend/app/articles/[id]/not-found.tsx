@@ -18,7 +18,7 @@ export default function ArticleNotFound() {
         </>
       }
       cards={[
-        { title: "Daily Brief", text: "5-minute brief, grouped from 100+ sources", href: "/brief", tint: "yellow" },
+        { title: "Trace Daily", text: "5-minute brief, grouped from 100+ sources", href: "/brief", tint: "yellow" },
         { title: "How it works", text: "From a hundred sources to one calm page", href: "/how-it-works", tint: "pink" },
         { title: "Guides", text: "Plain tips for beating news overload", href: "/blog", tint: "green" },
       ]}

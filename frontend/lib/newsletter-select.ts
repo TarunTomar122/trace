@@ -22,34 +22,55 @@ export type PoolStory = {
   macro: boolean;
   model_release: boolean;
   send_worthy: number | null;
+  /** The editor's 1-100 rating (newsletter_editor); absent when it never saw the story. */
+  importance?: number | null;
+  /** The company the story is mainly about, per the editor ("" when none). */
+  company?: string | null;
 };
 
 export type Bucket = 'member' | 'winback' | 'landing';
 export type Section = [lane: string, stories: PoolStory[]];
 
 export const MODEL_RELEASE_LANE = 'model-releases';
+export const TOP_LANE = 'top';
 export const LANE_ORDER = [
   'ai', 'robotics', 'markets', 'tech', 'startups', 'ux-design',
   'products', 'the-world',
 ] as const;
-const LANE_PATTERN: Record<Bucket, number[]> = {
-  member: [3, 2, 2, 1, 1, 1],
-  winback: [3, 2, 2, 1, 1, 1],
-  landing: [2, 2, 1],
-};
 const MODEL_RELEASE_SLOTS: Record<Bucket, number> = { member: 2, winback: 2, landing: 1 };
-const FULL_DISPLAY_ORDER = [MODEL_RELEASE_LANE, 'ai', 'robotics', 'markets', 'tech', 'startups', 'ux-design'];
+const TOP_SLOTS: Record<Bucket, number> = { member: 3, winback: 3, landing: 3 };
+const MAX_PER_LANE = 3;
+// A full email shows these lanes when the pool has a strong story for them, even a
+// single-source one: it takes the slot of the weakest pick from a lane that has others.
+const FLOOR_LANES = ['markets', 'robotics'];
+const FLOOR_IMPORTANCE = 75;
+const MAX_PER_COMPANY = 2;
+const MAX_SINGLE_SOURCE = 2;
+const MIN_IMPORTANCE = 50;
+const MIN_STORIES = 6;
 
 function verdictRank(story: PoolStory): number {
   return typeof story.send_worthy === 'number' ? story.send_worthy : 1;
 }
 
-/** Jev's verdict first, then multi-source coverage. Stable, like Python's sorted. */
+/**
+ * The editor's importance first, then outlet count; stories it never saw rank
+ * after every edited one, by Jev's verdict then coverage. Stable, like Python's sorted.
+ */
 export function ranked(stories: PoolStory[]): PoolStory[] {
+  const imp = (s: PoolStory) => s.importance || 0;
+  // Breadth counts on top of the editor's rating: up to +8 for five or more outlets.
+  const score = (s: PoolStory) => (imp(s) ? imp(s) + 2 * (Math.min(s.source_count, 5) - 1) : 0);
   return [...stories].sort((a, b) =>
-    verdictRank(b) - verdictRank(a)
+    score(b) - score(a)
+    || (imp(b) ? b.source_count : 0) - (imp(a) ? a.source_count : 0)
+    || verdictRank(b) - verdictRank(a)
     || b.source_count - a.source_count
     || b.coverage - a.coverage);
+}
+
+function isStrong(story: PoolStory): boolean {
+  return story.importance == null || story.importance >= MIN_IMPORTANCE;
 }
 
 function isWanted(story: PoolStory, wanted: Set<string>): boolean {
@@ -64,84 +85,109 @@ export function selectFromGroups(
 ): Section[] {
   let primary: PoolStory[];
   let secondary: PoolStory[];
-  let lanes: string[];
   const wanted = new Set(interests.map((i) => i.trim().toLowerCase()).filter(Boolean));
   if (wanted.size > 0) {
     // A story folded out of a thin lane still belongs to readers who picked it.
-    primary = groups.filter((g) => isWanted(g, wanted));
-    secondary = groups.filter((g) => !isWanted(g, wanted));
-    lanes = LANE_ORDER.filter((lane) => wanted.has(lane));
+    primary = ranked(groups.filter((g) => isWanted(g, wanted)));
+    secondary = ranked(groups.filter((g) => !isWanted(g, wanted)));
   } else {
-    primary = [...groups];
+    primary = ranked(groups);
     secondary = [];
-    lanes = [...LANE_ORDER];
   }
 
-  const ordered = ranked(primary);
+  // Below MIN_IMPORTANCE a story only goes out to keep the email at MIN_STORIES.
+  const pool = [...primary.filter(isStrong), ...secondary.filter(isStrong)];
+  const floor = Math.min(count, MIN_STORIES);
+  if (pool.length < floor) {
+    const weak = [...primary, ...secondary].filter((g) => !isStrong(g));
+    pool.push(...weak.slice(0, floor - pool.length));
+  }
+  const own = new Set(primary.map((g) => g.topic_id));
+
+  // A company over its cap is out of the pool, except to keep the email at its floor.
+  const perCompany = new Map<string, number>();
+  const cappedPool: PoolStory[] = [];
+  const overflow: PoolStory[] = [];
+  let singles = 0;
+  for (const g of pool) {
+    const company = g.company || '';
+    const single = (g.source_count || 1) <= 1 && !g.model_release;
+    if ((company && (perCompany.get(company) ?? 0) >= MAX_PER_COMPANY) || (single && singles >= MAX_SINGLE_SOURCE)) {
+      overflow.push(g);
+      continue;
+    }
+    perCompany.set(company, (perCompany.get(company) ?? 0) + 1);
+    if (single) singles += 1;
+    cappedPool.push(g);
+  }
+  pool.splice(0, pool.length, ...cappedPool, ...overflow.slice(0, Math.max(0, floor - cappedPool.length)));
+
   const used = new Set<string>();
-  let sections: Section[] = [];
+  const picks: [string, PoolStory][] = [];
+  const perLane = new Map<string, number>();
+  const take = (group: PoolStory, lane: string) => {
+    used.add(group.topic_id);
+    picks.push([lane, group]);
+    if (lane !== TOP_LANE) perLane.set(lane, (perLane.get(lane) ?? 0) + 1);
+  };
+
+  const topSlots = Math.min(TOP_SLOTS[bucket] ?? 0, count <= 5 ? 2 : count);
+  // Launches have their own section right below; Top stories are the day's other news.
+  pool.filter((g) => own.has(g.topic_id) && !g.model_release)
+    .slice(0, topSlots)
+    .forEach((g) => take(g, TOP_LANE));
 
   let releaseSlots = MODEL_RELEASE_SLOTS[bucket] ?? 0;
+  // A five-story brief cannot spend two of its slots on launches.
   if (count <= 5) releaseSlots = Math.min(releaseSlots, 1);
-  if (releaseSlots) {
-    const releases = ordered.filter((g) => g.model_release).slice(0, releaseSlots);
-    if (releases.length) {
-      releases.forEach((g) => used.add(g.topic_id));
-      sections.push([MODEL_RELEASE_LANE, releases]);
+  const releases = pool.filter((g) => g.model_release && own.has(g.topic_id) && !used.has(g.topic_id));
+  releases.slice(0, Math.max(0, Math.min(releaseSlots, count - picks.length)))
+    .forEach((g) => take(g, MODEL_RELEASE_LANE));
+
+  // The reader's own lanes first (caps, then without), and only then other lanes as backfill.
+  for (const [mineOnly, capped] of [[true, true], [true, false], [false, true], [false, false]]) {
+    for (const group of pool) {
+      if (picks.length >= count) break;
+      if (mineOnly !== own.has(group.topic_id)) continue;
+      // A launch that earns its place on rank still sits with the other launches.
+      const lane = group.model_release ? MODEL_RELEASE_LANE : group.interest_id;
+      if (used.has(group.topic_id) || (capped && (perLane.get(lane) ?? 0) >= MAX_PER_LANE)) continue;
+      take(group, lane);
     }
   }
 
-  let remaining = count - sections.reduce((sum, [, stories]) => sum + stories.length, 0);
-
-  const pattern = LANE_PATTERN[bucket] ?? [];
-  for (const [position, lane] of lanes.entries()) {
-    if (remaining <= 0) break;
-    const quota = Math.min(position < pattern.length ? pattern[position] : 1, remaining);
-    if (quota <= 0) continue;
-    let laneItems = ordered.filter((g) => g.interest_id === lane && !used.has(g.topic_id));
-    // Markets means the overall market: macro stories first.
-    if (lane === 'markets') laneItems = [...laneItems].sort((a, b) => Number(!a.macro) - Number(!b.macro));
-    laneItems = laneItems.slice(0, quota);
-    if (!laneItems.length) continue;
-    laneItems.forEach((g) => used.add(g.topic_id));
-    sections.push([lane, laneItems]);
-    remaining -= laneItems.length;
-  }
-
-  // Backfill any unfilled slots from the remaining lanes in priority order.
-  if (remaining > 0) {
-    const byLane = new Map<string, PoolStory[]>();
-    for (const g of [...ordered, ...ranked(secondary)]) {
-      if (used.has(g.topic_id)) continue;
-      if (!byLane.has(g.interest_id)) byLane.set(g.interest_id, []);
-      byLane.get(g.interest_id)!.push(g);
-    }
-    const known = new Set<string>(LANE_ORDER);
-    const laneOrder = [
-      ...LANE_ORDER.filter((lane) => byLane.has(lane)),
-      ...[...byLane.keys()].filter((lane) => !known.has(lane)).sort(),
-    ];
-    for (const lane of laneOrder) {
-      if (remaining <= 0) break;
-      const got = (byLane.get(lane) ?? []).slice(0, remaining);
-      if (got.length) {
-        got.forEach((g) => used.add(g.topic_id));
-        sections.push([lane, got]);
-        remaining -= got.length;
-      }
+  if (count >= 8) {
+    for (const lane of FLOOR_LANES) {
+      if (picks.some(([l]) => l === lane)) continue;
+      const floorPick = primary.find((g) => g.interest_id === lane && !used.has(g.topic_id)
+        && (g.importance ?? 0) >= FLOOR_IMPORTANCE);
+      if (!floorPick) continue;
+      const counts = new Map<string, number>();
+      for (const [l] of picks) counts.set(l, (counts.get(l) ?? 0) + 1);
+      const victims = picks
+        .map(([l], i) => ({ l, i }))
+        .filter(({ l }) => l !== TOP_LANE && l !== MODEL_RELEASE_LANE && (counts.get(l) ?? 0) >= 2)
+        .map(({ i }) => i);
+      if (!victims.length) continue;
+      // The weakest; on a tie the later one (Python: min by (importance, -index)).
+      const i = victims.reduce((best, j) => {
+        const a = picks[j][1].importance ?? 0;
+        const b = picks[best][1].importance ?? 0;
+        return a < b || (a === b && j > best) ? j : best;
+      });
+      if ((picks[i][1].importance ?? 0) > (floorPick.importance ?? 0)) continue; // never push out a higher-rated story
+      used.delete(picks[i][1].topic_id);
+      used.add(floorPick.topic_id);
+      picks[i] = [lane, floorPick];
     }
   }
 
-  // Backfill can reopen a lane the pattern already used; one heading per
-  // lane reads better than "Top in AI" twice.
-  const merged = new Map<string, PoolStory[]>();
-  for (const [lane, stories] of sections) merged.set(lane, [...(merged.get(lane) ?? []), ...stories]);
-  sections = [...merged.entries()];
-
-  if (bucket === 'member' || bucket === 'winback') {
-    const displayOrder = new Map(FULL_DISPLAY_ORDER.map((lane, index) => [lane, index]));
-    sections.sort((a, b) =>
-      (displayOrder.get(a[0]) ?? displayOrder.size) - (displayOrder.get(b[0]) ?? displayOrder.size));
-  }
-  return sections;
+  const lead: string[] = [TOP_LANE, MODEL_RELEASE_LANE, ...LANE_ORDER];
+  const rank = (lane: string) => (lead.includes(lane) ? lead.indexOf(lane) : lead.length);
+  // Top stories and launches first; after them, the section with the most important story.
+  const head = (lane: string) => (lane === TOP_LANE || lane === MODEL_RELEASE_LANE ? lead.indexOf(lane) : 2);
+  const best = (lane: string) => Math.max(...picks.filter(([l]) => l === lane).map(([, g]) => g.importance ?? 0));
+  const lanes = [...new Set(picks.map(([lane]) => lane))]
+    .sort((a, b) => head(a) - head(b) || best(b) - best(a) || rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
+  return lanes.map((lane) => [lane, picks.filter(([l]) => l === lane).map(([, g]) => g)] as Section);
 }

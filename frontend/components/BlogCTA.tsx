@@ -72,7 +72,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     // A signup in the other card on the page: say so here too, rather than ask again.
     return onNewsletterSubscribed(() => {
       if (signingUp.current) return;
-      setMessage("You're subscribed to the daily brief.");
+      setMessage("You're subscribed to Trace Daily.");
       setStatus("done");
     });
   }, []);
@@ -121,7 +121,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
     if (placement !== "end") return null;
     return (
       <div className="not-prose bl-mail bl-mail-slim">
-        <div className="bl-mail-slim-title">You&apos;re on the daily brief.</div>
+        <div className="bl-mail-slim-title">You&apos;re on Trace Daily.</div>
         {feedLink("Open today's briefing")}
       </div>
     );
@@ -133,7 +133,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       className="not-prose bl-mail"
     >
       <div className="bl-mail-kicker">
-        The daily brief
+        Trace Daily
       </div>
       <div className="bl-mail-title">
         The 10 stories that matter in tech and AI, every morning. Free.
@@ -141,7 +141,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       {preview === undefined && status !== "done" && <div className="bl-mail-preview is-loading" aria-hidden="true" />}
       {preview && status !== "done" && (
         <div className="bl-mail-preview">
-          <div id={previewLabelId} className="bl-mail-preview-label">In the brief for {preview.label}:</div>
+          <div id={previewLabelId} className="bl-mail-preview-label">In Trace Daily for {preview.label}:</div>
           <ol aria-labelledby={previewLabelId}>
             {preview.stories.map((story) => (
               <li key={story.href}>

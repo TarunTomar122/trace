@@ -137,7 +137,7 @@ export default async function FeaturedItemPage({ params }: Props) {
             , or the day&apos;s top stories in{' '}
             {/* A day's edition can be missing (a send that didn't run); then link the latest one. */}
             <Link href={edition ? `/brief/${date}` : '/brief'} className={TEXT_LINK}>
-              {edition ? `the brief for ${formatEditionDate(date, 'short')}` : 'the latest brief'}
+              {edition ? `Trace Daily for ${formatEditionDate(date, 'short')}` : 'the latest Trace Daily'}
             </Link>
             .
           </p>
@@ -146,7 +146,7 @@ export default async function FeaturedItemPage({ params }: Props) {
           <div className="mt-6 scroll-mt-20" id="subscribe">
             <DailySignup
               source="featured_page"
-              heading="Get Trace's daily brief"
+              heading="Get Trace Daily"
               blurb="The stories that mattered in tech and AI, in your inbox every morning. Free, no account needed."
             />
           </div>

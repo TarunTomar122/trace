@@ -87,7 +87,7 @@ export default function PrivacyPolicyPage() {
             <li>Improve our AI algorithms and content curation</li>
             <li>Understand your preferences and adapt to your interests</li>
             <li>Communicate with you about service updates</li>
-            <li>Send you the daily brief email while you are subscribed</li>
+            <li>Send you the Trace Daily email while you are subscribed</li>
             <li>Analyze and improve our service</li>
             <li>Ensure security and prevent fraud</li>
             <li>Comply with legal obligations</li>
@@ -101,11 +101,11 @@ export default function PrivacyPolicyPage() {
             with Google and approve that app. We store the app&apos;s name and the addresses it registered, a record
             of your approval (which app and when), and a one-way hash of each sign-in code, access token and
             refresh token (never the tokens themselves), so we can check its requests. Access tokens last an hour. Removing Trace from the app deletes its sign-in there, and a
-            sign-in left unused for 90 days stops working. The app can read your Trace brief; it cannot change your account.
-            What the app does with the brief is covered by that app&apos;s own privacy policy.
+            sign-in left unused for 90 days stops working. The app can read Trace Daily; it cannot change your account.
+            What the app does with it is covered by that app&apos;s own privacy policy.
           </p>
           <p>
-            The approval page also offers Trace&apos;s daily brief email (a box, ticked by default). If your daily email is off,
+            The approval page also offers the Trace Daily email (a box, ticked by default). If your daily email is off,
             connecting leaves it off.
             Every email has a one-click unsubscribe link, and unsubscribing does not affect your agent&apos;s access.
           </p>

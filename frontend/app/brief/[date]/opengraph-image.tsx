@@ -4,7 +4,7 @@ import { formatEditionDate, getDailyEdition } from '@/lib/daily-editions';
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
-export const alt = 'Trace daily brief: the biggest stories in tech today';
+export const alt = 'Trace Daily: the biggest stories in tech today';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -24,7 +24,7 @@ export default async function Image({ params }: { params: Promise<{ date: string
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <OgWordmark />
           <span style={{ fontSize: 21, color: OG.muted }}>
-            {edition ? `The Daily Brief · ${formatEditionDate(date)}` : 'The Daily Brief'}
+            {edition ? `Trace Daily · ${formatEditionDate(date)}` : 'Trace Daily'}
           </span>
         </div>
 

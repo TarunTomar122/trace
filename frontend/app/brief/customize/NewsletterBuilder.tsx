@@ -160,7 +160,7 @@ export default function NewsletterBuilder() {
   const storyCount = sections.reduce((sum, [, stories]) => sum + stories.length, 0);
   const chosen = new Set<string>(prefs.topics);
   const backfilled = prefs.topics.length > 0
-    && sections.some(([lane]) => lane !== 'model-releases' && !chosen.has(lane));
+    && sections.some(([lane]) => lane !== 'model-releases' && lane !== 'top' && !chosen.has(lane));
   const dirty = !savedPrefs || JSON.stringify(savedPrefs) !== JSON.stringify(prefs);
 
   function update(patch: Partial<NewsletterPrefs>) {
@@ -305,7 +305,7 @@ export default function NewsletterBuilder() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/trace.webp" alt="" className="hp-mail-logo" />
             <div>
-              <p className="hp-mail-name">Trace Daily Brief</p>
+              <p className="hp-mail-name">Trace Daily</p>
               <p className="hp-mail-promise">100% free <i>·</i> Every morning <i>·</i> Unsubscribe anytime</p>
             </div>
           </div>

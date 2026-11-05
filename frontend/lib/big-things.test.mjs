@@ -151,3 +151,25 @@ test('a robotics reader gets the robotics stories', () => {
   );
   assert.deepEqual(picked.map((s) => s.id).sort(), ['robot-1', 'robot-2']);
 });
+
+test('with editor ratings, launches have their own cap and do not use up the AI lane', () => {
+  const rated = (id, importance, over = {}) => ({ ...story({ id, ...over }), importance, sources: over.sources || ['a.com', 'b.com'] });
+  const stories = [
+    rated('ai1', 94), rated('ai2', 92), rated('ai3', 91),
+    rated('rel1', 90, { release: true }), rated('rel2', 88, { release: true }),
+    rated('ai4', 89), rated('ai5', 87), rated('robot', 51, { cat: 'robotics' }),
+  ];
+  const picked = selectBigThings(stories, { count: 8, now: NOW }).map((s) => s.id);
+  for (const id of ['ai4', 'ai5', 'rel1', 'rel2']) assert.ok(picked.includes(id), `${id} should make Home`);
+  // Shown most important first, whatever the lane.
+  assert.deepEqual(picked.slice(0, 3), ['ai1', 'ai2', 'ai3']);
+});
+
+test('with editor ratings, a story whose newest coverage is a day old gives way', () => {
+  const rated = (id, importance, ts) => ({ ...story({ id, ts }), importance, sources: ['a.com', 'b.com'] });
+  const picked = selectBigThings(
+    [rated('stale', 90, NOW - 31 * 3600 * 1000), rated('fresh', 80, NOW)],
+    { count: 2, now: NOW },
+  ).map((s) => s.id);
+  assert.deepEqual(picked, ['fresh', 'stale']);
+});

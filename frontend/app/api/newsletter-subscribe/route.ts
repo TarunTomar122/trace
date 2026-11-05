@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           ok: true,
           status: 'resubscribed',
-          message: "You're back in! Your daily brief starts again with the next edition.",
+          message: "You're back in! Trace Daily starts again with the next edition.",
         });
       }
       return NextResponse.json({

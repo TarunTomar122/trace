@@ -691,7 +691,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "A prompt that produces a useful morning brief",
         paragraphs: [
-          "Give the agent a stable editor role and explicit limits. For example: ‘At 8:30 AM on weekdays, fetch the Trace daily brief for a software founder. Select five news stories, two builds, and one technical conversation. For each, write one sentence on what happened and one sentence on why it matters. Link the best source. Skip duplicate angles and generic funding news. Send the result to our private Telegram chat.’",
+          "Give the agent a stable editor role and explicit limits. For example: ‘At 8:30 AM on weekdays, fetch Trace Daily for a software founder. Select five news stories, two builds, and one technical conversation. For each, write one sentence on what happened and one sentence on why it matters. Link the best source. Skip duplicate angles and generic funding news. Send the result to our private Telegram chat.’",
           "The agent can change the format without changing the data connection. That is the advantage of separating Trace retrieval from delivery."
         ]
       },

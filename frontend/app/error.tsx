@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import StatusPage, { STATUS_TITLE_ID, type StatusCard } from "@/components/StatusPage";
 
 const CARDS: StatusCard[] = [
-  { title: "Daily Brief", text: "5-minute brief, grouped from 100+ sources", href: "/brief", tint: "yellow" },
+  { title: "Trace Daily", text: "5-minute brief, grouped from 100+ sources", href: "/brief", tint: "yellow" },
   { title: "The Feed", text: "Every story ranked, every source attached", href: "/feed", tint: "cyan" },
   { title: "Guides", text: "Plain tips for beating news overload", href: "/blog", tint: "green" },
 ];

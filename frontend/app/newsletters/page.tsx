@@ -102,7 +102,7 @@ export default function NewslettersHubPage() {
           </div>
         </section>
 
-        <HpJoinBox heading="Get the brief in your inbox every morning" source="newsletters" />
+        <HpJoinBox heading="Get Trace Daily in your inbox every morning" source="newsletters" />
       </main>
       <Footer variant="landing" />
     </div>

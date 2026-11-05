@@ -110,7 +110,7 @@ export default function CompareHubPage() {
           </div>
         </section>
 
-        <HpJoinBox heading="Get the brief in your inbox every morning" source="compare" />
+        <HpJoinBox heading="Get Trace Daily in your inbox every morning" source="compare" />
       </main>
       <Footer variant="landing" />
     </div>

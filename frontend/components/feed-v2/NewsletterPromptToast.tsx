@@ -96,7 +96,7 @@ export default function NewsletterPromptToast({
         >
           ×
         </button>
-        <p className="m-0 text-[11px] font-bold uppercase tracking-[0.12em] text-[#1634cc]">The daily brief</p>
+        <p className="m-0 text-[11px] font-bold uppercase tracking-[0.12em] text-[#1634cc]">Trace Daily</p>
         <p
           id="nl-toast-title"
           aria-live="polite"

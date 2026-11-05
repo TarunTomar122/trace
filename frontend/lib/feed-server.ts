@@ -1,5 +1,6 @@
 import { adminFirestore } from '@/lib/firebase-admin';
 import { unstable_cache } from 'next/cache';
+import { feedFixtureSnapshot } from './feed-fixture';
 import { applyFeedDedupe } from '@/lib/feed-dedupe';
 import { resolveHeadlines } from '@/lib/story-headlines';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
@@ -340,7 +341,7 @@ async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBo
     throw new Error('Server configuration error');
   }
 
-  const globalSnapshot = await adminFirestore
+  const globalSnapshot = (await feedFixtureSnapshot()) ?? await adminFirestore
     .collection('v3_user_feeds')
     .doc('_global')
     .collection('daily')

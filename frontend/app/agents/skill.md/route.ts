@@ -10,13 +10,13 @@ description: Fetches today's tech and AI news brief from Trace - the biggest sto
 
 Trace reads 100+ tech sources every morning, groups coverage of the same event into one story and ranks it. Everything here is read-only.
 
-## Get the brief
+## Get Trace Daily
 
 1. **Trace MCP server connected** (tools \`get_daily_tech_brief\`, \`get_top_tech_news\`, \`get_latest_builds\`, \`get_tech_conversations\`): use it.
    - General "what's new" questions: \`get_daily_tech_brief\` with \`limit\` 5 to 8.
    - Only news: \`get_top_tech_news\`. Launches and open source: \`get_latest_builds\`. Discussions: \`get_tech_conversations\`.
    - If you know what the user does, pass \`role\` (developer, founder, designer, product manager).
-2. **Not connected**: ask the user to add it once. There is no key: their client opens a Trace page, they sign in with Google and click Allow. Tell them the Allow page can also send Trace's daily brief by email (a box, ticked by default; unsubscribe any time; access continues).
+2. **Not connected**: ask the user to add it once. There is no key: their client opens a Trace page, they sign in with Google and click Allow. Tell them the Allow page can also send Trace Daily by email (a box, ticked by default; unsubscribe any time; access continues).
    - Claude Code: \`claude mcp add --transport http trace https://www.yourtrace.online/api/mcp\`, then \`/mcp\` to sign in.
    - Any other MCP client: add the remote server URL \`https://www.yourtrace.online/api/mcp\`.
    - Setup for each app: https://www.yourtrace.online/agents

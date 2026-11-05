@@ -1,7 +1,7 @@
 /**
  * /brief/customize, in the homepage's join1440.com language (lib/home-css.ts):
  * a serif title, white tiles that turn lavender with a blue edge when picked,
- * square buttons, and the live preview as the Daily Brief panel (a yellow panel
+ * square buttons, and the live preview as the Trace Daily panel (a yellow panel
  * holding the email's header card over a white sheet of stories).
  */
 export const CUSTOMIZE_CSS = `
@@ -71,7 +71,7 @@ export const CUSTOMIZE_CSS = `
 .hp .cz-alt-title { margin: 0; font-size: 17px; font-weight: 650; }
 .hp .cz-alt-sub { margin: 4px 0 16px; font-size: 15.5px; line-height: 1.45; color: var(--hp-text); }
 
-/* live preview: the Daily Brief panel */
+/* live preview: the Trace Daily panel */
 @media (min-width: 1024px) { .hp .cz-preview { position: sticky; top: 84px; align-self: start; } }
 .hp .cz-preview-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 15px; }
 .hp .cz-preview-bar p { margin: 0; }

@@ -10,7 +10,7 @@ import { trackLandingCTAClicked } from '@/lib/posthog';
 // The site header, styled after join1440.com: serif wordmark, plain links,
 // a quiet "Open the feed" and one lavender call to action (the daily email).
 const links = [
-  ['Daily Brief', '/brief'],
+  ['Trace Daily', '/brief'],
   ['How it works', '/how-it-works'],
   ['Agents', '/agents'],
   ['Guides', '/blog'],

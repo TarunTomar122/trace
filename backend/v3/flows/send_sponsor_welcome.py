@@ -117,7 +117,7 @@ def render(sponsor: dict[str, Any], name: str) -> tuple[str, str, str]:
     where_lead = "Readers see it in two places:"
     where = [
         ("The feed", feed, "in the Tools column on desktop, at the top of Top articles on phones, and at the end of Home."),
-        ("The daily brief pages", brief, "in the right-hand column on wider screens."),
+        ("The Trace Daily pages", brief, "in the right-hand column on wider screens."),
     ]
     own = ("On your side: every visit from Trace arrives tagged utm_source=trace and utm_medium=sponsored, with the spot "
            "it came from in utm_content (desktop_tools, pulse_mobile, home_feed_end or brief_rail; your stats page "

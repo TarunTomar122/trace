@@ -179,8 +179,8 @@ export default function BlogPage() {
           </div>
         </div>
 
-        {/* The daily brief signup (there is no separate posts email). */}
-        <section className="bl-end" aria-label="Subscribe to the daily brief">
+        {/* The Trace Daily signup (there is no separate posts email). */}
+        <section className="bl-end" aria-label="Subscribe to Trace Daily">
           <BlogEmailCard slug="blog-index" placement="end" />
         </section>
       </main>

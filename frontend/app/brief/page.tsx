@@ -13,9 +13,9 @@ import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle, SITE_BASE_URL
 
 export const revalidate = 600;
 
-const TITLE = 'The daily brief: the biggest stories in tech, every day';
+const TITLE = 'Trace Daily: the biggest stories in tech, every day';
 const DESCRIPTION =
-  'Every edition of the Trace daily brief: the ten stories that mattered in tech and AI each day, summarised. Free to read, free in your inbox.';
+  'Every edition of Trace Daily: the ten stories that mattered in tech and AI each day, summarised. Free to read, free in your inbox.';
 
 export const metadata: Metadata = {
   title: metadataTitle(TITLE),
@@ -45,7 +45,7 @@ export default async function DailyArchivePage() {
 
       <main>
         <section className="br-hero">
-          <h1 className="hp-h1">The Daily Brief</h1>
+          <h1 className="hp-h1">Trace Daily</h1>
           <p>
             The day’s biggest tech and AI stories, in one short read every morning.{' '}
             <Link href="/brief/customize" className="br-link">Make it yours</Link>
@@ -88,7 +88,7 @@ export default async function DailyArchivePage() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/trace.webp" alt="" className="hp-mail-logo" />
                       <div>
-                        <p className="hp-mail-name">Trace Daily Brief</p>
+                        <p className="hp-mail-name">Trace Daily</p>
                         <p className="hp-mail-promise">
                           {formatEditionDate(latest.date)} <i>·</i> {latest.stories.length} stories
                         </p>

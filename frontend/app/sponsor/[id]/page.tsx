@@ -18,7 +18,7 @@ const PLACES: Record<SponsorPlacement, string> = {
   desktop_tools: 'Feed, Tools column (desktop)',
   pulse_mobile: 'Feed, top of Top articles (phones)',
   home_feed_end: 'Feed, end of Home',
-  brief_rail: 'Daily brief pages',
+  brief_rail: 'Trace Daily pages',
   email: 'Daily email',
 };
 

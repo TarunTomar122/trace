@@ -1413,7 +1413,7 @@ def _normalize_markdown_brief(markdown: str, role: str = "") -> dict[str, Any]:
     reading_time = max(1, round(word_count / 220))
 
     return {
-        "title": "Your daily brief",
+        "title": "Trace Daily",
         "short_article": {
             "subtitle": subtitle,
             "why_it_matters": "",

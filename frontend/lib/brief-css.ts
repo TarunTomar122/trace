@@ -14,7 +14,7 @@ export const BRIEF_CSS = `
 .hp .br-link:hover { text-decoration-thickness: 2px; }
 .hp .br-empty { margin: 0 auto; padding: 0 24px 96px; max-width: 600px; text-align: center; font-size: 17px; color: var(--hp-text); }
 
-/* latest edition: copy beside a yellow panel, like the homepage's Daily Brief row */
+/* latest edition: copy beside a yellow panel, like the homepage's Trace Daily row */
 .hp .br-latest { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 80px; align-items: center; padding: 8px 0 80px; }
 .hp .br-latest .hp-h3 a { color: inherit; text-decoration: none; }
 .hp .br-latest .hp-h3 a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }

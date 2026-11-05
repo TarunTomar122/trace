@@ -54,7 +54,7 @@ export default async function HomePage() {
   if (looksSignedIn(jar.get(TRACE_SESSION_COOKIE_NAME)?.value, jar.get(TRACE_SIGNED_IN_COOKIE_NAME)?.value)) {
     redirect('/feed');
   }
-  // Today's real brief for the Daily Brief row's preview (demo stories if none yet).
+  // Today's real brief for the Trace Daily row's preview (demo stories if none yet).
   const [edition] = await listDailyEditions(1);
   return (
     <>

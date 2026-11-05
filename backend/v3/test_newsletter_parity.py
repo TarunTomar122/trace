@@ -49,6 +49,16 @@ PARAGRAPH_SAMPLES = [
     "Investors now wait for the fiscal fourth-quarter report on Monday at 5 p.m. ET, and the stock "
     "moved 2% in after-hours trading at 7 a.m. on Tuesday as analysts revised their targets upward.",
     "🚀🚀 Launch day for the new model 🚀. " * 12,
+    # A lowercase "no." and a title-like word at a sentence end still end it.
+    "Voters said no. The measure failed in every county. Turnout was high, the count was slow and the co. "
+    "result came late. Nobody expected the gen. population to show up in such numbers on a Tuesday night.",
+    # Titles and company suffixes never end a sentence.
+    "In Texas, Gov. Greg Abbott lost to Gina Hinojosa, and Acme Inc. said Sen. Lee would vote No. 3 on the list. "
+    "The rest of the paragraph keeps going for long enough that the splitter has to decide where to break it.",
+    # Curly closing quotes stay with their sentence.
+    "Apple will review files shared with \u201cAnyone with the link.\u201d Apple hasn\u2019t defined "
+    "\u201charmful content.\u201d Public links aren\u2019t end-to-end encrypted, even with Advanced "
+    "Data Protection, and shares limited to selected people are excluded from these new checks.",
 ]
 
 NODE_RUNNER = """
@@ -82,6 +92,9 @@ def _pool(rng: random.Random, size: int) -> list[dict]:
             "coverage": rng.randint(1, 3),
             "macro": rng.random() < 0.2,
             "model_release": rng.random() < 0.1,
+            # The editor's rating: missing for stories it never saw, often tied.
+            "importance": rng.choice([None, 30, 45, 50, 60, 75, 75, 88, 92]),
+            "company": rng.choice(["", "", "", "apple", "apple", "google"]),
         }
         for i in range(size)
     ]

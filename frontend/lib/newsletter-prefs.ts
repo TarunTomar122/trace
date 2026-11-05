@@ -51,10 +51,16 @@ export function topicLabel(id: string): string {
   return LANE_LABELS[id] ?? NEWSLETTER_TOPICS.find((topic) => topic.id === id)?.label ?? id;
 }
 
-/** Section kicker for a lane: "Model releases", "Top in AI", or "More stories". */
-export function laneKicker(lane: string): string {
+/**
+ * Section kicker for a lane, as the email names it (_section_label in
+ * send_audience_newsletter.py): "Top stories", "Model releases", then "More in AI".
+ * Editions from before the Top stories section (no `top` lane) keep "Top in AI".
+ */
+export function laneKicker(lane: string, afterTop = true): string {
+  if (lane === 'top') return 'Top stories';
   if (lane === 'model-releases') return 'Model releases';
-  return LANE_LABELS[lane] ? `Top in ${LANE_LABELS[lane]}` : 'More stories';
+  if (!LANE_LABELS[lane]) return 'More stories';
+  return `${afterTop ? 'More in' : 'Top in'} ${LANE_LABELS[lane]}`;
 }
 
 function cleanTopics(value: unknown): NewsletterTopic[] {

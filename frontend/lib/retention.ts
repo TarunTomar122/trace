@@ -37,12 +37,33 @@ function storageKey(base: string, uid?: string | null): string {
  * Only stories with coverage in the last FRESH_STORY_HOURS qualify while any
  * exist, so a well-covered launch from two days ago does not keep the top spot.
  */
-export function pickStoryOfDay<T extends { id: string; rank: number; sources?: string[]; threadId?: string; ts?: number }>(
+/** The editor's rating plus a breadth bonus (up to +8 for five or more outlets), as the email ranks. */
+export function storyScore(story: { importance?: number; sources?: string[] }): number {
+  if (!story.importance) return 0;
+  return story.importance + 2 * (Math.min(story.sources?.length || 1, 5) - 1);
+}
+
+// The lead must be today's news: first reported within this many hours.
+const LEAD_FIRST_REPORTED_HOURS = 30;
+
+export function pickStoryOfDay<T extends { id: string; rank: number; sources?: string[]; threadId?: string; ts?: number; importance?: number; firstTs?: number }>(
   stories: T[],
   now: number = Date.now(),
+  maxAgeHours?: number,
 ): T | null {
   if (!stories.length) return null;
-  const sorted = [...stories].sort((a, b) => a.rank - b.rank);
+  // With the editor's ratings, the most important story leads; without them, pipeline rank.
+  const rated = stories.some((s) => s.importance);
+  const sorted = [...stories].sort((a, b) => (rated ? storyScore(b) - storyScore(a) : 0) || a.rank - b.rank);
+  // With ratings, a lead also needs two or more outlets and a first report from today.
+  const lead = (s: T) => (s.sources?.length || 0) >= 2
+    && (!s.firstTs || !Number.isFinite(s.firstTs) || now - s.firstTs <= LEAD_FIRST_REPORTED_HOURS * 3_600_000);
+  if (maxAgeHours) {
+    // A lane's lead must be today's: no lead beats a day-old "coming soon" item.
+    const recent = sorted.filter((s) => s.ts && now - s.ts <= maxAgeHours * 3_600_000);
+    return (rated ? recent.find(lead) : recent.find((s) => (s.sources?.length || 0) >= 2) || recent[0]) || null;
+  }
+  if (rated) return sorted.find((s) => lead(s) && !isStaleStory(s.ts, now)) || sorted.find((s) => !isStaleStory(s.ts, now)) || sorted[0] || null;
   const fresh = sorted.filter((s) => !isStaleStory(s.ts, now));
   const pool = fresh.length ? fresh : sorted;
   const multi = pool.find((s) => (s.sources?.length || 0) >= 2);

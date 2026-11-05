@@ -31,6 +31,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
+from typing import Any
 from urllib.parse import quote, urlparse
 
 from dotenv import load_dotenv
@@ -54,6 +55,7 @@ from v3.lib.send_worthy import (  # noqa: E402
 )
 from v3.lib import indexnow  # noqa: E402
 from v3.lib.repeats import judge_repeats  # noqa: E402
+from v3.lib import newsletter_editor  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
@@ -93,17 +95,12 @@ MEMBER_CONTINUITY_DAYS = 7
 # writes email_events/visit-<id>; _recent_email_visitors reads it back.
 EMAIL_VISIT_PARAM = "et"
 
-# Selection priority: AI, robotics, markets, tech, startups, design, then
-# other lanes. Per-bucket slots give the leading lanes the biggest shares.
+# The order lane sections appear in, after Top stories and Model releases
+# (what goes out is the editor's importance, see _select_from_groups).
 LANE_ORDER = (
     "ai", "robotics", "markets", "tech", "startups", "ux-design",
     "products", "the-world",
 )
-LANE_PATTERN = {
-    "member": (3, 2, 2, 1, 1, 1),
-    "winback": (3, 2, 2, 1, 1, 1),
-    "landing": (2, 2, 1),
-}
 
 # Subject/headline: "<count> big things today <emoji>", emoji rotating daily.
 def _headline(story_count: int) -> str:
@@ -116,6 +113,29 @@ SUBJECT_EMOJIS = ("\U0001f62e", "\U0001f525", "\U0001f680", "\U0001f440", "\U000
 # pattern. Slots come out of the same total story count.
 MODEL_RELEASE_LANE = "model-releases"
 MODEL_RELEASE_SLOTS = {"member": 2, "winback": 2, "landing": 1}
+# The day's biggest stories lead every email under "Top stories", whatever
+# their lane; the lane sections follow. Order is the editor's importance
+# (newsletter_editor), so a five-outlet platform story beats a seed round.
+TOP_LANE = "top"
+TOP_SLOTS = {"member": 3, "winback": 3, "landing": 3}
+# Lanes group the rest; none takes more than this many before the others had a turn.
+MAX_PER_LANE = 3
+# Whole-email rewrites per send run: one per distinct reader selection, up to this many.
+MAX_POLISH_RUNS = 8
+# A full email shows these lanes when the pool has a strong story for them, even a
+# single-source one: it takes the slot of the weakest pick from a lane that has others.
+FLOOR_LANES = ("markets", "robotics")
+FLOOR_IMPORTANCE = 75
+MAX_TAKES = 1  # at most one "Why it matters" line per email, and usually none
+# No company gets more than this many stories in one email (three Apple items crowd out the day).
+MAX_PER_COMPANY = 2
+# Stories one outlet reported (not counting model releases, whose source is the lab
+# itself) per email: the rest of the day's picks have to be corroborated.
+MAX_SINGLE_SOURCE = 2
+# Stories the editor rates below this don't go out just to fill a lane: the
+# email gets shorter instead, down to MIN_STORIES.
+MIN_IMPORTANCE = 50
+MIN_STORIES = 6
 # A launch leads only while its newest coverage is this fresh. The pool spans
 # about three days, so a well-covered launch would otherwise lead every email
 # until it ages out; after the window it competes in its lane like any story.
@@ -136,11 +156,6 @@ REPEAT_ASK_PER_STORY = 2  # the closest sent stories to ask about
 # Links kept per sent story: tomorrow's lead article may be any of them.
 SENT_URLS = 12
 
-# Sort only the finished full-edition sections; LANE_ORDER controls selection.
-FULL_DISPLAY_ORDER = (
-    MODEL_RELEASE_LANE, "ai", "robotics", "markets", "tech", "startups",
-    "ux-design",
-)
 
 # What counts as send-worthy is a judgement call, not a keyword list: Jev
 # (Typesafe) scores every candidate with the shared RANKING_QUESTIONS rubric
@@ -345,14 +360,73 @@ def _domain(url: str) -> str:
     return (urlparse(url).hostname or "").lower().replace("www.", "")
 
 
+# Our feeds' names are not outlets ("CNBC Top News" is one of CNBC's feeds,
+# "AI/TLDR Models" a model-release list): readers see the publication.
+OUTLET_NAMES = {
+    "CNBC Top News": "CNBC", "CNBC Technology": "CNBC", "CNBC Markets": "CNBC",
+    "CNBC US Markets": "CNBC", "CNBC Investing": "CNBC", "CNBC Business": "CNBC",
+    "THE DECODER": "The Decoder", "The Register Business": "The Register",
+    "WIRED Business": "Wired", "TechCrunch Startups": "TechCrunch",
+    "TechCrunch Venture": "TechCrunch", "TechCrunch Fintech": "TechCrunch",
+    "TechCrunch Robotics": "TechCrunch", "The Verge Robots": "The Verge",
+    "The Verge Autonomous Cars": "The Verge", "Yahoo Finance Markets": "Yahoo Finance",
+    "SecurityWeek Malware & Threats": "SecurityWeek", "MIT Technology Review AI": "MIT Technology Review",
+    "VentureBeat AI": "VentureBeat", "LA Times Business": "LA Times", "Time Business": "Time",
+    "Vox Economy": "Vox", "The Conversation Business": "The Conversation",
+    "IEEE Spectrum Robotics": "IEEE Spectrum", "New Atlas Robotics": "New Atlas",
+    "Bloomberg Technology": "Bloomberg", "Hugging Face Blog": "Hugging Face",
+    "Google AI Blog": "Google", "DeepMind Blog": "Google DeepMind", "OpenAI News": "OpenAI",
+    "Anthropic News": "Anthropic", "BBC Technology": "BBC", "Waymo Blog": "Waymo",
+    "BLS Economic Releases": "BLS", "BEA Economic Releases": "BEA",
+}
+# Feeds that only point elsewhere: the link's site is the source.
+LINK_ONLY_FEEDS = {"AI/TLDR Models"}
+DOMAIN_NAMES = {
+    "huggingface.co": "Hugging Face", "github.com": "GitHub", "arxiv.org": "arXiv",
+    "x.com": "X", "twitter.com": "X", "youtube.com": "YouTube", "openai.com": "OpenAI",
+    "anthropic.com": "Anthropic", "blog.google": "Google", "deepmind.google": "Google DeepMind",
+    "ai.meta.com": "Meta", "mistral.ai": "Mistral", "qwenlm.github.io": "Qwen",
+}
+
+
 def _source_name(item: dict) -> str:
     source = str(item.get("source_name", "")).strip()
-    if source:
-        return source
-    return _domain(str(item.get("url", ""))) or "Source"
+    domain = _domain(str(item.get("url", "")))
+    if source and source not in LINK_ONLY_FEEDS:
+        return OUTLET_NAMES.get(source, source)
+    # A product subdomain reads as its company (developers.openai.com is OpenAI).
+    parts = domain.split(".")
+    named = next((DOMAIN_NAMES[".".join(parts[i:])] for i in range(len(parts) - 1)
+                  if ".".join(parts[i:]) in DOMAIN_NAMES), "")
+    return named or domain or source or "Source"
 
 
 NON_IMAGE_RE = re.compile(r"\.(avi|mp4|m4v|mov|webm|m3u8|mpd)(\?|#|$)", re.IGNORECASE)
+
+
+# Paywalled outlets: cited in the text, but the byline (and its link) stays with an open source.
+PAYWALLED = {"Bloomberg", "The Wall Street Journal", "WSJ", "Financial Times", "FT", "The Information",
+             "The New York Times", "The Economist", "Barron's"}
+
+
+def _credit_cited(story: dict) -> dict:
+    """Credit the outlet the blurb cites ("in Engadget's tally", "according to Reuters") when it
+    covered the story and the credited one isn't cited, so the byline matches the text."""
+    blurb = str(story.get("brief") or "")
+    current = str(story.get("source_name") or "")
+    outlets = story.get("coverage_outlets") or []
+    urls = story.get("coverage_urls") or []
+    if not blurb or not outlets or (current and current in blurb):
+        return story
+    for name, url in zip(outlets, urls):
+        if not name or len(name) < 3 or name == current or not url or name in PAYWALLED:
+            continue
+        n = re.escape(name)
+        if re.search(rf"(?:according to|per|reported by) {n}\b|\b{n}['’]s (?:tally|count|reporting|report|analysis|data|estimate|review)|\b{n} (?:reports|reported|says|said|found)\b", blurb):
+            domain = _domain(url)
+            sources = [domain] + [d for d in story.get("sources") or [] if d != domain] if domain else story.get("sources")
+            return {**story, "source_name": name, "url": url, "sources": list(sources or [])[:4]}
+    return story
 
 
 def _image(*items: dict) -> str:
@@ -364,6 +438,20 @@ def _image(*items: dict) -> str:
         if url.startswith("https://") and not NON_IMAGE_RE.search(url):
             return url
     return ""
+
+
+def _detail(articles: list[dict], summary: str, limit: int = 3) -> str:
+    """Up to `limit` articles' summaries that add to `summary`, for the editor."""
+    seen = {summary}
+    parts: list[str] = []
+    for article in articles:
+        text = _summary_text(article.get("summary"))
+        if text and text not in seen:
+            seen.add(text)
+            parts.append(f"{_source_name(article)}: {text}")
+        if len(parts) >= limit:
+            break
+    return "\n".join(parts)
 
 
 def _candidates(feed: dict) -> list[dict]:
@@ -426,6 +514,16 @@ def _candidates(feed: dict) -> list[dict]:
             "url": url,
             "title": title,
             "summary": summary,
+            # The lead articles' own write-ups: the editor's fact base (a topic's
+            # overview alone is two or three sentences).
+            "detail": _detail(articles, summary),
+            "coverage_titles": [_plain(a.get("title")) for a in articles if a.get("title")],
+            "coverage_urls": [str(a.get("url") or "") for a in articles if a.get("title")],
+            "coverage_outlets": [_source_name(a) for a in articles if a.get("title")],
+            "first_at": min(
+                (ts for ts in (_parse_ts(a.get("published_date")) for a in articles) if ts),
+                default=None,
+            ),
             # The lead's card was written for the lead's own headline, so it is
             # the brief only when that is the title shown (a one-article topic,
             # or a topic falling back to its lead). Otherwise the overview,
@@ -520,10 +618,17 @@ def _ranked(candidates: list[dict]) -> list[dict]:
         value = candidate.get("send_worthy")
         return float(value) if isinstance(value, (int, float)) else 1.0
 
-    return sorted(
-        candidates,
-        key=lambda c: (-verdict_rank(c), -c["source_count"], -c["coverage"]),
-    )
+    # The editor's importance (1-100) leads when the story has one, then how
+    # many outlets covered it; stories it never saw (past its head of the
+    # pool) rank after every edited one, by Jev's verdict as before.
+    def key(c: dict) -> tuple:
+        importance = c.get("importance") or 0
+        # Breadth counts on top of the editor's rating: up to +8 for five or more outlets.
+        score = importance + 2 * (min(c["source_count"], 5) - 1) if importance else 0
+        return (-score, -(c["source_count"] if importance else 0),
+                -verdict_rank(c), -c["source_count"], -c["coverage"])
+
+    return sorted(candidates, key=key)
 
 
 def _same_event_summary(a: dict, b: dict) -> bool:
@@ -736,6 +841,84 @@ def _story_groups(
     return kept
 
 
+def _sent_line(story: dict) -> str:
+    """ "Data Center Projects Face a Midterm Ballot Test (Wednesday)" for the editor."""
+    title = str(story.get("title") or "")
+    try:
+        day = datetime.strptime(str(story.get("sent_on") or ""), "%Y-%m-%d").strftime("%A")
+    except ValueError:
+        return title
+    return f"{title} ({day})"
+
+
+def _apply_edits(
+    v3_store: Any, groups: list[dict], now: datetime | None = None, sent_before: list[dict] | None = None,
+) -> list[dict]:
+    """The editor's judgement and copy on the day's story groups (newsletter_editor).
+
+    Each edited group gets `importance`, the editor's model-release call (still
+    only while fresh), and our headline and blurb as `title` and `brief`; the
+    publisher's title stays in `source_title` for tomorrow's repeat check.
+    Groups the editor puts on one event collapse into the most important one,
+    and a story it calls a repeat of a recent daily (`sent_before`) is left
+    out: the word-overlap repeat check misses rewrites like "North Korea-linked
+    hackers targeted $6.34B at Binance" after "Fake interviews led to the $6.3B
+    Binance heist". Without the editor the groups come back unchanged.
+    """
+    sent_titles = [_sent_line(s) for s in sent_before or []]
+    edits = newsletter_editor.edit_stories(v3_store, _ranked(groups), sent_titles)
+    if not edits:
+        return groups
+    stale_before = (now or datetime.now(timezone.utc)) - timedelta(hours=RELEASE_FRESH_HOURS)
+    for group in groups:
+        edit = edits.get(group["topic_id"])
+        if not edit:
+            continue
+        group["importance"] = edit["importance"]
+        group["model_release"] = edit["release"] and not (
+            group.get("newest_at") and group["newest_at"] < stale_before
+        )
+        group["event"] = edit["event"]
+        group["reaction_to"] = edit.get("reaction_to", "")
+        group["follows"] = edit.get("follows", "")
+        if not group.get("source_title"):
+            group["source_title"] = group["title"]
+        group["title"] = edit["headline"]
+        group["brief"] = edit["blurb"]
+        group["short"] = edit.get("short", "")
+        group["take"] = edit.get("take", "")
+        group["one_line"] = edit.get("one_line", "")
+        group["company"] = edit.get("company", "")
+    kept: list[dict] = []
+    by_event: dict[str, dict] = {}
+    for group in _ranked(groups):
+        if (edits.get(group["topic_id"]) or {}).get("repeat"):
+            continue
+        event = group.get("event")
+        target = by_event.get(event) if event else None
+        if target is None:
+            if event:
+                by_event[event] = group
+            kept.append(group)
+            continue
+        # One event, two write-ups: the broader one carries the story (the national ballot
+        # results over one town's vote) unless the editor rated the narrower one clearly higher.
+        if (int(group.get("source_count") or 1) > int(target.get("source_count") or 1)
+                and (group.get("importance") or 0) >= (target.get("importance") or 0) - 10):
+            kept[kept.index(target)] = group
+            by_event[event] = group
+            target, group = group, target
+        # Same event, less important write-up: its links and outlets join the lead's.
+        target["urls"] += [u for u in group.get("urls") or [] if u not in target["urls"]]
+        for domain in group.get("sources") or []:
+            if domain not in target["sources"]:
+                target["sources"].append(domain)
+        target["sources"] = target["sources"][:4]
+        target["source_count"] = max(target["source_count"], len(target["sources"]), group["source_count"])
+    order = {id(g): i for i, g in enumerate(groups)}
+    return sorted(kept, key=lambda g: order[id(g)])
+
+
 def _select(
     feed: dict,
     interests: list[str],
@@ -753,6 +936,12 @@ def _select(
     return _select_from_groups(_story_groups(feed, verdicts, now), interests, count, bucket)
 
 
+def _strong(group: dict) -> bool:
+    """Important enough to go out on its own merit (no editor rating counts)."""
+    importance = group.get("importance")
+    return importance is None or importance >= MIN_IMPORTANCE
+
+
 def _wanted(group: dict, wanted: set[str]) -> bool:
     return group["interest_id"] in wanted or group.get("lane_detail") in wanted
 
@@ -765,6 +954,12 @@ def _select_from_groups(
 ) -> list[tuple[str, list[dict]]]:
     """The allocation half of _select, over already-merged story groups.
 
+    Importance decides what goes out; lanes only group it for display. The
+    first TOP_SLOTS stories lead under "Top stories", fresh model launches
+    follow under their own heading, then the next most important stories,
+    at most MAX_PER_LANE from one lane, grouped by lane. Readers with topics
+    get their lanes first and other lanes only as backfill.
+
     frontend/lib/newsletter-select.ts is a line-for-line port used for the
     live preview in the newsletter builder; keep the two in step
     (v3/test_newsletter_parity.py checks them against each other).
@@ -772,90 +967,109 @@ def _select_from_groups(
     if interests:
         wanted = {i.strip().lower() for i in interests if i.strip()}
         # A story folded out of a thin lane (lane_detail, see THIN_LANE_FOLD in
-        # build_trending) still belongs to readers who picked that lane: it
-        # leads their backfill instead of vanishing on a fold day.
-        primary = [g for g in groups if _wanted(g, wanted)]
-        secondary = [g for g in groups if not _wanted(g, wanted)]
-        lanes = [lane for lane in LANE_ORDER if lane in wanted]
+        # build_trending) still belongs to readers who picked that lane.
+        primary = _ranked([g for g in groups if _wanted(g, wanted)])
+        secondary = _ranked([g for g in groups if not _wanted(g, wanted)])
     else:
-        primary, secondary = list(groups), []
-        lanes = list(LANE_ORDER)
+        primary, secondary = _ranked(groups), []
 
-    ordered = _ranked(primary)
+    # Below MIN_IMPORTANCE a story only goes out to keep the email at MIN_STORIES.
+    pool = [g for g in primary if _strong(g)] + [g for g in secondary if _strong(g)]
+    floor = min(count, MIN_STORIES)
+    if len(pool) < floor:
+        weak = [g for g in primary + secondary if not _strong(g)]
+        pool += weak[:floor - len(pool)]
+    own = {g["topic_id"] for g in primary}
+
+    # A company over its cap is out of the pool, except to keep the email at its floor.
+    per_company: dict[str, int] = {}
+    capped_pool: list[dict] = []
+    overflow: list[dict] = []
+    singles = 0
+    for g in pool:
+        company = g.get("company") or ""
+        single = int(g.get("source_count") or 1) <= 1 and not g.get("model_release")
+        if (company and per_company.get(company, 0) >= MAX_PER_COMPANY) or (single and singles >= MAX_SINGLE_SOURCE):
+            overflow.append(g)
+            continue
+        per_company[company] = per_company.get(company, 0) + 1
+        singles += single
+        capped_pool.append(g)
+    pool = capped_pool + overflow[:max(0, floor - len(capped_pool))]
+
     used: set[str] = set()
-    sections: list[tuple[str, list[dict]]] = []
+    picks: list[tuple[str, dict]] = []
+    per_lane: dict[str, int] = {}
 
-    # Model releases lead the email under their own heading, before the lane
-    # pattern. Only stories the reader's interests already cover qualify.
+    def take(group: dict, lane: str) -> None:
+        used.add(group["topic_id"])
+        picks.append((lane, group))
+        if lane != TOP_LANE:
+            per_lane[lane] = per_lane.get(lane, 0) + 1
+
+    top_slots = min(TOP_SLOTS.get(bucket, 0), 2 if count <= 5 else count)
+    # Launches have their own section right below; Top stories are the day's other news.
+    for group in [g for g in pool if g["topic_id"] in own and not g.get("model_release")][:top_slots]:
+        take(group, TOP_LANE)
+
     release_slots = MODEL_RELEASE_SLOTS.get(bucket, 0)
     if count <= 5:
         # A five-story brief cannot spend two of its slots on launches.
         release_slots = min(release_slots, 1)
-    if release_slots:
-        releases = [g for g in ordered if g.get("model_release")][:release_slots]
-        if releases:
-            for g in releases:
-                used.add(g["topic_id"])
-            sections.append((MODEL_RELEASE_LANE, releases))
+    releases = [
+        g for g in pool
+        if g.get("model_release") and g["topic_id"] in own and g["topic_id"] not in used
+    ]
+    for group in releases[:max(0, min(release_slots, count - len(picks)))]:
+        take(group, MODEL_RELEASE_LANE)
 
-    picked = sum(len(stories) for _, stories in sections)
-    remaining = count - picked
-
-    pattern = LANE_PATTERN.get(bucket, ())
-    for position, lane in enumerate(lanes):
-        if remaining <= 0:
-            break
-        quota = min(pattern[position] if position < len(pattern) else 1, remaining)
-        if quota <= 0:
-            continue
-        lane_items = [
-            g for g in ordered
-            if g["interest_id"] == lane and g["topic_id"] not in used
-        ]
-        # Markets means the overall market: macro stories first.
-        if lane == "markets":
-            lane_items = sorted(lane_items, key=lambda g: not g.get("macro"))
-        lane_items = lane_items[:quota]
-        if not lane_items:
-            continue
-        for g in lane_items:
-            used.add(g["topic_id"])
-        sections.append((lane, lane_items))
-        remaining -= len(lane_items)
-
-    # Backfill any unfilled slots from the remaining lanes in priority order.
-    if remaining > 0:
-        by_lane: dict[str, list[dict]] = {}
-        for g in ordered + _ranked(secondary):
-            if g["topic_id"] in used:
-                continue
-            by_lane.setdefault(g["interest_id"], []).append(g)
-        lane_order = [l for l in LANE_ORDER if l in by_lane] + sorted(
-            set(by_lane) - set(LANE_ORDER)
-        )
-        for lane in lane_order:
-            if remaining <= 0:
+    # The reader's own lanes first (caps, then without), and only then other lanes as backfill.
+    for mine_only, capped in ((True, True), (True, False), (False, True), (False, False)):
+        for group in pool:
+            if len(picks) >= count:
                 break
-            got = by_lane.get(lane, [])[:remaining]
-            if got:
-                for g in got:
-                    used.add(g["topic_id"])
-                sections.append((lane, got))
-                remaining -= len(got)
-    # Backfill can reopen a lane the pattern already used; one heading per
-    # lane reads better than "Top in AI" twice.
-    merged: dict[str, list[dict]] = {}
-    for lane, stories in sections:
-        merged.setdefault(lane, []).extend(stories)
-    sections = list(merged.items())
-    if bucket in ("member", "winback"):
-        display_order = {
-            lane: index for index, lane in enumerate(FULL_DISPLAY_ORDER)
-        }
-        sections.sort(
-            key=lambda section: display_order.get(section[0], len(display_order))
-        )
-    return sections
+            if mine_only != (group["topic_id"] in own):
+                continue
+            # A launch that earns its place on rank still sits with the other launches.
+            lane = MODEL_RELEASE_LANE if group.get("model_release") else group["interest_id"]
+            if group["topic_id"] in used or (capped and per_lane.get(lane, 0) >= MAX_PER_LANE):
+                continue
+            take(group, lane)
+
+    if count >= 8:
+        for lane in FLOOR_LANES:
+            if any(l == lane for l, _ in picks):
+                continue
+            floor_pick = next((g for g in primary if g["interest_id"] == lane and g["topic_id"] not in used
+                               and (g.get("importance") or 0) >= FLOOR_IMPORTANCE), None)
+            if floor_pick is None:
+                continue
+            counts: dict[str, int] = {}
+            for l, _ in picks:
+                counts[l] = counts.get(l, 0) + 1
+            victims = [i for i, (l, _) in enumerate(picks)
+                       if l not in (TOP_LANE, MODEL_RELEASE_LANE) and counts[l] >= 2]
+            if not victims:
+                continue
+            i = min(victims, key=lambda j: (picks[j][1].get("importance") or 0, -j))
+            if (picks[i][1].get("importance") or 0) > (floor_pick.get("importance") or 0):
+                continue  # the floor never pushes out a story the editor rated higher
+            used.discard(picks[i][1]["topic_id"])
+            used.add(floor_pick["topic_id"])
+            picks[i] = (lane, floor_pick)
+
+    lead = [TOP_LANE, MODEL_RELEASE_LANE, *LANE_ORDER]
+    lanes = list(dict.fromkeys(lane for lane, _ in picks))
+    # Top stories and launches first; after them, the section with the most important story
+    # (an IPO filing under Markets is not buried below a lighter AI item).
+    best = {lane: max((g.get("importance") or 0) for l, g in picks if l == lane) for lane in lanes}
+    lanes.sort(key=lambda lane: (
+        lead.index(lane) if lane in (TOP_LANE, MODEL_RELEASE_LANE) else 2,
+        -best[lane],
+        lead.index(lane) if lane in lead else len(lead),
+        lane,
+    ))
+    return [(lane, [g for l, g in picks if l == lane]) for lane in lanes]
 
 
 # ---------------------------------------------------------------------------
@@ -1134,7 +1348,7 @@ def _favicon_stack(sources: list[str]) -> str:
         f'<img src="https://www.google.com/s2/favicons?domain={escape(d)}&sz=64" '
         'width="16" height="16" alt="" style="display: inline-block; border-radius: 50%; '
         f'border: 1px solid {_LINE}; background-color: #ffffff; vertical-align: middle; margin-right: 3px;" />'
-        for d in sources[:3]
+        for d in sources[:1]
     )
     return f'<span style="white-space: nowrap;">{icons}</span>'
 
@@ -1161,13 +1375,20 @@ def _sentences(text: str) -> list[str]:
     clean = re.sub(r"\s+", " ", text or "").strip()
     if not clean:
         return []
+    # Titles and company forms only when capitalised ("said no." still ends a sentence);
+    # "No." only before a number ("No. 2"); lowercase forms (vs., e.g., 5 p.m.) either way.
     clean = re.sub(
-        r"\b(U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc|e\.g|i\.e|a\.m|p\.m)\.",
+        r"\b(?:U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|Gov|Sen|Rep|Gen|Lt|Inc|Corp|Co|Ltd)\.|\bNo\.(?= ?\d)",
+        lambda m: m.group(0).replace(".", _ABBR_DOT), clean,
+    )
+    clean = re.sub(
+        r"\b(?:vs|etc|e\.g|i\.e|a\.m|p\.m)\.",
         lambda m: m.group(0).replace(".", _ABBR_DOT), clean, flags=re.I,
     )
     clean = re.sub(r"\b([A-Z])\.", lambda m: m.group(1) + _ABBR_DOT, clean)
     clean = re.sub(r"(\d)\.(\d)", lambda m: m.group(1) + _ABBR_DOT + m.group(2), clean)
-    found = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", clean) or [clean]
+    # Closing quotes, straight or curly, stay with their sentence.
+    found = re.findall(r"[^.!?]+[.!?]+[\"'\u201d\u2019)\]]*|[^.!?]+$", clean) or [clean]
     return [s.strip().replace(_ABBR_DOT, ".") for s in found if s.strip()]
 
 
@@ -1205,8 +1426,57 @@ def _app_link(story: dict) -> str:
     return f"{APP_URL}/feed?from=email&story={quote(story['url'], safe='')}"
 
 
-def _story_html(story: dict, show_summary: bool = True, show_image: bool = False) -> str:
+def _follow_html(story: dict) -> str:
+    """The lead's next beat: a later story the editor moved up under it, as one linked line."""
+    follow = story.get("follow")
+    if not follow:
+        return ""
+    return (
+        f'<p style="margin: 14px 0 0 0; font-size: 15px; line-height: 23px; color: {_TEXT}; font-family: {_FONT};">'
+        f'<span style="font-weight: 650; color: {_INK};">Related:</span> {escape(follow["brief"])} '
+        f'<a href="{_app_link(follow)}" style="color: {_MUTED}; text-decoration: underline;">'
+        f'{escape(follow.get("source_name") or "More")}</a></p>'
+    )
+
+
+def _reaction_follow_up(stories: list[dict]) -> dict | None:
+    """{"index", "line"} for the first later story the editor marked as reacting to the lead's event."""
+    lead_event = (stories[0].get("event") or "") if stories else ""
+    for index, story in enumerate(stories[1:], start=1):
+        if lead_event and story.get("reaction_to") == lead_event and (story.get("one_line") or story.get("brief")):
+            return {"index": index, "line": str(story.get("one_line") or story.get("brief"))}
+    return None
+
+
+def _move_follow_up(sections: list, follow: dict | None) -> list:
+    """Moves the editor's follow-up story (an index into the email's story order) under the lead."""
+    order = [(si, gi) for si, (_, group) in enumerate(sections) for gi in range(len(group))]
+    if not follow or not order or not 1 <= follow["index"] < len(order):
+        return sections
+    si, gi = order[follow["index"]]
+    moved = {**sections[si][1][gi], "brief": follow["line"]}
+    out = []
+    for i, (lane, group) in enumerate(sections):
+        group = [s for j, s in enumerate(group) if (i, j) != (si, gi)]
+        if i == 0:
+            group = [{**group[0], "follow": moved}, *group[1:]]
+        if group:
+            out.append((lane, group))
+    return out
+
+
+def _story_html(
+    story: dict, show_summary: bool = True, show_image: bool = False,
+    lead: bool = False, compact: bool = False, take: bool = False,
+) -> str:
+    """One story. `lead` sets the email's first story large (it is the opening);
+    `compact` sets a closing "Also today" or "One more thing" item's headline smaller."""
     title = escape(story["title"])
+    title_size = "28px; line-height: 34px" if lead else "18px; line-height: 24px" if compact else "21px; line-height: 28px"
+    summary = _shown_summary(story)
+    # "Also today" items get their one-line version; the closing kicker keeps its line.
+    if compact and story.get("one_line") and not story.get("kicker"):
+        summary = str(story["one_line"])
     app_link = _app_link(story)
     image_url = str(story.get("image") or "") if show_image else ""
     original = escape(story["url"])
@@ -1220,6 +1490,18 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
     favicon = _favicon_stack(story["sources"])
     count_word = "source" if story["source_count"] == 1 else "sources"
     source = escape(story["source_name"])
+    # Top stories carry the editor's one-line take, set apart from the reporting.
+    take_text = str(story.get("take") or "") if take and show_summary else ""
+    # The yellow rule marks the take; a "Why it matters:" label on every top story reads as a template.
+    take_text = re.sub(r"^why it matters:\s*", "", take_text, flags=re.I)
+    # Capitalise the opening word, but never a name like iCloud or iOS.
+    if take_text[:1].islower() and not take_text[1:2].isupper():
+        take_text = take_text[:1].upper() + take_text[1:]
+    take_html = (
+        f'<p style="margin: 12px 0 0 0; padding-left: 12px; border-left: 3px solid {_HIGHLIGHT}; '
+        f'font-size: 15px; line-height: 23px; color: {_INK}; font-family: {_FONT};">{escape(take_text)}</p>'
+        if take_text else ""
+    )
     byline = (
         f'<p style="margin: 0 0 8px 0; font-size: 14px; line-height: 20px; color: {_MUTED}; font-family: {_FONT};">'
         f'{favicon}<a href="{original}" style="color: {_INK}; font-weight: 600; '
@@ -1234,14 +1516,19 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
         "<tr>"
         '<td style="padding: 18px 0 0 0; vertical-align: top;">'
         + byline
-        + f'<a href="{app_link}" style="display: block; margin: 0; font-size: 21px; '
-        f'font-weight: 700; letter-spacing: -0.01em; line-height: 28px; color: {_INK}; '
+        + f'<a href="{app_link}" style="display: block; margin: 0; font-size: {title_size}; '
+        f'font-weight: 700; letter-spacing: -0.01em; color: {_INK}; '
         f'text-decoration: none; font-family: {_TITLE};">{title}</a>'
         + "".join(
             f'<p style="margin: {10 if index == 0 else 12}px 0 0 0; font-size: 16px; color: {_TEXT}; '
             f'line-height: 25px; font-family: {_FONT};">{escape(para)}</p>'
-            for index, para in enumerate(_paragraphs(_shown_summary(story)) if show_summary else [])
+            # Only the lead gets paragraphs; the rest read as one block, so the day skims fast.
+            for index, para in enumerate(
+                (_paragraphs(summary) if lead else [" ".join(_paragraphs(summary))]) if show_summary and summary else []
+            )
         )
+        + take_html
+        + (_follow_html(story) if show_summary else "")
         + image
         + "</td>"
         "</tr>"
@@ -1256,7 +1543,7 @@ def _story_html(story: dict, show_summary: bool = True, show_image: bool = False
 
 def _section_body(
     label: str, stories: list[dict], show_summary: bool = True, show_image: bool = False,
-    show_label: bool = True,
+    show_label: bool = True, lead: bool = False, compact: bool = False, take: bool = False,
 ) -> str:
     # The site's section label: a highlighter mark behind the display serif.
     kicker = "" if not show_label else (
@@ -1265,7 +1552,84 @@ def _section_body(
         f'<span style="background-color: {_HIGHLIGHT}; padding: 0 5px;">{escape(label)}</span></p>'
     )
     return kicker + "".join(
-        _story_html(story, show_summary, show_image) for story in stories
+        _story_html(story, show_summary, show_image, lead=lead and i == 0, compact=compact, take=take)
+        for i, story in enumerate(stories)
+    )
+
+
+ALSO_LANE = "also"
+KICKER_LANE = "kicker"
+
+
+def _top_lanes(sections: list[tuple[str, list[dict]]]) -> set[str]:
+    """Lanes a Top story belongs to: their later section reads "More in AI"; a lane
+    with nothing on top is just "Markets"."""
+    return {s.get("interest_id", "") for lane, group in sections if lane == TOP_LANE for s in group}
+
+
+def _section_label(bucket: str, lane: str, after_top: bool = True) -> str:
+    if lane == TOP_LANE:
+        return "Top stories"
+    if lane == MODEL_RELEASE_LANE:
+        return "Model releases"
+    if lane == ALSO_LANE:
+        return "Also today"
+    if lane == KICKER_LANE:
+        return "One more thing"
+    if bucket == "landing":
+        return "More stories"
+    if lane not in INTEREST_LABELS:
+        return "More stories"
+    return f"More in {INTEREST_LABELS[lane]}" if after_top else INTEREST_LABELS[lane]
+
+
+def _fold_singletons(sections: list[tuple[str, list[dict]]]) -> list[tuple[str, list[dict]]]:
+    """Lane sections with one story fold into a closing "Also today": a heading
+    per story is chrome, not help. Top stories stay put."""
+    kept: list[tuple[str, list[dict]]] = []
+    also: list[dict] = []
+    tail: list[tuple[str, list[dict]]] = []
+    for lane, stories in sections:
+        if lane == KICKER_LANE:
+            tail.append((lane, stories))
+        elif lane == TOP_LANE or len(stories) > 1:
+            kept.append((lane, stories))
+        else:
+            also += stories
+    # A lone leftover keeps its own lane heading: a one-item "Also today" looks like filler.
+    if len(also) == 1:
+        kept.append((next(l for l, g in sections if g and g[0] is also[0]), also))
+        also = []
+    return kept + ([(ALSO_LANE, also)] if also else []) + tail
+
+
+def _inside_labels(sections: list[tuple[str, list[dict]]], limit: int = 3) -> list[str]:
+    """The `limit` most important stories after the lead, in the order the email runs them
+    (the inbox preview names them)."""
+    stories = [s for lane, group in sections if lane != KICKER_LANE for s in group]
+    rest = [s for s in stories[1:] if s.get("short")]
+    top = sorted(range(len(rest)), key=lambda i: (-(rest[i].get("importance") or 0), i))[:limit]
+    return [str(rest[i]["short"]) for i in sorted(top)]
+
+
+def _masthead_date(date: str) -> str:
+    """ "Thursday, November 5" under the masthead."""
+    try:
+        day = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return date
+    return f"{day:%A}, {day:%B} {day.day}"
+
+
+def _preheader_html(text: str) -> str:
+    """The inbox preview line: hidden in the email, padded so the client
+    doesn't pull body text in after it."""
+    if not text:
+        return ""
+    pad = "&#847;&zwnj;&nbsp;" * 60
+    return (
+        '<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; '
+        f'font-size: 1px; line-height: 1px; color: #ffffff;">{escape(text)}{pad}</div>'
     )
 
 
@@ -1274,6 +1638,7 @@ def _sections_html(
     sections: list[tuple[str, list[dict]]],
     show_summary: bool = True,
     show_image: bool = False,
+    lead_first: bool = False,
 ) -> str:
     """One table row per section.
 
@@ -1282,20 +1647,16 @@ def _sections_html(
     """
     rows: list[str] = []
     previous = ""
+    top_lanes = _top_lanes(sections)
     for index, (lane, stories) in enumerate(sections):
-        if lane == MODEL_RELEASE_LANE:
-            label = "Model releases"
-        elif bucket == "landing":
-            label = "Top stories"
-        else:
-            label = f"Top in {INTEREST_LABELS[lane]}" if lane in INTEREST_LABELS else "More stories"
+        label = _section_label(bucket, lane, lane in top_lanes)
         # Landing emails label every lane "Top stories": one heading for the run.
         show_label = label != previous
         previous = label
         top = (22 if index == 0 else 26) if show_label else 0
         rows.append(
             f'<tr><td class="nl-p28" style="padding: {top}px 28px 0 28px;">'
-            f"{_section_body(label, stories, show_summary, show_image, show_label)}"
+            f"{_section_body(label, stories, show_summary, show_image, show_label, lead=lead_first and index == 0, compact=lane in (ALSO_LANE, KICKER_LANE), take=lane == TOP_LANE and lead_first)}"
             "</td></tr>"
         )
     return "".join(rows)
@@ -1312,7 +1673,7 @@ def _cta_html(bucket: str) -> str:
         f'<p style="margin: 0; padding-top: 4px; font-family: {_FONT}; font-size: 16px; '
         f'line-height: 25px; color: {_TEXT};">Want this email to be more useful? '
         f'<a href="{href}" style="color: {_BLUE}; font-weight: 600; text-decoration: underline; '
-        f'text-underline-offset: 3px;">Choose the topics you follow</a> and your daily brief '
+        f'text-underline-offset: 3px;">Choose the topics you follow</a> and Trace Daily '
         "will be built around them.</p>"
     )
 
@@ -1384,12 +1745,13 @@ def _sponsors_html(sponsors: list[dict], track_id: str = "") -> str:
         for s in sponsors
     )
     # When every slot is sold the checkout refuses, so the open-slot line goes too.
-    pitch = "" if len(sponsors) >= SPONSOR_SLOTS else (
-        f'<p style="margin: {"4px" if sponsors else "0"} 0 0 0; font-size: 14px; line-height: 21px; '
+    # With sponsors in the box, an open slot is pitched in the footer instead (_render).
+    pitch = "" if sponsors else (
+        f'<p style="margin: {"4px" if sponsors else "0"} 0 0 0; font-size: 13px; line-height: 20px; '
         f'color: {_MUTED}; font-family: {_FONT};">'
         + ("" if sponsors else "Built something for tech people? ")
-        + f'<a href="{SPONSOR_SLOT_URL}" style="color: {_BLUE}; font-weight: 600; '
-        'text-decoration: none;">Put your tool here, $19/mo</a></p>'
+        + f'<a href="{SPONSOR_SLOT_URL}" style="color: {_MUTED}; text-decoration: underline;">'
+        "Sponsor a slot, $19/mo</a></p>"
     )
     label = (
         '<p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 650; letter-spacing: 0.04em; '
@@ -1552,22 +1914,58 @@ def _render(
     track_id: str = "",
     story_format: str = "summaries",
     sponsors: list[dict] | None = None,
+    issue: dict | None = None,
 ) -> tuple[str, str, str]:
+    """Subject, HTML and text. `issue` is the editor's subject and preheader
+    for this selection (newsletter_editor.write_issue): the email then opens
+    straight on the lead story, set large, with nothing restating it above.
+    Without it the email falls back to the counted headline and the bucket's
+    intro."""
     cfg = BUCKETS[bucket]
     story_count = sum(len(group) for _, group in sections)
-    headline = f"{_headline(story_count)} {_daily_emoji(date)}"
-    subject = f"{headline} · {_display_date(date)}"
+    if issue:
+        headline = ""
+        subject = issue["subject"]
+        preheader = issue["preheader"]
+        # Only the win-back email has news of its own to say before the stories.
+        intro = [cfg["intro"]] if cfg.get("subject_lead") else []
+        # No index line under the masthead (owner, 2026-11-05): the email opens on the lead.
+        # The inbox preview still names the next three most important stories.
+        inside = ""
+        labels = _inside_labels(sections, 3)
+        if all(labels) and len(labels) == 3:
+            preheader = "; ".join(labels)
+    else:
+        headline = f"{_headline(story_count)} {_daily_emoji(date)}"
+        subject = f"{headline} · {_display_date(date)}"
+        preheader = ""
+        intro = [cfg["intro"]]
+        inside = ""
     if cfg.get("subject_lead"):
-        subject = f"{cfg['subject_lead']} · {headline}"
+        subject = f"{cfg['subject_lead']} · {subject if issue else headline}"
     html = _load_template("audience_newsletter.html")
     html = html.replace("{{SUBJECT}}", escape(subject))
-    html = html.replace("{{DATE}}", escape(_display_date(date)))
-    html = html.replace("{{HEADLINE}}", escape(headline))
-    html = html.replace("{{INTRO}}", escape(cfg["intro"]))
+    html = html.replace("{{PREHEADER}}", _preheader_html(preheader))
+    html = html.replace("{{DATE}}", escape(_masthead_date(date) if issue else _display_date(date)))
+    opening = (
+        f'<p class="nl-headline nl-serif" style="margin: 0; font-family: {_DISPLAY}; font-size: 34px; '
+        f'line-height: 37px; font-weight: 500; letter-spacing: -0.005em; color: {_INK};">{escape(headline)}</p>'
+        if headline else ""
+    ) + "".join(
+        f'<p style="margin: {0 if i == 0 and not headline else 10 if i == 0 else 12}px 0 0 0; '
+        f'font-family: {_FONT}; font-size: 16px; line-height: 25px; color: {_TEXT};">{escape(para)}</p>'
+        for i, para in enumerate(intro)
+    ) + (f'<div style="margin-top: {12 if intro else 0}px;">{inside}</div>' if inside else "")
+    # A title and intro get room under the masthead; without them the block drops out.
+    html = html.replace("{{OPENING_PAD}}", "26px 28px 20px 28px" if headline or intro else "14px 28px 14px 28px")
+    html = _replace_block(html, "OPENING", opening)
+    if issue:
+        sections = _fold_singletons(sections)
     show_summary = story_format != "headlines"
     show_image = story_format == "images"
     html = html.replace(
-        "{{SECTIONS_HTML}}", _sections_html(bucket, sections, show_summary, show_image)
+        "{{SECTIONS_HTML}}",
+        _sections_html(bucket, sections, show_summary, show_image, lead_first=bool(issue)),
     )
     html = _replace_block(html, "CTA", _cta_html(bucket) + _sponsors_html(sponsors or [], track_id))
     # Feedback block is intentionally hidden for now; the renderer stays in
@@ -1577,28 +1975,41 @@ def _render(
     dot = "<span style=\"color: #b5b5b5;\">&nbsp;&middot;&nbsp;</span>"
     share = (
         f'<a href="{_share_url(date)}" style="color: {_BLUE}; font-weight: 600; '
-        'text-decoration: none;">Share today&rsquo;s brief</a>'
+        'text-decoration: none;">Share today&rsquo;s Trace Daily</a>'
         + dot
     )
     # Topics, length and format live in the builder; it also has the on/off.
     customize = (
         f'<a href="{APP_URL}/brief/customize?from=email" style="color: {_BLUE}; font-weight: 600; '
-        'text-decoration: none;">Customize your brief</a>'
+        'text-decoration: none;">Customize your Trace Daily</a>'
     )
-    if bucket in UNSUBSCRIBE_LINK_BUCKETS:
-        footer = share + customize + dot + (
-            f'<a href="{APP_URL}/api/unsubscribe?email={escape(quote(email, safe=""))}" '
-            f'style="color: {_MUTED}; text-decoration: underline;">Unsubscribe</a>'
+    unsubscribe = (
+        f'<a href="{APP_URL}/api/unsubscribe?email={escape(quote(email, safe=""))}" '
+        f'style="color: {_MUTED}; text-decoration: underline;">Unsubscribe</a>'
+    )
+    # While a sponsor slot is open, the pitch is one quiet footer link, not a line among the stories.
+    if sponsors and len(sponsors) < SPONSOR_SLOTS:
+        unsubscribe = (
+            f'<a href="{SPONSOR_SLOT_URL}" style="color: {_MUTED}; text-decoration: underline;">'
+            "Sponsor Trace, $19/mo</a>" + dot + unsubscribe
         )
+    if bucket in UNSUBSCRIBE_LINK_BUCKETS:
+        footer = share + customize + dot + unsubscribe
     else:
+        # Members can sign in for settings, but leaving is always one click.
         footer = share + customize + dot + (
             f'<a href="{APP_URL}/feed?tab=profile" style="color: {_MUTED}; text-decoration: underline;">'
             "Email settings</a>"
-        )
+        ) + dot + unsubscribe
     html = html.replace("{{FOOTER_LINKS}}", footer)
     html = _tag_visit_links(html, track_id)
     html = _instrument_tracking(html, track_id)
-    text = _text_version(_headline(story_count), sections, date, show_summary, track_id)
+    text = _text_version(
+        headline if issue else _headline(story_count), sections, date, show_summary, track_id,
+        intro=intro if issue else [],
+        bucket=bucket, fold=bool(issue),
+        unsubscribe_url=f"{APP_URL}/api/unsubscribe?email={quote(email, safe='')}" if email else "",
+    )
     if sponsors:
         text += "\n\nSponsored:\n" + "\n".join(
             f"- {s['title']}: {_sponsor_go_url(s['id'], track_id)}" for s in sponsors
@@ -1617,13 +2028,33 @@ def _text_version(
     date: str = "",
     show_summary: bool = True,
     track_id: str = "",
+    intro: list[str] | None = None,
+    bucket: str = "member",
+    fold: bool = False,
+    unsubscribe_url: str = "",
 ) -> str:
-    lines = [f"Trace Daily Brief · {_display_date(date)}" if date else "Trace Daily Brief", headline, ""]
-    for _, stories in sections:
+    masthead = f"Trace Daily · {_masthead_date(date) if fold else _display_date(date)}" if date else "Trace Daily"
+    lines = [masthead] + ([headline] if headline else []) + [""]
+    for para in intro or []:
+        lines += [para, ""]
+    previous = ""
+    top_lanes = _top_lanes(sections)
+    for lane, stories in (_fold_singletons(sections) if fold else sections):
+        label = _section_label(bucket, lane, lane in top_lanes).upper()
+        if label != previous:
+            lines += [label, ""]
+            previous = label
         for story in stories:
             lines.append(story["title"])
-            if show_summary and _shown_summary(story):
-                lines.extend(f"   {para}" for para in _paragraphs(_shown_summary(story)))
+            summary = _shown_summary(story)
+            if fold and lane == ALSO_LANE and story.get("one_line"):
+                summary = str(story["one_line"])
+            if show_summary and summary:
+                lines.extend(f"   {para}" for para in _paragraphs(summary))
+            if fold and lane == TOP_LANE and show_summary and story.get("take"):
+                lines.append(f"   {story['take']}")
+            if story.get("follow"):
+                lines.append(f"   Related: {story['follow']['brief']} {story['follow']['url']}")
             count = int(story.get("source_count") or 1)
             lines.append(
                 f"   {story['source_name']}"
@@ -1632,10 +2063,17 @@ def _text_version(
             lines.append(f"   {story['url']}")
             lines.append("")
     if date:
-        lines.append(f"Share today's brief: {_share_url(date)}")
+        lines.append(f"Share today's Trace Daily: {_share_url(date)}")
     lines.append(
-        f"Customize your brief: {_visit_url(f'{APP_URL}/brief/customize?from=email', track_id)}"
+        f"Customize your Trace Daily: {_visit_url(f'{APP_URL}/brief/customize?from=email', track_id)}"
     )
+    lines += [
+        "",
+        "The summaries are written with AI from the linked reporting; "
+        "reply to this email if we got something wrong.",
+    ]
+    if unsubscribe_url:
+        lines.append(f"Unsubscribe: {unsubscribe_url}")
     return "\n".join(lines)
 
 
@@ -1644,16 +2082,58 @@ def _text_version(
 # ---------------------------------------------------------------------------
 
 
+# The feed doc keeps only its top topics and is rewritten every few minutes, and the
+# day's doc starts empty at midnight UTC: the email also reads the previous doc's
+# stories from the last CARRY_OVER_HOURS (the web feed does the same, lib/feed-view.ts).
+CARRY_OVER_HOURS = 24
+
+
+def _item_urls(item: dict) -> set[str]:
+    urls = {str(item.get("url") or "").strip()}
+    urls |= {str(a.get("url") or "").strip() for a in item.get("articles") or [] if isinstance(a, dict)}
+    return {u for u in urls if u}
+
+
+def _item_newest(item: dict) -> datetime | None:
+    stamps = [_parse_ts(item.get("published_date"))]
+    stamps += [_parse_ts(a.get("published_date")) for a in item.get("articles") or [] if isinstance(a, dict)]
+    return max((ts for ts in stamps if ts), default=None)
+
+
+def _with_carry_over(feed: dict, previous: dict | None, now: datetime | None = None) -> dict:
+    """`feed` plus `previous`'s topics and rows from the last CARRY_OVER_HOURS whose
+    articles today's doc doesn't already carry."""
+    if not previous:
+        return feed
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(hours=CARRY_OVER_HOURS)
+    seen: set[str] = set()
+    for key in ("trending_topics", "trending"):
+        for item in feed.get(key) or []:
+            if isinstance(item, dict):
+                seen |= _item_urls(item)
+    out = dict(feed)
+    for key in ("trending_topics", "trending"):
+        carried = [
+            item for item in previous.get(key) or []
+            if isinstance(item, dict) and not (_item_urls(item) & seen)
+            and (newest := _item_newest(item)) is not None and newest >= cutoff
+        ]
+        out[key] = list(feed.get(key) or []) + carried
+    return out
+
+
 def _load_global_feed(store: FirestoreStore, date: str) -> dict:
-    doc = (
-        store.db.collection("v3_user_feeds")
-        .document("_global")
-        .collection("daily")
-        .document(date)
-        .get()
-    )
+    daily = store.db.collection("v3_user_feeds").document("_global").collection("daily")
+    doc = daily.document(date).get()
     if doc.exists:
-        return doc.to_dict() or {}
+        previous = None
+        try:
+            day_before = (datetime.strptime(date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+            snap = daily.document(day_before).get()
+            previous = snap.to_dict() if snap.exists else None
+        except ValueError:
+            pass
+        return _with_carry_over(doc.to_dict() or {}, previous)
     latest = (
         store.db.collection("v3_user_feeds")
         .document("_global")
@@ -1709,7 +2189,8 @@ def _recent_sent(store: FirestoreStore, date: str) -> list[dict]:
             continue
         data = (snap.to_dict() or {}) if snap.exists else {}
         items = data.get("sent") or data.get("stories") or []
-        stories += [s for s in items if isinstance(s, dict) and s.get("title")]
+        # The day it went out, so the editor can say "Wednesday's brief flagged…".
+        stories += [{**s, "sent_on": doc_id} for s in items if isinstance(s, dict) and s.get("title")]
     return stories
 
 
@@ -1720,7 +2201,7 @@ def _sent_record(groups: list[dict], sections_seen: list[list[tuple[str, list[di
     out: dict[str, dict] = {}
     for sections in [edition, *sections_seen]:
         for _, stories in sections:
-            for story in stories:
+            for story in [x for s in stories for x in (s, s.get("follow")) if x]:
                 out.setdefault(story["url"], {
                     "title": story["title"],
                     "source_title": story.get("source_title", ""),
@@ -1729,6 +2210,11 @@ def _sent_record(groups: list[dict], sections_seen: list[list[tuple[str, list[di
                     "urls": list(story.get("urls") or [story["url"]])[:SENT_URLS],
                 })
     return list(out.values())
+
+
+def _selections(cache: dict) -> list[list[tuple[str, list[dict]]]]:
+    """The story selections a run's _send_one cache holds, keyed (bucket, interests, count)."""
+    return [value for key, value in cache.items() if isinstance(key, tuple) and key and key[0] in BUCKETS]
 
 
 def _record_sent(
@@ -1751,7 +2237,7 @@ def _record_sent(
 POOL_FIELDS = (
     "topic_id", "title", "summary", "url", "source_name", "image", "sources",
     "source_count", "coverage", "interest_id", "lane_detail", "macro",
-    "model_release", "send_worthy",
+    "model_release", "send_worthy", "importance", "company",
 )
 
 
@@ -1803,6 +2289,93 @@ def _publish_edition(store: FirestoreStore, groups: list[dict], date: str) -> in
     return len(stories)
 
 
+def _compose(
+    store: FirestoreStore,
+    groups: list[dict],
+    date: str,
+    bucket: str,
+    recipient: dict,
+    cache: dict,
+    v3_store: Any = None,
+    track_id: str = "",
+) -> tuple[str, str, str] | None:
+    """One reader's email (subject, html, text), or None with no stories.
+
+    Selections, the editor's issue copy and the closing "One more thing" are
+    worked out once per (bucket, interests, count) and kept in `cache`.
+    """
+    interests = tuple(recipient.get("interests") or [])
+    count = int(recipient.get("count") or BUCKETS[bucket]["count"])
+    key = (bucket, interests, count)
+    if key not in cache:
+        cache[key] = _select_from_groups(groups, list(interests), count, bucket)
+    stories = [s for _, group in cache[key] for s in group]
+    if not stories:
+        return None
+    if len(stories) < count:
+        _log(
+            f"only {len(stories)}/{count} stories for "
+            f"{recipient['email']} (interests={list(interests)})"
+        )
+    if "sponsors" not in cache:  # once per run
+        cache["sponsors"] = _active_sponsors(store)
+    issue_key = ("issue", *key)
+    if issue_key not in cache:  # once per selection; the editor caches it across runs too
+        # The whole-email rewrite runs once per distinct selection (cached across runs too); past
+        # MAX_POLISH_RUNS in one send, readers get the story editor's copy, already edited.
+        polish = bool(v3_store) and cache.get("polish_runs", 0) < MAX_POLISH_RUNS
+        if polish:
+            cache["polish_runs"] = cache.get("polish_runs", 0) + 1
+            # One read of the whole email: vary the rhythm, cut takes that only repeat.
+            revised = newsletter_editor.polish_issue(v3_store, stories)
+        else:
+            revised = {}
+        swap = {id(s): _credit_cited({**s, "title": r["headline"], "brief": r["blurb"], "take": r["take"],
+                                      "one_line": r["one_line"], "short": r.get("short") or s.get("short", "")})
+                for i, s in enumerate(stories) if (r := (revised or {}).get(i))}
+        # At most MAX_TAKES "Why it matters" lines, the first ones kept, whether or not the
+        # whole-email rewrite ran. Copies, never the shared group dicts: other readers'
+        # selections hold the same stories.
+        kept = 0
+        for s in stories:
+            story = swap.get(id(s), s)
+            if story.get("take"):
+                kept += 1
+                if kept > MAX_TAKES:
+                    swap[id(s)] = {**story, "take": ""}
+        if swap:
+            cache[key] = [(lane, [swap.get(id(s), s) for s in group]) for lane, group in cache[key]]
+            stories = [s for _, group in cache[key] for s in group]
+        picked = {s.get("topic_id") for s in stories}
+        # Candidates for the closing "One more thing": edited stories that didn't make it.
+        extras = [g for g in _ranked(groups) if g.get("importance") and g.get("topic_id") not in picked][:20]
+        issue = newsletter_editor.write_issue(v3_store, stories, extras) if v3_store else None
+        cache[issue_key] = issue
+        # A reaction to the lead reads as its next beat, right under it: the issue writer's
+        # pick, else the first story the story editor marked as reacting to the lead's event.
+        follow = (issue or {}).get("follow_up") or _reaction_follow_up(stories)
+        cache[key] = _move_follow_up(cache[key], follow)
+        kicker = (issue or {}).get("kicker")
+        if kicker is not None and 0 <= kicker["index"] < len(extras):
+            story = {**extras[kicker["index"]], "brief": kicker["line"], "kicker": True}
+            # Into the cached selection, so it is also recorded as sent.
+            cache[key] = cache[key] + [(KICKER_LANE, [story])]
+    issue = cache[issue_key]
+    if issue and issue.get("subject") and not issue.get("_lead_set"):
+        # The subject earned the open: the lead story's headline says the same thing.
+        first_lane, first_group = cache[key][0]
+        if first_group:
+            cache[key] = [(first_lane, [{**first_group[0], "title": issue["subject"]}, *first_group[1:]]),
+                          *cache[key][1:]]
+        issue["_lead_set"] = True
+    return _render(
+        bucket, cache[key], date, recipient["email"], track_id,
+        story_format=recipient.get("format") or "summaries",
+        sponsors=cache["sponsors"],
+        issue=cache[issue_key],
+    )
+
+
 def _send_one(
     store: FirestoreStore,
     groups: list[dict],
@@ -1811,32 +2384,15 @@ def _send_one(
     recipient: dict,
     dry_run: bool,
     cache: dict,
+    v3_store: Any = None,
 ) -> dict:
-    interests = tuple(recipient.get("interests") or [])
-    count = int(recipient.get("count") or BUCKETS[bucket]["count"])
-    key = (bucket, interests, count)
-    if key not in cache:
-        cache[key] = _select_from_groups(groups, list(interests), count, bucket)
-    sections = cache[key]
-    stories = [s for _, group in sections for s in group]
-    if not stories:
-        return {"ok": False, "error": "no stories selected"}
-    if len(stories) < count:
-        _log(
-            f"only {len(stories)}/{count} stories for "
-            f"{recipient['email']} (interests={list(interests)})"
-        )
-
     # Mint the tracking id before rendering so the pixel and the wrapped
     # links carry the same id the send log will record.
     track_id = uuid.uuid4().hex
-    if "sponsors" not in cache:  # once per run
-        cache["sponsors"] = _active_sponsors(store)
-    subject, html, text = _render(
-        bucket, sections, date, recipient["email"], track_id,
-        story_format=recipient.get("format") or "summaries",
-        sponsors=cache["sponsors"],
-    )
+    composed = _compose(store, groups, date, bucket, recipient, cache, v3_store, track_id)
+    if composed is None:
+        return {"ok": False, "error": "no stories selected"}
+    subject, html, text = composed
     if dry_run:
         _log(f"[dry-run] {bucket} -> {recipient['email']} | {subject}")
         return {"ok": True}
@@ -1886,8 +2442,10 @@ def send_audience_newsletter(
     run_now = datetime.now(timezone.utc)
     # One set of story groups for the whole run too, without what the last few
     # dailies already carried.
-    repeats = _find_repeats(v3_store, candidates, _recent_sent(store, target_date))
+    sent_before = _recent_sent(store, target_date)
+    repeats = _find_repeats(v3_store, candidates, sent_before)
     groups = _story_groups(feed, verdicts, run_now, set(repeats))
+    groups = _apply_edits(v3_store, groups, run_now, sent_before)
 
     if preview:
         interests = [
@@ -1950,7 +2508,7 @@ def send_audience_newsletter(
                 "interests": interests,
             }
         _log(f"demo send: bucket={bucket} email={recipient['email']} interests={interests}")
-        result = _send_one(store, groups, target_date, bucket, recipient, dry_run, {})
+        result = _send_one(store, groups, target_date, bucket, recipient, dry_run, {}, v3_store)
         return {
             "success": result["ok"],
             "mode": "demo",
@@ -1961,7 +2519,7 @@ def send_audience_newsletter(
         }
 
     if publish_only or not dry_run:
-        # Publish before sending so every "Share today's brief" link resolves
+        # Publish before sending so every "Share today's Trace Daily" link resolves
         # the moment the first email lands. A failure here must not cost the send.
         try:
             published = _publish_edition(store, groups, target_date)
@@ -1999,7 +2557,7 @@ def send_audience_newsletter(
     try:
         for bucket in ("member", "winback", "landing"):
             for recipient in buckets[bucket]:
-                res = _send_one(store, groups, target_date, bucket, recipient, dry_run, cache)
+                res = _send_one(store, groups, target_date, bucket, recipient, dry_run, cache, v3_store)
                 if res["ok"] and bucket == "winback" and not dry_run:
                     _record_winback(store, recipient)
                 if res["ok"]:
@@ -2012,7 +2570,8 @@ def send_audience_newsletter(
     finally:
         # Even when the run dies part way: what went out mustn't go out again tomorrow.
         if sent and not dry_run:
-            _record_sent(store, target_date, groups, list(cache.values()))
+            # Only the selections: the cache also holds the sponsors and the issue copy.
+            _record_sent(store, target_date, groups, _selections(cache))
     return {
         "success": failed == 0 and sent > 0,
         "mode": "full",

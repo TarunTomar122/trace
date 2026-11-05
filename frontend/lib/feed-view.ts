@@ -10,6 +10,8 @@ import { decodeHtmlEntities } from './feed-article-text';
 import { canonicalLane } from './feed-links';
 import { toDateMaybe } from './subscription-access';
 import { SPONSOR_SLOTS } from './sponsor-link';
+import { feedFixtureSnapshot } from './feed-fixture';
+import { outletName } from './outlet-names';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -18,13 +20,14 @@ type Doc = Record<string, any>;
 
 // Shared request cache: feed data is at most 60 seconds stale.
 const getCachedFeed = unstable_cache(
-  async (): Promise<{ date: string; data: Doc } | null> => {
+  async (): Promise<{ date: string; data: Doc; previous?: Doc } | null> => {
     try {
       const { adminFirestore } = await import('@/lib/firebase-admin');
       if (!adminFirestore) return null;
       const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
-      const snap = await ref.orderBy('__name__', 'desc').limit(5).get();
-      let picked: { date: string; data: Doc } | null = null;
+      const snap = (await feedFixtureSnapshot()) ?? await ref.orderBy('__name__', 'desc').limit(5).get();
+      let picked: { date: string; data: Doc; previous?: Doc } | null = null;
+      let previous: Doc | null = null;
       let pulseDoc: Doc | null = null;
       const hasPulse = (data: Doc) => {
         const dev = data.daily_pulse_roles?.developer;
@@ -32,11 +35,14 @@ const getCachedFeed = unstable_cache(
       };
       for (const doc of snap.docs) {
         const data = doc.data();
+        if (picked && !previous && (data.trending || []).length > 0) previous = data;
         if (!picked && (data.trending || []).length > 0) picked = { date: doc.id, data };
         if (!pulseDoc && hasPulse(data)) pulseDoc = data;
-        if (picked && pulseDoc) break;
+        if (picked && pulseDoc && previous) break;
       }
       if (!picked) return null;
+      // Only the sections the carry-over reads: the cached doc stays well under Next's 2 MB limit.
+      if (previous) picked.previous = { trending: previous.trending, trending_topics: previous.trending_topics };
       // After midnight the new day's doc has trending long before the
       // 3-hourly pulse merges its sections in — backfill pulse from the
       // newest doc that has it (same as mobile's snapshot merge).
@@ -222,6 +228,13 @@ export function mapTrendingToStories(
     const articles = (topic?.articles || []).filter((a: { url?: string }) => a?.url);
     if (!topic?.title && articles.length === 0) return null;
 
+    const ed = topic?.editor && typeof topic.editor === 'object' ? topic.editor : null;
+    // Articles the editor found to be about another event (a Snap report under Figma's) go.
+    const outliers = new Set<string>((ed?.outlier_urls || []).map((u: string) => canonicalUrlKey(u) || u));
+    if (outliers.size) {
+      const kept = articles.filter((a: { url: string }) => !outliers.has(canonicalUrlKey(a.url) || a.url));
+      if (kept.length) articles.splice(0, articles.length, ...kept);
+    }
     const first = articles[0] || {};
     // Newest dated article (an undated first one must not hide the rest), else
     // the topic's last update: the same age the email measures.
@@ -237,12 +250,22 @@ export function mapTrendingToStories(
       const d = domainOf(a.url);
       if (d && !sources.includes(d)) sources.push(d);
     }
-    let source = first.source_name || first.source || sources[0] || '';
+    // Credit the outlet that reported it first (Axios's scoop, not the outlet the pipeline read).
+    const originator = articles.reduce(
+      (best: { published_date?: string }, a: { published_date?: string }) =>
+        ((Date.parse(a?.published_date || '') || Infinity) < (Date.parse(best?.published_date || '') || Infinity) ? a : best),
+      first,
+    );
+    let source = outletName(originator.source_name || originator.source, originator.url)
+      || outletName(first.source_name || first.source, first.url) || sources[0] || '';
     if (!source) source = domainOf(first.url || '');
 
+    const superseded = new Set<string>((ed?.superseded_urls || []).map((u: string) => canonicalUrlKey(u) || u));
     const coverage = articles.map((a: { title?: string; source_name?: string; source?: string; url: string; published_date?: string }) => ({
-      title: decodeHtmlEntities(a.title || ''),
-      source: a.source_name || a.source || domainOf(a.url),
+      earlier: superseded.has(canonicalUrlKey(a.url) || a.url) || undefined,
+      // Some feeds append a CMS id to the title ("... in crypto 108511116").
+      title: decodeHtmlEntities(a.title || '').replace(/\s+\d{7,}\s*$/, ''),
+      source: outletName(a.source_name || a.source, a.url) || domainOf(a.url),
       url: a.url,
       time: timeAgo(a.published_date),
     }));
@@ -259,8 +282,8 @@ export function mapTrendingToStories(
       id: topic.id || topic.topic_key || `topic-${i}`,
       threadId: topic.thread_id || undefined,
       rank: i + 1,
-      title: decodeHtmlEntities(topic.title || first.title || ''),
-      body: topic.summary || first.summary?.short_article?.body || first.description || '',
+      title: decodeHtmlEntities(ed?.headline || topic.title || first.title || ''),
+      body: ed?.blurb || topic.summary || first.summary?.short_article?.body || first.description || '',
       img,
       source,
       sources,
@@ -268,12 +291,14 @@ export function mapTrendingToStories(
       coverage,
       time: timeAgo(newestDate),
       ts: Date.parse(newestDate) || 0,
+      firstTs: finiteOrUndefined(Math.min(...articles.map((a: { published_date?: string }) => Date.parse(a?.published_date || '') || Infinity))),
       cat: canonicalLane(topic.interest_id || first.interest_id),
       url: first.url || '#',
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
       // Carried so the Home edition can drop stories Jev judged worthless.
       sendWorthy: typeof topic.jev_send_worthy === 'number' ? topic.jev_send_worthy : null,
       laneDetail: topic.lane_detail ? canonicalLane(topic.lane_detail) : undefined,
+      ...editorFields(ed),
     };
   };
 
@@ -282,7 +307,8 @@ export function mapTrendingToStories(
     const url = String(it?.url || '');
     if (!url) return null;
     const sa = it.summary?.short_article || {};
-    let source = it.source_name || it.source || '';
+    const ed = it?.editor && typeof it.editor === 'object' ? it.editor : null;
+    let source = outletName(it.source_name || it.source, url);
     const domain = domainOf(url);
     if (!source) source = domain;
     return {
@@ -290,8 +316,8 @@ export function mapTrendingToStories(
       rank: 0,
       // Our own headline, written as one pair with the body under it (the
       // body never restates it); the publisher's title stays in coverage.
-      title: decodeHtmlEntities(sa.headline || it.title || ''),
-      body: sa.body || it.description || '',
+      title: decodeHtmlEntities(ed?.headline || sa.headline || it.title || ''),
+      body: ed?.blurb || sa.body || it.description || '',
       img: firstThumb(it.thumbnail, it.og_image, it.image),
       source,
       sources: domain ? [domain] : [],
@@ -303,6 +329,7 @@ export function mapTrendingToStories(
       url,
       sendWorthy: typeof it.jev_send_worthy === 'number' ? it.jev_send_worthy : null,
       laneDetail: it.lane_detail ? canonicalLane(it.lane_detail) : undefined,
+      ...editorFields(ed),
     };
   };
 
@@ -322,17 +349,36 @@ export function mapTrendingToStories(
   return foldSameEventStories(stories);
 }
 
+/** The editor's judgement on a story (backend v3/lib/feed_editor.py), when it has one. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function editorFields(ed: any): Pick<FeedStory, 'importance' | 'event' | 'reactionTo' | 'release' | 'take' | 'detail'> {
+  if (!ed) return {};
+  return {
+    detail: typeof ed.detail === 'string' && ed.detail.trim() ? ed.detail : undefined,
+    importance: typeof ed.importance === 'number' ? ed.importance : undefined,
+    event: typeof ed.event === 'string' && ed.event ? ed.event : undefined,
+    reactionTo: typeof ed.reaction_to === 'string' && ed.reaction_to ? ed.reaction_to : undefined,
+    release: typeof ed.release === 'boolean' ? ed.release : undefined,
+    take: typeof ed.take === 'string' && ed.take ? ed.take : undefined,
+  };
+}
+
 function coverageUrls(story: FeedStory): string[] {
   return [story.url, ...story.coverage.map((link) => link.url)].filter(Boolean);
 }
 
 function sameEventStory(a: FeedStory, b: FeedStory): boolean {
   if (a.threadId && b.threadId && a.threadId === b.threadId) return true;
+  // The editor's event key: two write-ups of one election's data center votes are one story.
+  if (a.event && b.event && a.event === b.event) return true;
   const aUrls = new Set(coverageUrls(a).map((url) => canonicalUrlKey(url)).filter(Boolean));
   for (const url of coverageUrls(b)) {
     const key = canonicalUrlKey(url);
     if (key && aUrls.has(key)) return true;
   }
+  // The editor read both and called them different events (AMD's earnings vs the data
+  // center ballots): look-alike titles don't overrule that.
+  if (a.event && b.event) return false;
   if (isSameStoryTitle(a.title, b.title)) return true;
   if (a.coverage.some((link) => link.title && isSameStoryTitle(link.title, b.title))) return true;
   if (b.coverage.some((link) => link.title && isSameStoryTitle(link.title, a.title))) return true;
@@ -343,10 +389,16 @@ function sameEventStory(a: FeedStory, b: FeedStory): boolean {
 }
 
 function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
-  const extraRicher = extra.coverage.length > target.coverage.length;
+  // The card's copy comes from the story the editor rated clearly higher (an API model
+  // release over the consumer feature riding on it), else from the richer coverage.
+  const gap = (extra.importance ?? 0) - (target.importance ?? 0);
+  // Same rule as the email's merge: the broader write-up wins unless the other is rated more than 10 higher.
+  const extraRicher = gap > 10 || (gap >= -10 && extra.coverage.length > target.coverage.length);
   if (extraRicher) {
     target.title = extra.title || target.title;
     target.body = extra.body || target.body;
+    // The long version goes with the headline and blurb it was written for, never mixed.
+    target.detail = extra.detail;
     target.source = extra.source || target.source;
     if (extra.img) target.img = extra.img;
     target.cat = extra.cat || target.cat;
@@ -356,6 +408,14 @@ function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
     target.img = extra.img;
   }
   if (!target.body && extra.body) target.body = extra.body;
+  // One event, one rating: the merged story keeps the higher importance and its editor copy.
+  if ((extra.importance ?? 0) > (target.importance ?? 0)) {
+    target.importance = extra.importance;
+    if (extra.take) target.take = extra.take;
+    if (typeof extra.release === 'boolean') target.release = extra.release;
+  }
+  target.event = target.event || extra.event;
+  target.reactionTo = target.reactionTo || extra.reactionTo;
 
   const seen = new Set(target.coverage.map((link) => canonicalUrlKey(link.url)).filter(Boolean));
   for (const link of extra.coverage) {
@@ -381,6 +441,32 @@ function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
   target.mergedIds = [...merged];
 }
 
+// Cited in a summary but never the card's credit (the link should open for everyone).
+const PAYWALLED = new Set(['Bloomberg', 'The Wall Street Journal', 'WSJ', 'Financial Times', 'FT', 'The Information',
+  'The New York Times', 'The Economist', "Barron's"]);
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Credit the outlet the summary cites ("in 404 Media's count", "Engadget reports") when it is
+ * in the coverage and the credited one isn't cited, so the card's byline matches its text
+ * (backend _credit_cited does the same for the email). */
+export function creditCitedOutlet(story: FeedStory): FeedStory {
+  const body = String(story.body || '');
+  if (!body || (story.source && body.includes(story.source))) return story;
+  for (const link of story.coverage) {
+    const name = link.source;
+    if (!name || name.length < 3 || name === story.source || PAYWALLED.has(name) || !link.url) continue;
+    const n = escapeRegExp(name);
+    const cited = new RegExp(
+      `(?:according to|per|reported by) ${n}\\b|\\b${n}['\u2019]s (?:tally|count|reporting|report|analysis|data|estimate|review|provisional)|\\b${n} (?:reports|reported|says|said|found)\\b`,
+    );
+    if (cited.test(body)) return { ...story, source: name, url: link.url };
+  }
+  return story;
+}
+
 /** Fold same-event singletons and split clusters into one coverage card. */
 export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
   const out: FeedStory[] = [];
@@ -398,7 +484,7 @@ export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
       mergedIds: story.mergedIds ? [...story.mergedIds] : undefined,
     });
   }
-  return out.map((story, i) => ({ ...story, rank: i + 1 }));
+  return out.map((story, i) => ({ ...creditCitedOutlet(story), rank: i + 1 }));
 }
 
 export async function loadFeedViewData(): Promise<FeedViewData> {
@@ -411,7 +497,10 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
   const data = feedResult?.data || {};
   const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
 
-  const stories = mapTrendingToStories(data.trending, data.trending_topics);
+  const stories = withRecentCarryOver(
+    mapTrendingToStories(data.trending, data.trending_topics),
+    feedResult?.previous ? mapTrendingToStories(feedResult.previous.trending, feedResult.previous.trending_topics) : [],
+  );
   const headlines = parseHeadlines(data.headlines);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -444,6 +533,18 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
     feedDate,
     feedError: !feedResult,
   };
+}
+
+// A reader's "today" is the last day, not the UTC date: right after midnight the
+// new doc holds only a few hours, so yesterday's stories from the last
+// CARRY_OVER_HOURS stay in the running (merged into today's when the same event).
+const CARRY_OVER_HOURS = 24;
+
+export function withRecentCarryOver(today: FeedStory[], yesterday: FeedStory[], now: number = Date.now()): FeedStory[] {
+  const cutoff = now - CARRY_OVER_HOURS * 3600 * 1000;
+  const carried = yesterday.filter((story) => (story.ts || 0) >= cutoff);
+  if (!carried.length) return today;
+  return foldSameEventStories([...today, ...carried]);
 }
 
 /** Walk recent daily archive docs for a shared story that left today's feed. */
@@ -484,4 +585,8 @@ export function findSharedStory(stories: FeedStory[], id: string): FeedStory | n
       return ck !== '' && (ck === want || ck === id);
     });
   }) || null;
+}
+
+function finiteOrUndefined(n: number): number | undefined {
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }

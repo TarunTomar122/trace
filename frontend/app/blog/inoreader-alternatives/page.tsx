@@ -533,7 +533,7 @@ export default function BlogPost() {
             If what you really want is to catch up on tech and AI news without
             managing feeds, try{" "}
             <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              today&apos;s Trace brief
+              today&apos;s Trace Daily
             </Link>
             . It is free and takes about five minutes.
           </p>

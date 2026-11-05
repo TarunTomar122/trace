@@ -1261,6 +1261,56 @@
       "url": "https://www.theverge.com/rss/autonomous-cars/index.xml",
       "type": "atom",
       "source_weight": 1.1
+    },
+    {
+      "interest_id": "tech",
+      "name": "Apple Developer News",
+      "url": "https://developer.apple.com/news/rss/news.rss",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "hello developer",
+        "meet with apple",
+        "tax",
+        "pricing update",
+        "reminder",
+        "get ready"
+      ],
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "tech",
+      "name": "Meta Newsroom",
+      "url": "https://about.fb.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "integrity report",
+        "transparency report"
+      ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "Sequoia",
+      "url": "https://sequoiacap.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "podcast",
+        "episode",
+        "training data"
+      ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "tech",
+      "name": "The Hacker News",
+      "url": "https://feeds.feedburner.com/TheHackersNews",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "webinar",
+        "deal",
+        "sponsored"
+      ],
+      "source_weight": 0.9
     }
   ]
 }

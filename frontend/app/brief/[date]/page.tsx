@@ -35,8 +35,10 @@ type Props = { params: Promise<{ date: string }> };
 /** "Story of the day" first, then one kicker each time the label changes. */
 function kickerFor(stories: DailyStory[], index: number): string {
   if (index === 0) return 'Story of the day';
-  const label = laneKicker(stories[index].lane);
-  return index > 1 && laneKicker(stories[index - 1].lane) === label ? '' : label;
+  // Editions from before the Top stories section label lanes "Top in …".
+  const afterTop = stories.some((story) => story.lane === 'top');
+  const label = laneKicker(stories[index].lane, afterTop);
+  return index > 1 && laneKicker(stories[index - 1].lane, afterTop) === label ? '' : label;
 }
 
 /** The table of contents: stories under the same kickers the page shows, numbered from 1. */
@@ -57,7 +59,7 @@ function editionUrl(date: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { date } = await params;
   const edition = isEditionDate(date) ? await getDailyEdition(date) : null;
-  if (!edition) return { title: metadataTitle('Daily brief'), robots: { index: false } };
+  if (!edition) return { title: metadataTitle('Trace Daily'), robots: { index: false } };
 
   const title = `${edition.stories.length} big things in tech · ${formatEditionDate(date)}`;
   const description = edition.stories
@@ -122,7 +124,7 @@ export default async function DailyEditionPage({ params }: Props) {
             <EditionToc groups={toc} />
           </aside>
           <article className="br-edition">
-            <p className="hp-kicker"><Mail size={17} strokeWidth={2} aria-hidden="true" /> Daily Brief</p>
+            <p className="hp-kicker"><Mail size={17} strokeWidth={2} aria-hidden="true" /> Trace Daily</p>
             <h1 className="hp-h1">{edition.stories.length} big things in tech</h1>
             <p className="br-meta">
               <time dateTime={date}>{formatEditionDate(date)}</time>

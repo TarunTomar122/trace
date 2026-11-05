@@ -3029,6 +3029,18 @@ def build_global_feed(
     headlines = build_headlines(store, trending_topics)
     _log(f"Built {len(headlines)} storyline headlines")
 
+    # The editor's judgement and copy on the top stories (v3/lib/feed_editor.py): importance,
+    # event keys, headlines, card blurbs and story-page versions. Cached per story, so a rebuild
+    # only pays for stories whose coverage changed. TRACE_FEED_EDITOR=0 turns it off; a failure
+    # leaves the pipeline's own copy in place.
+    if os.getenv("TRACE_FEED_EDITOR", "1") != "0":
+        try:
+            from v3.lib.feed_editor import annotate_feed
+            annotate_feed(store, {"trending": feed_items, "trending_topics": trending_topics},
+                          limit=_env_int("TRACE_FEED_EDITOR_LIMIT", "60"))
+        except Exception as exc:  # noqa: BLE001 - the feed still publishes unedited
+            _log(f"feed editor skipped: {type(exc).__name__}: {str(exc)[:160]}")
+
     store.write_global_feed_section(target_date, "trending", feed_items)
     store.write_global_feed_section(target_date, "trending_topics", trending_topics)
     store.write_global_feed_section(target_date, "headlines", headlines)
