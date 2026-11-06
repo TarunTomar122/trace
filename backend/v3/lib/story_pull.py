@@ -19,6 +19,10 @@ There is no fixed list of good and bad topics: the model reads the evidence,
 so the ranking follows what the numbers show as they come in. The evidence is
 cached for EVIDENCE_HOURS in `story_pull/evidence`, so a run costs one model
 call and, at most every few hours, a few public page reads.
+
+The story editor (newsletter_editor) writes for the same AUDIENCE and sees the
+same evidence when it rates importance, so an owner call also steers the
+email's order and the feed (for stories edited after the call).
 """
 
 from __future__ import annotations

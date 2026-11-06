@@ -11,6 +11,13 @@ from v3.lib import newsletter_editor as E
 NOW = datetime(2026, 11, 5, 8, 0, tzinfo=timezone.utc)
 
 
+def setUpModule():
+    # The audience evidence reads Buffer, YouTube and the store: never in tests.
+    patcher = patch.object(E.story_pull, "evidence", return_value={})
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+
+
 def group(topic_id, title, **extra):
     return {
         "topic_id": topic_id, "title": title, "summary": f"{title}.", "url": f"https://e.com/{topic_id}",
@@ -83,15 +90,16 @@ class ApplyEditsTests(unittest.TestCase):
 
 
 class RareTakeTests(unittest.TestCase):
+    class Store:
+        def get_cached_synthesis(self, key):
+            return None
+
+        def cache_synthesis(self, key, value):
+            pass
+
     def test_only_the_most_important_few_keep_a_take(self):
         groups = [{"topic_id": f"t{i}", "title": f"T{i}", "summary": "S", "url": f"https://e.com/{i}"} for i in range(4)]
-
-        class Store:
-            def get_cached_synthesis(self, key):
-                return None
-
-            def cache_synthesis(self, key, value):
-                pass
+        Store = self.Store
 
         answer = {f"s{i}": {"importance": 90 - i, "release": False, "repeat": False, "event": f"e{i}",
                             "reaction_to": "", "follows": "", "headline": f"H{i}", "short": "s",
@@ -102,6 +110,22 @@ class RareTakeTests(unittest.TestCase):
             edits = E.edit_stories(Store(), groups)
         with_take = sorted(tid for tid, e in edits.items() if e["take"])
         self.assertEqual(with_take, ["t0", "t1"])
+
+
+class AudienceTests(unittest.TestCase):
+    def test_ratings_see_the_audience_and_what_it_picked_up(self):
+        found = {"owner": [{"verdict": "bad", "story": "Long passwords bypass Linux logins", "why": "too technical"}]}
+        with patch.object(E, "_client", return_value=object()), patch.object(E, "_ask", return_value={}) as ask, \
+                patch.object(E.story_pull, "evidence", return_value=found):
+            E.edit_stories(RareTakeTests.Store(), [group("t1", "T1")])
+        prompt = ask.call_args.args[1]
+        self.assertIn(E.story_pull.AUDIENCE, prompt)
+        self.assertIn("- BAD: Long passwords bypass Linux logins (too technical)", prompt)
+        self.assertNotIn("developers, founders", prompt)
+
+    def test_no_evidence_still_rates(self):
+        with patch.object(E.story_pull, "evidence", side_effect=RuntimeError("down")):
+            self.assertIn("judge from the audience alone", E._audience_evidence(object()))
 
 
 class EditValidationTests(unittest.TestCase):
@@ -120,7 +144,8 @@ class EditValidationTests(unittest.TestCase):
         self.assertTrue(len(good["short"]) <= 60)
 
     def test_prompts_format(self):
-        E.STORY_PROMPT.format(style=E.STYLE, known="k", sent="s", stories="x", now="2026-11-05 08:00 UTC")
+        E.STORY_PROMPT.format(style=E.STYLE, known="k", sent="s", stories="x", now="2026-11-05 08:00 UTC",
+                              audience="a", evidence="e")
         E.ISSUE_PROMPT.format(style=E.STYLE, stories="x", extras="y")
 
 

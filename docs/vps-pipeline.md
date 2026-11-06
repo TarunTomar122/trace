@@ -36,7 +36,11 @@ Checked-in copies: `backend/vps/trace-pipeline.{service,timer}`, `trace-pulse.{s
   24 hours while its articles mostly stay the same, redone when a new outlet covers it and the write-up
   is over 2 hours old; most runs only edit new stories. The feed passes the same recent-email headlines
   as the 08:30 send, so the email reuses the feed's write-ups from the last 6 hours instead of paying for
-  them again. When that list changes (IST midnight, 18:30 UTC) the next run rewrites the top stories once. The story pass runs on `gpt-6.1-terra` at medium effort
+  them again. When that list changes (IST midnight, 18:30 UTC) the next run rewrites the top stories once.
+  Importance is rated for the same reader as the social picks (`story_pull.AUDIENCE`: into tech, mostly
+  not developers), with the same evidence in the prompt (Shorts views, email readers, the owner's
+  `--call`s), so a technical flaw that needs a particular server setup rates 40-60 and doesn't lead the
+  email (owner, 2026-11-06). A new owner call only affects stories edited after it. The story pass runs on `gpt-6.1-terra` at medium effort
   (`TRACE_EDITOR_MODEL`/`TRACE_EDITOR_EFFORT`); the email's whole-issue polish and subject line use
   `gpt-6.1-sol` at high (`TRACE_WRITER_MODEL`/`TRACE_WRITER_EFFORT`), and the polish runs only for the
   landing edition and the commonest member selection. The model call gives up after 6 minutes and a failure publishes the
@@ -191,7 +195,8 @@ tail -50 ~/trace/logs/sponsor-welcome.log
   "this is what we want") are part of the evidence too: record one with
   `../.venv/bin/python -m v3.lib.story_pull --call bad "<story>" "<why>"`. The
   reel shortlist (`~/Documents/trace-reels/tools/candidates.py`) uses the same
-  ranking. If the call fails, feed order is used. The caption's
+  ranking, and the story editor sees the same evidence when it rates importance
+  for the email and the feed. If the call fails, feed order is used. The caption's
   first line (also the TikTok title) leads with the first story. Lane quotas
   (`INSTAGRAM_LANES`, e.g. `ai,robotics,ai,startups`) are off by default since
   2026-11-05: forcing a Robotics and a Startups story into every post picked
