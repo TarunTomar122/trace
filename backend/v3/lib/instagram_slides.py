@@ -5,7 +5,7 @@ the display serif for headlines, a highlighter mark behind section labels,
 plain backgrounds, rounded photos.
 
 - cover: "4 big things this morning" and the post's headlines, first.
-- photo: the "Top in X" label, the headline large, the story photo below.
+- photo: the optional "Top in X" label, the headline large, the story photo below.
 - story: the label and headline small, then the story's first paragraphs as
   the feed splits them, and its source.
 

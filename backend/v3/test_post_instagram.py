@@ -1,5 +1,6 @@
 import argparse
 import json
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -7,7 +8,23 @@ from unittest.mock import MagicMock, patch
 from PIL import Image
 
 from v3.flows import post_instagram as ig
+from v3.lib import story_pull
 from v3.lib.instagram_slides import THEMES, Cover, SlideStory, render_carousel, theme_for
+
+# No test may read Buffer, YouTube or a model through the pull ranking:
+# by default it finds no evidence and the ranking "fails" (feed order).
+_PULL_PATCHES = [patch.object(story_pull, "evidence", return_value={}),
+                 patch.object(story_pull, "rank", return_value=None)]
+
+
+def setUpModule():
+    for p in _PULL_PATCHES:
+        p.start()
+
+
+def tearDownModule():
+    for p in _PULL_PATCHES:
+        p.stop()
 
 
 class FakeDoc:
@@ -103,10 +120,26 @@ class SlotTests(unittest.TestCase):
         self.assertEqual(ig.slot_for(datetime(2026, 11, 2, 20, 0, tzinfo=timezone.utc)), ("2026-11-02", "pm"))
 
 
+LANE_QUOTAS = ["ai", "robotics", "ai", "startups", "markets"]
+
+
 class PickTests(unittest.TestCase):
-    def pick(self, topics, posted=(), limit=5):
+    def pick(self, topics, posted=(), limit=5, lanes=LANE_QUOTAS, rank=None):
         with patch.object(ig, "fetch_image", side_effect=picture):
-            return ig.pick_stories(topics, list(posted), limit)
+            return ig.pick_stories(topics, list(posted), limit, lanes=lanes, rank=rank)
+
+    def test_one_story_per_company(self):
+        topics = [topic(1, editor={"company": "Apple"}), topic(2, editor={"company": "apple"}),
+                  topic(3, editor={"company": ""}), topic(4)]
+        picked = self.pick(topics, limit=3, lanes=[])
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_1", "tt_3", "tt_4"])
+
+    def test_without_lanes_the_ranked_order_wins_and_nothing_is_labelled(self):
+        topics = [topic(1, "tech"), topic(2, "ai"), topic(3, "markets"), topic(4, "ai")]
+        self.assertEqual([p["topic"]["id"] for p in self.pick(topics, limit=3, lanes=[])], ["tt_1", "tt_2", "tt_3"])
+        picked = self.pick(topics, limit=3, lanes=[], rank=lambda c: list(reversed(c)))
+        self.assertEqual([p["topic"]["id"] for p in picked], ["tt_4", "tt_3", "tt_2"])
+        self.assertEqual([p["kicker"] for p in picked], ["", "", ""])
 
     def test_ai_robotics_ai_startups_markets(self):
         topics = [topic(1, "tech"), topic(2, "ai"), topic(3, "markets"), topic(4, "ai"),
@@ -232,6 +265,7 @@ class CopyTests(unittest.TestCase):
         self.assertEqual(tags[0], "#technews")
         self.assertEqual(tags[-1], "#yourtrace")
         self.assertEqual(len(tags), len(set(tags)))
+        self.assertTrue(ig.caption_for(stories, "").startswith(f"1. {TITLES[1]}"))
 
 
 class RenderTests(unittest.TestCase):
@@ -327,6 +361,41 @@ class BufferTests(unittest.TestCase):
 
 
 sent = {"status": "sent", "externalLink": "https://ig/p/1"}
+
+
+class PullRankTests(unittest.TestCase):
+    def stories(self, n):
+        return [{"title": f"Story {i}", "paragraphs": [f"Text {i}."]} for i in range(n)]
+
+    def test_the_ranked_pool_comes_first_then_the_tail(self):
+        stories = self.stories(ig.PULL_POOL + 2)
+        order = [(3, "launch"), (0, "AI")] + [(i, "") for i in range(ig.PULL_POOL) if i not in (0, 3)]
+        with patch.object(story_pull, "evidence", return_value={"shorts": []}) as ev, \
+                patch.object(story_pull, "rank", return_value=order) as rank:
+            titles = [s["title"] for s in ig.rank_by_pull(stories, "store")]
+        ev.assert_called_once_with("store")
+        sent = rank.call_args.args[0]
+        self.assertEqual(len(sent), ig.PULL_POOL)
+        self.assertEqual(sent[1], {"title": "Story 1", "text": "Text 1."})
+        self.assertEqual(titles[:3], ["Story 3", "Story 0", "Story 1"])
+        self.assertEqual(titles[-2:], [f"Story {ig.PULL_POOL}", f"Story {ig.PULL_POOL + 1}"])
+        self.assertEqual(sorted(titles), sorted(s["title"] for s in stories))
+
+    def test_failures_keep_feed_order(self):
+        stories = self.stories(4)
+        with patch.object(story_pull, "evidence", side_effect=RuntimeError("db down")), \
+                patch.object(story_pull, "rank", return_value=None):
+            self.assertEqual([s["title"] for s in ig.rank_by_pull(stories, "store")],
+                             ["Story 0", "Story 1", "Story 2", "Story 3"])
+
+    def test_run_ranks_with_its_store(self):
+        store = FakeStore([topic(1), topic(2), topic(3), topic(4)])
+        with patch.object(ig, "V3Store", return_value=store), patch.object(ig, "fetch_image", side_effect=picture), \
+                patch.object(ig, "rank_by_pull", side_effect=lambda c, st: list(reversed(c))) as rank, \
+                patch("openai.OpenAI", side_effect=RuntimeError("offline")), tempfile.TemporaryDirectory() as out:
+            ig.run(argparse.Namespace(dry_run=True, out=out, slot="am", force=False, tiktok_only=False))
+        self.assertIs(rank.call_args.args[1], store)
+        self.assertEqual(store.db.data.get(ig.COLLECTION), None)
 
 
 class RunSafetyTests(unittest.TestCase):

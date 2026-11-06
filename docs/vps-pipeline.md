@@ -176,16 +176,32 @@ tail -50 ~/trace/logs/sponsor-welcome.log
 `trace-instagram.timer` posts to the Trace Instagram account through Buffer at
 09:00 and 20:00 UK time (`Europe/London`, so it follows BST and GMT).
 
-- Each run picks 3-4 stories from today's feed in this order: AI, Robotics,
-  AI, Startups, then Markets when a slot is free (`INSTAGRAM_LANES`). A lane with
-  nothing new is skipped and the best remaining story from any lane fills the
-  gap. The "Top in X" kicker shows once per lane, as in the brief; gap fillers
-  have none. Stories posted in the last 14 days are skipped (by topic id,
+- Each run picks 3-4 stories from today's feed. `v3/lib/story_pull.py` ranks
+  the first 15 usable stories with one model call (`TRACE_PULL_MODEL`, default
+  gpt-6.1-terra at low effort; it followed the evidence better than gpt-6-luna
+  in a side-by-side on 2026-11-05). The call sees the audience (into tech, mostly not developers:
+  AI news, launches, big stock moves, acquisitions, layoffs) and fresh evidence
+  of what that audience did: the public view counts of Shorts from the last
+  21 days (at least a day old; the best and worst 15 when there are more) and
+  the stories at least 2 email readers opened (a reader who opens 5+ stories
+  from one email, like a link-checking bot, is ignored). It has no fixed topic
+  list; it follows the numbers. The evidence is cached for 6 h in
+  `story_pull/evidence` (30 min after a failed read). The owner's own calls
+  on past stories ("boring",
+  "this is what we want") are part of the evidence too: record one with
+  `../.venv/bin/python -m v3.lib.story_pull --call bad "<story>" "<why>"`. The
+  reel shortlist (`~/Documents/trace-reels/tools/candidates.py`) uses the same
+  ranking. If the call fails, feed order is used. The caption's
+  first line (also the TikTok title) leads with the first story. Lane quotas
+  (`INSTAGRAM_LANES`, e.g. `ai,robotics,ai,startups`) are off by default since
+  2026-11-05: forcing a Robotics and a Startups story into every post picked
+  stories few people watched. With lanes set, the "Top in X" kicker shows once
+  per lane. Stories posted in the last 14 days are skipped (by topic id,
   article URL and similar title), as are promos and stories the slide can't
   show well (characters Inter lacks, or a first paragraph too long to fit).
 - Two slides per story, 1080x1350 JPEG, rendered with Pillow
   (`backend/v3/lib/instagram_slides.py`, fonts in `backend/v3/assets/instagram`):
-  the photo with a short rewritten headline and the kicker, then the story's
+  the photo with a short rewritten headline (and the kicker, when lanes are set), then the story's
   first paragraphs exactly as the feed splits them (whole paragraphs only).
   The story slide's palette (paper, ink, navy) changes from post to post.
 - Slides are written to `/var/www/trace-social/{date}-{slot}-{id}/` and served

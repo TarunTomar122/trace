@@ -5,8 +5,9 @@
   ../.venv/bin/python -m v3.flows.post_instagram                           # render, host, share now
 
 trace-instagram.timer runs it at 09:00 and 20:00 Europe/London. Each run
-picks 3-4 of today's top stories that were not posted before (AI, Robotics,
-AI, Startups), renders a cover listing them, then a photo slide and a
+picks 3-4 of today's top stories that were not posted before, ranked by
+what our audience watches and clicks (rank_by_pull, v3.lib.story_pull),
+renders a cover listing them, then a photo slide and a
 story slide (its first paragraphs, as the feed splits them) for each, all in
 one theme (a light one in the morning, rotating by day; dark in the evening;
 see instagram_slides.theme_for), writes the JPEGs where
@@ -86,9 +87,13 @@ def _env_int(name: str, default: int, low: int, high: int) -> int:
 MIN_STORIES = _env_int("INSTAGRAM_MIN_STORIES", 3, 1, 4)
 # A cover, then two slides per story, and an Instagram carousel holds at most 10.
 MAX_STORIES = _env_int("INSTAGRAM_MAX_STORIES", 4, MIN_STORIES, 4)
-# One story per entry, in this order: AI, Robotics, AI, Startups, Markets.
-# Only the first MAX_STORIES entries get a slot; later ones are never lane picks.
-LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "ai,robotics,ai,startups,markets").split(",") if lane.strip()]
+# Optional lane quotas, one story per entry in order (e.g. "ai,robotics,ai,startups").
+# Off by default since 2026-11-05: forcing a Robotics and a Startups story into
+# every post filled carousels with stories few people watch. Stories are ranked
+# by viewer pull instead (rank_by_pull). Only the first MAX_STORIES entries get a slot.
+LANES = [lane.strip() for lane in os.getenv("INSTAGRAM_LANES", "").split(",") if lane.strip()]
+# How many usable stories, in feed order, the pull ranking looks at.
+PULL_POOL = 15
 LANE_LABELS = {"ai": "AI", "robotics": "Robotics", "markets": "Markets", "startups": "Startups", "tech": "Tech",
                "ux-design": "Design"}
 # A story that went out is not posted again for this long.
@@ -222,20 +227,28 @@ def _kicker(lane: str) -> str:
     return f"Top in {LANE_LABELS.get(lane, lane.replace('-', ' ').title())}"
 
 
+def _company(topic: dict[str, Any]) -> str:
+    editor = topic.get("editor") if isinstance(topic.get("editor"), dict) else {}
+    return str(editor.get("company") or "").strip().lower()
+
+
 def pick_stories(
-    topics: list[dict[str, Any]], posted: list[dict[str, Any]], limit: int, lanes: list[str] | None = None
+    topics: list[dict[str, Any]], posted: list[dict[str, Any]], limit: int, lanes: list[str] | None = None,
+    rank: Any = None,
 ) -> list[dict[str, Any]]:
-    """One story per entry in `lanes` (AI, Robotics, AI, Startups, Markets):
-    the best story in that lane with an image and a summary, not posted
-    recently. A lane with nothing new is skipped and the best remaining story
-    from any lane fills the gap at the end.
+    """The first `limit` usable stories (an image and a summary, not posted
+    recently), in feed order or in the order `rank` returns (see
+    rank_by_pull). With `lanes` (INSTAGRAM_LANES), one story per entry first:
+    the best story in that lane; a lane with nothing new is skipped and the
+    best remaining story from any lane fills the gap at the end.
 
     Like the brief, the "Top in X" kicker shows once per lane, so the second
     AI story in a row has none, and a story filling a gap has none either.
     Stories the slide can't show well are skipped: text the font can't draw,
-    or a first paragraph too long for the story slide.
+    or a first paragraph too long for the story slide. At most one story per
+    company (the story editor's `company`).
     """
-    lanes = lanes or LANES
+    lanes = LANES if lanes is None else lanes
     posted_ids = {i for p in posted for i in p.get("topic_ids") or []}
     posted_urls = {u for p in posted for u in p.get("url_keys") or []}
     posted_titles = [t for p in posted for t in p.get("titles") or []]
@@ -256,6 +269,8 @@ def pick_stories(
             "url_keys": sorted(url_keys), "lane": str(topic.get("interest_id") or "tech"),
         })
 
+    if rank is not None:
+        candidates = rank(candidates)
     picked: list[dict[str, Any]] = []
     tried: set[int] = set()
 
@@ -264,6 +279,10 @@ def pick_stories(
             return False
         tried.add(id(story))
         if any(_similar(story["title"], p["title"]) for p in picked):
+            return False
+        # One story per company, so a post isn't three Apple stories in a row.
+        company = _company(story["topic"])
+        if company and any(_company(p["topic"]) == company for p in picked):
             return False
         image = _best_image(story["topic"])
         if image is None:
@@ -288,6 +307,32 @@ def pick_stories(
     return picked
 
 
+def rank_by_pull(candidates: list[dict[str, Any]], store: Any) -> list[dict[str, Any]]:
+    """Put the stories our audience is most likely to watch and share first.
+
+    story_pull ranks the first PULL_POOL candidates (feed order is coverage
+    order, so all of them are real, well-covered news) against what our recent
+    Shorts and email clicks show; the rest keep their place after them. Any
+    failure keeps feed order.
+    """
+    from v3.lib import story_pull
+
+    pool = candidates[:PULL_POOL]
+    if len(pool) < 2:
+        return candidates
+    try:
+        found = story_pull.evidence(store)
+    except Exception as exc:
+        _log(f"no pull evidence, ranking on the audience alone: {exc}")
+        found = {}
+    order = story_pull.rank([{"title": c["title"], "text": " ".join(c["paragraphs"])} for c in pool], found)
+    if not order:
+        _log("pull ranking failed, using feed order")
+        return candidates
+    _log("pull ranking: " + " | ".join(f"{pool[i]['title']} ({why})" for i, why in order[:6]))
+    return [pool[i] for i, _ in order] + candidates[PULL_POOL:]
+
+
 # ---------------------------------------------------------------------------
 # Copy
 # ---------------------------------------------------------------------------
@@ -297,7 +342,7 @@ COPY_PROMPT = """You write Instagram carousel copy for Trace, a free app that re
 For each story return:
 - headline: 4-8 words that stop the scroll, like a sharp magazine cover line. Lead with the most striking concrete fact in the story (a number, a price, a first, a consequence) rather than just saying something was launched or announced. Sentence case, no clickbait, no question, no emoji, no trailing period, nothing that isn't in the text. Examples of the style: "Men use AI coding twice as much", "Meta's $4B loss won't stop AI pendant", "Spotify's ad-free plan now costs $2 more".
 
-Also return hook: one line of at most 80 characters that introduces the whole post, plain and specific, no emoji.
+Also return hook: one line of at most 80 characters, the caption's first line and the TikTok title, so it is what people see before they swipe. Lead with the most striking concrete fact of story [0] (it opens the post), not any other story, plain and specific, no emoji. Say it differently from story [0]'s headline, which appears two lines below it. Never a generic intro such as "Top tech updates", "Latest tech news" or "Key tech developments".
 
 Stories:
 {stories}"""
@@ -361,7 +406,8 @@ def write_copy(stories: list[dict[str, Any]]) -> str:
 
 
 def caption_for(stories: list[dict[str, Any]], hook: str) -> str:
-    lines = [hook or "Today's top tech stories, in one swipe.", ""]
+    # No hook (the copy model failed): open on the list rather than repeat headline 1.
+    lines = [hook, ""] if hook else []
     lines += [f"{i}. {s['headline']}" for i, s in enumerate(stories, 1)]
     lines += ["", "Trace reads the internet so you don't have to. Every story in full, free, at yourtrace.online (link in bio).", ""]
     tags = ["#technews"]
@@ -745,7 +791,8 @@ def run(args: argparse.Namespace) -> int:
             return 0
 
     topics, feed_date = load_topics(store, now)
-    stories = pick_stories(topics, recent_posts(store, now), MAX_STORIES)
+    stories = pick_stories(topics, recent_posts(store, now), MAX_STORIES,
+                           rank=lambda candidates: rank_by_pull(candidates, store))
     _log(f"feed {feed_date}: {len(topics)} topics, picked {len(stories)}: " + " | ".join(s["title"] for s in stories))
     if len(stories) < MIN_STORIES:
         _log(f"only {len(stories)} usable stories (need {MIN_STORIES}); not posting")
