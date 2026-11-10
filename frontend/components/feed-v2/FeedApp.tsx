@@ -1946,7 +1946,7 @@ export default function FeedApp({
         <div className="rail">
           <div className="rail-head">
             <h2 className="rail-title">Tools</h2>
-            {/* Every tool here is a sponsor: one label for the group, not one per row. */}
+            {/* One label for the paid rows; StocksBrew carries its own "maker" label. */}
             {homeSponsors.length > 0 && <span className="sponsor-label rail-sponsored">Sponsored</span>}
           </div>
           <div className="rail-items">
@@ -1961,6 +1961,23 @@ export default function FeedApp({
                 showLabel={false}
               />
             ))}
+            {/* The maker's own product: not a sponsor, takes no paid slot. */}
+            <a
+              className="sponsored-tool-row sponsored-tool-row--tools house-tool-row"
+              href="https://stocksbrew.online/?utm_source=trace&utm_medium=feed_tools_rail"
+              target="_blank"
+              rel="noopener"
+              aria-label="StocksBrew, from the maker of Trace. Visit website"
+              onClick={() => trackFeedItemClicked('stocksbrew', 'house', 'StocksBrew')}
+            >
+              <span className="sponsor-label">From the maker of Trace</span>
+              <span className="sponsored-tool-heading">
+                <RailLogo item={{ url: 'https://stocksbrew.online', source: '' } as PulseItem} />
+                <span className="sponsor-title">StocksBrew</span>
+              </span>
+              <span className="sponsor-desc">Look up any US stock: financials, valuation, earnings, analyst targets and news. Follow up to five stocks free.</span>
+              <span className="sponsor-visit">Visit website <ArrowUpRight size={13} aria-hidden="true" /></span>
+            </a>
           </div>
           {homeSponsors.length < SPONSOR_SLOTS && (
             <PromoSlot
@@ -3290,6 +3307,10 @@ const css = `
 .xw .sponsor-visit { display: inline-flex; align-items: center; gap: 3px; width: fit-content; color: var(--blue); font-size: 11.5px; font-weight: 600; line-height: 14px; }
 .xw .rail-logo { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
 .xw .rail-items { padding-bottom: 8px; }
+/* No hairline under the last row: the open slot below brings its own top line. */
+.xw .rail-items > :last-child { border-bottom: 0; }
+/* StocksBrew sits under the paid rows: a gap keeps it out of the "Sponsored" group. */
+.xw .rail-items > .sponsored-tool-row + .house-tool-row { margin-top: 8px; }
 .xw .fav-solo { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
 .xw .pulse-row:hover { background: var(--hover); }
 .xw .sponsored-tool-row:hover { background: var(--hover); }
