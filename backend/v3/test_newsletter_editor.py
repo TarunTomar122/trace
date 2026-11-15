@@ -183,6 +183,43 @@ class PolishTests(unittest.TestCase):
         self.assertEqual(out[0]["take"], "")
 
 
+class RestatingTests(unittest.TestCase):
+    """Nothing under a headline opens by saying the headline again (owner, 2026-11-02 and 2026-11-15)."""
+    HEAD = "Megaspeed brokered nearly $12 billion in Nvidia chip orders for China"
+    DETAIL = ("Megaspeed brokered nearly $12 billion in Nvidia chip orders for China, according to documents "
+              "reviewed by the Wall Street Journal. The orders covered several hundred thousand high-performance "
+              "chips that US export controls sought to keep out of the country.\n\n"
+              "The company shipped them to Chinese buyers, the report says.")
+
+    def test_a_restating_detail_loses_its_first_sentence_when_the_rewrite_fails(self):
+        story = {"headline": self.HEAD, "blurb": "The orders covered several hundred thousand chips.",
+                 "detail": self.DETAIL}
+        with patch.object(E, "_ask", side_effect=RuntimeError("down")):
+            E._fix_restating(object(), {0: story})
+        self.assertTrue(story["detail"].startswith("The orders covered several hundred thousand"))
+        self.assertIn("\n\nThe company shipped them", story["detail"])
+        self.assertEqual(story["blurb"], "The orders covered several hundred thousand chips.")
+
+    def test_a_good_rewrite_of_the_detail_is_used(self):
+        story = {"headline": self.HEAD, "blurb": "Fine blurb about the export rules.", "detail": self.DETAIL}
+        rewrite = ("Documents reviewed by the Wall Street Journal show the orders covered several hundred thousand "
+                   "high-performance chips that US export controls sought to keep out.\n\n"
+                   "The company shipped them to Chinese buyers, the report says.")
+        with patch.object(E, "_ask", return_value={"s0d": rewrite}) as ask:
+            E._fix_restating(object(), {0: story})
+        self.assertEqual(story["detail"], rewrite)
+        self.assertIn("s0d", ask.call_args.args[2]["properties"])  # only the detail was sent
+
+    def test_reused_write_ups_are_trimmed_without_a_model_call(self):
+        old = {"headline": self.HEAD, "blurb": self.DETAIL.split("\n\n")[0], "detail": self.DETAIL}
+        out = E.trim_restating(dict(old))
+        self.assertFalse(E._restates(self.HEAD, out["detail"]))
+        self.assertFalse(E._restates(self.HEAD, out["blurb"]))
+
+    def test_a_text_that_is_only_the_headline_is_kept(self):
+        self.assertEqual(E._drop_restating_sentence(self.HEAD, self.HEAD + "."), self.HEAD + ".")
+
+
 class RenderWithIssueTests(unittest.TestCase):
     ISSUE = {"subject": "Voters turn on data centers", "preheader": "Kimi weights; Apple scans links",
              "kicker": None}

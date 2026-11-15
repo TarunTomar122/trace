@@ -139,7 +139,7 @@ For every story return:
 - company: the one company the story is mainly about, lowercase ("apple"), or "" when none.
 - short: three to six words with a verb, for a one-line index ("Google ties Search to AI", "Kimi opens its weights").
 - blurb: in the voice of the EXAMPLES (see VOICE below). For a model release, say who can use it and how (API, open weights) and what running it takes when the reporting says. For a follow-up on an older event, lead with what is new and give the original date. For a story that comes out of a bigger event (an election, an earnings day), name that event plainly. Never correct other outlets' reports in the copy; never restate the headline.
-- detail: the longer version for the story's own page, which readers open to go deeper: two or three short paragraphs separated by a blank line, about 105 to 165 words, in the same voice. Paragraph one gives the full news with the key numbers the blurb left out; paragraph two explains why or how (the mechanism, who is affected, what the people involved said); paragraph three says what comes next or what it means, credited to whoever said it. Up to about four numbers. Use more of the reporting than the blurb does, but it is still one plain thread, never a list of facts. When the reporting is thin, write fewer, shorter paragraphs rather than padding. No "Why it matters" line. Approved examples (copy the shape and voice, never their facts):
+- detail: the longer version for the story's own page, which readers open to go deeper: two or three short paragraphs separated by a blank line, about 105 to 165 words, in the same voice. The page shows the headline right above it, so its first sentence never restates the headline (not its subject doing its action, not its number); it opens with what the headline leaves out. Paragraph one gives the full news with the key numbers the blurb left out; paragraph two explains why or how (the mechanism, who is affected, what the people involved said); paragraph three says what comes next or what it means, credited to whoever said it. Up to about four numbers. Use more of the reporting than the blurb does, but it is still one plain thread, never a list of facts. When the reporting is thin, write fewer, shorter paragraphs rather than padding. No "Why it matters" line. Approved examples (copy the shape and voice, never their facts):
   EXAMPLE: Data center limits passed in 38 of 44 local ballot measures on Tuesday, in towns and cities across 10 states. Some went as far as outright bans. Others capped how much power new sites can draw or put projects to a public vote. People in Republican- and Democratic-run places gave the same reasons: higher power bills, water use, noise and lost open space. // Most of the measures only hit projects planned for 2028 and later, so sites already approved or being built can carry on. The bigger problem for builders is at the state level. In Texas, the largest data center market, governor-elect Gina Hinojosa wants to pause projects until laws cover water, power, air and land. Bloomberg says that puts about 13 gigawatts of planned capacity at risk. // Tech's industry groups are calling the backlash anti-Trump rather than anti-tech. Either way, Axios estimates nearly two-thirds of the capacity planned for 2028 could now face delays.
   EXAMPLE: From iOS 27.3, due in December, any photo or file you share with "Anyone with the link" can be reviewed by Apple. Sharing that way also switches off end-to-end encryption for that item, even if you've turned on Advanced Data Protection. Links shared only with people you choose aren't covered. // Apple's support page doesn't say what counts as harmful content. It does say Apple can remove flagged uploads, disable the account, stop you from making new ones and, if needed, involve law enforcement. // The change follows protests urging Apple to do more about child sexual abuse material stored in iCloud. If a file is sensitive, sharing it with named people keeps it out of these checks.
   EXAMPLE: AMD had a record quarter. Revenue rose 45% to $13.38 billion, ahead of what analysts expected, and the stock jumped about 7%. Nearly all of the growth came from data centers, where sales almost doubled and now make up about two-thirds of the business, up from under half a year ago. // The demand is coming from both halves of the AI build-out: EPYC server chips, which companies are picking up for AI agents, and Instinct GPUs, which compete with Nvidia's. Gaming went the other way, falling 40% as console chip sales dropped. // AMD expects about $17 billion in revenue next quarter. Intel's own forecast tops out at $16 billion, so if both land where they say, AMD will outsell Intel for the first time.
@@ -428,7 +428,8 @@ def edit_stories(
             _log(f"cache read failed: {type(exc).__name__}")
         edit = _valid_edit(cached) or (_recent_edit(v3_store, group, reuse_hours, sent) if reuse_hours else None)
         if edit:
-            edits[group["topic_id"]] = edit
+            # Write-ups saved before the detail check (or whose fix failed) still never open on the headline.
+            edits[group["topic_id"]] = trim_restating(edit)
         else:
             pending.append(group)
     if not pending:
@@ -629,32 +630,66 @@ def _restates(headline: str, blurb: str) -> bool:
     return bool(head and lead) and len(head & lead) / len(head) >= 0.6
 
 
-FIX_PROMPT = """Each story below has a headline and a blurb whose first sentence restates the headline. The reader has just read the headline. Rewrite only the blurb so its first sentence starts after the headline: it opens with the next fact (how it works, who else is involved, what it changes, the detail behind the number) and does not reuse the headline's subject, verb or number. Keep the news first: put the missing fact into the opening sentence rather than moving a background or reaction sentence (a politician's pledge, a quote) to the front. Keep every fact and number from the blurb and add none. Same length or shorter.
+FIX_PROMPT = """Each text below sits right under its headline (a blurb in the feed, or the opening of a story page) and its first sentence restates the headline. The reader has just read the headline. Rewrite only the text so its first sentence starts after the headline: it opens with the next fact (how it works, who else is involved, what it changes, the detail behind the number, who reported it) and does not reuse the headline's subject, verb or number. Keep the news first: put the missing fact into the opening sentence rather than moving a background or reaction sentence (a politician's pledge, a quote) to the front. Keep every fact and number from the text and add none. Keep its paragraph breaks (blank lines). Same length or shorter.
 
 {style}
-STORIES:
+TEXTS:
 {stories}"""
+
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"“])")
+
+
+def _drop_restating_sentence(headline: str, text: str) -> str:
+    """Last resort when a rewrite didn't take: cut the first sentence if it restates the headline and
+    the text still has a sentence after it; otherwise keep the text as it is."""
+    if not _restates(headline, text):
+        return text
+    paragraphs = text.strip().split("\n\n")
+    parts = _SENTENCE_END.split(paragraphs[0].strip(), maxsplit=1)
+    if len(parts) == 2 and len(parts[1].split()) >= 6:
+        paragraphs[0] = parts[1].strip()
+    elif len(paragraphs) > 1:
+        paragraphs = paragraphs[1:]
+    else:
+        return text
+    return "\n\n".join(paragraphs)
+
+
+def trim_restating(edit: dict[str, Any]) -> dict[str, Any]:
+    """The edit with no blurb or detail opening on its headline (no model call; for reused write-ups)."""
+    for field in ("blurb", "detail"):
+        if edit.get(field):
+            edit[field] = _drop_restating_sentence(edit.get("headline", ""), edit[field])
+    return edit
 
 
 def _fix_restating(client: Any, out: dict[int, dict[str, str]]) -> None:
-    """One retry for blurbs that open by restating their headline; a failed fix keeps the blurb."""
-    bad = {i: f for i, f in out.items() if _restates(f["headline"], f["blurb"])}
+    """One rewrite for blurbs and details that open by restating their headline; when the rewrite
+    fails or still restates, the restating first sentence is cut (_drop_restating_sentence)."""
+    bad = {f"s{i}{field[0]}": (f, field) for i, f in out.items() for field in ("blurb", "detail")
+           if f.get(field) and _restates(f["headline"], f[field])}
     if not bad:
         return
-    schema = {"type": "object", "properties": {f"s{i}": {"type": "string"} for i in bad},
-              "required": [f"s{i}" for i in bad], "additionalProperties": False}
-    stories = {f"s{i}": {"headline": f["headline"], "blurb": f["blurb"]} for i, f in bad.items()}
+    schema = {"type": "object", "properties": {k: {"type": "string"} for k in bad},
+              "required": list(bad), "additionalProperties": False}
+    texts = {k: {"headline": f["headline"], "text": f[field]} for k, (f, field) in bad.items()}
+    raw: dict[str, Any] = {}
     try:
-        raw = _ask(client, FIX_PROMPT.format(style=STYLE, stories=json.dumps(stories, ensure_ascii=False, indent=1)),
+        raw = _ask(client, FIX_PROMPT.format(style=STYLE, stories=json.dumps(texts, ensure_ascii=False, indent=1)),
                    schema, "fix")
     except Exception as exc:  # noqa: BLE001
-        _log(f"restating fix failed ({type(exc).__name__})")
-        return
-    for i, fields in bad.items():
-        blurb = _clean(raw.get(f"s{i}"))
-        if blurb and not _restates(fields["headline"], blurb) and not (_numbers(blurb) - _numbers(fields["blurb"])):
-            fields["blurb"] = blurb
-    _log(f"rewrote {len(bad)} blurbs that restated their headline")
+        _log(f"restating fix failed ({type(exc).__name__}); cutting the restating sentences instead")
+    fixed = 0
+    for key, (fields, field) in bad.items():
+        old = fields[field]
+        new = _clean_paragraphs(raw.get(key)) if field == "detail" else _clean(raw.get(key))
+        if (new and not _restates(fields["headline"], new) and not (_numbers(new) - _numbers(old))
+                and len(new.split()) >= 0.6 * len(old.split())):
+            fields[field] = new
+            fixed += 1
+        else:
+            fields[field] = _drop_restating_sentence(fields["headline"], old)
+    _log(f"{len(bad)} texts restated their headline: {fixed} rewritten, {len(bad) - fixed} cut")
 
 
 def polish_issue(v3_store: Any, stories: list[dict[str, Any]]) -> dict[int, dict[str, str]]:
