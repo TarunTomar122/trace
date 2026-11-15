@@ -32,7 +32,7 @@ class TikTokCarouselTests(unittest.TestCase):
             "caption_file": str(self.tmp / "caption.txt"), "title": "Tesla's Cybercab needs a $299 subscription",
             "url": "https://example.com", "tiktok_video": None, "cover_at": 0.5, "dry_run": False,
             "tiktok_slides": str(self.slides), "tiktok_caption_file": str(self.tmp / "tt.txt"), "tiktok_only": False,
-            **overrides})
+            "skip_instagram": False, **overrides})
 
     def run_flow(self, **overrides):
         with patch.object(srf, "V3Store", return_value=self.store), \
@@ -93,6 +93,16 @@ class TikTokCarouselTests(unittest.TestCase):
     def test_long_titles_are_cut_at_a_word(self):
         title = srf._title("word " * 30)
         self.assertTrue(len(title) <= 90 and title.endswith("word"))
+
+    def test_skip_instagram_posts_youtube_and_tiktok_only(self):
+        self.assertEqual(self.run_flow(skip_instagram=True), 0)
+        self.ig_post.assert_not_called()
+        self.youtube.assert_called_once()
+        self.tiktok.assert_called_once()
+        self.assertTrue(self.docs["2026-11-15-cybercab"]["instagram_manual"])
+        # A rerun never posts it to Instagram through Buffer.
+        self.assertEqual(self.run_flow(), 0)
+        self.ig_post.assert_not_called()
 
     def test_without_slides_tiktok_gets_nothing(self):
         self.assertEqual(self.run_flow(tiktok_slides=None, tiktok_caption_file=None), 0)

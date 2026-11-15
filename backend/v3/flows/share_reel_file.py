@@ -26,6 +26,11 @@ On a rerun of a slug already on Instagram, the slides are (re)hosted and posted 
 TikTok doesn't have this story yet. --tiktok-only posts only that carousel and
 refuses (exit 1) when the reel isn't on Instagram yet, so a TikTok retry can
 never post the reel itself (tools/post_tiktok.sh uses it).
+
+--skip-instagram (test, 2026-11-15): host the files and post YouTube and TikTok,
+but leave Instagram to a hand upload (a Codex agent in the owner's Chrome),
+to see whether Buffer-posted reels are what Instagram won't recommend. The
+record is marked instagram_manual, so a rerun never posts it through Buffer.
 """
 
 from __future__ import annotations
@@ -130,13 +135,14 @@ def run(args: argparse.Namespace) -> int:
     store = V3Store()
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
-    if args.tiktok_only and not (existing.get("buffer_post_id") and carousel):
+    posted = existing.get("buffer_post_id") or existing.get("instagram_manual")
+    if args.tiktok_only and not (posted and carousel):
         _log(f"--tiktok-only needs --tiktok-slides and a reel already on Instagram ({args.slug} has "
-             f"{'no Instagram post' if not existing.get('buffer_post_id') else 'no slides given'}); nothing posted")
+             f"{'no Instagram post' if not posted else 'no slides given'}); nothing posted")
         return 1
-    if existing.get("buffer_post_id"):
-        _log(f"{args.slug} already has an Instagram post ({existing['buffer_post_id']}, {existing.get('status')}); "
-             "only the other channels are tried")
+    if posted:
+        _log(f"{args.slug} already has an Instagram post ({existing.get('buffer_post_id') or 'by hand'}, "
+             f"{existing.get('status')}); only the other channels are tried")
         if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
             title = args.title or existing.get("youtube_title", "")
@@ -178,6 +184,13 @@ def run(args: argparse.Namespace) -> int:
              "tiktok_video_url": tiktok_url, "youtube_title": args.title, "stories": [{"title": args.title, "url": args.url}],
              "buffer_post_id": None}, merge=True)
     asset = video_asset(video_url, int(args.cover_at * 1000))
+    if args.skip_instagram:
+        ref.set({"instagram_manual": True, "status": "instagram-by-hand"}, merge=True)
+        _log("Instagram skipped (--skip-instagram): it is posted by hand")
+        share_to_youtube(ref, caption, [asset], args.title)
+        if carousel:
+            share_tiktok_carousel(ref, args.slug, carousel[0], carousel[1], args.title, dry_run=False)
+        return 0
     post_id = create_post(instagram_channel(), caption, [asset],
                           {"instagram": {"type": "reel", "shouldShareToFeed": True, "isAiGenerated": True}})
     ref.set({"buffer_post_id": post_id, "status": "shared"}, merge=True)
@@ -207,6 +220,8 @@ def main() -> None:
     parser.add_argument("--tiktok-caption-file", help="the TikTok carousel's caption (with --tiktok-slides)")
     parser.add_argument("--tiktok-only", action="store_true",
                         help="only post the TikTok carousel of a reel already on Instagram (never the reel)")
+    parser.add_argument("--skip-instagram", action="store_true",
+                        help="post YouTube (and the TikTok carousel) only; Instagram is uploaded by hand")
     parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")
     parser.add_argument("--dry-run", action="store_true")
     sys.exit(run(parser.parse_args()))
