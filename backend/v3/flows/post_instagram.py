@@ -12,15 +12,21 @@ story slide (its first paragraphs, as the feed splits them) for each, all in
 one theme (a light one in the morning, rotating by day; dark in the evening;
 see instagram_slides.theme_for), writes the JPEGs where
 Caddy serves them (INSTAGRAM_MEDIA_DIR -> INSTAGRAM_MEDIA_URL), shares the
-carousel now through Buffer and waits until Buffer reports it sent. When a
-TikTok channel is connected in Buffer, the same slides then go there as a
-photo post (best effort, never failing the run; see share_to_tiktok). A
-re-run of a slot that is already on Instagram only retries TikTok.
+carousel now through Buffer and waits until Buffer reports it sent. With
+TIKTOK_DIGESTS=1 (off by default since 2026-11-15, see below) and a TikTok
+channel connected in Buffer, the same slides then go there as a photo post
+(best effort, never failing the run; see share_to_tiktok), and a re-run of a
+slot already on Instagram only retries TikTok.
 
 trace-tiktok-carousel.timer adds two TikTok-only carousels at 13:00 and 16:30
 UK time (`--tiktok-only`, slots t1 and t2), so TikTok gets four a day. They
 pick stories the same way and never repeat one already posted; their record's
 status follows the TikTok post.
+
+Since 2026-11-15 these digests are OFF for TikTok (the owner: "the tiktok
+slides are shit"; 2.8k views and 0 shares a week). TikTok gets one-story
+9:16 carousels made with each hand-made reel instead (share_reel_file
+--tiktok-slides). TIKTOK_DIGESTS=1 turns the digests back on.
 
 Every post is logged in `instagram_posts/{date}-{slot}`. A slot is posted
 again only when nothing can have gone out (see RETRY), so a re-run or retry
@@ -155,6 +161,8 @@ def slot_for(now: datetime) -> tuple[str, str]:
 
 
 TIKTOK_SLOTS = ("t1", "t2")
+# The multi-story digests to TikTok, off since 2026-11-15 (see the module docstring).
+TIKTOK_DIGESTS = os.getenv("TIKTOK_DIGESTS") == "1"
 
 
 def tiktok_slot_for(now: datetime) -> tuple[str, str]:
@@ -765,6 +773,9 @@ def tiktok_muted(link: str, tries: int = 3, wait: int = 30) -> bool | None:
 def run(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc)
     tiktok_only = args.tiktok_only or args.slot in TIKTOK_SLOTS
+    if tiktok_only and not TIKTOK_DIGESTS:
+        _log("TikTok digests are off (TIKTOK_DIGESTS=1 turns them on); TikTok gets the reels' carousels")
+        return 0
     date, slot = tiktok_slot_for(now) if tiktok_only else slot_for(now)
     slot = args.slot or slot
     if tiktok_only and slot not in TIKTOK_SLOTS:
@@ -784,7 +795,7 @@ def run(args: argparse.Namespace) -> int:
                                       existing.get("tiktok_title") or "") if existing.get("caption") else 0
         if existing.get("status") not in RETRY:
             _log(f"{doc_id} already {existing.get('status')} {existing.get('external_link') or ''}; nothing to do")
-            if existing.get("image_urls") and existing.get("caption"):
+            if TIKTOK_DIGESTS and existing.get("image_urls") and existing.get("caption"):
                 # TikTok may have failed or been connected later: it gets the same slides.
                 share_to_tiktok(ref, existing["caption"], [{"image": {"url": u}} for u in existing["image_urls"]],
                                 existing.get("tiktok_title") or (existing.get("headlines") or [""])[0], ai_generated=False)
@@ -865,7 +876,8 @@ def run(args: argparse.Namespace) -> int:
     fields = _state_fields(wait_until_sent(post_id))
     ref.set(fields, merge=True)
     _log(f"{doc_id}: {fields['status']} {fields['external_link']} {fields['error']}")
-    share_to_tiktok(ref, caption, [{"image": {"url": url}} for url in image_urls], record["tiktok_title"], ai_generated=False)
+    if TIKTOK_DIGESTS:
+        share_to_tiktok(ref, caption, [{"image": {"url": url}} for url in image_urls], record["tiktok_title"], ai_generated=False)
     # Only a publish error is worth the service's retry; anything else is live or on its way.
     return 1 if fields["status"] == "error" else 0
 

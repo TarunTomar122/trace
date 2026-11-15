@@ -17,6 +17,15 @@ only tries the other channels that aren't up yet (e.g. once YouTube is connected
 
 --tiktok-video sends TikTok its own file instead of the Instagram one (e.g. the
 reel without its music bed).
+
+--tiktok-slides DIR --tiktok-caption-file FILE post the reel's story to TikTok
+as a photo carousel (DIR's *.jpg in name order, 1080x1920, made by
+trace-reels/tools/carousel.py) right after Instagram and YouTube. That's how
+TikTok gets content since 2026-11-15 (videos posted through Buffer are muted).
+On a rerun of a slug already on Instagram, the slides are (re)hosted and posted if
+TikTok doesn't have this story yet. --tiktok-only posts only that carousel and
+refuses (exit 1) when the reel isn't on Instagram yet, so a TikTok retry can
+never post the reel itself (tools/post_tiktok.sh uses it).
 """
 
 from __future__ import annotations
@@ -37,7 +46,7 @@ if str(BACKEND_ROOT) not in sys.path:
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
 from v3.flows.post_instagram import (  # noqa: E402
-    create_post, instagram_channel, share_to_tiktok, share_to_youtube, wait_until_sent,
+    create_post, host_slides, instagram_channel, share_to_tiktok, share_to_youtube, wait_until_sent,
 )
 from v3.flows.post_reel import COLLECTION, host_reel  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
@@ -59,18 +68,84 @@ def video_asset(video_url: str, cover_ms: int) -> dict:
     return {"video": {"url": video_url, "metadata": {"thumbnailOffset": cover_ms}}}
 
 
+TIKTOK_SLIDES_MIN, TIKTOK_SLIDES_MAX = 3, 12
+
+
+def tiktok_slides(args: argparse.Namespace) -> tuple[list[Path], str] | None:
+    """The carousel's slide files and caption, None when not asked for; raises on a bad set."""
+    if not args.tiktok_slides:
+        return None
+    files = sorted(Path(args.tiktok_slides).glob("*.jpg"))
+    if not TIKTOK_SLIDES_MIN <= len(files) <= TIKTOK_SLIDES_MAX:
+        raise ValueError(f"--tiktok-slides needs {TIKTOK_SLIDES_MIN}-{TIKTOK_SLIDES_MAX} .jpg files (got {len(files)})")
+    if not args.tiktok_caption_file:
+        raise ValueError("--tiktok-slides needs --tiktok-caption-file")
+    caption = Path(args.tiktok_caption_file).read_text().strip()
+    if not caption or len(caption) > 2200:
+        raise ValueError(f"TikTok caption must be 1-2200 characters (got {len(caption)})")
+    return files, caption
+
+
+def _title(text: str, limit: int = 90) -> str:
+    """TikTok's title, cut at a word boundary."""
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0]
+
+
+def share_tiktok_carousel(ref, slug: str, files: list[Path], caption: str, title: str, dry_run: bool) -> None:
+    """Host the slides (the files given win over ones hosted earlier) and post them to TikTok once:
+    share_to_tiktok never posts a record twice. Best effort like share_to_tiktok: never raises."""
+    from PIL import Image
+
+    try:
+        record = ref.get().to_dict() or {}
+        urls = record.get("tiktok_slide_urls")
+        if files:
+            slides = []
+            for f in files:
+                with Image.open(f) as im:
+                    slides.append(im.convert("RGB"))
+            urls = host_slides(slides, f"reels/{slug}/tiktok-slides")
+            _log(f"hosted {len(urls)} TikTok slides")
+        if dry_run:
+            _log("dry run: not sharing the TikTok carousel")
+            return
+        if not urls:
+            _log("no TikTok slides to post")
+            return
+        ref.set({"tiktok_slide_urls": urls, "tiktok_caption": caption}, merge=True)
+        share_to_tiktok(ref, caption, [{"image": {"url": u}} for u in urls], _title(title), ai_generated=False)
+        record = ref.get().to_dict() or {}
+        _log(f"TikTok carousel: {record.get('tiktok_status') or 'not posted (no TikTok channel?)'} "
+             f"{record.get('tiktok_external_link') or ''} {record.get('tiktok_error') or ''}".rstrip())
+    except Exception as exc:  # Instagram and YouTube are already out; only TikTok is lost
+        _log(f"TikTok carousel skipped after an error: {exc}")
+
+
 def run(args: argparse.Namespace) -> int:
+    try:
+        carousel = tiktok_slides(args)
+    except ValueError as exc:
+        _log(str(exc))
+        return 1
     store = V3Store()
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
+    if args.tiktok_only and not (existing.get("buffer_post_id") and carousel):
+        _log(f"--tiktok-only needs --tiktok-slides and a reel already on Instagram ({args.slug} has "
+             f"{'no Instagram post' if not existing.get('buffer_post_id') else 'no slides given'}); nothing posted")
+        return 1
     if existing.get("buffer_post_id"):
         _log(f"{args.slug} already has an Instagram post ({existing['buffer_post_id']}, {existing.get('status')}); "
              "only the other channels are tried")
         if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
             title = args.title or existing.get("youtube_title", "")
-            share_to_youtube(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)], title)
-            if REELS_TO_TIKTOK:
+            if not args.tiktok_only:
+                share_to_youtube(ref, existing["caption"], [video_asset(existing["video_url"], cover_ms)], title)
+            if carousel or existing.get("tiktok_slide_urls"):
+                files, tt_caption = carousel or ([], existing.get("tiktok_caption") or "")
+                share_tiktok_carousel(ref, args.slug, files, tt_caption, existing.get("youtube_title") or title, dry_run=False)
+            elif REELS_TO_TIKTOK:
                 tiktok_url = existing.get("tiktok_video_url") or existing["video_url"]
                 share_to_tiktok(ref, existing["caption"], [video_asset(tiktok_url, cover_ms)],
                                 (existing.get("stories") or [{}])[0].get("title") or args.title, ai_generated=True)
@@ -93,6 +168,8 @@ def run(args: argparse.Namespace) -> int:
     if tiktok_url != video_url:
         _log(f"hosted {tiktok_url} for TikTok")
     if args.dry_run:
+        if carousel:
+            share_tiktok_carousel(ref, args.slug, carousel[0], carousel[1], args.title, dry_run=True)
         _log("dry run: not sharing")
         return 0
     now = datetime.now(timezone.utc)
@@ -110,7 +187,9 @@ def run(args: argparse.Namespace) -> int:
              "error": state.get("error") or ""}, merge=True)
     _log(f"Buffer says {state.get('status')} {state.get('externalLink') or ''}")
     share_to_youtube(ref, caption, [asset], args.title)
-    if REELS_TO_TIKTOK:
+    if carousel:
+        share_tiktok_carousel(ref, args.slug, carousel[0], carousel[1], args.title, dry_run=False)
+    elif REELS_TO_TIKTOK:
         share_to_tiktok(ref, caption, [video_asset(tiktok_url, int(args.cover_at * 1000))], args.title, ai_generated=True)
     return 0 if state.get("status") == "sent" else 1
 
@@ -124,6 +203,10 @@ def main() -> None:
     parser.add_argument("--title", required=True, help="the story's headline: the repeat check and the YouTube title (<= 100 chars)")
     parser.add_argument("--url", default="", help="the story's main source URL")
     parser.add_argument("--tiktok-video", help="a separate file for TikTok (e.g. voice only, no music)")
+    parser.add_argument("--tiktok-slides", help="folder of 1080x1920 JPEGs: the story as a TikTok photo carousel")
+    parser.add_argument("--tiktok-caption-file", help="the TikTok carousel's caption (with --tiktok-slides)")
+    parser.add_argument("--tiktok-only", action="store_true",
+                        help="only post the TikTok carousel of a reel already on Instagram (never the reel)")
     parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")
     parser.add_argument("--dry-run", action="store_true")
     sys.exit(run(parser.parse_args()))

@@ -222,7 +222,13 @@ tail -50 ~/trace/logs/sponsor-welcome.log
   created a post (a timeout, Buffer's `UNEXPECTED`) is logged as `unknown` and
   never retried, so check Buffer by hand. Drafts, approvals and posts still
   sending count as posted, and the next run re-reads their status.
-- TikTok: when a TikTok channel is connected in Buffer, the same slides go
+- TikTok (since 2026-11-15): each hand-made reel's story goes to TikTok as a
+  one-story 9:16 photo carousel (`share_reel_file --tiktok-slides DIR
+  --tiktok-caption-file F`, slides from trace-reels `tools/carousel.py`;
+  `--tiktok-only` retries just the carousel). The 4-story digests below no
+  longer go to TikTok and `trace-tiktok-carousel.timer` is disabled; set
+  `TIKTOK_DIGESTS=1` to bring them back.
+- TikTok digests (off by default): with `TIKTOK_DIGESTS=1` and a TikTok channel connected in Buffer, the same slides go
   there as a photo post after Instagram (`share_to_tiktok`). The caption keeps
   at most 5 hashtags (Buffer's TikTok limit) and the hook is the title. It is
   best effort: a TikTok problem never fails the run. It is tracked in

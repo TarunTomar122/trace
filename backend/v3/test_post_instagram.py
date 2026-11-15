@@ -403,10 +403,15 @@ class RunSafetyTests(unittest.TestCase):
         return argparse.Namespace(**{"dry_run": False, "out": "/tmp/x", "slot": "am", "force": False,
                                      "tiktok_only": False, **overrides})
 
+    digests = True  # these tests cover the TikTok digests (off in production since 2026-11-15)
+
     def setUp(self):
         self.store = FakeStore([topic(2, "ai"), topic(4, "ai"), topic(3, "markets"), topic(5, "startups"), topic(6, "ux-design")])
         self.date, _ = ig.slot_for(datetime.now(timezone.utc))
         self.docs = self.store.db.data.setdefault(ig.COLLECTION, {})
+        flag = patch.object(ig, "TIKTOK_DIGESTS", self.digests)
+        flag.start()
+        self.addCleanup(flag.stop)
 
     def run_job(self, share, tiktok=None, states=None, **kwargs):
         with patch.object(ig, "V3Store", return_value=self.store), patch.object(ig, "fetch_image", side_effect=picture), \
@@ -609,6 +614,38 @@ class EnvTests(unittest.TestCase):
         with patch.dict("os.environ", {"X": "12"}):
             self.assertEqual(ig._env_int("X", 5, 3, 5), 5)
 
+
+class TikTokDigestsOffTests(RunSafetyTests):
+    """The default since 2026-11-15: Instagram still gets its carousels, TikTok gets none of them."""
+    digests = False
+
+    def test_instagram_carousels_no_longer_go_to_tiktok(self):
+        code, share = self.run_job({"return_value": "p1"}, tiktok="tt")
+        self.assertEqual((code, self.docs[f"{self.date}-am"]["status"]), (0, "sent"))
+        share.assert_called_once()
+        self.tiktok_post.assert_not_called()
+
+    def test_tiktok_only_slots_post_nothing(self):
+        code, share = self.run_job({"return_value": "p1"}, tiktok="tt", slot="t1", tiktok_only=True)
+        self.assertEqual(code, 0)
+        share.assert_not_called()
+        self.tiktok_post.assert_not_called()
+        self.assertNotIn(f"{self.date}-t1", self.docs)
+
+    def test_a_rerun_does_not_add_tiktok(self):
+        self.run_job({"return_value": "p1"})
+        self.run_job({"return_value": "p2"}, tiktok="tt")
+        self.tiktok_post.assert_not_called()
+
+    # The digest-only tests inherited from RunSafetyTests don't apply with the digests off.
+    test_slides_also_go_to_tiktok_when_connected = None
+    test_a_muted_tiktok_video_is_flagged = None
+    test_a_tiktok_only_slot_skips_instagram = None
+    test_a_tiktok_only_slot_retries_when_nothing_went_out = None
+    test_tiktok_only_stories_are_not_posted_again = None
+    test_an_instagram_retry_does_not_post_tiktok_twice = None
+    test_a_rerun_after_instagram_only_adds_tiktok = None
+    test_a_tiktok_post_that_later_failed_is_tried_again = None
 
 if __name__ == "__main__":
     unittest.main()
