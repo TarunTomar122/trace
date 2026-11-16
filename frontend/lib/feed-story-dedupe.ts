@@ -76,6 +76,14 @@ function sequenceSimilarity(a: string, b: string): number {
   return (2 * matchingChars(na, nb)) / (na.length + nb.length);
 }
 
+/** The same headline word for word (case, spacing and punctuation aside): one story even when
+ * the editor gave the two write-ups different event keys (backend newsletter_editor.unify_events). */
+export function isSameHeadline(a: string, b: string): boolean {
+  const key = (t: string) => normalizeTitle(t).replace(/[^\p{L}\p{N}\s€$£%]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const ka = key(a);
+  return !!ka && ka === key(b);
+}
+
 export function isSameStoryTitle(a: string, b: string): boolean {
   if (!a.trim() || !b.trim()) return false;
   if (normalizeTitle(a) === normalizeTitle(b)) return true;

@@ -433,11 +433,11 @@ def edit_stories(
         else:
             pending.append(group)
     if not pending:
-        return edits
+        return unify_events(edits)
     client = _client()
     if client is None:
         _log("no OPENAI_API_KEY: the pipeline's copy goes out unedited")
-        return edits
+        return unify_events(edits)
     evidence = _audience_evidence(v3_store)
 
     for start in range(0, len(pending), BATCH):
@@ -504,7 +504,7 @@ def edit_stories(
             except Exception as exc:  # noqa: BLE001
                 _log(f"cache write failed: {type(exc).__name__}")
     _log(f"edited {len(edits)}/{len(head)} stories ({len(pending)} new)")
-    return edits
+    return unify_events(edits)
 
 
 _ISSUE_FIELDS = {
@@ -661,6 +661,66 @@ def trim_restating(edit: dict[str, Any]) -> dict[str, Any]:
         if edit.get(field):
             edit[field] = _drop_restating_sentence(edit.get("headline", ""), edit[field])
     return edit
+
+
+_HEADLINE_FILLER = {"a", "an", "the", "to", "of", "for", "in", "on", "its", "it", "is", "are", "and", "with", "now", "new"}
+
+
+def _headline_key(headline: str) -> tuple[str, ...]:
+    """The headline's words minus punctuation and filler, so "Plural raises €1 billion to back European
+    startups" and "Plural raises €1 billion to back European startups." match while "GPT-5.1" vs
+    "GPT-5.2" or "6,000 jobs" vs "9,000 jobs" never do (look-alike headlines can be different news)."""
+    return tuple(w for w in re.findall(r"[a-z0-9€$£%][a-z0-9€$£%.,']*[a-z0-9%]|[a-z0-9€$£%]", headline.lower())
+                 if w not in _HEADLINE_FILLER)
+
+
+def unify_events(edits: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """One event key for write-ups with the same headline. Stories edited in different runs (a
+    write-up is reused for hours) get their keys separately, so one funding round can end up as
+    "plural-european-startup-funds" and "plural-billion-euro-funds" and show as two cards: the feed
+    and the email trust differing keys over look-alike titles. Keys joined this way (directly or
+    through a chain of shared headlines) all take the key of the most important write-up among them,
+    and reaction_to follows."""
+    parent: dict[str, str] = {}
+
+    def root(key: str) -> str:
+        while parent.setdefault(key, key) != key:
+            key = parent[key]
+        return key
+
+    first_key: dict[tuple[str, ...], str] = {}
+    for edit in edits.values():
+        head, event = _headline_key(str(edit.get("headline") or "")), edit.get("event") or ""
+        if not head or not event:
+            continue
+        if head in first_key:
+            parent[root(event)] = root(first_key[head])
+        else:
+            first_key[head] = event
+            root(event)
+    groups: dict[str, list[str]] = {}
+    for key in parent:
+        groups.setdefault(root(key), []).append(key)
+    renamed: dict[str, str] = {}
+    for keys in (k for k in groups.values() if len(k) > 1):
+        best = max((e for e in edits.values() if e.get("event") in keys),
+                   key=lambda e: int(e.get("importance") or 0))["event"]
+        renamed.update({k: best for k in keys if k != best})
+    if not renamed:
+        return edits
+    _log(f"{len(renamed)} event keys joined a same-headline twin: "
+         + ", ".join(f"{old} -> {new}" for old, new in renamed.items()))
+    out = {}
+    for tid, edit in edits.items():
+        edit = dict(edit)
+        if edit.get("event") in renamed:
+            edit["event"] = renamed[edit["event"]]
+        if edit.get("reaction_to") in renamed:
+            edit["reaction_to"] = renamed[edit["reaction_to"]]
+        if edit.get("reaction_to") == edit.get("event"):
+            edit["reaction_to"] = ""
+        out[tid] = edit
+    return out
 
 
 def _fix_restating(client: Any, out: dict[int, dict[str, str]]) -> None:

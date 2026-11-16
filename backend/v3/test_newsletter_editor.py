@@ -183,6 +183,50 @@ class PolishTests(unittest.TestCase):
         self.assertEqual(out[0]["take"], "")
 
 
+class UnifyEventTests(unittest.TestCase):
+    def test_same_headline_stories_share_the_more_important_key(self):
+        edits = {
+            "a": {"headline": "Plural raises €1 billion to back European startups", "event": "plural-european-startup-funds",
+                  "importance": 80, "reaction_to": ""},
+            "b": {"headline": "Plural raises €1 billion to back European startups.", "event": "plural-billion-euro-funds",
+                  "importance": 64, "reaction_to": ""},
+            "c": {"headline": "Investors cheer Plural's new fund", "event": "plural-investor-reaction",
+                  "importance": 40, "reaction_to": "plural-billion-euro-funds"},
+        }
+        out = E.unify_events(edits)
+        self.assertEqual(out["b"]["event"], "plural-european-startup-funds")
+        self.assertEqual(out["c"]["reaction_to"], "plural-european-startup-funds")
+        self.assertEqual(edits["b"]["event"], "plural-billion-euro-funds")  # the input is left alone
+
+    def test_look_alike_headlines_keep_their_own_keys(self):
+        for one, two in (("OpenAI releases GPT-5.1", "OpenAI releases GPT-5.2"),
+                         ("Microsoft cuts 6,000 jobs", "Microsoft cuts 9,000 jobs"),
+                         ("Apple launches the iPhone 17 Pro", "Apple launches the iPhone 17 Air")):
+            edits = {"a": {"headline": one, "event": "one", "importance": 90},
+                     "b": {"headline": two, "event": "two", "importance": 70}}
+            self.assertIs(E.unify_events(edits), edits, one)
+
+    def test_chains_end_on_one_key(self):
+        # B shares A's headline, C shares B's key and D's headline: all four are one event.
+        edits = {
+            "a": {"headline": "Plural raises €1 billion", "event": "x", "importance": 50},
+            "b": {"headline": "Plural raises €1 billion", "event": "y", "importance": 40},
+            "c": {"headline": "Plural's fund is its biggest", "event": "y", "importance": 30},
+            "d": {"headline": "Plural's fund is its biggest", "event": "w", "importance": 90},
+        }
+        out = E.unify_events(edits)
+        self.assertEqual({e["event"] for e in out.values()}, {"w"})
+
+    def test_a_join_never_makes_a_story_a_reaction_to_itself(self):
+        edits = {
+            "a": {"headline": "Nvidia shares fall after Huang resigns", "event": "nvidia-stock-slide", "importance": 85},
+            "b": {"headline": "Nvidia shares fall after Huang resigns", "event": "nvidia-shares-drop", "importance": 50,
+                  "reaction_to": "nvidia-stock-slide"},
+        }
+        out = E.unify_events(edits)
+        self.assertEqual((out["b"]["event"], out["b"]["reaction_to"]), ("nvidia-stock-slide", ""))
+
+
 class RestatingTests(unittest.TestCase):
     """Nothing under a headline opens by saying the headline again (owner, 2026-11-02 and 2026-11-15)."""
     HEAD = "Megaspeed brokered nearly $12 billion in Nvidia chip orders for China"

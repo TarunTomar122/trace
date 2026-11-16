@@ -2,7 +2,7 @@ import { unstable_cache } from 'next/cache';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
 import { parseHeadlines, type HeadlineRef } from '@/lib/story-headlines';
 import { imageUrlHasPlaceholderToken } from './media-url';
-import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
+import { isSameHeadline, isSameStoryTitle } from '@/lib/feed-story-dedupe';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { slotsFromRankedItems } from '@/lib/feed-topic-order';
 import { filterSendWorthyTopics, rejectedStoryUrls } from './feed-value';
@@ -376,6 +376,9 @@ function sameEventStory(a: FeedStory, b: FeedStory): boolean {
     const key = canonicalUrlKey(url);
     if (key && aUrls.has(key)) return true;
   }
+  // Word-for-word the same headline is one story whatever its keys (two write-ups edited in
+  // different runs, or yesterday's carried-over card, can carry different keys).
+  if (isSameHeadline(a.title, b.title)) return true;
   // The editor read both and called them different events (AMD's earnings vs the data
   // center ballots): look-alike titles don't overrule that.
   if (a.event && b.event) return false;
