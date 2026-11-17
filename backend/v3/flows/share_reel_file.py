@@ -1,4 +1,4 @@
-"""Post a finished reel file to Instagram through Buffer.
+"""Post a finished reel file to YouTube Shorts (and its story to TikTok) through Buffer.
 
 For reels made outside the automatic pipeline (built in HyperFrames each day):
 
@@ -7,30 +7,33 @@ For reels made outside the automatic pipeline (built in HyperFrames each day):
       --video /tmp/reel.mp4 --cover /tmp/cover.jpg --caption-file /tmp/caption.txt \
       --cover-at 7.5 --title "Anthropic files for its IPO" --url https://...          # add --dry-run to stop before Buffer
 
-The files are served from INSTAGRAM_MEDIA_DIR like the daily reel, shared as an
-Instagram reel labelled AI-generated (the voice is), then as a YouTube Short when
-a YouTube channel is connected in Buffer (and to TikTok with TIKTOK_REELS=1), and
-logged in `instagram_reels/{slug}` with the story, so post_reel's repeat check sees it.
-A slug that already has an Instagram post is never posted there again; a rerun
-only tries the other channels that aren't up yet (e.g. once YouTube is connected).
---title is also the YouTube title (at most 100 characters).
+The files are served from INSTAGRAM_MEDIA_DIR like the daily reel, shared as a
+YouTube Short labelled AI-generated (the voice is), and logged in
+`instagram_reels/{slug}` with the story, so post_reel's repeat check sees it.
+A slug that is already out is never posted again; a rerun only tries the
+channels that aren't up yet. --title is also the YouTube title (at most 100 characters).
+
+Instagram gets no reels since 2026-11-17 (owner: "lets stick to carousels on
+instagram"): Buffer-posted reels reached 2-6 accounts there and a hand upload
+can't be driven from T3, so Instagram only gets the trace-instagram carousels.
+The record is marked instagram_skipped. --instagram posts the reel there too
+(as before: an AI-labelled reel through Buffer, first, and the exit status follows it).
 
 --tiktok-video sends TikTok its own file instead of the Instagram one (e.g. the
 reel without its music bed).
 
 --tiktok-slides DIR --tiktok-caption-file FILE post the reel's story to TikTok
 as a photo carousel (DIR's *.jpg in name order, 1080x1920, made by
-trace-reels/tools/carousel.py) right after Instagram and YouTube. That's how
+trace-reels/tools/carousel.py) right after YouTube. That's how
 TikTok gets content since 2026-11-15 (videos posted through Buffer are muted).
-On a rerun of a slug already on Instagram, the slides are (re)hosted and posted if
+On a rerun of a slug already out, the slides are (re)hosted and posted if
 TikTok doesn't have this story yet. --tiktok-only posts only that carousel and
-refuses (exit 1) when the reel isn't on Instagram yet, so a TikTok retry can
+refuses (exit 1) when the reel isn't out yet, so a TikTok retry can
 never post the reel itself (tools/post_tiktok.sh uses it).
 
---skip-instagram (test, 2026-11-15): host the files and post YouTube and TikTok,
-but leave Instagram to a hand upload (a Codex agent in the owner's Chrome),
-to see whether Buffer-posted reels are what Instagram won't recommend. The
-record is marked instagram_manual, so a rerun never posts it through Buffer.
+--skip-instagram (the 2026-11-15 hand-upload test) is still accepted and is now the
+default; records from that test are marked instagram_manual and are never posted
+to Instagram through Buffer either.
 """
 
 from __future__ import annotations
@@ -135,14 +138,14 @@ def run(args: argparse.Namespace) -> int:
     store = V3Store()
     ref = store.db.collection(COLLECTION).document(args.slug)
     existing = ref.get().to_dict() or {}
-    posted = existing.get("buffer_post_id") or existing.get("instagram_manual")
+    posted = existing.get("buffer_post_id") or existing.get("instagram_manual") or existing.get("instagram_skipped")
     if args.tiktok_only and not (posted and carousel):
-        _log(f"--tiktok-only needs --tiktok-slides and a reel already on Instagram ({args.slug} has "
-             f"{'no Instagram post' if not posted else 'no slides given'}); nothing posted")
+        _log(f"--tiktok-only needs --tiktok-slides and a reel already out ({args.slug} has "
+             f"{'not been posted' if not posted else 'no slides given'}); nothing posted")
         return 1
     if posted:
-        _log(f"{args.slug} already has an Instagram post ({existing.get('buffer_post_id') or 'by hand'}, "
-             f"{existing.get('status')}); only the other channels are tried")
+        where = existing.get("buffer_post_id") or ("Instagram by hand" if existing.get("instagram_manual") else "no Instagram")
+        _log(f"{args.slug} is already out ({where}, {existing.get('status')}); only the other channels are tried")
         if existing.get("video_url") and existing.get("caption") and not args.dry_run:
             cover_ms = existing.get("cover_ms", int(args.cover_at * 1000))
             title = args.title or existing.get("youtube_title", "")
@@ -184,9 +187,9 @@ def run(args: argparse.Namespace) -> int:
              "tiktok_video_url": tiktok_url, "youtube_title": args.title, "stories": [{"title": args.title, "url": args.url}],
              "buffer_post_id": None}, merge=True)
     asset = video_asset(video_url, int(args.cover_at * 1000))
-    if args.skip_instagram:
-        ref.set({"instagram_manual": True, "status": "instagram-by-hand"}, merge=True)
-        _log("Instagram skipped (--skip-instagram): it is posted by hand")
+    if not args.instagram:
+        ref.set({"instagram_skipped": True, "status": "no-instagram"}, merge=True)
+        _log("Instagram skipped: reels go to YouTube and TikTok only (--instagram to post it there)")
         share_to_youtube(ref, caption, [asset], args.title)
         if carousel:
             share_tiktok_carousel(ref, args.slug, carousel[0], carousel[1], args.title, dry_run=False)
@@ -220,8 +223,9 @@ def main() -> None:
     parser.add_argument("--tiktok-caption-file", help="the TikTok carousel's caption (with --tiktok-slides)")
     parser.add_argument("--tiktok-only", action="store_true",
                         help="only post the TikTok carousel of a reel already on Instagram (never the reel)")
-    parser.add_argument("--skip-instagram", action="store_true",
-                        help="post YouTube (and the TikTok carousel) only; Instagram is uploaded by hand")
+    parser.add_argument("--instagram", action="store_true",
+                        help="also post the reel to Instagram through Buffer (off since 2026-11-17)")
+    parser.add_argument("--skip-instagram", action="store_true", help=argparse.SUPPRESS)  # the default now
     parser.add_argument("--cover-at", type=float, default=0.0, help="seconds into the video for the Instagram cover frame")
     parser.add_argument("--dry-run", action="store_true")
     sys.exit(run(parser.parse_args()))
