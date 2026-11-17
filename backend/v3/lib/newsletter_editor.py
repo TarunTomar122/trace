@@ -53,7 +53,7 @@ TAKE_MIN_IMPORTANCE = 85
 # Bump when a prompt changes: cached answers are keyed by version.
 STORY_PROMPT_VERSION = "nl-story-v45"
 ISSUE_PROMPT_VERSION = "nl-issue-v15"
-POLISH_PROMPT_VERSION = "nl-write-v20"
+POLISH_PROMPT_VERSION = "nl-write-v21"
 # The whole head of the pool in one call: ratings are relative and event keys consistent within
 # a batch. Reused write-ups come from earlier batches, so ratings mix across runs.
 BATCH = 45
@@ -133,7 +133,7 @@ For every story return:
 - reaction_to: when this story is a direct reaction to another story's event, in this pool or in KNOWN EVENTS, that story's event key: a market, company or official responding to it as the text says (a company's bonds falling after an election result, a stock rally on that result, a rival's response to a launch). Otherwise "". Never this story's own event.
 - headline: our headline, in the voice of the EXAMPLES (see VOICE below).
 - take: almost always "". Write one only when it tells the reader something they could not work out from the headline and blurb themselves: a non-obvious consequence the text states (a second-order effect, who is quietly hit, what it forces next). If the take could be guessed from the story, or restates it in other words ("developers can now...", "X gives Y access to..."), it is "". Expect two or three across the whole pool, not one per story. When you do write one: one sentence, at most 25 words, starting "Why it matters:", plain and specific, no "may" or "could", no statistics, never a joke at someone's expense.
-- one_line: the whole story in one sentence of at most 25 words, in the same voice, for the short list at the end of the email.
+- one_line: one sentence of at most 25 words, in the same voice, that sits right under the headline in the short list at the end of the email. The reader has just read the headline, so it says what the headline leaves out (the key detail, who it affects, what changes, when) and never says the headline again, in its words or others ("Tencent releases a cheaper version of its Hy4 AI model" is not followed by "Tencent released Hy4 Flash with lower prices").
 - superseded: the 0-based positions in `coverage` of articles whose central claim later reporting in the same list corrected or walked back (an early "schools that ban AI lose Search" report after Google's clarification). [] when none.
 - outliers: the 0-based positions in `coverage` of articles that are about a different event or company than this story (a Snap earnings report grouped under Figma's earnings). [] when they all belong.
 - company: the one company the story is mainly about, lowercase ("apple"), or "" when none.
@@ -305,6 +305,8 @@ def _valid_edit(raw: Any) -> dict[str, Any] | None:
         "company": re.sub(r"[^a-z0-9 .&-]+", "", str(raw.get("company") or "").lower()).strip()[:40],
         "blurb": blurb,
         "detail": _clean_paragraphs(raw.get("detail")),
+        # RESTATE_CHECK once the model has read the texts against the headline (_fix_restating).
+        "restate_checked": raw.get("restate_checked") if isinstance(raw.get("restate_checked"), int) else 0,
     }
     if edit["reaction_to"] == edit["event"]:
         edit["reaction_to"] = ""
@@ -390,6 +392,7 @@ def _recent_edit(
     position = {u: i for i, u in enumerate(_coverage_urls(group))}
     for field in ("outliers", "superseded"):
         edit[field] = sorted(position[u] for u in best[1].get(f"{field}_urls") or [] if u in position)
+    edit["_ref"] = best[1]["ref"]  # where it is stored, for edit_stories to save a checked copy back
     return edit
 
 
@@ -420,6 +423,8 @@ def edit_stories(
     head = groups[:limit]
     edits: dict[str, dict[str, Any]] = {}
     pending: list[dict[str, Any]] = []
+    unchecked: list[dict[str, Any]] = []
+    refs: dict[str, str] = {}
     for group in head:
         cached = None
         try:
@@ -428,15 +433,39 @@ def edit_stories(
             _log(f"cache read failed: {type(exc).__name__}")
         edit = _valid_edit(cached) or (_recent_edit(v3_store, group, reuse_hours, sent) if reuse_hours else None)
         if edit:
-            # Write-ups saved before the detail check (or whose fix failed) still never open on the headline.
-            edits[group["topic_id"]] = trim_restating(edit)
+            refs[group["topic_id"]] = edit.pop("_ref", "")
+            edits[group["topic_id"]] = edit
+            if edit.get("restate_checked", 0) < RESTATE_CHECK:
+                unchecked.append(group)
         else:
             pending.append(group)
-    if not pending:
-        return unify_events(edits)
-    client = _client()
+    client = _client() if pending or unchecked else None
     if client is None:
-        _log("no OPENAI_API_KEY: the pipeline's copy goes out unedited")
+        if pending:
+            _log("no OPENAI_API_KEY: the pipeline's copy goes out unedited")
+        for group in unchecked:
+            # Saved before the current check and no model to read them: cut what reuses the headline's words.
+            edits[group["topic_id"]] = trim_restating(edits[group["topic_id"]])
+        return unify_events(edits)
+    if unchecked:
+        # Saved write-ups the model hasn't read against their headline yet: once, then saved again.
+        if _fix_restating(client, {n: edits[g["topic_id"]] for n, g in enumerate(unchecked)},
+                          timeout=min(timeout, 180)):
+            for group in unchecked:
+                edit = edits[group["topic_id"]]
+                edit["restate_checked"] = RESTATE_CHECK
+                # Saved where the next run looks first, and into the stored write-up a reuse reads
+                # (only the checked texts: its outlier positions belong to its own coverage list).
+                try:
+                    v3_store.cache_synthesis(_story_key(group, sent), edit)
+                    ref = refs.get(group["topic_id"])
+                    stored = v3_store.get_cached_synthesis(ref) if ref else None
+                    if isinstance(stored, dict):
+                        v3_store.cache_synthesis(ref, {**stored, **{f: edit.get(f, "") for f in RESTATE_FIELDS},
+                                                       "restate_checked": RESTATE_CHECK})
+                except Exception as exc:  # noqa: BLE001
+                    _log(f"cache write failed: {type(exc).__name__}")
+    if not pending:
         return unify_events(edits)
     evidence = _audience_evidence(v3_store)
 
@@ -481,8 +510,10 @@ def edit_stories(
         with_take = sorted((e for _, e in fresh.values() if e.get("take")), key=lambda e: -e["importance"])
         for extra in with_take[MAX_TAKES_PER_BATCH:]:
             extra["take"] = ""
-        # Blurbs that open by restating their headline get one rewrite (the feed shows them as-is).
-        _fix_restating(client, {n: edit for n, (_, edit) in enumerate(fresh.values())})
+        # Texts that open by restating their headline get one rewrite (the feed shows them as-is).
+        if _fix_restating(client, {n: edit for n, (_, edit) in enumerate(fresh.values())}):
+            for _, edit in fresh.values():
+                edit["restate_checked"] = RESTATE_CHECK
         for group, edit in fresh.values():
             edits[group["topic_id"]] = edit
             try:
@@ -585,9 +616,9 @@ The email arrives on the morning of {today}. Write time words from that morning 
 The drafts are written in the house voice (VOICE and EXAMPLES below). Make the email read as one writer: keep a draft that already meets the bar, and rewrite the ones that don't (a blurb that repeats its headline, facts listed with no thread, more than two numbers, stiff or jargon wording, a forced closing line). You may use any fact from the story's source_text.
 
 For each story:
-- headline and blurb: in the house voice. The first story leads the email: its blurb may run to about 90 words in two short paragraphs. The others: two or three sentences, about 25 to 55 words.
+- headline and blurb: in the house voice. The blurb sits right under the headline: its first sentence never says the headline again, in its words or others. The first story leads the email: its blurb may run to about 90 words in two short paragraphs. The others: two or three sentences, about 25 to 55 words.
 - take: almost always "". At most one story in the whole email gets one, and only when it tells the reader something they could not work out from the headline and blurb. When written: one sentence starting "Why it matters:", at most 25 words.
-- one_line: the story in one or two sentences, at most 30 words, same voice, for the short "Also today" list.
+- one_line: one or two sentences, at most 30 words, same voice, under the headline in the short "Also today" list: what the headline leaves out, never the headline again in its words or others.
 - short: three to six words naming the company, making sense on its own ("Nvidia's China deliveries fall to 1%").
 When a story `follows` an earlier email, the first story's blurb may open with one short line saying so ("On Wednesday we called the ballots a test for data centers. Voters answered:"), at most once in the email.
 
@@ -621,16 +652,43 @@ def _content_words(text: str) -> set[str]:
     return {w[:-1] if w.endswith("s") and len(w) > 3 else w for w in found if len(w) >= 3 and w not in _STOP}
 
 
+def _stem(word: str) -> str:
+    """"releases", "released" and "releasing" -> "releas"; short words stay as they are."""
+    for suffix in ("ing", "ed", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 4:
+            word = word[:-len(suffix)]
+            break
+    # _content_words already folded "releases" to "release": drop the e so it meets "releas(ed)".
+    return word[:-1] if word.endswith("e") and len(word) >= 5 else word
+
+
+def _stems(text: str) -> set[str]:
+    return {_stem(w) for w in _content_words(text)}
+
+
 def _restates(headline: str, blurb: str) -> bool:
-    """True when the blurb's first sentence mostly repeats the headline's words."""
+    """True when the blurb's first sentence mostly repeats the headline's words (in any tense). Rewordings
+    with other words ("a cheaper version" / "lower prices") are the model's call in _fix_restating."""
     first = re.split(r"(?<=[.!?])\s+(?=[A-Z])", blurb.strip(), maxsplit=1)[0]
-    head, lead = _content_words(headline), _content_words(first)
+    head, lead = _stems(headline), _stems(first)
     # The reader has just read the headline: a first sentence that reuses most of its words
     # rereads as the headline, even when it tacks on a detail.
     return bool(head and lead) and len(head & lead) / len(head) >= 0.6
 
 
-FIX_PROMPT = """Each text below sits right under its headline (a blurb in the feed, or the opening of a story page) and its first sentence restates the headline. The reader has just read the headline. Rewrite only the text so its first sentence starts after the headline: it opens with the next fact (how it works, who else is involved, what it changes, the detail behind the number, who reported it) and does not reuse the headline's subject, verb or number. Keep the news first: put the missing fact into the opening sentence rather than moving a background or reaction sentence (a politician's pledge, a quote) to the front. Keep every fact and number from the text and add none. Keep its paragraph breaks (blank lines). Same length or shorter.
+# Bump to have every saved write-up read against its headline again (once each).
+RESTATE_CHECK = 2
+# Every text that sits under a headline: the feed's blurb, the email's "Also today" line, the story page.
+RESTATE_FIELDS = ("blurb", "one_line", "detail")
+
+FIX_PROMPT = """Each text below sits right under its headline: a summary in the feed or the email, or the opening paragraph of a story page. The reader has just read the headline, so the text's first sentence must tell them something the headline didn't.
+
+For each text, decide whether its first sentence tells the headline's news again: the same subject doing the same thing, even in other words. Examples that restate:
+- headline "Tencent releases a cheaper version of its Hy4 AI model", text "Tencent released Hy4 Flash through its cloud and apps, with lower prices than its full Hy4 model."
+- headline "OpenAI's CFO says a news report prompted its latest funding round", text "OpenAI CFO Sarah Friar says investor inquiries after a news report prompted an unplanned funding round."
+A first sentence that names the subject but moves on to new news ("The model costs a tenth as much and runs on one chip.") is fine.
+
+If it is fine, return "" for it. If it restates, rewrite the text so its first sentence starts after the headline: it opens with the next fact (how it works, who else is involved, what it changes, the detail behind the number, who reported it) and does not say the headline again: not its subject doing its action, not its number, not the same claim in other words ("a cheaper version" then "costs less"). Keep the news first: put the missing fact into the opening sentence rather than moving a background or reaction sentence (a quote, a pledge) to the front. Keep every fact and number from the text and add none. Same length or shorter.
 
 {style}
 TEXTS:
@@ -639,10 +697,10 @@ TEXTS:
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"“])")
 
 
-def _drop_restating_sentence(headline: str, text: str) -> str:
-    """Last resort when a rewrite didn't take: cut the first sentence if it restates the headline and
-    the text still has a sentence after it; otherwise keep the text as it is."""
-    if not _restates(headline, text):
+def _drop_restating_sentence(headline: str, text: str, force: bool = False) -> str:
+    """Last resort when a rewrite didn't take: cut the first sentence if it restates the headline (or
+    the model said so: `force`) and the text still has a sentence after it; otherwise keep it as is."""
+    if not force and not _restates(headline, text):
         return text
     paragraphs = text.strip().split("\n\n")
     parts = _SENTENCE_END.split(paragraphs[0].strip(), maxsplit=1)
@@ -656,11 +714,20 @@ def _drop_restating_sentence(headline: str, text: str) -> str:
 
 
 def trim_restating(edit: dict[str, Any]) -> dict[str, Any]:
-    """The edit with no blurb or detail opening on its headline (no model call; for reused write-ups)."""
-    for field in ("blurb", "detail"):
+    """The edit with no text opening on its headline's words (no model call; for reused write-ups)."""
+    for field in RESTATE_FIELDS:
         if edit.get(field):
-            edit[field] = _drop_restating_sentence(edit.get("headline", ""), edit[field])
+            edit[field] = _unrestated(edit.get("headline", ""), field, edit[field], force=False)
     return edit
+
+
+def _unrestated(headline: str, field: str, text: str, force: bool) -> str:
+    """`text` without its restating first sentence; a one-line summary that is nothing but the headline
+    again goes ("": the email shows the blurb instead)."""
+    cut = _drop_restating_sentence(headline, text, force=force)
+    if field == "one_line" and cut == text and (force or _restates(headline, text)):
+        return ""
+    return cut
 
 
 _HEADLINE_FILLER = {"a", "an", "the", "to", "of", "for", "in", "on", "its", "it", "is", "are", "and", "with", "now", "new"}
@@ -723,33 +790,62 @@ def unify_events(edits: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _fix_restating(client: Any, out: dict[int, dict[str, str]]) -> None:
-    """One rewrite for blurbs and details that open by restating their headline; when the rewrite
-    fails or still restates, the restating first sentence is cut (_drop_restating_sentence)."""
-    bad = {f"s{i}{field[0]}": (f, field) for i, f in out.items() for field in ("blurb", "detail")
-           if f.get(field) and _restates(f["headline"], f[field])}
-    if not bad:
-        return
-    schema = {"type": "object", "properties": {k: {"type": "string"} for k in bad},
-              "required": list(bad), "additionalProperties": False}
-    texts = {k: {"headline": f["headline"], "text": f[field]} for k, (f, field) in bad.items()}
-    raw: dict[str, Any] = {}
-    try:
-        raw = _ask(client, FIX_PROMPT.format(style=STYLE, stories=json.dumps(texts, ensure_ascii=False, indent=1)),
-                   schema, "fix")
-    except Exception as exc:  # noqa: BLE001
-        _log(f"restating fix failed ({type(exc).__name__}); cutting the restating sentences instead")
-    fixed = 0
-    for key, (fields, field) in bad.items():
-        old = fields[field]
-        new = _clean_paragraphs(raw.get(key)) if field == "detail" else _clean(raw.get(key))
-        if (new and not _restates(fields["headline"], new) and not (_numbers(new) - _numbers(old))
-                and len(new.split()) >= 0.6 * len(old.split())):
-            fields[field] = new
-            fixed += 1
-        else:
-            fields[field] = _drop_restating_sentence(fields["headline"], old)
-    _log(f"{len(bad)} texts restated their headline: {fixed} rewritten, {len(bad) - fixed} cut")
+FIX_CHUNK = 15  # stories per check call: a first run over every saved write-up stays a few small calls
+
+
+def _fix_restating(client: Any, out: dict[int, dict[str, str]], timeout: int = 300) -> bool:
+    """Every text under a headline (RESTATE_FIELDS; a story page's opening paragraph) is read against
+    it by the model, FIX_CHUNK stories a call: one that tells the headline's news again, in its words
+    or others, is rewritten. A rewrite that fails the checks (still restates, adds a number, loses too
+    much) is cut instead (_unrestated). Where a call fails, the word check (_restates) decides alone.
+    True when the model read them all (callers mark the write-ups checked)."""
+    items = list(out.items())
+    asked_all = True
+    flagged = fixed = total = 0
+    for start in range(0, len(items), FIX_CHUNK):
+        texts: dict[str, tuple[dict[str, str], str]] = {}
+        for i, fields in items[start:start + FIX_CHUNK]:
+            for field in RESTATE_FIELDS:
+                if fields.get(field) and fields.get("headline"):
+                    texts[f"s{i}{field[0]}"] = (fields, field)
+        if not texts:
+            continue
+        total += len(texts)
+
+        def opening(fields: dict[str, str], field: str) -> str:
+            return fields[field].strip().split("\n\n")[0] if field == "detail" else fields[field]
+
+        schema = {"type": "object", "properties": {k: {"type": "string"} for k in texts},
+                  "required": list(texts), "additionalProperties": False}
+        payload = {k: {"headline": f["headline"], "text": opening(f, field)} for k, (f, field) in texts.items()}
+        raw: dict[str, Any] = {}
+        asked = False
+        try:
+            raw = _ask(client, FIX_PROMPT.format(style=STYLE, stories=json.dumps(payload, ensure_ascii=False, indent=1)),
+                       schema, "fix", timeout=timeout)
+            asked = True
+        except Exception as exc:  # noqa: BLE001
+            asked_all = False
+            _log(f"restating check failed ({type(exc).__name__}); cutting the ones that reuse the headline's words")
+        for key, (fields, field) in texts.items():
+            old = opening(fields, field)
+            new = _clean(raw.get(key))
+            # The model's "fine" stands (the word check over-matches now and then); without it, the word check.
+            if not new and (asked or not _restates(fields["headline"], old)):
+                continue
+            flagged += 1
+            if (new and not _restates(fields["headline"], new) and not (_numbers(new) - _numbers(old))
+                    # A short summary can lose its restated half; a story page's opening keeps its facts.
+                    and len(new.split()) >= max(4, (0.5 if field == "detail" else 0.3) * len(old.split()))):
+                # A story page's rewritten opening paragraph keeps the paragraphs after it.
+                rest = fields[field].strip().split("\n\n")[1:] if field == "detail" else []
+                fields[field] = "\n\n".join([new, *rest])
+                fixed += 1
+            else:
+                fields[field] = _unrestated(fields["headline"], field, fields[field], force=bool(new))
+    if flagged:
+        _log(f"{flagged}/{total} texts restated their headline: {fixed} rewritten, {flagged - fixed} cut or kept")
+    return asked_all
 
 
 def polish_issue(v3_store: Any, stories: list[dict[str, Any]]) -> dict[int, dict[str, str]]:

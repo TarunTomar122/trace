@@ -56,7 +56,7 @@ def annotate_feed(v3_store: Any, feed: dict[str, Any], limit: int | None = None)
         urls = by_id.get(candidate_id, {}).get("coverage_urls") or []
         outliers = [urls[i] for i in edit.get("outliers") or [] if i < len(urls)]
         superseded = [urls[i] for i in edit.get("superseded") or [] if i < len(urls)]
-        rest = {k: v for k, v in edit.items() if k not in ("outliers", "superseded")}
+        rest = {k: v for k, v in edit.items() if k not in ("outliers", "superseded", "restate_checked")}
         return {**rest, "outlier_urls": outliers, "superseded_urls": superseded}
 
     for topic in feed.get("trending_topics") or []:

@@ -227,6 +227,17 @@ class UnifyEventTests(unittest.TestCase):
         self.assertEqual((out["b"]["event"], out["b"]["reaction_to"]), ("nvidia-stock-slide", ""))
 
 
+class _MemoryStore:
+    def __init__(self):
+        self.data = {}
+
+    def get_cached_synthesis(self, key):
+        return self.data.get(key)
+
+    def cache_synthesis(self, key, value):
+        self.data[key] = dict(value)
+
+
 class RestatingTests(unittest.TestCase):
     """Nothing under a headline opens by saying the headline again (owner, 2026-11-02 and 2026-11-15)."""
     HEAD = "Megaspeed brokered nearly $12 billion in Nvidia chip orders for China"
@@ -247,12 +258,95 @@ class RestatingTests(unittest.TestCase):
     def test_a_good_rewrite_of_the_detail_is_used(self):
         story = {"headline": self.HEAD, "blurb": "Fine blurb about the export rules.", "detail": self.DETAIL}
         rewrite = ("Documents reviewed by the Wall Street Journal show the orders covered several hundred thousand "
-                   "high-performance chips that US export controls sought to keep out.\n\n"
-                   "The company shipped them to Chinese buyers, the report says.")
-        with patch.object(E, "_ask", return_value={"s0d": rewrite}) as ask:
+                   "high-performance chips that US export controls sought to keep out.")
+        with patch.object(E, "_ask", return_value={"s0d": rewrite, "s0b": ""}) as ask:
+            self.assertTrue(E._fix_restating(object(), {0: story}))
+        self.assertEqual(story["detail"], rewrite + "\n\nThe company shipped them to Chinese buyers, the report says.")
+        self.assertEqual(story["blurb"], "Fine blurb about the export rules.")
+        # The story page's opening paragraph is what the model reads, not the whole page.
+        self.assertNotIn("Chinese buyers", ask.call_args.args[1])
+
+    def test_the_email_one_liners_from_2026_11_17_are_caught_by_the_word_check(self):
+        for head, line in (
+            ("Tencent releases a cheaper version of its Hy4 AI model",
+             "Tencent released Hy4 Flash through its cloud and apps, with lower prices than its full Hy4 model "
+             "and open weights planned."),
+            ("OpenAI's CFO says a news report prompted its latest funding round",
+             "OpenAI CFO Sarah Friar says investor inquiries after a news report prompted an unplanned funding "
+             "round at a $1.25 trillion valuation."),
+        ):
+            self.assertTrue(E._restates(head, line), head)
+
+    def test_one_liners_are_checked_and_a_reworded_repeat_is_rewritten_on_the_models_call(self):
+        story = {"headline": "Tencent releases a cheaper version of its Hy4 AI model",
+                 "blurb": "The new model costs a tenth as much and runs on one chip.",
+                 "one_line": "Tencent's new Hy4 Flash undercuts its flagship on price.",
+                 "detail": "The new model costs a tenth as much.\n\nIt runs on one chip."}
+        self.assertFalse(E._restates(story["headline"], story["one_line"]))  # beyond the word check
+        rewrite = "Hy4 Flash runs on one chip, and Tencent plans to release its weights."
+        with patch.object(E, "_ask", return_value={"s0b": "", "s0o": rewrite, "s0d": ""}) as ask:
             E._fix_restating(object(), {0: story})
-        self.assertEqual(story["detail"], rewrite)
-        self.assertIn("s0d", ask.call_args.args[2]["properties"])  # only the detail was sent
+        self.assertEqual(story["one_line"], rewrite)
+        self.assertEqual(story["blurb"], "The new model costs a tenth as much and runs on one chip.")
+        self.assertEqual(set(ask.call_args.args[2]["properties"]), {"s0b", "s0o", "s0d"})
+
+    def test_a_rewrite_that_adds_a_number_is_refused(self):
+        story = {"headline": "Tencent releases a cheaper version of its Hy4 AI model",
+                 "one_line": "Tencent's new Hy4 Flash undercuts its flagship on price. Weights come later."}
+        with patch.object(E, "_ask", return_value={"s0o": "Hy4 Flash costs 90% less."}):
+            E._fix_restating(object(), {0: story})
+        # Refused, and cutting would leave too little: the line goes and the email shows the blurb.
+        self.assertEqual(story["one_line"], "")
+
+    def test_the_models_fine_stands_over_the_word_check(self):
+        story = {"headline": "Tencent releases a cheaper version of its Hy4 AI model",
+                 "blurb": "Tencent's Hy4 model release is cheaper this time, it says. Developers can try it today."}
+        self.assertTrue(E._restates(story["headline"], story["blurb"]))
+        with patch.object(E, "_ask", return_value={"s0b": ""}):
+            E._fix_restating(object(), {0: story})
+        self.assertTrue(story["blurb"].startswith("Tencent's Hy4 model release"))
+
+    def test_word_endings_fold_but_different_words_do_not(self):
+        self.assertEqual(E._stem("releases"), E._stem("released"))
+        self.assertNotEqual(E._stem("international"), E._stem("internet"))
+
+    def test_a_reused_write_up_is_saved_back_where_it_is_stored(self):
+        store = _MemoryStore()
+        stored = {"importance": 60, "headline": "Apple is bringing video podcasts to the Apple TV app",
+                  "blurb": "Shows from big networks come first.", "event": "apple-tv-podcasts",
+                  "one_line": "Apple will let you watch video podcasts in the TV app starting next month.",
+                  "outliers": [1]}
+        store.cache_synthesis("ref-1", stored)
+        reused = E._valid_edit(stored)
+        reused["_ref"] = "ref-1"
+        group = {"topic_id": "t1", "title": "Apple TV podcasts", "urls": ["https://a.example/x"]}
+        with patch.object(E, "_client", return_value=object()), \
+                patch.object(E, "_recent_edit", return_value=reused), \
+                patch.object(E, "_ask", return_value={"s0b": "", "s0o": "The change takes effect next month."}):
+            out = E.edit_stories(store, [group], [], limit=1, reuse_hours=24)
+        self.assertEqual(out["t1"]["one_line"], "The change takes effect next month.")
+        self.assertNotIn("_ref", out["t1"])
+        saved = store.data["ref-1"]
+        self.assertEqual((saved["one_line"], saved["restate_checked"], saved["outliers"]),
+                         ("The change takes effect next month.", E.RESTATE_CHECK, [1]))
+        self.assertTrue(all("_ref" not in v for v in store.data.values()))
+
+    def test_saved_write_ups_are_read_against_the_headline_once(self):
+        old = {"importance": 70, "headline": "Tencent releases a cheaper version of its Hy4 AI model",
+               "blurb": "The new model costs a tenth as much and runs on one chip, Tencent says today.",
+               "one_line": "Tencent's new Hy4 Flash undercuts its flagship on price, and weights are planned.",
+               "detail": "", "event": "tencent-hy4-flash"}
+        group = {"topic_id": "t1", "title": "Tencent Hy4 Flash", "urls": ["https://a.example/x"]}
+        store = _MemoryStore()
+        store.cache_synthesis(E._story_key(group, []), old)
+        rewrite = "Hy4 Flash runs on one chip, and its weights are planned."
+        with patch.object(E, "_client", return_value=object()), \
+                patch.object(E, "_ask", return_value={"s0b": "", "s0o": rewrite}) as ask:
+            first = E.edit_stories(store, [group], [], limit=1)
+            second = E.edit_stories(store, [group], [], limit=1)
+        self.assertEqual(ask.call_count, 1)
+        self.assertEqual(first["t1"]["one_line"], rewrite)
+        self.assertEqual(second["t1"]["one_line"], rewrite)
 
     def test_reused_write_ups_are_trimmed_without_a_model_call(self):
         old = {"headline": self.HEAD, "blurb": self.DETAIL.split("\n\n")[0], "detail": self.DETAIL}
@@ -547,11 +641,12 @@ class FeedReuseTests(unittest.TestCase):
                  "urls": ["a", "b"], "coverage_urls": ["a", "b"], "coverage_titles": ["A", "B"]}
         with mock.patch.object(E, "_client", return_value=Client()):
             first = E.edit_stories(store, [group], sent, reuse_hours=24)
-            self.assertEqual(calls, [E.EDITOR_MODEL])
+            # The write-up, then one read of its texts against the headline (_fix_restating).
+            self.assertEqual(calls, [E.EDITOR_MODEL, E.EDITOR_MODEL])
             grown = {**group, "topic_id": "tt_2", "urls": ["a", "b", "c"], "coverage_urls": ["a", "b", "c"],
                      "coverage_titles": ["A", "B", "C"]}
             again = E.edit_stories(store, [grown], sent, reuse_hours=24)
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(calls), 2)  # reused, already checked: no call
         self.assertEqual(again["tt_2"]["headline"], first["tt_1"]["headline"])
         # Nothing filed for reuse when the recent emails couldn't be read.
         store2 = Store()
