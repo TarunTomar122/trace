@@ -82,7 +82,7 @@ export default async function DailyEditionPage({ params }: Props) {
   const [edition, recent, sponsors] = await Promise.all([
     getDailyEdition(date),
     listEditionDates(400),
-    getPromotedTools(), // the feed's active sponsors (cached 5 min), oldest purchase first
+    getPromotedTools().catch(() => []), // the feed's active sponsors (cached 10 min), oldest purchase first
   ]);
   if (!edition) notFound();
   const railSponsors = sponsors as RailSponsor[];

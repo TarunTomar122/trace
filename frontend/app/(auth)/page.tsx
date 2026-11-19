@@ -5,13 +5,6 @@ import {
 } from '@/lib/home-seo';
 import { generateFAQSchema } from '@/lib/seo';
 import { LANDING_FAQ } from '@/components/feed-v2/LandingScreen';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import {
-  looksSignedIn,
-  TRACE_SESSION_COOKIE_NAME,
-  TRACE_SIGNED_IN_COOKIE_NAME,
-} from '@/lib/server-session';
 import LandingScreen from '@/components/feed-v2/LandingScreen';
 import LandingAuthRedirect from './LandingAuthRedirect';
 import { listDailyEditions } from '@/lib/daily-editions';
@@ -48,12 +41,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Cached for everyone: signed-in readers are sent to /feed by proxy.ts
+// before this page is reached, so it never reads cookies.
+export const revalidate = 600;
+
 export default async function HomePage() {
-  // signed-in readers skip the pitch: straight to the feed
-  const jar = await cookies();
-  if (looksSignedIn(jar.get(TRACE_SESSION_COOKIE_NAME)?.value, jar.get(TRACE_SIGNED_IN_COOKIE_NAME)?.value)) {
-    redirect('/feed');
-  }
   // Today's real brief for the Trace Daily row's preview (demo stories if none yet).
   const [edition] = await listDailyEditions(1);
   return (

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
+import { PROMOTED_TOOLS_TAG } from '@/lib/feed-view';
 import { adminDb } from '@/lib/firebase-admin';
 import { Webhook } from 'standardwebhooks';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -100,7 +102,11 @@ export async function POST(request: NextRequest) {
         });
       } else {
         console.log(`Tool promo event ignored: ${eventType} for ${toolId}`);
+        return NextResponse.json({ received: true });
       }
+      // The cached /feed and /story pages read sponsors through this tag:
+      // expire it now so a purchase (or cancellation) shows at once.
+      revalidateTag(PROMOTED_TOOLS_TAG, { expire: 0 });
       return NextResponse.json({ received: true });
     }
 

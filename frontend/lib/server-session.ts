@@ -21,8 +21,8 @@ export function looksSignedIn(sessionCookie?: string, signedInCookie?: string): 
   return signedInCookie === '1' || Boolean(sessionCookie && verifyTraceSession(sessionCookie));
 }
 
-// Optional viewer profile fields embedded in the session cookie so the feed
-// page SSR can skip a Firestore user-profile read. These are signed (HMAC),
+// Optional viewer profile fields embedded in the session cookie so /api/feed
+// and /api/auth/session can skip a Firestore user-profile read. These are signed (HMAC),
 // so the client can't forge values like `hasAccess`.
 export type TraceSessionProfile = {
   role?: string | null;

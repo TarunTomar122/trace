@@ -6,6 +6,7 @@ import {
   Bot, TrendingUp,
 } from 'lucide-react';
 import type { FeedStory, PulseItem } from '../FeedApp';
+import { agoLabel } from '@/lib/time-ago';
 import {
   buildCaughtUpShareText,
   buildCaughtUpShareUrl,
@@ -406,7 +407,7 @@ export function StoryOfDayCard({
           ) : null}
           {story.source ? <span>{story.source}</span> : null}
           {/* With several outlets the time is the newest coverage, not the named outlet's article. */}
-          {story.time ? <span>· {story.sources.length > 1 ? `updated ${story.time}` : story.time}</span> : null}
+          {agoLabel(story) ? <span>· {story.sources.length > 1 ? `updated ${agoLabel(story)}` : agoLabel(story)}</span> : null}
           {story.sources.length > 1 ? <span>· {story.sources.length} sources</span> : null}
           {story.threadId ? (
             <>

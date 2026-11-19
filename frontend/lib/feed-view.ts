@@ -1,6 +1,9 @@
 import { unstable_cache } from 'next/cache';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
 import { parseHeadlines, type HeadlineRef } from '@/lib/story-headlines';
+import { timeAgo } from '@/lib/time-ago';
+
+export { timeAgo };
 import { imageUrlHasPlaceholderToken } from './media-url';
 import { isSameHeadline, isSameStoryTitle } from '@/lib/feed-story-dedupe';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
@@ -18,7 +21,9 @@ import { outletName } from './outlet-names';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Doc = Record<string, any>;
 
-// Shared request cache: feed data is at most 60 seconds stale.
+// Shared request cache. Its 10 minutes also caps how often the cached /feed
+// and /story pages rebuild (each rebuild is an ISR write; the pipeline only
+// refreshes every 20 minutes), so keep it in step with their `revalidate`.
 const getCachedFeed = unstable_cache(
   async (): Promise<{ date: string; data: Doc; previous?: Doc } | null> => {
     try {
@@ -51,13 +56,17 @@ const getCachedFeed = unstable_cache(
       }
       return picked;
     } catch (error) {
+      // Thrown, not returned: unstable_cache doesn't store a throw, so a
+      // Firestore blip isn't remembered for the next 10 minutes.
       console.error('[feed-view] failed to load global feed:', error);
-      return null;
+      throw error;
     }
   },
   ['global-feed-v2'],
-  { revalidate: 60 },
+  { revalidate: 600 },
 );
+
+export const PROMOTED_TOOLS_TAG = 'promoted-tools';
 
 export const getPromotedTools = unstable_cache(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,12 +90,16 @@ export const getPromotedTools = unstable_cache(
         .slice(0, SPONSOR_SLOTS)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((t: any) => ({ id: t.id, title: t.title || '', url: t.url || '#', sub: t.subtext || '' }));
-    } catch {
-      return [];
+    } catch (error) {
+      // Thrown so a failed read isn't cached as "no sponsors"; callers catch.
+      console.error('[feed-view] failed to load sponsors:', error);
+      throw error;
     }
   },
   ['promoted-tools'],
-  { revalidate: 300 },
+  // A new sponsor shows within 10 minutes; the payment webhook also clears
+  // this tag so a purchase shows at once.
+  { revalidate: 600, tags: [PROMOTED_TOOLS_TAG] },
 );
 
 // Unique visitors to yourtrace.online over the last 30 days (PostHog
@@ -171,15 +184,6 @@ function firstThumb(...urls: Array<string | null | undefined>): string | null {
   return null;
 }
 
-export function timeAgo(iso?: string): string {
-  if (!iso) return '';
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
-  const h = Math.round(mins / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.round(h / 24)}d ago`;
-}
-
 export function dedupeKey(it: { url?: string; id?: string }): string {
   return (it.url || it.id || '').replace(/[#?].*$/, '').replace(/\/$/, '');
 }
@@ -191,9 +195,10 @@ export interface FeedViewData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   promoted: any[];
   monthlyReach: number;
-  generated: string | null;
   feedDate: string;
   feedError: boolean;
+  /** The sponsor read failed (the page shows none rather than caching that). */
+  promotedError: boolean;
 }
 
 /**
@@ -268,6 +273,7 @@ export function mapTrendingToStories(
       source: outletName(a.source_name || a.source, a.url) || domainOf(a.url),
       url: a.url,
       time: timeAgo(a.published_date),
+      at: a.published_date || undefined,
     }));
 
     let img = firstThumb(topic.thumbnail, first.thumbnail, first.og_image, first.image);
@@ -322,7 +328,7 @@ export function mapTrendingToStories(
       source,
       sources: domain ? [domain] : [],
       sourceNames: source ? [source] : [],
-      coverage: [{ title: decodeHtmlEntities(it.title || ''), source, url, time: timeAgo(it.published_date) }],
+      coverage: [{ title: decodeHtmlEntities(it.title || ''), source, url, time: timeAgo(it.published_date), at: it.published_date || undefined }],
       time: timeAgo(it.published_date),
       ts: Date.parse(it?.published_date || '') || 0,
       cat: canonicalLane(it.interest_id),
@@ -490,20 +496,37 @@ export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
   return out.map((story, i) => ({ ...creditCitedOutlet(story), rank: i + 1 }));
 }
 
+/**
+ * /feed and /story/[id] are cached pages, so a failed feed or sponsor read must not
+ * become the copy every reader gets. Throwing during a background rebuild
+ * keeps the last good page; the next rebuild tries again. The build itself
+ * (and local dev) still renders the retry state, so a Firestore blip can't
+ * fail a deploy.
+ */
+export function keepLastGoodPage(data: Pick<FeedViewData, 'feedError' | 'promotedError'>): void {
+  if (!data.feedError && !data.promotedError) return;
+  if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE === 'phase-production-build') return;
+  throw new Error('[feed-view] feed or sponsor read failed; keeping the last cached page');
+}
+
 export async function loadFeedViewData(): Promise<FeedViewData> {
-  const [feedResult, promoted, monthlyReach] = await Promise.all([
-    getCachedFeed(),
-    getPromotedTools(),
-    getMonthlyReach(),
+  const [feedResult, promotedResult, monthlyReach] = await Promise.all([
+    getCachedFeed().catch(() => null),
+    getPromotedTools().catch(() => null),
+    getMonthlyReach().catch(() => 0),
   ]);
+  const promoted = promotedResult ?? [];
   const feedDate = feedResult?.date || '';
   const data = feedResult?.data || {};
   const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
 
+  // No "12m ago" labels in the cached page: they go stale in the cache and
+  // would make every rebuild a changed page (an ISR write). The browser
+  // formats them from ts / at (agoLabel).
   const stories = withRecentCarryOver(
     mapTrendingToStories(data.trending, data.trending_topics),
     feedResult?.previous ? mapTrendingToStories(feedResult.previous.trending, feedResult.previous.trending_topics) : [],
-  );
+  ).map((story) => ({ ...story, time: '', coverage: story.coverage.map((c) => ({ ...c, time: '' })) }));
   const headlines = parseHeadlines(data.headlines);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -530,11 +553,9 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
     },
     promoted,
     monthlyReach,
-    generated: data.daily_pulse_role_generated_at?.developer
-      ? timeAgo(data.daily_pulse_role_generated_at.developer)
-      : null,
     feedDate,
     feedError: !feedResult,
+    promotedError: promotedResult === null,
   };
 }
 

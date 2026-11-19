@@ -4,7 +4,7 @@ import { CONTACT_EMAIL } from '@/lib/site-links';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { emailEnabled, prefsFromProfile, topicLabel } from '@/lib/newsletter-prefs';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPaidSubscription } from '@/lib/subscription-access';
 import FeedSkeleton from './FeedSkeleton';
@@ -37,6 +37,7 @@ import {
   trackNewsletterPrompt,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
+import { agoLabel } from '@/lib/time-ago';
 import { HOME_FONT_VARS } from '@/lib/home-fonts';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { score as importanceScore, selectBigThings } from '@/lib/big-things';
@@ -85,7 +86,10 @@ export interface CoverageLink {
   title: string;
   source: string;
   url: string;
+  /** "12m ago" from the server. Empty on cached pages: use agoLabel(). */
   time: string;
+  /** ISO publish time, for agoLabel(). */
+  at?: string;
   /** Later reporting in the same story corrected or walked back this article's claim. */
   earlier?: boolean;
 }
@@ -310,34 +314,42 @@ export default function FeedApp({
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
   promoted?: PromotedTool[];
   monthlyReach?: number;
-  generated: string | null;
   /** Date id of today's feed doc — cursor start for older stories. */
   feedDate?: string;
   /** Global feed load failed server-side — show a retry state, not a blank page. */
   feedError?: boolean;
   /** Archived story resolved server-side for a shared link (not in today's feed). */
   initialStory?: FeedStory | null;
-  /** Pre-open a story (shared article page). Falls back to ?story= when present. */
+  /** Pre-open a story (shared article page). A ?story= in the URL wins. */
   initialStoryId?: string | null;
 }) {
   const { user, profile: authProfile, loading: authLoading, profileResolved, signInWithGoogle, signOut, refreshProfile } = useAuth();
-  const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   // View state lives client-side: the feed data is already here, so opening
   // a story must never hit the server. URL is kept in sync via History API
   // (shareable, back-button friendly) without triggering Next navigation.
   const [view, setView] = useState<{ story: string | null; pulse: string | null }>(() => ({
-    story: params.get('story') ?? initialStoryId,
-    pulse: params.get('pulse'),
+    story: initialStoryId,
+    pulse: null,
   }));
 
-  const [tab, setTab] = useState<string>(() =>
-    normalizeFeedTab(
-      params.get('tab') ?? params.get('q'),
-      stories.map((s) => s.cat),
-    ),
-  );
+  const [tab, setTab] = useState<string>('all');
+  // /feed and /story/[id] are cached pages shared by every reader, so the
+  // server never sees the query string: ?story=, ?pulse= and ?tab= are read
+  // here, once, before the first paint after hydration. A query-only Next
+  // navigation (router.push('/feed?tab=x') while on /feed) doesn't remount
+  // this, so lane and story changes inside the feed must go through go() /
+  // openStory(), which keep state and URL in step.
+  useLayoutEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const story = q.get('story');
+    const pulse = q.get('pulse');
+    if (story || pulse) setView({ story: story ?? initialStoryId, pulse });
+    const lane = q.get('tab') ?? q.get('q');
+    if (lane) setTab(normalizeFeedTab(lane, stories.map((s) => s.cat)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [marks, setMarks] = useState<Set<string>>(new Set());
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
@@ -526,7 +538,7 @@ export default function FeedApp({
 
   // The daily email's "Sponsor a slot" link: open the sponsor checkout.
   useEffect(() => {
-    if (params.get('sponsor') !== 'open') return;
+    if (new URLSearchParams(window.location.search).get('sponsor') !== 'open') return;
     const props = { placement: 'email', cta: 'email_open_slot' };
     trackPromoCtaClicked(props);
     trackPromoModalOpened(props);
@@ -536,10 +548,10 @@ export default function FeedApp({
       url.searchParams.delete('sponsor');
       window.history.replaceState(null, '', `${url.pathname}${url.search}`);
     } catch { /* ignore */ }
-  }, [params]);
+  }, []);
 
   useEffect(() => {
-    const from = params.get('from');
+    const from = new URLSearchParams(window.location.search).get('from');
     // Arriving from the daily email means they already get it: never ask them to sign up.
     if (from === 'email') markNewsletterSubscribed();
     if (from) {
@@ -549,7 +561,7 @@ export default function FeedApp({
         window.history.replaceState(null, '', `${url.pathname}${url.search}`);
       } catch { /* ignore */ }
     }
-  }, [params]);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -678,9 +690,9 @@ export default function FeedApp({
     window.history.replaceState(null, '', qs ? `${pathname || '/feed'}?${qs}` : (pathname || '/feed'));
   }, [pathname, stories]);
 
-  // Membership is already resolved server-side (session cookie), so paint
-  // immediately after mount instead of blocking on Firebase init. The gate
-  // below only holds for the very first paint (server + hydration agree).
+  // Paint right after mount instead of blocking on Firebase init. The gate
+  // below only holds for the very first paint: the cached server HTML is the
+  // skeleton, so server and hydration always agree.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -1509,7 +1521,7 @@ export default function FeedApp({
                   <div className="post-meta">
                     <SourceStack sources={s.sources} />
                     <span className="post-src">{s.source}</span>
-                    <span className="post-time">{s.time}</span>
+                    <span className="post-time">{agoLabel(s)}</span>
                     {s.sources.length > 1 && <span className="post-group">· {s.sources.length} sources</span>}
                     {s.threadId && <span className="post-group">· Ongoing story</span>}
                     <span className="post-spacer" />
@@ -2323,7 +2335,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, displayRank,
           <div className="post-meta">
             <SourceStack sources={story.sources} />
             <span className="post-src">{story.source}</span>
-            <span className="post-time">{story.time}</span>
+            <span className="post-time">{agoLabel(story)}</span>
             {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
             {story.threadId && (
               <span className="post-group">
@@ -2571,7 +2583,7 @@ function Detail({ story, displayRank, onBack, onShare, marked, marks, toggleMark
           <SourceStack sources={story.sources} />
           <span className="detail-src">{story.source}</span>
           <span className="post-dot">·</span>
-          <span className="post-time">{story.sources.length > 1 ? `updated ${story.time}` : story.time}</span>
+          <span className="post-time">{story.sources.length > 1 ? `updated ${agoLabel(story)}` : agoLabel(story)}</span>
           {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
           {story.threadId && <span className="post-group">· Ongoing story</span>}
           <span className="post-spacer" />
@@ -2599,7 +2611,7 @@ function Detail({ story, displayRank, onBack, onShare, marked, marks, toggleMark
                     ) : null}
                     <span className="coverage-main">
                       <span className="coverage-title">{c.title}</span>
-                      <span className="coverage-meta">{c.source}{c.time ? ` · ${c.time}` : ''}{c.earlier ? ' · Earlier report, since corrected' : ''}</span>
+                      <span className="coverage-meta">{c.source}{agoLabel(c) ? ` · ${agoLabel(c)}` : ''}{c.earlier ? ' · Earlier report, since corrected' : ''}</span>
                     </span>
                   </a>
                 </li>

@@ -1,15 +1,24 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import FeedApp from '@/components/feed-v2/FeedApp';
 import FeedSkeleton from '@/components/feed-v2/FeedSkeleton';
-import { loadFeedViewData, findSharedStory, findStoryInArchive } from '@/lib/feed-view';
+import { loadFeedViewData, findSharedStory, findStoryInArchive, keepLastGoodPage } from '@/lib/feed-view';
 
-export const dynamic = 'force-dynamic';
+// Cached per story id, built on first visit, so a shared link costs one
+// render rather than one per visit. The feed cache in lib/feed-view.ts caps
+// rebuilds at every 10 minutes, and only a changed page is saved again.
+export const revalidate = 600;
 
-async function sharedStory(id: string) {
+export function generateStaticParams() {
+  return [];
+}
+
+// Metadata and page share one lookup per render (the archive walk reads up
+// to 11 daily docs).
+const sharedStory = cache(async (id: string) => {
   const { stories } = await loadFeedViewData();
   return findSharedStory(stories, id) || await findStoryInArchive(id);
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -59,8 +68,10 @@ function MissingStory() {
 
 export default async function SharedStoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { stories, headlines, pulse, promoted, monthlyReach, generated, feedDate, feedError } = await loadFeedViewData();
-  const story = findSharedStory(stories, id) || await findStoryInArchive(id);
+  const data = await loadFeedViewData();
+  keepLastGoodPage(data);
+  const { stories, headlines, pulse, promoted, monthlyReach, feedDate, feedError } = data;
+  const story = await sharedStory(id);
 
   if (!story) {
     return <MissingStory />;
@@ -76,7 +87,6 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
           pulse={pulse}
           promoted={promoted}
           monthlyReach={monthlyReach}
-          generated={generated}
           feedDate={feedDate}
           feedError={feedError}
           initialStory={story}
