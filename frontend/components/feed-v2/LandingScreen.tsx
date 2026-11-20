@@ -294,6 +294,10 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
             </details>
           ))}
         </div>
+        <p className="hp-faq-more">
+          Comparing options? Read <Link href="/blog/best-way-to-keep-up-with-ai-news-daily">the best way to keep up with AI news daily</Link>{' '}
+          or see <Link href="/blog/daily-tech-news-summary-with-sources">what one Trace story looks like, with its sources</Link>.
+        </p>
       </section>
 
       <HpJoinBox heading={<>Join the curious people who catch&nbsp;up with Trace every morning</>} source="landing">

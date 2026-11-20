@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Clock, Calendar } from "lucide-react";
@@ -46,6 +47,29 @@ function RichParagraph({ children }: { children: string }) {
       {children}
     </ReactMarkdown>
   );
+}
+
+// Bullets only get [text](href) links: full markdown would turn bullets that
+// start with "1. ..." into nested lists.
+function InlineLinks({ children }: { children: string }) {
+  const parts: React.ReactNode[] = [];
+  const pattern = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+  let last = 0;
+  for (const match of children.matchAll(pattern)) {
+    const [whole, label, href] = match;
+    const at = match.index ?? 0;
+    if (at > last) parts.push(children.slice(last, at));
+    parts.push(
+      href.startsWith("/") ? (
+        <Link key={at} href={href}>{label}</Link>
+      ) : (
+        <a key={at} href={href} target="_blank" rel="noopener noreferrer">{label}</a>
+      ),
+    );
+    last = at + whole.length;
+  }
+  if (last < children.length) parts.push(children.slice(last));
+  return <>{parts}</>;
 }
 
 function headingId(value: string) {
@@ -243,7 +267,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                 {section.bullets && (
                   <ul>
                     {section.bullets.map((bullet, bulletIndex) => (
-                      <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`}>{bullet}</li>
+                      <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`}><InlineLinks>{bullet}</InlineLinks></li>
                     ))}
                   </ul>
                 )}

@@ -41,6 +41,8 @@ const RESOURCE_SECTIONS = [
       { label: "Daily Tech Briefing Guide", href: "/blog/daily-tech-briefing-guide" },
       { label: "Information Overload Solutions", href: "/blog/information-overload-solutions" },
       { label: "AI News Digest Tools Compared", href: "/blog/ai-news-digest-tools" },
+      { label: "The Best Way to Keep Up With AI News Daily", href: "/blog/best-way-to-keep-up-with-ai-news-daily" },
+      { label: "Daily Tech News Summary App, With Source Links", href: "/blog/daily-tech-news-summary-with-sources" },
       { label: "Best Tech News Aggregator Apps 2026", href: "/blog/best-tech-news-aggregator-apps" },
     ],
   },

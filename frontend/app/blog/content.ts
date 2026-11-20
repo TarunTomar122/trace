@@ -28,6 +28,198 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "daily-tech-news-summary-with-sources",
+    title: "Daily Tech News Summary App, With Source Links",
+    subtitle: "What a daily tech news summary should give you, what one story looks like in Trace, and how it compares with Techmeme, TLDR, Google News and RSS readers.",
+    tag: "Tools & Comparisons",
+    category: "comparisons",
+    excerpt:
+      "Trace is a free app and morning email with a five-minute summary of the day's tech and AI news. Every story links each outlet it was grouped from.",
+    author: "Trace Editorial",
+    readTime: "6 min read",
+    date: "November 20, 2026",
+    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "best-way-to-keep-up-with-ai-news-daily",
+      "ai-news-digest-tools",
+      "daily-tech-news-app",
+    ],
+    sources: [
+      { title: "Introducing Gemini 4 Neon", url: "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/", publisher: "Google" },
+      { title: "Google ships Gemini 4 Neon, its fourth new Gemini model in a month", url: "https://the-decoder.com/google-ships-gemini-4-neon-its-fourth-new-gemini-model-in-a-month", publisher: "The Decoder" },
+      { title: "Gemini 4 Neon announcement", url: "https://9to5google.com/2026/11/18/gemini-4-neon-announcement", publisher: "9to5Google" },
+      { title: "Techmeme about page", url: "https://www.techmeme.com/about", publisher: "Techmeme" },
+      { title: "TLDR Tech", url: "https://tldr.tech/", publisher: "TLDR" },
+    ],
+    sections: [
+      {
+        heading: "The Short Answer",
+        paragraphs: [
+          "[Trace](/feed) is a free web app and morning email that summarizes the day's biggest tech and AI news. It reads more than 100 sources, groups every outlet's coverage of the same event into one story, writes a short summary, and links each report it grouped. Reading the day's stories takes about five minutes, and you don't need an account to read them.",
+          "If you want the same thing in your inbox, the [daily email](/brief) arrives every morning around 8:30am UK time with ten stories by default. You can pick your topics and choose 5, 10 or 15 stories."
+        ]
+      },
+      {
+        heading: "What One Story Looks Like",
+        paragraphs: [
+          "In the Trace feed on November 20, 2026, one of the day's stories was \"Google releases Gemini 4 Neon for coding and agent work\". The summary under the headline said what the headline leaves out: Neon is built for long-running tasks that use tools and coordinate other AI agents, and Google says it costs less per task than its top-tier Carbon model at high thinking.",
+          "Under the summary, the story linked the three reports Trace grouped: [Google's own announcement](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/), [The Decoder](https://the-decoder.com/google-ships-gemini-4-neon-its-fourth-new-gemini-model-in-a-month) and [9to5Google](https://9to5google.com/2026/11/18/gemini-4-neon-announcement). Instead of three separate items saying the same thing, you get one story and the source trail."
+        ]
+      },
+      {
+        heading: "Why Source Links Matter in a Summary",
+        paragraphs: [
+          "A summary is a compression. It is the right first read, but any number, quote or claim you plan to act on should be checked against the reporting it came from.",
+          "When several outlets cover the same event, the links also show you who reported what. A company's announcement, a trade publication and a general news site often stress different things, and reading them side by side is the fastest way to tell a confirmed fact from one outlet's framing."
+        ]
+      },
+      {
+        heading: "What You Get Each Day",
+        paragraphs: [
+          "Trace is free for everyone and open source. There are no paid tiers, and every feature below is included."
+        ],
+        bullets: [
+          "A ranked feed of the day's tech and AI stories at [yourtrace.online/feed](/feed), each with a short summary and its sources linked.",
+          "A morning email with the same stories, sent every day around 8:30am UK time, with your choice of topics and story count.",
+          "A public archive of every daily edition at [/brief](/brief), with a shareable link for each day.",
+          "A Chrome extension that shows the ranked feed in every new tab.",
+          "Read-only [agent access](/agents), so Claude, ChatGPT, Cursor and other AI assistants can read the same feed.",
+        ]
+      },
+      {
+        heading: "How It Compares",
+        bullets: [
+          "Techmeme: a strong front page of the day's tech headlines, each with a one-line excerpt and related links rather than a written summary. See [Techmeme alternatives](/blog/techmeme-alternatives).",
+          "TLDR: a free weekday email of short summaries, usually one linked article per item. Good for a broad list. See [TLDR alternatives](/blog/tldr-newsletter-alternatives).",
+          "Google News: broad and personalized across world, business and tech news, with Full Coverage pages for big stories. Useful when tech is only part of what you follow.",
+          "Feedly and Inoreader: you choose every source yourself. Best for monitoring specific companies or blogs; the same event arrives once per outlet unless you add your own filtering.",
+          "Trace: a finite daily edition of tech and AI news, grouped by event, summarized, with its sources linked.",
+        ]
+      },
+      {
+        heading: "Limits Worth Knowing",
+        paragraphs: [
+          "Trace covers tech and AI only, so pair it with something else for general news. Its summaries are written by AI from the reporting, which is why every story links its sources: open them for anything that matters to your work. For a wider comparison, see our [AI news digest tools guide](/blog/ai-news-digest-tools)."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Is there an app that summarizes the day's tech news with source links?",
+        answer: "Yes. Trace (yourtrace.online) summarizes the day's biggest tech and AI stories and links the outlets that covered each one. You can read it on the web, in a Chrome new tab, or as a morning email.",
+      },
+      {
+        question: "Is Trace free?",
+        answer: "Yes. Trace is free for everyone, with every feature included, and it is open source. You can read the full daily edition without an account.",
+      },
+      {
+        question: "How long does the daily summary take to read?",
+        answer: "About five minutes for the day's stories. Open the linked sources only for the stories that matter to you.",
+      },
+      {
+        question: "Can I get the summary by email?",
+        answer: "Yes. The daily email arrives every morning around 8:30am UK time with ten stories by default. You can choose your topics and pick 5, 10 or 15 stories.",
+      },
+    ],
+    ctaHeading: "Read today's tech news in five minutes",
+    ctaBlurb: "Every story summarized, its sources linked. Free, no account needed.",
+    ctaButton: "Open today's edition",
+  },
+  {
+    slug: "best-way-to-keep-up-with-ai-news-daily",
+    title: "The Best Way to Keep Up With AI News Daily",
+    subtitle: "A ten-minute routine, and a comparison of Trace, The Rundown AI, TLDR AI and Hacker News by reading time, sources and cost.",
+    tag: "AI & Tech",
+    category: "ai-tools",
+    excerpt:
+      "Read one short daily summary with sources, check the original reporting only for the stories that matter to you, and save long reads for once a week.",
+    author: "Trace Editorial",
+    readTime: "7 min read",
+    date: "November 20, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    relatedSlugs: [
+      "daily-tech-news-summary-with-sources",
+      "tldr-newsletter-alternatives",
+      "ai-news-digest-tools",
+    ],
+    sources: [
+      { title: "The Rundown AI", url: "https://www.therundown.ai/", publisher: "The Rundown AI" },
+      { title: "TLDR AI", url: "https://tldr.tech/ai", publisher: "TLDR" },
+      { title: "Hacker News", url: "https://news.ycombinator.com/", publisher: "Y Combinator" },
+    ],
+    sections: [
+      {
+        heading: "The Short Answer",
+        paragraphs: [
+          "Pick one daily summary you can finish, with links to the original reporting. Use a discussion site like Hacker News only for the one or two stories that matter to your work. Save long analysis for a set time once a week.",
+          "For the daily summary, [Trace](/feed) is a free option that groups each AI and tech story across outlets and links the reports. The Rundown AI and TLDR AI are free daily emails that many people use for the same job. The comparison below shows where each one fits."
+        ]
+      },
+      {
+        heading: "The Options, Compared",
+        bullets: [
+          "Trace: a web feed and a daily morning email covering AI and the wider tech industry. Each story groups the coverage from several outlets and links them. About five minutes. Free, with no account needed to read.",
+          "The Rundown AI: a free daily email about AI news and tools, written in a friendly newsletter style. The same company also runs tech and robotics newsletters. A few minutes per issue.",
+          "TLDR AI: a free weekday email of short AI summaries, usually with one linked article per item. Quick to scan, a few minutes per issue. TLDR also has newsletters on other tech topics.",
+          "Hacker News: community-ranked links and comment threads, with no summaries. Free. The comments often add detail the reporting misses, but there's no natural end to reading it.",
+          "X (Twitter): often the first place AI labs and researchers post announcements, and the noisiest. Free to read. Useful if you follow a short, deliberate list; easy to lose an hour to.",
+        ]
+      },
+      {
+        heading: "A Ten-Minute Daily Routine",
+        bullets: [
+          "Read one daily summary at a fixed time, for example with your first coffee.",
+          "Pick at most two stories that affect your work, and open their original sources.",
+          "If you want the discussion, check the Hacker News or Reddit thread for those two stories only.",
+          "Save anything long to a weekly reading slot instead of reading it now.",
+          "Stop there. If you still feel behind, you usually have too many sources rather than too few.",
+        ]
+      },
+      {
+        paragraphs: [
+          "The routine works because it has an end: a daily summary should leave you knowing what changed today. For a longer version of this habit, see our [daily tech briefing routine](/blog/daily-tech-briefing-routine)."
+        ]
+      },
+      {
+        heading: "Which One Should You Pick?",
+        paragraphs: [
+          "Pick The Rundown AI if you want AI news in an email with a friendly voice and tool recommendations.",
+          "Pick TLDR AI if you want the quickest possible scan of short items and don't mind one link per story.",
+          "Pick Trace if you want AI alongside the rest of tech, one story per event instead of the same news from several outlets, and the sources linked so you can check the details. It also works outside the inbox: on the web, in a Chrome new tab, and through AI assistants.",
+          "Whichever you choose, one daily summary is enough. Two newsletters covering the same AI news mostly give you the same stories twice."
+        ]
+      },
+      {
+        heading: "If You're Replacing TLDR or The Rundown",
+        paragraphs: [
+          "Try Trace for a week next to your current newsletter, then keep the one you actually finish. The [Trace daily email](/brief) arrives every morning around 8:30am UK time, and you can choose your topics and whether you get 5, 10 or 15 stories.",
+          "For more on what a source-linked daily summary looks like, see [a daily tech news summary app with source links](/blog/daily-tech-news-summary-with-sources), or compare more tools in our [AI news digest tools guide](/blog/ai-news-digest-tools)."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "What's the best way to keep up with AI news daily?",
+        answer: "Read one short daily summary that links its sources, open the original reporting only for the stories that matter to you, and save long reads for a weekly slot. About ten minutes a day is enough.",
+      },
+      {
+        question: "Is there a free alternative to TLDR or The Rundown AI?",
+        answer: "Yes. Trace is a free daily brief of AI and tech news, on the web and by email. Each story groups the coverage from several outlets and links them.",
+      },
+      {
+        question: "Do I need X (Twitter) to keep up with AI news?",
+        answer: "No. AI labs often post announcements on X first, but a daily summary picks up anything significant the same day. Follow a short list on X only if you need news within minutes.",
+      },
+      {
+        question: "How long should keeping up with AI news take?",
+        answer: "About ten minutes a day: five for a daily summary and a few more for the original sources of one or two stories.",
+      },
+    ],
+    ctaHeading: "Keep up with AI news in five minutes a day",
+    ctaBlurb: "Every story grouped across outlets, summarized, and linked to its sources. Free.",
+    ctaButton: "Read today's brief",
+  },
+  {
     slug: "ai-news-for-non-technical-founders",
     title: "AI news for non-technical founders",
     subtitle: "You do not need to read papers. You need to know what shipped, who bundled it, and whether a customer will ask.",
@@ -1262,9 +1454,9 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "1. Trace — Best for Daily Tech and AI News",
         paragraphs: [
-          "Trace reads 100+ tech and AI sources, groups each story once however many outlets cover it, ranks the day's stories, and gives each one a short summary, a timeline, and links to every source and to the Reddit and Hacker News discussion where there is one. The day's brief takes about five minutes.",
+          "Trace reads 100+ tech and AI sources, groups each story once however many outlets cover it, ranks the day's stories, and gives each one a short summary with links to the reports it grouped. The day's brief takes about five minutes.",
           "You can read it on the web, get it by email around 8:30am UK time (you choose the topics and how many stories), or connect it to an AI assistant: Trace runs a read-only MCP server that Claude, ChatGPT, Cursor and other clients can use after a Google sign-in. [Set it up here](/agents).",
-          "Trace is free for everyone, with every feature included, and open source under the AGPL. It covers tech and AI only, so pair it with something else for general news."
+          "Trace is free for everyone, with every feature included, and open source under the AGPL. It covers tech and AI only, so pair it with something else for general news. See [what one Trace story looks like, with its sources](/blog/daily-tech-news-summary-with-sources)."
         ],
         bullets: [
           "Price: Free",
@@ -1393,7 +1585,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "Building Your AI News Routine",
         paragraphs: [
-          "Read one digest in the morning for breadth, and give it a fixed time limit. For tech and AI, that can be the [Trace brief](/feed) or its daily email.",
+          "Read one digest in the morning for breadth, and give it a fixed time limit. For tech and AI, that can be the [Trace brief](/feed) or its daily email. Our guide to [the best way to keep up with AI news daily](/blog/best-way-to-keep-up-with-ai-news-daily) compares it with The Rundown AI, TLDR AI and Hacker News.",
           "For the one or two stories that matter to your work, open the original sources. The summary tells you what to look at; the reporting has the details.",
           "Save long pieces for a set reading time later in the week rather than reading them during your catch-up. See our [guide to staying updated with tech news](/blog/how-to-stay-updated-with-tech-news) for a full routine, and our [guide to beating information overload](/blog/information-overload-solutions) if the problem is volume rather than tools."
         ]

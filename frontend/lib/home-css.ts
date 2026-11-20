@@ -197,6 +197,8 @@ export const HOME_CSS = `
 .hp .hp-faq-item summary::after { content: "+"; flex-shrink: 0; font-size: 26px; font-weight: 300; line-height: 1; color: var(--hp-muted); }
 .hp .hp-faq-item[open] summary::after { content: "\\2212"; }
 .hp .hp-faq-item p { margin: 0; padding: 0 40px 22px 0; font-size: 16.5px; line-height: 1.6; color: var(--hp-text); }
+.hp .hp-faq-more { margin: 28px 0 0; font-size: 16px; line-height: 1.6; color: var(--hp-text); }
+.hp .hp-faq-more a { color: var(--hp-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 
 /* join */
 .hp .hp-join { max-width: 1200px; margin: 0 auto; padding: 88px 24px 96px; }
