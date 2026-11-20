@@ -238,6 +238,32 @@ class _MemoryStore:
         self.data[key] = dict(value)
 
 
+class ReleaseLineTests(unittest.TestCase):
+    """Hy4 Flash's weights one day and the flagship Hy4's the next showed as two cards (owner, 2026-11-20)."""
+
+    def test_two_releases_of_one_model_line_share_a_key(self):
+        edits = {
+            "a": {"headline": "Tencent releases its largest Hy4 model for anyone to run", "event": "tencent-hy4-weights",
+                  "importance": 91, "release": True},
+            "b": {"headline": "Tencent releases Hy4 Flash weights for teams to run themselves",
+                  "event": "tencent-hy4-flash-weights-release", "importance": 88, "release": True},
+        }
+        out = E.unify_events(edits)
+        self.assertEqual({e["event"] for e in out.values()}, {"tencent-hy4-weights"})
+        self.assertTrue(E.same_release_line("openai-gpt-5-launch", "openai-gpt-5-release"))  # filler only
+
+    def test_different_versions_and_non_releases_stay_apart(self):
+        for one, two, release in (("openai-gpt-5-1-release", "openai-gpt-5-2-release", True),
+                                  ("google-gemini-4-neon-launch", "google-gemini-4-argon-retired", True),
+                                  ("openai-gpt-5", "openai-gpt-5-1", True), ("deepseek-v3", "deepseek-v3-2", True),
+                                  ("apple-iphone-17-launch", "apple-iphone-17-china-sales", False),
+                                  ("meta-llama-launch", "meta-llama-open-weights", True),  # no version: too loose
+                                  ("openai-devday-2026", "openai-devday-2026-agents", True)):  # a year isn't a version
+            edits = {"a": {"headline": one, "event": one, "importance": 90, "release": release},
+                     "b": {"headline": two, "event": two, "importance": 70, "release": release}}
+            self.assertIs(E.unify_events(edits), edits, one)
+
+
 class RestatingTests(unittest.TestCase):
     """Nothing under a headline opens by saying the headline again (owner, 2026-11-02 and 2026-11-15)."""
     HEAD = "Megaspeed brokered nearly $12 billion in Nvidia chip orders for China"

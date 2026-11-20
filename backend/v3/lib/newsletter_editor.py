@@ -741,8 +741,36 @@ def _headline_key(headline: str) -> tuple[str, ...]:
                  if w not in _HEADLINE_FILLER)
 
 
+# Words in an event key that name the kind of release, not the model: "tencent-hy4-weights" and
+# "tencent-hy4-flash-weights-release" both name Tencent's Hy4 line.
+_RELEASE_KEY_FILLER = {"release", "releases", "released", "launch", "launches", "launched", "open", "opens",
+                       "opened", "weights", "weight", "model", "models", "source", "sourced", "ai", "new", "update",
+                       "updated", "rollout", "available", "availability", "public", "local", "deployment", "api"}
+
+
+def _release_family(event: str) -> frozenset[str]:
+    """The model line an AI release's event key names ({"tencent", "hy4"} for "tencent-hy4-weights"),
+    or nothing when the key names no versioned model (a token with a digit that isn't a year)."""
+    words = frozenset(w for w in event.lower().split("-") if w and w not in _RELEASE_KEY_FILLER)
+    versioned = any(re.search(r"\d", w) and not re.fullmatch(r"(19|20)\d\d", w) for w in words)
+    return words if versioned and len(words) >= 2 else frozenset()
+
+
+def same_release_line(one: str, two: str) -> bool:
+    """Two AI-release event keys for one model line, one key's words all inside the other's: Hy4 Flash's
+    weights on Wednesday and the flagship Hy4's on Friday read as the same story twice (owner,
+    2026-11-20), so they are one. Keys that differ only in filler ("-launch" vs "-release") join too.
+    Other versions stay apart: GPT-5.1 vs GPT-5.2 or Gemini 4 Neon vs Argon (neither inside the
+    other), and GPT-5 vs GPT-5.1 (the extra words hold a version number)."""
+    a, b = _release_family(one), _release_family(two)
+    if not a or not b or one == two or not (a <= b or b <= a):
+        return False
+    return not any(re.search(r"\d", w) for w in a ^ b)
+
+
 def unify_events(edits: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """One event key for write-ups with the same headline. Stories edited in different runs (a
+    """One event key for write-ups with the same headline, and for AI releases of one model line
+    (same_release_line). Stories edited in different runs (a
     write-up is reused for hours) get their keys separately, so one funding round can end up as
     "plural-european-startup-funds" and "plural-billion-euro-funds" and show as two cards: the feed
     and the email trust differing keys over look-alike titles. Keys joined this way (directly or
@@ -765,6 +793,11 @@ def unify_events(edits: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
         else:
             first_key[head] = event
             root(event)
+    releases = sorted({str(e.get("event")) for e in edits.values() if e.get("release") and e.get("event")})
+    for i, one in enumerate(releases):
+        for two in releases[i + 1:]:
+            if same_release_line(one, two) and root(one) != root(two):
+                parent[root(two)] = root(one)
     groups: dict[str, list[str]] = {}
     for key in parent:
         groups.setdefault(root(key), []).append(key)
@@ -775,7 +808,7 @@ def unify_events(edits: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
         renamed.update({k: best for k in keys if k != best})
     if not renamed:
         return edits
-    _log(f"{len(renamed)} event keys joined a same-headline twin: "
+    _log(f"{len(renamed)} event keys joined a same-headline twin or release line: "
          + ", ".join(f"{old} -> {new}" for old, new in renamed.items()))
     out = {}
     for tid, edit in edits.items():

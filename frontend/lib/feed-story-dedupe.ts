@@ -84,6 +84,32 @@ export function isSameHeadline(a: string, b: string): boolean {
   return !!ka && ka === key(b);
 }
 
+// Words in an event key that name the kind of release, not the model (backend
+// newsletter_editor._RELEASE_KEY_FILLER).
+const RELEASE_KEY_FILLER = new Set(['release', 'releases', 'released', 'launch', 'launches', 'launched', 'open',
+  'opens', 'opened', 'weights', 'weight', 'model', 'models', 'source', 'sourced', 'ai', 'new', 'update', 'updated',
+  'rollout', 'available', 'availability', 'public', 'local', 'deployment', 'api']);
+
+function releaseFamily(event: string): Set<string> | null {
+  const words = new Set(event.toLowerCase().split('-').filter((w) => w && !RELEASE_KEY_FILLER.has(w)));
+  const versioned = [...words].some((w) => /\d/.test(w) && !/^(19|20)\d\d$/.test(w));
+  return versioned && words.size >= 2 ? words : null;
+}
+
+/** Two AI-release event keys for one model line, one key's words all inside the other's
+ * ("tencent-hy4-weights" and "tencent-hy4-flash-weights-release"): one running story, also when
+ * yesterday's card is carried over. Mirrors backend newsletter_editor.same_release_line. */
+export function isSameReleaseLine(one: string, two: string): boolean {
+  const a = releaseFamily(one);
+  const b = releaseFamily(two);
+  if (!a || !b || one === two) return false;
+  const inside = (x: Set<string>, y: Set<string>) => [...x].every((w) => y.has(w));
+  if (!inside(a, b) && !inside(b, a)) return false;
+  // GPT-5 vs GPT-5.1: the extra words hold a version number, so they are different releases.
+  const extra = [...a, ...b].filter((w) => !(a.has(w) && b.has(w)));
+  return !extra.some((w) => /\d/.test(w));
+}
+
 export function isSameStoryTitle(a: string, b: string): boolean {
   if (!a.trim() || !b.trim()) return false;
   if (normalizeTitle(a) === normalizeTitle(b)) return true;

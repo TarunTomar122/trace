@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isSameHeadline, isSameStoryTitle } from './feed-story-dedupe.ts';
+import { isSameHeadline, isSameReleaseLine, isSameStoryTitle } from './feed-story-dedupe.ts';
 
 test('one story under different headlines matches', () => {
   assert.equal(isSameStoryTitle('Meta Unveils Muse Wonder AI Models', 'Meta Unveils Muse Wonder AI Model'), true);
@@ -36,4 +36,15 @@ test('the same headline word for word is one story, look-alikes are not', () => 
   assert.equal(isSameHeadline('OpenAI releases GPT-5.1', 'OpenAI releases GPT-5.2'), false);
   assert.equal(isSameHeadline('Microsoft cuts 6,000 jobs', 'Microsoft cuts 9,000 jobs'), false);
   assert.equal(isSameHeadline('', ''), false);
+});
+
+test('releases of one model line are one story, other versions are not', () => {
+  assert.equal(isSameReleaseLine('tencent-hy4-weights', 'tencent-hy4-flash-weights-release'), true);
+  assert.equal(isSameReleaseLine('openai-gpt-5-1-release', 'openai-gpt-5-2-release'), false);
+  assert.equal(isSameReleaseLine('google-gemini-4-neon-launch', 'google-gemini-4-argon-launch'), false);
+  assert.equal(isSameReleaseLine('meta-llama-launch', 'meta-llama-open-weights'), false);
+  assert.equal(isSameReleaseLine('openai-devday-2026', 'openai-devday-2026-agents'), false);
+  assert.equal(isSameReleaseLine('openai-gpt-5-launch', 'openai-gpt-5-release'), true);
+  assert.equal(isSameReleaseLine('openai-gpt-5', 'openai-gpt-5-1'), false);
+  assert.equal(isSameReleaseLine('deepseek-v3', 'deepseek-v3-2'), false);
 });
