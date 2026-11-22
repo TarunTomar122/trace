@@ -5,7 +5,13 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import HpJoinBox from "@/components/HpJoinBox";
 import { newslettersContent } from "../content";
-import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle } from "@/lib/seo";
+import {
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
+  SITE_BASE_URL,
+  generateBreadcrumbSchema,
+  metadataTitle,
+} from "@/lib/seo";
 import { HOME_CSS } from "@/lib/home-css";
 import { NEWSLETTERS_CSS } from "@/lib/newsletters-css";
 import { HOME_FONT_VARS } from "@/lib/home-fonts";
@@ -46,39 +52,35 @@ export async function generateMetadata({
   };
 }
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span className="nl-stars" role="img" aria-label={`${rating} out of 5 stars`}>
-      {"★".repeat(rating)}{"☆".repeat(5 - rating)}
-    </span>
-  );
-}
-
 export default async function NewsletterDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const page = newslettersContent.find((p) => p.slug === slug);
   if (!page) notFound();
 
-  const jsonLd = {
+  const pageUrl = `${SITE_BASE_URL}/newsletters/${slug}`;
+  const articleSchema = {
     "@context": "https://schema.org",
-    "@type": "Review",
-    itemReviewed: {
-      "@type": "Product",
-      name: page.name,
-      description: page.description,
-      url: page.url,
-    },
-    reviewRating: {
-      "@type": "Rating",
-      ratingValue: page.rating,
-      bestRating: 5,
-    },
+    "@type": "Article",
+    headline: `${page.name} newsletter review`,
+    description: page.description,
+    url: pageUrl,
+    mainEntityOfPage: pageUrl,
     author: {
       "@type": "Organization",
       name: "Trace",
+      url: SITE_BASE_URL,
     },
-    url: `https://www.yourtrace.online/newsletters/${slug}`,
+    publisher: {
+      "@type": "Organization",
+      name: "Trace",
+      url: SITE_BASE_URL,
+    },
   };
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Trace", url: SITE_BASE_URL },
+    { name: "Newsletter Reviews", url: `${SITE_BASE_URL}/newsletters` },
+    { name: page.name, url: pageUrl },
+  ]);
 
   return (
     <div className={`hp nl nl-detail ${HOME_FONT_VARS}`}>
@@ -86,7 +88,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
       <style>{NEWSLETTERS_CSS}</style>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([articleSchema, breadcrumbSchema]) }}
       />
       <PublicHeader subscribeHref="#join" />
       <main>
@@ -103,12 +105,6 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
                 {page.description}
               </p>
 
-              <div className="nl-score">
-                <Stars rating={page.rating} />
-                <span className="nl-score-num" aria-hidden="true">
-                  {page.rating} / 5
-                </span>
-              </div>
               <div className="nl-meta">
                 <span className="nl-chip nl-chip-freq">
                   {page.frequency}
@@ -165,9 +161,9 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
               <p>
                 We assessed {page.name} on its {page.frequency.toLowerCase()} publishing cadence,
                 coverage of {page.topics.join(", ")}, signal-to-noise ratio, and the amount of
-                context each issue gives readers. The {page.rating}/5 rating reflects the overall
-                reading experience, not sponsorship or referral payments. Use the pros and cons
-                above to decide whether its format fits your own news routine.
+                context each issue gives readers. Nothing here is sponsored or paid for by the
+                newsletter. Use the pros and cons above to decide whether its format fits your
+                own news routine.
               </p>
             </section>
 
@@ -176,9 +172,9 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
                 Want a better way than managing newsletters?
               </h2>
               <p>
-                Trace pulls from the same sources these newsletters curate, plus
-                communities, launches, and social platforms. One brief instead of
-                five newsletters.
+                Trace is a free daily brief of tech and AI news from 100+ sources,
+                grouping coverage of the same event into one story with links to each
+                original report. We make it.
               </p>
               <div className="hp-btns">
                 <Link href="/compare" className="hp-btn hp-btn-dark">

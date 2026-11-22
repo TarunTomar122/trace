@@ -5,6 +5,7 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { solutionsContent } from "../content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle } from "@/lib/seo";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -24,6 +25,7 @@ export async function generateMetadata({
   return {
     title: metadataTitle(page.title),
     description: page.shortDescription,
+    robots: NOINDEX_ROBOTS,
     alternates: { canonical: url },
     openGraph: {
       ...DEFAULT_OPEN_GRAPH,

@@ -17,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Inoreader Alternatives: 8 Options Compared (2026) | Trace",
+  title: "Inoreader alternatives: 7 readers and their free plans | Trace",
   description:
-    "8 Inoreader alternatives compared for 2026: Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader, NetNewsWire and Trace, with prices and free plans.",
+    "Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader and NetNewsWire: free-plan limits, prices and which you can self-host. Plus Trace, which we make.",
   keywords: [
     "inoreader alternative",
     "inoreader alternatives",
@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Inoreader Alternatives: 8 Options Compared (2026)",
+    title: "Inoreader alternatives: 7 readers and their free plans",
     description:
-      "8 Inoreader alternatives for 2026, from Feedly and NewsBlur to self-hosted FreshRSS and Miniflux, with prices and who each one suits.",
+      "Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader and NetNewsWire: free-plan limits, prices and which you can self-host. Plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/inoreader-alternatives`,
     siteName: "Trace",
     locale: "en_US",
@@ -58,9 +58,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inoreader Alternatives: 8 Options Compared (2026)",
+    title: "Inoreader alternatives: 7 readers and their free plans",
     description:
-      "8 Inoreader alternatives for 2026, with prices and who each one suits.",
+      "Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader and NetNewsWire: free-plan limits, prices and which you can self-host. Plus Trace, which we make.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -72,7 +72,7 @@ const faqs = [
   {
     question: "What is the best free alternative to Inoreader?",
     answer:
-      "For a hosted reader with a free plan, Feedly (100 sources) or NewsBlur (64 sites, open source). For free with no limits, FreshRSS or Miniflux if you can host them yourself, or NetNewsWire on Mac and iPhone. If you mostly used Inoreader to follow tech and AI news, Trace is a free, open-source daily brief that needs no feeds.",
+      "For a hosted reader with a free plan, Feedly (100 sources) or NewsBlur (64 sites, open source). For free with no limits, FreshRSS or Miniflux if you can host them yourself, or NetNewsWire on Mac and iPhone. If you mostly used Inoreader to follow tech and AI news, Trace, which we make, is a free, open-source daily brief that needs no feeds.",
   },
   {
     question: "Why do people switch from Inoreader?",
@@ -92,20 +92,20 @@ const faqs = [
   {
     question: "Which Inoreader alternatives have AI summaries?",
     answer:
-      "Trace summarizes each tech and AI story across all the outlets that cover it, free. Feedly's AI assistant, Leo, is on its Pro+ plan. NewsBlur's Ask AI and Daily Briefing are on its $99/year Premium Archive plan. Inoreader's own article summaries are on its Pro plan.",
+      "Feedly's AI assistant, Leo, is on its Pro+ plan. NewsBlur's Ask AI and Daily Briefing are on its $99/year Premium Archive plan. Inoreader's own article summaries are on its Pro plan. Trace, which we make, summarizes each tech and AI story across the outlets that cover it, free.",
   },
 ];
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Inoreader Alternatives: 8 Options Compared (2026)",
+    headline: "Inoreader alternatives: 7 readers and their free plans",
     description:
-      "Eight Inoreader alternatives for 2026: Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader, NetNewsWire, and Trace, with prices, free plans, and who each one suits.",
+      "Feedly, NewsBlur, FreshRSS, Miniflux, Feedbin, The Old Reader and NetNewsWire: free-plan limits, prices and which you can self-host. Plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/inoreader-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
     dateModified: "2026-10-29T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -151,7 +151,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Inoreader Alternatives: 8 Options Compared (2026)
+            Inoreader Alternatives: 7 Readers and Their Free Plans
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span>Updated <time dateTime="2026-10-29">October 29, 2026</time></span>
@@ -162,21 +162,21 @@ export default function BlogPost() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            The best Inoreader alternative depends on why you are leaving. For a
+            Which Inoreader alternative suits you depends on why you are leaving. For a
             simpler hosted reader, Feedly. For open source with a free hosted
             plan, NewsBlur. To run it yourself for free, FreshRSS or Miniflux.
             For a calm paid reader, Feedbin. On Mac and iPhone, NetNewsWire,
             which is free. And if you mostly used Inoreader to keep up with tech
-            and AI news, Trace is a free, open-source daily brief that needs no
-            feeds at all.
+            and AI news, there is Trace, a free, open-source daily brief that
+            needs no feeds at all.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>How we picked:</strong> we compared each option on its free
             plan, price, open-source status, sync with mobile apps, and AI
             features, and rechecked plans, prices and recent releases in October
-            2026. All eight were still actively maintained when we checked.
-            Plans change, so confirm on each site before you pay. We build
-            Trace, so weigh our view of it accordingly.
+            2026. All seven readers were still actively maintained when we
+            checked. Plans change, so confirm on each site before you pay. We
+            make Trace, so it&apos;s listed separately below.
           </p>
 
           <BlogEmailCard slug="inoreader-alternatives" placement="intro" />
@@ -196,13 +196,6 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className={`${cell} font-medium`}>Trace</td>
-                  <td className={cell}>Free</td>
-                  <td className={cell}>Tech &amp; AI news, no feeds</td>
-                  <td className={cell}>✓ AGPL</td>
-                  <td className={cell}>One summary per story, across outlets</td>
-                </tr>
                 <tr>
                   <td className={`${cell} font-medium`}>Feedly</td>
                   <td className={cell}>Free / Pro / Pro+</td>
@@ -252,6 +245,13 @@ export default function BlogPost() {
                   <td className={cell}>✓ MIT</td>
                   <td className={cell}>None</td>
                 </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>Trace (ours, not an RSS reader)</td>
+                  <td className={cell}>Free</td>
+                  <td className={cell}>Tech &amp; AI news, no feeds</td>
+                  <td className={cell}>✓ AGPL</td>
+                  <td className={cell}>One summary per story, across outlets</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -277,48 +277,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace — Best for Tech and AI News Without Feeds
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free, open source (AGPL)
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            If you mostly use Inoreader to keep up with tech and AI news, Trace
-            takes a different approach. It reads 100+ sources for you, groups
-            each story once however many outlets cover it, and gives it a short
-            summary with links to every source. You read it on the web, in a
-            daily email, or through your AI assistant via its MCP server. It
-            does not import OPML or follow your own feeds, so it replaces
-            Inoreader only if a ranked brief suits you better than every post
-            from your own list.
-          </p>
-          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>No setup required: pick a few topics, or just open the brief</li>
-            <li>Each story grouped once across 100+ sources, with a summary</li>
-            <li>Optional daily email around 8:30am UK time</li>
-            <li>
-              MCP server for Claude, ChatGPT and other assistants (
-              <Link href="/agents" className="text-blue-600 dark:text-blue-400 hover:underline">setup</Link>)
-            </li>
-            <li>Free for everyone, every feature included</li>
-          </ul>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Verdict vs Inoreader:</strong> Choose Trace if you want to
-            catch up on tech news in a few minutes without managing feeds. Choose
-            Inoreader if you need every item from specific sources, rules, or
-            keyword monitoring. Many people use both. See the{" "}
-            <Link href="/compare/trace-vs-inoreader" className="text-blue-600 dark:text-blue-400 hover:underline">
-              full Trace vs Inoreader comparison
-            </Link>
-            .
-          </p>
-          <InlineTraceCTA
-            slug="inoreader-alternatives"
-            blurb="Skip the feed setup. Trace already reads 100+ tech sources and groups each story once, with a short summary and every source attached."
-          />
-
-          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            2. Feedly — Best for Beginners
+            1. Feedly — Best for Beginners
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (100 sources, 3 folders) | Pro adds search | Pro+ adds Leo. Prices vary by billing period, so check feedly.com.
@@ -345,7 +304,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            3. NewsBlur — Best Open-Source Hosted Reader
+            2. NewsBlur — Best Open-Source Hosted Reader
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (64 sites) | Premium $36/year (1,024 sites) | Premium Archive $99/year (4,096 sites) | Self-hosted: free
@@ -375,7 +334,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            4. FreshRSS — Best Free Self-Hosted Reader
+            3. FreshRSS — Best Free Self-Hosted Reader
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (open source, self-hosted)
@@ -399,7 +358,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            5. Miniflux — Best for Minimalists
+            4. Miniflux — Best for Minimalists
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (self-hosted) | Hosted $15/year
@@ -422,7 +381,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            6. Feedbin — Best Paid Reader Without Tiers
+            5. Feedbin — Best Paid Reader Without Tiers
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> $7/month or $70/year, after a 30-day free trial. No free plan.
@@ -446,7 +405,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            7. The Old Reader — Best for Simplicity
+            6. The Old Reader — Best for Simplicity
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free | Premium up to 500 feeds, with a 14-day free trial
@@ -467,7 +426,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            8. NetNewsWire — Best Free Reader for Mac and iPhone
+            7. NetNewsWire — Best Free Reader for Mac and iPhone
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free, open source (MIT)
@@ -489,6 +448,48 @@ export default function BlogPost() {
             its app, you can also keep your Inoreader account and read it in
             NetNewsWire.
           </p>
+
+          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            The one we make: Trace
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            <strong>Price:</strong> Free, open source (AGPL)
+          </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            If you mostly use Inoreader to keep up with tech and AI news, Trace
+            takes a different approach. It reads 100+ sources for you, groups
+            each story once however many outlets cover it, and gives it a short
+            summary with links to every source. It covers tech and AI only. You
+            read it on the web, in a daily email, or through your AI assistant
+            via its read-only MCP server. It
+            does not import OPML or follow your own feeds, so it replaces
+            Inoreader only if a short brief suits you better than every post
+            from your own list.
+          </p>
+          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
+            <li>No setup required: pick a few topics, or just open the brief</li>
+            <li>Each story grouped once across 100+ sources, with a summary</li>
+            <li>Optional daily email at 08:30 UK time</li>
+            <li>
+              MCP server for Claude, ChatGPT and other assistants (
+              <Link href="/agents" className="text-blue-600 dark:text-blue-400 hover:underline">setup</Link>)
+            </li>
+            <li>Free for everyone, every feature included</li>
+          </ul>
+          <p className="text-gray-600 dark:text-gray-400">
+            <strong>Verdict vs Inoreader:</strong> Choose Trace if you want to
+            catch up on tech news in a few minutes without managing feeds. Choose
+            Inoreader if you need every item from specific sources, rules, or
+            keyword monitoring. Many people use both. See the{" "}
+            <Link href="/compare/trace-vs-inoreader" className="text-blue-600 dark:text-blue-400 hover:underline">
+              full Trace vs Inoreader comparison
+            </Link>
+            .
+          </p>
+          <InlineTraceCTA
+            slug="inoreader-alternatives"
+            blurb="Skip the feed setup. Trace already reads 100+ tech sources and groups each story once, with a short summary and every source attached."
+          />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             Also Worth Knowing
@@ -533,9 +534,9 @@ export default function BlogPost() {
             If what you really want is to catch up on tech and AI news without
             managing feeds, try{" "}
             <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              today&apos;s Trace Daily
+              today&apos;s Trace brief
             </Link>
-            . It is free and takes about five minutes.
+            {" "}(ours). It is free and takes a few minutes.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Most of these have a free plan or trial. Export your Inoreader OPML,
@@ -562,17 +563,17 @@ export default function BlogPost() {
             <ul className="space-y-2">
               <li>
                 <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Free Feedly Alternatives: 7 Options Compared →
+                  Feedly alternatives: free-plan limits for 6 readers →
                 </Link>
               </li>
               <li>
                 <Link href="/blog/best-rss-reader-apps" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best RSS Reader Apps in 2026: 5 Free Picks Compared →
+                  RSS reader apps: 5 free picks compared →
                 </Link>
               </li>
               <li>
                 <Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best Tech News Aggregator Apps in 2026: 7 Compared →
+                  Tech news aggregator apps: 7 compared →
                 </Link>
               </li>
             </ul>

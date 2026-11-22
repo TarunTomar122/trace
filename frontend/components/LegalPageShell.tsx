@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import FeedFooter from '@/components/FeedFooter';
 
-export type LegalTab = 'privacy' | 'terms' | 'contact' | 'delete-account';
+export type LegalTab = 'about' | 'privacy' | 'terms' | 'contact' | 'delete-account';
 
 const BASE_TABS: { id: LegalTab; href: string; label: string }[] = [
+  { id: 'about', href: '/about', label: 'About' },
   { id: 'privacy', href: '/privacy-policy', label: 'Privacy' },
   { id: 'terms', href: '/terms', label: 'Terms' },
   { id: 'contact', href: '/contact', label: 'Contact' },

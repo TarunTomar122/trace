@@ -10,6 +10,7 @@ import {
   generateBreadcrumbSchema,
   generateFAQSchema,
 } from "@/lib/seo";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -17,7 +18,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "SmartNews Alternatives: 6 Better News Apps for 2026 | Trace",
+  robots: NOINDEX_ROBOTS,
+  title: "SmartNews Alternatives: 6 News Apps Compared | Trace",
   description:
     "SmartNews is fast but thin on tech. Compare 6 alternatives with AI curation, grouped stories, and coverage founders actually need.",
   keywords: [
@@ -37,9 +39,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "SmartNews Alternatives: 6 Better News Apps for 2026",
+    title: "SmartNews Alternatives: 6 News Apps Compared",
     description:
-      "We tested 6 SmartNews alternatives with better AI curation, tech coverage, and developer-focused features.",
+      "SmartNews alternatives compared on price and coverage: Feedly, Inoreader, Flipboard, Apple News and Google News, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/smartnews-alternatives`,
     siteName: "Trace",
     locale: "en_US",
@@ -50,8 +52,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SmartNews Alternatives: 6 Better News Apps for 2026",
-    description: "We tested 6 SmartNews alternatives with better AI curation and tech coverage.",
+    title: "SmartNews Alternatives: 6 News Apps Compared",
+    description: "SmartNews alternatives compared on price and coverage, plus Trace, which we make.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -59,13 +61,13 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "SmartNews Alternatives: 6 Better News Apps for 2026",
-    description: "Comprehensive comparison of the best SmartNews alternatives for 2026. Covers Trace, Feedly, Inoreader, Flipboard, Apple News, and Google News.",
+    headline: "SmartNews Alternatives: 6 News Apps Compared",
+    description: "SmartNews alternatives compared on price and coverage: Feedly, Inoreader, Flipboard, Apple News and Google News, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/smartnews-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
     dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -76,12 +78,12 @@ export default function BlogPost() {
 
   const faqSchema = generateFAQSchema([
     {
-      question: "What is the best alternative to SmartNews?",
-      answer: "Trace is the best SmartNews alternative for tech professionals. It offers AI-powered multi-source summaries from 100+ tech sources with zero setup. Feedly is best for RSS control, and Flipboard is best for casual visual browsing.",
+      question: "What is a good alternative to SmartNews?",
+      answer: "Feedly for choosing your own sources, Flipboard for casual visual browsing, and Google News or Apple News for general coverage. For tech news only, Trace, which we make, summarizes each story from 100+ tech sources with no setup.",
     },
     {
       question: "Why would I switch from SmartNews?",
-      answer: "SmartNews lacks AI summaries, has limited tech-specific coverage, and doesn't group stories across sources. Alternatives like Trace provide multi-source AI summaries and topic grouping designed for tech professionals.",
+      answer: "Usually because it is general news, with limited tech coverage, and the same event can appear once per outlet. A tech-focused reader or brief cuts that down.",
     },
     {
       question: "Is SmartNews free?",
@@ -107,7 +109,7 @@ export default function BlogPost() {
         <header className="mb-8">
           <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Comparisons</span>
           <h1 className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            SmartNews Alternatives: 6 Better News Apps for 2026
+            SmartNews Alternatives: 6 News Apps Compared
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-06-22">June 22, 2026</time></span>
@@ -130,11 +132,10 @@ export default function BlogPost() {
             Why Look for SmartNews Alternatives?
           </h2>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li><strong>No AI summaries:</strong> You read full articles — no one-click TLDR</li>
             <li><strong>General coverage:</strong> Not tech-focused — lots of celebrity, sports, and politics content</li>
             <li><strong>No story grouping:</strong> Same news from 5 sources = 5 separate entries</li>
             <li><strong>Limited customization:</strong> Can&apos;t precisely control which sources appear</li>
-            <li><strong>No developer sources:</strong> No Hacker News, GitHub trending, or Dev.to coverage</li>
+            <li><strong>Thin on developer news:</strong> Niche developer blogs and smaller tech sources rarely show up</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -151,9 +152,9 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech Professionals</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace (ours)</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech news only</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro+ only</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / Pro from €6.67/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Flipboard</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Visual Browsing</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Apple News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid Apple News+</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">iPhone, iPad and Mac</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Google News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">General News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
@@ -162,35 +163,35 @@ export default function BlogPost() {
           </div>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace — Best for AI-Powered Tech News
+            1. Trace (ours) — For Tech News Only
           </h2>
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Trace is purpose-built for tech news. It scans 100+ sources, groups related
-            coverage into topic pages, and generates multi-source AI summaries. Where
-            SmartNews shows you everything, Trace shows you what matters for your career.
+            We make Trace. It covers tech and AI news only: it reads 100+ tech sources,
+            groups coverage of the same event into one story, and writes a short summary
+            with links to each original report.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>100+ curated tech sources (TechCrunch, Verge, HN, Reddit, GitHub)</li>
+            <li>100+ tech sources, such as TechCrunch, The Verge and Ars Technica</li>
             <li>Multi-source AI summaries with source attribution</li>
             <li>Topic grouping — one story, multiple perspectives</li>
-            <li>10-minute morning catch-up workflow</li>
+            <li>Choose 5, 10 or 15 stories, on the web or as a daily email</li>
             <li>Free, no ads, no infinite scroll</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             2. Feedly — Best for RSS Power Users
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (100 sources) | Pro $8/month</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (100 sources) | paid Pro and Pro+ plans</p>
           <p className="text-gray-600 dark:text-gray-400">
             Feedly lets you choose exactly which sources to follow. Better customization
-            than SmartNews, with AI features on the Pro plan.
+            than SmartNews, with its AI assistant, Leo, on the Pro+ plan.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             3. Inoreader — Best for Advanced Filtering
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (150 sources) | Pro $9.99/month</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (150 feeds) | Pro from €6.67/month billed yearly</p>
           <p className="text-gray-600 dark:text-gray-400">
             Inoreader&apos;s rules engine and permanent archiving make it the power-user
             choice. Track specific keywords and competitors across sources.
@@ -223,7 +224,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free</p>
           <p className="text-gray-600 dark:text-gray-400">
             Google News offers broader coverage than SmartNews and is pre-installed on
-            most Android phones. It&apos;s the easiest switch but still lacks AI summaries.
+            most Android phones. It&apos;s the easiest switch, though still general news.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -231,8 +232,8 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             SmartNews is fast and clean, but it&apos;s a general news app. For tech
-            professionals, <strong>Trace</strong> delivers AI-curated tech news in 10
-            minutes. For RSS control, <strong>Feedly</strong> or <strong>Inoreader</strong>{" "}
+            news only, <strong>Trace</strong> (ours) gives you one summary per story
+            from 100+ tech sources. For RSS control, <strong>Feedly</strong> or <strong>Inoreader</strong>{" "}
             are better choices. All are free to try.
           </p>
 

@@ -69,6 +69,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
             <p className={`col-span-2 ${heading}`}>More</p>
             <a href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app" className={`inline-flex min-h-11 items-center gap-1.5 md:min-h-0 ${link}`}><Smartphone size={13} />Android app</a>
             <a href={`https://stocksbrew.online/?utm_source=trace&utm_medium=${encodeURIComponent(props.stocksBrewMedium || 'footer')}`} target="_blank" rel="noopener noreferrer" className={`flex min-h-11 items-center gap-1.5 md:min-h-0 ${link}`}><LineChart size={13} strokeWidth={1.8} />StocksBrew <ExternalLink size={11} /></a>
+            <Link href="/about" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>About</Link>
             <Link href="/privacy-policy" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Privacy</Link>
             <Link href="/terms" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Terms</Link>
             <Link href="/contact" className={`flex min-h-11 items-center md:min-h-0 ${link}`}>Contact</Link>

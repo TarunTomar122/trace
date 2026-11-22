@@ -20,7 +20,7 @@ const STEPS = [
     num: 1,
     icon: Newspaper,
     title: "Sources",
-    body: "Trace scans 100+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and Twitter/X, so you don't have to open each one separately.",
+    body: "Trace scans 100+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt and GitHub, so you don't have to open each one separately.",
   },
   {
     num: 2,
@@ -32,7 +32,7 @@ const STEPS = [
     num: 3,
     icon: Sparkles,
     title: "AI Summaries",
-    body: "Each story group gets a short brief and a timeline, so you get the full picture in seconds. Deep dive links are there if you want more, but you won't need them most days.",
+    body: "Each story group gets a short brief, so you get the full picture in seconds. Deep dive links are there if you want more, but you won't need them most days.",
   },
   {
     num: 4,
@@ -51,7 +51,7 @@ const STEPS = [
 const FAQS = [
   {
     q: "Where do the stories come from?",
-    a: "Trace scans 100+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and X. Sources are always linked so you can verify anything in one tap.",
+    a: "Trace scans 100+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt and GitHub. Sources are always linked so you can verify anything in one tap.",
   },
   {
     q: "How is this different from an RSS reader?",

@@ -33,9 +33,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Fastest way to catch up on tech & AI news | Trace",
+  title: "Trace: free daily tech and AI news digest",
   description:
-    "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
+    "Trace reads 100+ tech sources, merges coverage of each event into one story and links every report. Free daily feed and 08:30 UK email. Open source.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
@@ -54,23 +54,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Fastest way to catch up on tech & AI news | Trace",
+    title: "Trace: free daily tech and AI news digest",
     description:
-      "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
+      "Trace reads 100+ tech sources, merges coverage of each event into one story and links every report. Free daily feed and 08:30 UK email. Open source.",
     images: [
       {
         url: "https://www.yourtrace.online/opengraph-image?v=redesign-2026-10",
         width: 1200,
         height: 630,
-        alt: "Fastest way to catch up on tech & AI news | Trace",
+        alt: "Trace: free daily tech and AI news digest",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fastest way to catch up on tech & AI news | Trace",
+    title: "Trace: free daily tech and AI news digest",
     description:
-      "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
+      "Trace reads 100+ tech sources, merges coverage of each event into one story and links every report. Free daily feed and 08:30 UK email. Open source.",
     images: ["https://www.yourtrace.online/twitter-image?v=redesign-2026-10"],
   },
   robots: {

@@ -5,7 +5,6 @@ export type NewsletterPage = {
   url: string;
   frequency: string;
   topics: string[];
-  rating: number;
   pros: string[];
   cons: string[];
 };
@@ -18,7 +17,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://tldr.tech",
     frequency: "Daily",
     topics: ["Startups", "Engineering", "Big Tech"],
-    rating: 4,
     pros: ["Consistently high-quality curation", "Covers under-the-radar stories alongside big headlines", "Quick 5-minute read", "Well-organized sections"],
     cons: ["Limited depth on complex topics", "US-centric coverage", "Sponsored content can feel native"],
   },
@@ -29,7 +27,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://thehustle.co",
     frequency: "Daily",
     topics: ["Business", "Tech", "Startups"],
-    rating: 4,
     pros: ["Entertaining writing style", "Covers business angles other newsletters miss", "Strong weekend edition", "Good for non-technical readers"],
     cons: ["Less technical depth than alternatives", "Some stories feel stretched for entertainment", "Heavy on US business news"],
   },
@@ -40,7 +37,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://www.morningbrew.com/techbrew",
     frequency: "Daily",
     topics: ["Big Tech", "Startups", "Policy"],
-    rating: 3,
     pros: ["Clean, professional curation", "Good policy and regulatory coverage", "Accessible for non-technical readers", "Well-established brand with editorial resources"],
     cons: ["Can feel surface-level for industry insiders", "Slower to cover breaking stories", "Broad coverage means less depth per topic"],
   },
@@ -51,7 +47,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://www.strictlyvc.com",
     frequency: "Daily",
     topics: ["VC", "Fundraising", "Startups"],
-    rating: 4,
     pros: ["Deep funding and deal coverage", "Strong network for scoops", "Concise format", "Good investor perspective"],
     cons: ["Narrow focus on funding news", "Less coverage of product and tech details", "Paywalled deeper analysis"],
   },
@@ -62,7 +57,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://techcrunch.com/newsletters",
     frequency: "Daily",
     topics: ["Startups", "VC", "Big Tech"],
-    rating: 3,
     pros: ["Original reporting and scoops", "Comprehensive startup coverage", "Strong event and launch tracking", "Well-known, trusted brand"],
     cons: ["Can be overwhelming in volume", "Mixed signal-to-noise on slower news days", "Heavy on PR-driven stories"],
   },
@@ -73,7 +67,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://hackernewsletter.com",
     frequency: "Weekly",
     topics: ["Programming", "Startups", "Tech"],
-    rating: 4,
     pros: ["Excellent curation of HN's best", "Weekly format is manageable", "Covers niche programming topics well", "No algorithm — human-curated"],
     cons: ["Weekly means you're behind on breaking news", "Only covers HN — misses other platforms", "Can be programming-heavy"],
   },
@@ -84,7 +77,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://www.producthunt.com/newsletters",
     frequency: "Daily",
     topics: ["Product Launches", "Tools", "Startups"],
-    rating: 3,
     pros: ["Comprehensive launch coverage", "Community-voted rankings", "Good for discovering new tools", "Includes maker stories"],
     cons: ["Rankings can be gamed", "Heavy on low-signal launches on slow days", "Limited context beyond the launch itself"],
   },
@@ -95,7 +87,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://www.ben-evans.com/newsletter",
     frequency: "Weekly",
     topics: ["Tech Strategy", "Trends", "Analysis"],
-    rating: 5,
     pros: ["Exceptional depth and original analysis", "Data-driven arguments with great charts", "No hot takes — carefully researched", "Influential in venture and strategy circles"],
     cons: ["Weekly cadence means less coverage of daily news", "Heavy — not a quick read", "Narrow focus on high-level strategy"],
   },
@@ -106,7 +97,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://stratechery.com",
     frequency: "Daily",
     topics: ["Tech Strategy", "Business Models", "Big Tech"],
-    rating: 5,
     pros: ["Industry-defining analysis", "Unique frameworks for thinking about tech", "Consistent quality over years", "Strong subscriber community"],
     cons: ["Paywalled ($12/month for full access)", "Can be abstract for casual readers", "Focused on business strategy over product"],
   },
@@ -117,7 +107,6 @@ export const newslettersContent: NewsletterPage[] = [
     url: "https://newsletter.pragmaticengineer.com",
     frequency: "Weekly",
     topics: ["Engineering", "Tech Industry", "Career"],
-    rating: 4,
     pros: ["Practical, experience-backed advice", "Covers engineering org and culture deeply", "Good compensation and market data", "Relevant for senior engineers and managers"],
     cons: ["Not a news source — analysis-focused", "Less relevant for non-engineering roles", "Long-form can be time-consuming"],
   },

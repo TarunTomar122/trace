@@ -16,10 +16,13 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
 });
 
+const TITLE = "NewsBlur alternatives: 5 RSS readers and their free plans";
+const DESCRIPTION =
+  "Feedly, Inoreader, Miniflux, FreshRSS and The Old Reader: free-plan limits, prices and which you can self-host. Plus Trace, which we make.";
+
 export const metadata: Metadata = {
-  title: "NewsBlur Alternatives: 6 Options (2026) | Trace",
-  description:
-    "Want NewsBlur's privacy without the setup? Compare 6 RSS and briefing apps — Trace, Feedly, Inoreader, Miniflux — for 2026.",
+  title: `${TITLE} | Trace`,
+  description: DESCRIPTION,
   keywords: [
     "newsblur alternatives",
     "newsblur alternative free",
@@ -27,9 +30,6 @@ export const metadata: Metadata = {
     "newsblur vs feedly",
     "self hosted RSS reader",
     "RSS reader alternative",
-    "newsblur alternatives 2026",
-    "best RSS reader",
-    "AI news aggregator",
     "Trace news app",
   ],
   alternates: {
@@ -37,8 +37,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "NewsBlur Alternatives: 6 Options for Every Use Case (2026)",
-    description: "We tested 6 NewsBlur alternatives for every use case — from AI-powered news to minimalist self-hosted readers.",
+    title: TITLE,
+    description: DESCRIPTION,
     url: `${SITE_BASE_URL}/blog/newsblur-alternatives`,
     siteName: "Trace",
     locale: "en_US",
@@ -49,22 +49,42 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NewsBlur Alternatives: 6 Options for Every Use Case (2026)",
-    description: "We tested 6 NewsBlur alternatives for every use case.",
+    title: TITLE,
+    description: DESCRIPTION,
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
 };
 
+const cell = "border border-gray-200 dark:border-gray-800 px-4 py-2";
+
+const faqs = [
+  {
+    question: "Is NewsBlur still maintained?",
+    answer:
+      "Yes. NewsBlur is open source (MIT) and still has a hosted service, with a free plan of 64 sites and paid plans at $36 and $99 a year.",
+  },
+  {
+    question: "What is the best self-hosted alternative to NewsBlur?",
+    answer:
+      "Miniflux is a fast, minimal self-hosted reader (Apache 2.0). FreshRSS (AGPL) supports several users and extensions. Both are free to run on your own server, and NewsBlur itself can also be self-hosted.",
+  },
+  {
+    question: "Which NewsBlur alternatives have a free plan?",
+    answer:
+      "Feedly (100 sources), Inoreader (150 feeds) and The Old Reader all have free plans. Miniflux and FreshRSS are free if you host them yourself. Trace, which we make, is free and open source, but it is a daily tech news brief rather than an RSS reader.",
+  },
+];
+
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "NewsBlur Alternatives: 6 Options for Every Use Case (2026)",
-    description: "Comprehensive comparison of the best NewsBlur alternatives for 2026. Covers Trace, Feedly, Inoreader, Miniflux, FreshRSS, and The Old Reader.",
+    headline: TITLE,
+    description: DESCRIPTION,
     url: `${SITE_BASE_URL}/blog/newsblur-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
     dateModified: "2026-06-22T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -73,20 +93,7 @@ export default function BlogPost() {
     { name: "NewsBlur Alternatives", url: `${SITE_BASE_URL}/blog/newsblur-alternatives` },
   ]);
 
-  const faqSchema = generateFAQSchema([
-    {
-      question: "What is the best alternative to NewsBlur?",
-      answer: "For AI-powered tech news, Trace is the best NewsBlur alternative — free, zero setup, multi-source summaries. For traditional RSS with a cleaner interface, Feedly is best. For self-hosted minimalism, Miniflux is the top choice.",
-    },
-    {
-      question: "Is NewsBlur still maintained?",
-      answer: "Yes, NewsBlur is still actively maintained with a smaller development team. However, feature development is slower than commercial alternatives like Feedly or Inoreader.",
-    },
-    {
-      question: "What is the best self-hosted RSS reader?",
-      answer: "Miniflux is the best self-hosted RSS reader for speed and minimalism. FreshRSS is best for features and multi-user support. NewsBlur offers AI filtering but requires more server resources.",
-    },
-  ]);
+  const faqSchema = generateFAQSchema(faqs);
 
   return (
     <EditorialArticleShell slug="newsblur-alternatives">
@@ -106,21 +113,22 @@ export default function BlogPost() {
         <header className="mb-8">
           <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Comparisons</span>
           <h1 className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            NewsBlur Alternatives: 6 Options for Every Use Case (2026)
+            NewsBlur Alternatives: 5 RSS Readers and Their Free Plans
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-06-22">June 22, 2026</time></span>
-            <span>10 min read</span>
+            <span>6 min read</span>
             <span>By <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:text-blue-400">Tarun Tomar</a></span>
           </div>
         </header>
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            NewsBlur is the leading open-source RSS reader with AI filtering. It&apos;s
-            great for privacy-conscious users who want self-hosting. But its development
-            pace is slower, mobile apps are less polished, and the AI is limited to
-            filtering — no multi-source summaries or topic grouping.
+            NewsBlur is an open-source RSS reader (MIT) with a hosted service and
+            a free plan of 64 sites. People look elsewhere when they want a larger
+            free plan, a simpler interface, or something they can run on their own
+            server. Here are five RSS readers to compare. We make Trace, so it&apos;s
+            listed separately below.
           </p>
 
           <BlogEmailCard slug="newsblur-alternatives" placement="intro" />
@@ -129,11 +137,9 @@ export default function BlogPost() {
             Why Look for NewsBlur Alternatives?
           </h2>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li><strong>Slower development:</strong> Smaller team means fewer updates and new features</li>
-            <li><strong>AI limited to filtering:</strong> No multi-source summarization or topic grouping</li>
-            <li><strong>Mobile apps less polished:</strong> Desktop experience is better but mobile lags behind Feedly</li>
-            <li><strong>Fewer integrations:</strong> Smaller third-party ecosystem than Feedly or Inoreader</li>
-            <li><strong>Self-hosting requires technical knowledge:</strong> Docker setup isn&apos;t beginner-friendly</li>
+            <li><strong>Small free plan:</strong> 64 sites; Premium is $36/year for 1,024 sites</li>
+            <li><strong>AI features are on the top plan:</strong> Ask AI and Daily Briefing come with Premium Archive at $99/year</li>
+            <li><strong>Self-hosting takes some setup:</strong> it runs as a set of Docker services</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -143,96 +149,140 @@ export default function BlogPost() {
             <table className="min-w-full border border-gray-200 dark:border-gray-800">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900">
-                  <th className="border border-gray-200 dark:border-gray-800 px-4 py-2 text-left">App</th>
-                  <th className="border border-gray-200 dark:border-gray-800 px-4 py-2 text-left">Price</th>
-                  <th className="border border-gray-200 dark:border-gray-800 px-4 py-2 text-left">Best For</th>
-                  <th className="border border-gray-200 dark:border-gray-800 px-4 py-2 text-left">Self-Hosted</th>
+                  <th className={`${cell} text-left`}>App</th>
+                  <th className={`${cell} text-left`}>Price</th>
+                  <th className={`${cell} text-left`}>Best For</th>
+                  <th className={`${cell} text-left`}>Self-Hosted</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">AI Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Beginners</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Miniflux</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Minimalists</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Yes</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">FreshRSS</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Self-Hosters</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Yes</td></tr>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">The Old Reader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $3/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Simplicity</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>Feedly</td>
+                  <td className={cell}>Free (100 sources) / paid plans</td>
+                  <td className={cell}>Beginners</td>
+                  <td className={cell}>No</td>
+                </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>Inoreader</td>
+                  <td className={cell}>Free (150 feeds) / Pro</td>
+                  <td className={cell}>Power users</td>
+                  <td className={cell}>No</td>
+                </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>Miniflux</td>
+                  <td className={cell}>Free (self-hosted) / $15/yr hosted</td>
+                  <td className={cell}>Minimalists</td>
+                  <td className={cell}>Yes</td>
+                </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>FreshRSS</td>
+                  <td className={cell}>Free</td>
+                  <td className={cell}>Self-hosting, several users</td>
+                  <td className={cell}>Yes</td>
+                </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>The Old Reader</td>
+                  <td className={cell}>Free / paid plan</td>
+                  <td className={cell}>Plain RSS reading</td>
+                  <td className={cell}>No</td>
+                </tr>
+                <tr>
+                  <td className={`${cell} font-medium`}>Trace (ours)</td>
+                  <td className={cell}>Free, open source (AGPL)</td>
+                  <td className={cell}>Tech news, no feeds</td>
+                  <td className={cell}>No</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace — Best for AI-Powered Tech News
+            1. Feedly — Best for Beginners
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (100 sources, 3 folders) | paid plans add search and AI. Check feedly.com for current prices.</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Where NewsBlur filters your feeds with AI, Trace goes further — it scans
-            100+ sources automatically, groups related coverage, and generates multi-source
-            AI summaries. No feed management required.
-          </p>
-          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>Automatic source scanning (no feed curation needed)</li>
-            <li>Multi-source AI summaries with source attribution</li>
-            <li>Topic grouping across publications</li>
-            <li>Community discussion links (Reddit, HN)</li>
-            <li>Free for everyone, and open source</li>
-          </ul>
-
-          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            2. Feedly — Best for Beginners
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (100 sources) | Pro $8/month</p>
-          <p className="text-gray-600 dark:text-gray-400">
-            Feedly offers a more polished experience than NewsBlur with better mobile
-            apps and a larger integration ecosystem. AI features on Pro plan.
+            Feedly has a cleaner, simpler interface than NewsBlur, polished iOS and
+            Android apps, and a large library of suggested sources. Its AI
+            assistant, Leo, is on the Pro+ plan.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            3. Inoreader — Best for Power Users
+            2. Inoreader — Best for Power Users
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (150 sources) | Pro $9.99/month</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (150 feeds, search included) | Pro from €6.67/month billed yearly</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Inoreader beats NewsBlur on features at every tier: more free subscriptions,
-            permanent archiving, advanced rules engine, newsletter integration.
+            Inoreader&apos;s free plan allows more feeds than NewsBlur&apos;s 64 sites. Rules,
+            filters, newsletter feeds and AI summaries are on Pro. The interface has
+            more settings than many people need.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            4. Miniflux — Best Minimalist Self-Hosted Option
+            3. Miniflux — Best for Minimalists
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (open source)</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (self-hosted, Apache 2.0) | Hosted $15/year</p>
           <p className="text-gray-600 dark:text-gray-400">
-            Miniflux is the fastest self-hosted RSS reader. Keyboard-driven, sub-100ms
-            page loads, zero JavaScript bloat. Perfect if NewsBlur feels too heavy.
+            Miniflux is a fast, keyboard-driven reader with a plain interface and
+            little JavaScript. Run it yourself for free, or pay $15 a year for the
+            developer&apos;s hosted version.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            5. FreshRSS — Best Feature-Rich Self-Hosted Option
+            4. FreshRSS — Best Free Self-Hosted Reader
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (open source)</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (open source, AGPL)</p>
           <p className="text-gray-600 dark:text-gray-400">
-            FreshRSS offers more features than NewsBlur for self-hosters: multi-user
-            support, mobile-friendly interface, extension ecosystem, and easy Docker
-            installation.
+            FreshRSS supports several users on one install, works in a mobile
+            browser, has themes and extensions, and syncs with mobile RSS apps
+            through its API. It runs on your own server or a cheap VPS.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            6. The Old Reader — Best for Simplicity
+            5. The Old Reader — Best for Simplicity
           </h2>
-          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free (100 feeds) | Premium $3/month</p>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free | paid plan raises the feed limit to 500, with a 14-day free trial</p>
           <p className="text-gray-600 dark:text-gray-400">
-            The Old Reader recreates Google Reader — clean, fast, no AI, no complexity.
-            If NewsBlur&apos;s features feel like overkill, this is the minimalist alternative.
+            The Old Reader recreates the Google Reader experience: a plain,
+            chronological list of posts from the sites you follow, with no AI and
+            no rules engine. The site does not list the paid price publicly, so
+            check it when you sign up.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            The Bottom Line
+            The one we make: Trace
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400"><strong>Price:</strong> Free, open source (AGPL)</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Trace is not an RSS reader. It reads 100+ tech sources for you, groups
+            coverage of one event into one story, and gives it an AI summary with
+            links to each original report. You can choose topics and 5, 10 or 15
+            stories, and read it on the web, in a daily email at 08:30 UK time, in
+            the <Link href="/brief" className="text-blue-600 dark:text-blue-400 hover:underline">brief archive</Link>, with the Chrome
+            extension, or through your AI assistant with read-only access
+            (<Link href="/agents" className="text-blue-600 dark:text-blue-400 hover:underline">setup</Link>). It does not import OPML or
+            follow your own feeds, so it suits you only if a short brief is what
+            you want instead of every post from your list.
+          </p>
+
+          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            Which One to Pick
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            If you want AI-powered news without managing feeds, try <strong>Trace</strong>.
-            If you want open-source self-hosting, <strong>Miniflux</strong> (speed) or{" "}
-            <strong>FreshRSS</strong> (features) are the best NewsBlur alternatives.
-            If you want a managed service, <strong>Feedly</strong> or <strong>Inoreader</strong>{" "}
-            are more polished.
+            For a simpler hosted reader, <strong>Feedly</strong>. For a bigger free
+            plan with more features, <strong>Inoreader</strong>. To run it yourself,{" "}
+            <strong>Miniflux</strong> (minimal) or <strong>FreshRSS</strong> (more
+            features). For plain RSS, <strong>The Old Reader</strong>. Most have a
+            free plan, so try two or three with an OPML export from NewsBlur.
           </p>
+
+          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            Frequently Asked Questions
+          </h2>
+          {faqs.map((faq) => (
+            <div key={faq.question}>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{faq.question}</h3>
+              <p className="text-gray-600 dark:text-gray-400">{faq.answer}</p>
+            </div>
+          ))}
 
           <BlogEmailCard slug="newsblur-alternatives" placement="end" />
 
@@ -240,9 +290,9 @@ export default function BlogPost() {
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
             <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-3 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>Read Next</h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Free Feedly Alternatives: 7 Options Compared →</Link></li>
-              <li><Link href="/blog/inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Inoreader Alternatives: 8 Options Compared →</Link></li>
-              <li><Link href="/blog/best-rss-reader-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The 5 Best RSS Reader Apps in 2026 →</Link></li>
+              <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Feedly alternatives: free-plan limits for 6 readers →</Link></li>
+              <li><Link href="/blog/inoreader-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Inoreader alternatives: 7 readers and their free plans →</Link></li>
+              <li><Link href="/blog/best-rss-reader-apps" className="text-blue-600 dark:text-blue-400 hover:underline">RSS reader apps: 5 free picks compared →</Link></li>
             </ul>
           </div>
         </div>

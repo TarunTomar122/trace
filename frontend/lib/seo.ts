@@ -65,7 +65,9 @@ export function generateBlogPostingSchema(data: BlogPostStructuredData): Record<
     author: {
       '@type': 'Person',
       name: data.authorName || 'Tarun Tomar',
-      url: data.authorUrl || 'https://x.com/tarat_211',
+      // The about page says who writes the guides and how they're checked; X stays as sameAs.
+      url: data.authorUrl || 'https://www.yourtrace.online/about',
+      sameAs: ['https://x.com/tarat_211'],
     },
     publisher: {
       '@type': 'Organization',

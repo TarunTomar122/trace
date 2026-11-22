@@ -10,6 +10,7 @@ import {
   generateBreadcrumbSchema,
   generateFAQSchema,
 } from "@/lib/seo";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -17,7 +18,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "NewsBreak Alternatives: 6 Cleaner News Apps for 2026 | Trace",
+  robots: NOINDEX_ROBOTS,
+  title: "NewsBreak Alternatives: 6 Cleaner News Apps | Trace",
   description:
     "Tired of NewsBreak ads? Compare 6 cleaner apps — Trace, Ground News, SmartNews — for higher-signal news without the clutter.",
   keywords: [
@@ -37,7 +39,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "NewsBreak Alternatives: 6 Cleaner News Apps for 2026",
+    title: "NewsBreak Alternatives: 6 Cleaner News Apps",
     description:
       "We compared 6 NewsBreak alternatives for readers who want cleaner design, fewer ads, and higher signal coverage.",
     url: `${SITE_BASE_URL}/blog/newsbreak-alternatives`,
@@ -57,7 +59,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NewsBreak Alternatives: 6 Cleaner News Apps for 2026",
+    title: "NewsBreak Alternatives: 6 Cleaner News Apps",
     description:
       "We compared 6 NewsBreak alternatives for readers who want cleaner, higher signal news.",
     images: [`${SITE_BASE_URL}/twitter-image`],
@@ -67,14 +69,14 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "NewsBreak Alternatives: 6 Cleaner News Apps for 2026",
+    headline: "NewsBreak Alternatives: 6 Cleaner News Apps",
     description:
-      "Comprehensive comparison of the best NewsBreak alternatives for 2026. Covers Trace, Ground News, SmartNews, Google News, Feedly, and Inoreader with feature comparisons.",
+      "NewsBreak alternatives compared: Ground News, SmartNews, Google News, Feedly and Inoreader, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/newsbreak-alternatives`,
     datePublished: "2026-09-04T00:00:00Z",
     dateModified: "2026-09-04T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -85,9 +87,9 @@ export default function BlogPost() {
 
   const faqSchema = generateFAQSchema([
     {
-      question: "What is the best NewsBreak alternative?",
+      question: "What is a good NewsBreak alternative?",
       answer:
-        "For tech readers, Trace is the best NewsBreak alternative. It provides a ranked AI briefing from 100+ tech sources with multi-source summaries and topic grouping, without clickbait. For bias comparison, Ground News is strong. For simple free reading, SmartNews or Google News work well.",
+        "For simple free reading, SmartNews or Google News. For bias comparison, Ground News. To choose every source yourself, Feedly or Inoreader. For tech news only, Trace, which we make, is a free brief from 100+ tech sources that groups coverage of the same event into one story and summarizes it.",
     },
     {
       question: "Why switch from NewsBreak?",
@@ -131,7 +133,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            NewsBreak Alternatives: 6 Cleaner News Apps for 2026
+            NewsBreak Alternatives: 6 Cleaner News Apps
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-09-04">September 4, 2026</time></span>
@@ -175,7 +177,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=newsbreak-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link> (ours)</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Ground News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Bias Transparency</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">SmartNews</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Clean Reading</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Google News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Broad Headlines</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
@@ -186,7 +188,7 @@ export default function BlogPost() {
           </div>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace: Best for Tech News
+            1. Trace (ours): For Tech News Only
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free, open source
@@ -207,7 +209,7 @@ export default function BlogPost() {
 
           <InlineTraceCTA
             slug="newsbreak-alternatives"
-            blurb="Swap ad-heavy infinite scroll for a 10-minute ranked briefing: Trace reads 100+ tech sources every morning and condenses them into clean multi-source summaries."
+            blurb="Swap infinite scroll for a short tech brief that ends: Trace reads 100+ tech sources every morning and gives you one summary per story, with links to each original report."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>

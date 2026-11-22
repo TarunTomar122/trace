@@ -17,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Flipboard alternatives: 6 faster news apps (2026) | Trace",
+  title: "Flipboard alternatives: 6 news apps and what they cost | Trace",
   description:
-    "Quicker than Flipboard's magazine: Google News, Apple News, SmartNews, Ground News, Feedly and Trace compared, with who each one suits and what it costs.",
+    "Google News, Apple News, SmartNews, Ground News and Feedly for general news, plus Trace if you only want tech. Who each suits and what it costs.",
   keywords: [
     "flipboard alternatives",
     "flipboard alternative",
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Flipboard alternatives: 6 faster news apps (2026)",
+    title: "Flipboard alternatives: 6 news apps and what they cost",
     description:
-      "Google News, Apple News, SmartNews, Ground News, Feedly and Trace compared, with who each one suits and what it costs.",
+      "Google News, Apple News, SmartNews, Ground News and Feedly for general news, plus Trace if you only want tech. Who each suits and what it costs.",
     url: `${SITE_BASE_URL}/blog/flipboard-alternatives`,
     siteName: "Trace",
     locale: "en_US",
@@ -57,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Flipboard alternatives: 6 faster news apps (2026)",
+    title: "Flipboard alternatives: 6 news apps and what they cost",
     description:
-      "Google News, Apple News, SmartNews, Ground News, Feedly and Trace compared, with who each one suits and what it costs.",
+      "Google News, Apple News, SmartNews, Ground News and Feedly for general news, plus Trace if you only want tech. Who each suits and what it costs.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -67,14 +67,14 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Flipboard alternatives: 6 faster news apps (2026)",
+    headline: "Flipboard alternatives: 6 news apps and what they cost",
     description:
-      "Six Flipboard alternatives for 2026: Google News, Apple News, SmartNews, Ground News, Feedly and Trace, with who each one suits and what it costs.",
+      "Google News, Apple News, SmartNews, Ground News and Feedly for general news, plus Trace if you only want tech. Who each suits and what it costs.",
     url: `${SITE_BASE_URL}/blog/flipboard-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
     dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -87,12 +87,12 @@ export default function BlogPost() {
     {
       question: "What is the best alternative to Flipboard?",
       answer:
-        "It depends on what you read. For general news, Google News is the closest free swap, and its Full Coverage view puts every outlet's version of a story on one page. On an iPhone, iPad or Mac, Apple News is already installed. For a quick daily catch-up on tech and AI, Trace. If you want to choose every source yourself, Feedly.",
+        "It depends on what you read. For general news, Google News is the closest free swap, and its Full Coverage view puts every outlet's version of a story on one page. On an iPhone, iPad or Mac, Apple News is already installed. If you want to choose every source yourself, Feedly. If you only want tech and AI news, Trace, which we make, is a free daily brief.",
     },
     {
       question: "What are the best Flipboard alternatives for tech news?",
       answer:
-        "Trace, if you want a short daily briefing: it reads 100+ tech sources, groups coverage of the same story and summarizes it. Feedly, if you would rather pick every source yourself.",
+        "Feedly, if you would rather pick every source yourself. Trace, which we make, if you want a short daily brief: it reads 100+ tech sources, groups coverage of the same story and summarizes it.",
     },
     {
       question: "Why would I switch from Flipboard?",
@@ -100,9 +100,9 @@ export default function BlogPost() {
         "Flipboard's magazine layout is good for browsing but slow when you just want to know what happened. The same story can appear as several separate cards, and you open articles to find out what they say. If you read news daily, a list-style app gets you through it faster.",
     },
     {
-      question: "Is Flipboard still good in 2026?",
+      question: "Is Flipboard still worth using?",
       answer:
-        "Yes, for relaxed browsing and discovering magazines and topics. If you want to get through the day's news quickly, the apps on this list are faster.",
+        "Yes, for relaxed browsing and discovering magazines and topics. If you want to get through the day's news quickly, a list-style app such as Google News is faster.",
     },
     {
       question: "Are there free Flipboard alternatives?",
@@ -140,7 +140,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Flipboard Alternatives: 6 Faster News Apps (2026)
+            Flipboard Alternatives: 6 News Apps and What They Cost
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span>Updated <time dateTime="2026-10-19">October 19, 2026</time></span>
@@ -152,8 +152,12 @@ export default function BlogPost() {
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
             Flipboard&apos;s magazine layout is nice for browsing. It is slow when you
-            just want to know what happened today. These six apps get you there
-            faster, whether you read general news or mostly tech.
+            just want to know what happened today. The five apps below cover general
+            news, like Flipboard does. After them is Trace, which covers tech and AI
+            only, for readers who mostly use Flipboard for tech.
+          </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            We make Trace, so it&apos;s listed separately below.
           </p>
 
           <BlogEmailCard slug="flipboard-alternatives" placement="intro" />
@@ -182,43 +186,18 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className={`${cell} font-medium`}><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className={cell}>Free, open source</td><td className={cell}>A daily tech and AI briefing</td></tr>
                 <tr><td className={`${cell} font-medium`}>Google News</td><td className={cell}>Free</td><td className={cell}>General news from many outlets</td></tr>
                 <tr><td className={`${cell} font-medium`}>Apple News</td><td className={cell}>Free / paid Apple News+</td><td className={cell}>iPhone, iPad and Mac</td></tr>
                 <tr><td className={`${cell} font-medium`}>SmartNews</td><td className={cell}>Free</td><td className={cell}>Quick reading on your phone</td></tr>
                 <tr><td className={`${cell} font-medium`}>Ground News</td><td className={cell}>Free / paid plans</td><td className={cell}>Seeing how different outlets cover a story</td></tr>
-                <tr><td className={`${cell} font-medium`}>Feedly</td><td className={cell}>Free / $8/mo</td><td className={cell}>Choosing every source yourself</td></tr>
+                <tr><td className={`${cell} font-medium`}>Feedly</td><td className={cell}>Free / paid plans</td><td className={cell}>Choosing every source yourself</td></tr>
+                <tr><td className={`${cell} font-medium`}><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link> (ours)</td><td className={cell}>Free, open source</td><td className={cell}>A daily tech and AI brief (tech only)</td></tr>
               </tbody>
             </table>
           </div>
 
           <h2 className={h2Class} style={h2Style}>
-            1. Trace — Best for a Daily Tech and AI Briefing
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free, open source
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            If most of what you read on Flipboard is tech and AI, Trace is the quicker
-            swap. It reads 100+ tech sources, groups coverage of the same story, and
-            writes one summary from all of them. The morning catch-up takes about 10
-            minutes, and the list ends, so you know when you are done. Trace only covers
-            tech and AI, so keep a general app for everything else.
-          </p>
-          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>One story per event, with every outlet that covered it</li>
-            <li>Summaries written from several sources, not one article</li>
-            <li>Reddit and Hacker News discussion linked under each story</li>
-            <li>A list you can scan instead of magazine cards</li>
-          </ul>
-
-          <InlineTraceCTA
-            slug="flipboard-alternatives"
-            blurb="Switching from Flipboard takes no setup: Trace already reads 100+ tech sources every morning and gives you one ranked briefing. Good if most of what you read on Flipboard is tech and AI."
-          />
-
-          <h2 className={h2Class} style={h2Style}>
-            2. Google News — Best Free All-Round App
+            1. Google News — Best Free All-Round App
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free
@@ -232,7 +211,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={h2Class} style={h2Style}>
-            3. Apple News — Best on iPhone, iPad and Mac
+            2. Apple News — Best on iPhone, iPad and Mac
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free; Apple News+ is a paid subscription
@@ -245,7 +224,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={h2Class} style={h2Style}>
-            4. SmartNews — Best for Quick Reading on Your Phone
+            3. SmartNews — Best for Quick Reading on Your Phone
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free
@@ -257,7 +236,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={h2Class} style={h2Style}>
-            5. Ground News — Best for Seeing How Outlets Differ
+            4. Ground News — Best for Seeing How Outlets Differ
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free, with paid plans
@@ -269,10 +248,10 @@ export default function BlogPost() {
           </p>
 
           <h2 className={h2Class} style={h2Style}>
-            6. Feedly — Best if You Want to Pick Every Source
+            5. Feedly — Best if You Want to Pick Every Source
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (100 sources) | Pro $8/month
+            <strong>Price:</strong> Free (100 sources) | paid Pro and Pro+ plans
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Feedly is an RSS reader: you choose exactly which sites and blogs appear,
@@ -287,15 +266,42 @@ export default function BlogPost() {
           </p>
 
           <h2 className={h2Class} style={h2Style}>
+            The one we make: Trace
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            <strong>Price:</strong> Free, open source
+          </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Trace is not a general news app. It covers tech and AI only, so it
+            replaces Flipboard only if that is mostly what you read there, and you
+            would keep one of the apps above for everything else. It reads 100+ tech
+            sources, groups coverage of the same story, and writes one short summary
+            with links to each original report. You choose 5, 10 or 15 stories, and
+            the list ends, so you know when you are done. It is on the web and as a
+            daily email at 08:30 UK time.
+          </p>
+          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
+            <li>One story per event, with every outlet that covered it</li>
+            <li>Summaries written from several sources, not one article</li>
+            <li>Links to each original report under the summary</li>
+            <li>A list you can scan instead of magazine cards</li>
+          </ul>
+
+          <InlineTraceCTA
+            slug="flipboard-alternatives"
+            blurb="Trace needs no setup: it already reads 100+ tech sources every morning and gives you one short brief. It covers tech and AI only."
+          />
+
+          <h2 className={h2Class} style={h2Style}>
             The Bottom Line
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Flipboard is still nice for relaxed browsing. For a quicker daily read,
             Google News is the closest free swap for general news, and Apple News is
-            the easy choice on Apple devices. For tech and AI,{" "}
-            <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace&apos;s daily briefing</Link>{" "}
-            is the 10-minute version. Pick Feedly if you want to choose every source
-            yourself.
+            the easy choice on Apple devices. Pick Feedly if you want to choose every
+            source yourself. If you only want tech and AI,{" "}
+            <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace&apos;s daily brief</Link>{" "}
+            is the short version.
           </p>
 
           <BlogEmailCard slug="flipboard-alternatives" placement="end" />

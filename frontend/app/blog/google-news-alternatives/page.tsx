@@ -17,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Google News Alternatives for Tech Readers (2026) | Trace",
+  title: "Google News alternatives for tech readers: 5 options | Trace",
   description:
-    "Google News is too noisy for AI and startups. Compare 6 alternatives with grouped stories, AI summaries, and a free 5-minute briefing.",
+    "Techmeme, Feedly, Inoreader, Ground News and Hacker News compared on price, summaries and who each suits, plus Trace, which we make.",
   keywords: [
     "google news alternatives",
     "google news alternative app",
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Google News Alternatives: 6 Better Options for Tech News (2026)",
+    title: "Google News alternatives for tech readers: 5 options",
     description:
-      "We tested 6 Google News alternatives that deliver better tech coverage, AI summaries, and developer-focused news.",
+      "Techmeme, Feedly, Inoreader, Ground News and Hacker News compared on price, summaries and who each suits, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/google-news-alternatives`,
     siteName: "Trace",
     locale: "en_US",
@@ -57,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Google News Alternatives: 6 Better Options for Tech News (2026)",
+    title: "Google News alternatives for tech readers: 5 options",
     description:
-      "We tested 6 Google News alternatives that deliver better tech coverage for developers.",
+      "Techmeme, Feedly, Inoreader, Ground News and Hacker News compared on price, summaries and who each suits, plus Trace, which we make.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -67,14 +67,14 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Google News Alternatives: 6 Better Options for Tech News (2026)",
+    headline: "Google News alternatives for tech readers: 5 options",
     description:
-      "Comprehensive comparison of the best Google News alternatives for 2026. Covers Trace, Feedly, Techmeme, Inoreader, Ground News, and Hacker News with feature comparisons for tech professionals.",
+      "Techmeme, Feedly, Inoreader, Ground News and Hacker News compared on price, summaries and who each suits, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/google-news-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
     dateModified: "2026-10-19T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -85,24 +85,24 @@ export default function BlogPost() {
 
   const faqSchema = generateFAQSchema([
     {
-      question: "What is the best alternative to Google News?",
+      question: "What is a good alternative to Google News for tech?",
       answer:
-        "For tech news, Trace is the best Google News alternative. It aggregates from 100+ tech-specific sources with AI-powered summaries and topic grouping. For general news with bias awareness, Ground News is the top choice. For human-curated tech headlines, Techmeme is excellent.",
+        "For human-picked tech headlines, Techmeme. To choose every source yourself, Feedly or Inoreader. For comparing how outlets across the political spectrum cover a story, Ground News. For a short daily tech and AI brief, Trace, which we make: it reads 100+ tech sources, groups coverage of the same event into one story and summarizes it.",
     },
     {
       question: "Why would I switch from Google News?",
       answer:
-        "Google News is too broad and consumer-focused for tech professionals. It groups coverage under Full Coverage but does not summarize it, tech stories sit among general news, and its algorithm optimizes for engagement over relevance. Specialized alternatives like Trace deliver tech-specific coverage with multi-source synthesis.",
+        "Mostly because it is broad. Tech stories sit among general news, and Full Coverage groups an event's coverage but leaves you to read it outlet by outlet. A tech-focused reader or brief cuts that down.",
     },
     {
       question: "Is Google News free?",
       answer:
-        "Yes, Google News is completely free and ad-supported. Most alternatives also offer free tiers — Trace is free on Android/web, Feedly has a free plan with 100 sources, and Techmeme is free with ads.",
+        "Yes, Google News is free. Most alternatives here are free or have free plans: Techmeme and Hacker News are free, Feedly has a free plan with 100 sources, Inoreader has a free plan with 150 feeds, and Trace is free and open source.",
     },
     {
-      question: "Does Google News have AI summaries?",
+      question: "Which of these summarize the news?",
       answer:
-        "No, Google News does not offer AI-powered summaries as of 2026. Alternatives like Trace provide free multi-source AI summaries, while Feedly offers AI summaries on its Pro plan ($8/month).",
+        "Feedly's AI assistant, Leo, is on its Pro+ plan, and Inoreader's article summaries are on its Pro plan. Ground News summarizes how left, center and right coverage differs on stories with enough sources. Trace writes one short summary per story from all the outlets that covered it, free.",
     },
   ]);
 
@@ -135,22 +135,25 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Google News Alternatives: 6 Better Options for Tech News (2026)
+            Google News Alternatives for Tech Readers: 5 Options
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-06-22">June 22, 2026</time></span>
-            <span>12 min read</span>
+            <span>5 min read</span>
             <span>By <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:text-blue-400">Tarun Tomar</a></span>
           </div>
         </header>
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Google News is the default news app for billions of people. It&apos;s free,
-            it&apos;s pre-installed on every Android phone, and it covers everything. But
-            for tech professionals, it&apos;s the wrong tool for the job. Its coverage is
-            too broad, too consumer-focused, and lacks the AI-powered features that modern
-            news tools provide.
+            Google News is free, comes with most Android phones, and covers
+            everything. If you mainly follow tech, that breadth gets in the way:
+            the stories you want sit among general news. Below are five
+            alternatives that are narrower or give you more control, with what
+            each costs.
+          </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            We make Trace, so it&apos;s listed separately below.
           </p>
 
           <BlogEmailCard slug="google-news-alternatives" placement="intro" />
@@ -159,11 +162,10 @@ export default function BlogPost() {
             Why Look for Google News Alternatives?
           </h2>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li><strong>Too broad:</strong> Google News covers everything from celebrity gossip to local sports. Tech news is buried under general interest content.</li>
-            <li><strong>No AI summaries:</strong> You still have to read full articles to understand what&apos;s happening. No one-click TLDR.</li>
+            <li><strong>Too broad:</strong> Google News covers everything from celebrity news to local sports, so tech stories sit among general news.</li>
             <li><strong>Grouping without a summary:</strong> Full Coverage collects every outlet&apos;s version of a launch, but you still read them one by one to find out what happened.</li>
-            <li><strong>Algorithm-driven:</strong> The feed optimizes for engagement, not relevance to your work.</li>
-            <li><strong>No developer focus:</strong> No coverage of GitHub trending, Hacker News, Dev.to, or niche developer blogs.</li>
+            <li><strong>Picked for you:</strong> The feed is personalized by Google, and you have limited say over which sources appear.</li>
+            <li><strong>Thin on developer news:</strong> Niche developer blogs and smaller tech sources rarely show up.</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -181,12 +183,6 @@ export default function BlogPost() {
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech Professionals</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source summaries</td>
-                </tr>
-                <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Techmeme</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Industry Overview</td>
@@ -194,21 +190,21 @@ export default function BlogPost() {
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro+ only</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / Pro from €6.67/mo</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Ground News</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">$9.99/yr</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Bias-Aware Reading</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Coverage comparison</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Hacker News</td>
@@ -216,57 +212,37 @@ export default function BlogPost() {
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Community Picks</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td>
                 </tr>
+                <tr>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace (ours)</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">A daily tech and AI brief</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">One per story, across outlets</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace — Best Google News Alternative for Tech Professionals
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            Trace is purpose-built for tech news. It scans 100+ sources — TechCrunch,
-            The Verge, Ars Technica, Hacker News, Reddit, GitHub trending, and niche
-            developer blogs — and groups related coverage into topic pages with
-            multi-source AI summaries.
-          </p>
-          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>100+ curated tech sources (vs Google News&apos;s general coverage)</li>
-            <li>Multi-source AI summaries — what different publications agree on</li>
-            <li>Topic grouping shows all perspectives on one story</li>
-            <li>Community discussion links (Reddit, Hacker News)</li>
-            <li>10-minute morning catch-up, then you&apos;re done</li>
-          </ul>
-          <InlineTraceCTA
-            slug="google-news-alternatives"
-            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, and what actually changed. Every story included, free for everyone."
-          />
-
-          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            2. Techmeme — Best for Quick Industry Overview
+            1. Techmeme — Best for Quick Industry Overview
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (ad-supported)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Techmeme is the anti-algorithm. Human editors select and arrange the most
-            important tech stories of the day. You can scan the front page in 3-5
-            minutes and come away with a solid understanding of major industry stories.
+            Techmeme&apos;s front page is put together by human editors, who select and
+            arrange the day&apos;s main tech stories. You can scan it in a few minutes.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>Human-curated (no algorithm distortion)</li>
-            <li>Extremely high signal-to-noise ratio</li>
+            <li>Picked by human editors</li>
             <li>Related coverage links under each headline</li>
-            <li>Trusted by industry insiders</li>
+            <li>Free, on the web</li>
           </ul>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            3. Feedly — Best for Custom Source Control
+            2. Feedly — Best for Custom Source Control
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (100 sources) | Pro $8/month
+            <strong>Price:</strong> Free (100 sources) | paid Pro and Pro+ plans (AI on Pro+)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             If you want to choose exactly which sources appear in your feed, Feedly
@@ -275,10 +251,10 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            4. Inoreader — Best for Advanced Filtering
+            3. Inoreader — Best for Advanced Filtering
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (150 sources) | Pro $9.99/month
+            <strong>Price:</strong> Free (150 feeds) | Pro from €6.67/month billed yearly
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Inoreader&apos;s rules engine lets you create complex automation for filtering
@@ -287,19 +263,19 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            5. Ground News — Best for Bias-Aware Reading
+            4. Ground News — Best for Bias-Aware Reading
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> From $9.99/year
+            <strong>Price:</strong> Free plan | paid plans
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Ground News compares coverage across 50,000+ sources and shows media bias
-            ratings, blindspots, and ownership context. It&apos;s the best tool for
-            understanding how different outlets frame the same story.
+            ratings, blindspots, and ownership context. It is built for seeing how
+            different outlets frame the same story.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            6. Hacker News — Best for Community-Picked Tech Links
+            5. Hacker News — Best for Community-Picked Tech Links
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free
@@ -309,20 +285,46 @@ export default function BlogPost() {
             community, and the comment threads often add context the articles leave
             out. It is fast and text-only, but the front page leans toward a few
             topics and changes through the day. If that is too noisy, see our{" "}
-            <Link href="/blog/hacker-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Hacker News alternatives</Link>.
+            <Link href="/blog/developer-news-aggregator-guide" className="text-blue-600 dark:text-blue-400 hover:underline">guide to developer news aggregators</Link>.
           </p>
+
+          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            The one we make: Trace
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            <strong>Price:</strong> Free, open source
+          </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Trace covers tech and AI only. It reads 100+ tech sources, such as
+            TechCrunch, The Verge and Ars Technica, groups coverage of the same
+            event into one story, and writes a short summary with links to each
+            original report. You read it on the web or as a daily email at 08:30
+            UK time.
+          </p>
+          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
+            <li>100+ tech sources instead of general news</li>
+            <li>One summary per story, written from several outlets</li>
+            <li>Links to each original report under the summary</li>
+            <li>Choose your topics and 5, 10 or 15 stories, then you&apos;re done</li>
+          </ul>
+          <InlineTraceCTA
+            slug="google-news-alternatives"
+            blurb="Trace is a tech and AI brief that ends: model releases, company news and what changed, one story per event, with links to each original report. Free for everyone."
+          />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             The Bottom Line
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Google News is fine for general browsing. But if you work in tech, you need
-            a tool designed for tech news. <strong>Trace</strong> gives you AI-curated
-            multi-source summaries from 100+ tech sources in 10 minutes. <strong>Techmeme</strong>{" "}
-            gives you human-curated industry headlines in 3 minutes. Both are free.
+            Google News is fine for general browsing. For tech, <strong>Techmeme</strong>{" "}
+            gives you human-picked industry headlines in a few minutes, and{" "}
+            <strong>Feedly</strong> or <strong>Inoreader</strong> let you choose every
+            source. <strong>Trace</strong> (ours) gives you one summary per story
+            from 100+ tech sources. All of them can be used free.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            Try one for a week. You&apos;ll wonder why you ever used Google News for tech.
+            Try one for a week alongside Google News and keep whichever you open
+            more.
           </p>
 
           <BlogEmailCard slug="google-news-alternatives" placement="end" />

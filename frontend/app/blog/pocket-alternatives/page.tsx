@@ -10,6 +10,7 @@ import {
   generateBreadcrumbSchema,
   generateFAQSchema,
 } from "@/lib/seo";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -17,7 +18,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Pocket Alternatives: 6 Better Apps for 2026 | Trace",
+  robots: NOINDEX_ROBOTS,
+  title: "Pocket Alternatives: 5 Read-It-Later Apps and Trace | Trace",
   description:
     "Pocket shut down in 2025. Compare 6 read-it-later and briefing apps — Trace, Instapaper, Raindrop — so saved articles actually get read.",
   keywords: [
@@ -37,7 +39,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Pocket Alternatives: 6 Better Read-It-Later Apps for 2026",
+    title: "Pocket Alternatives: 5 Read-It-Later Apps and Trace",
     description:
       "Pocket is gone. We compare 6 Pocket alternatives for saving articles, catching up on tech news, and clearing your reading pile.",
     url: `${SITE_BASE_URL}/blog/pocket-alternatives`,
@@ -57,9 +59,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pocket Alternatives: 6 Better Read-It-Later Apps for 2026",
+    title: "Pocket Alternatives: 5 Read-It-Later Apps and Trace",
     description:
-      "Pocket is gone. Here are 6 better read-it-later apps and workflows for 2026.",
+      "Pocket is gone. Five read-it-later apps, plus Trace, which we make.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -67,14 +69,14 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Pocket Alternatives: 6 Better Read-It-Later Apps for 2026",
+    headline: "Pocket Alternatives: 5 Read-It-Later Apps and Trace",
     description:
-      "Comprehensive comparison of the best Pocket alternatives for 2026. Covers Trace, Instapaper, Raindrop.io, Readwise Reader, Matter, and Wallabag with feature comparisons.",
+      "Pocket alternatives compared: Instapaper, Raindrop.io, Readwise Reader, Matter and Wallabag, plus Trace, which we make.",
     url: `${SITE_BASE_URL}/blog/pocket-alternatives`,
     datePublished: "2026-09-04T00:00:00Z",
     dateModified: "2026-09-04T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
@@ -87,7 +89,7 @@ export default function BlogPost() {
     {
       question: "What is the best Pocket replacement?",
       answer:
-        "For most former Pocket users, the best replacement depends on the habit. If your saved pile was mostly tech news, Trace is the best fit because it summarizes 100+ tech sources into a 10-minute briefing, so there is less to save. If you want a classic save-for-later queue, Instapaper and Raindrop.io are strong free options.",
+        "It depends on the habit. If you want a classic save-for-later queue, Instapaper and Raindrop.io have free plans, and Wallabag is open source. If your saved pile was mostly tech news, Trace, which we make, summarizes 100+ tech sources into a short daily brief, so there is less to save.",
     },
     {
       question: "What happened to Pocket?",
@@ -131,7 +133,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Pocket Alternatives: 6 Better Read-It-Later Apps for 2026
+            Pocket Alternatives: 5 Read-It-Later Apps and Trace
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-09-04">September 4, 2026</time></span>
@@ -176,7 +178,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=pocket-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Replacing the queue</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source summaries</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=pocket-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link> (ours)</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free, open source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Replacing the queue</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source summaries</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Instapaper</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / premium tiers</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Classic read-it-later</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Distraction-free reading</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Raindrop.io</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Bookmarks manager</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Collections and search</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Readwise Reader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Highlights sync</td></tr>
@@ -187,13 +189,13 @@ export default function BlogPost() {
           </div>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace: Best for Never Needing Read-It-Later
+            1. Trace (ours): Less to Save for Tech News
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free, open source
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            To be honest, Trace replaces the habit, not the feature. Instead of
+            Trace, which we make, replaces the habit, not the feature. Instead of
             saving ten tabs about the same launch, it scans 100+ tech sources,
             groups related coverage by topic, and gives you multi-source
             summaries. The daily tech briefing takes about 10 minutes, so there
@@ -292,7 +294,7 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The Best Tech News Aggregator Apps in 2026 →</Link></li>
+              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">Tech news aggregator apps: 7 compared →</Link></li>
               <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Feedly Alternatives: 7 Free Options Worth Trying →</Link></li>
               <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News Alternatives: 6 Better Options for Tech News →</Link></li>
             </ul>

@@ -10,8 +10,8 @@ import LandingAuthRedirect from './LandingAuthRedirect';
 import { listDailyEditions } from '@/lib/daily-editions';
 
 export const metadata: Metadata = {
-  title: "Fastest way to catch up on tech & AI news | Trace",
-  description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
+  title: "Trace: free daily tech and AI news digest",
+  description: "Trace reads 100+ tech sources, merges coverage of each event into one story and links every report. Free daily feed and 08:30 UK email. Open source.",
   keywords: [
     "AI news aggregator",
     "tech news aggregator",
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Fastest way to catch up on tech & AI news | Trace",
-    description: "100+ tech sources, 10 stories, 5 minutes. Every morning, free.",
+    title: "Trace: free daily tech and AI news digest",
+    description: "Trace reads 100+ tech sources, merges coverage of each event into one story and links every report. Free daily feed and 08:30 UK email. Open source.",
     url: "https://www.yourtrace.online",
     type: "website",
     images: [
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image?v=redesign-2026-10",
         width: 1200,
         height: 630,
-        alt: "Fastest way to catch up on tech & AI news | Trace",
+        alt: "Trace: free daily tech and AI news digest",
       },
     ],
   },

@@ -10,6 +10,7 @@ import { BlogEmailCard, InlineTraceCTA, StickyBlogBar } from "@/components/BlogC
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../content";
 import { standaloneBlogPosts } from "../standalone-content";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 import {
   DEFAULT_OG_IMAGE,
   DEFAULT_OPEN_GRAPH,
@@ -102,6 +103,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: url
     },
+    // Thin or off-topic posts stay readable and keep passing links, out of Google (lib/indexing.ts).
+    ...(post.noindex ? { robots: NOINDEX_ROBOTS } : {}),
     openGraph: {
       title: post.title,
       description: post.excerpt,
@@ -148,8 +151,9 @@ export default async function BlogPostPage({ params }: PageProps) {
     "datePublished": publishedIso,
     "dateModified": modifiedIso,
     "author": {
-      "@type": "Organization",
+      "@type": "Person",
       "name": post.author,
+      "url": "https://www.yourtrace.online/about",
     },
     "publisher": {
       "@type": "Organization",
@@ -214,14 +218,14 @@ export default async function BlogPostPage({ params }: PageProps) {
             <h1 className="bl-title">{post.title}</h1>
             <p className="bl-deck">{post.subtitle}</p>
             <div className="bl-byline">
-              <span>{post.author}</span>
+              <span><Link href="/about">{post.author}</Link></span>
               <span>
                 <Clock size={14} aria-hidden="true" />
                 {post.readTime}
               </span>
               <span>
                 <Calendar size={14} aria-hidden="true" />
-                {post.date}
+                {post.updated && post.updated !== post.date ? `Updated ${post.updated}` : post.date}
               </span>
             </div>
           </header>

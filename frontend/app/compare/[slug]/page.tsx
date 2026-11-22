@@ -15,6 +15,7 @@ import {
 import { HOME_CSS } from "@/lib/home-css";
 import { COMPARE_CSS } from "@/lib/compare-css";
 import { HOME_FONT_VARS } from "@/lib/home-fonts";
+import { INDEXED_COMPARE_SLUGS, NOINDEX_ROBOTS } from "@/lib/indexing";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: page.title,
     description: page.description,
+    ...(INDEXED_COMPARE_SLUGS.has(page.slug) ? {} : { robots: NOINDEX_ROBOTS }),
     alternates: {
       canonical,
     },

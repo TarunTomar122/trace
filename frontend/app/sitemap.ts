@@ -3,10 +3,9 @@ import { blogPosts } from './blog/content'
 import { standaloneBlogPosts } from './blog/standalone-content'
 import { adminFirestore } from '@/lib/firebase-admin'
 import { comparePages } from './compare/content'
-import { solutionsContent } from './solutions/content'
-import { useCasesContent } from './use-cases/content'
 import { newslettersContent } from './newsletters/content'
 import { listEditionDates } from '@/lib/daily-editions'
+import { INDEXED_COMPARE_SLUGS } from '@/lib/indexing'
 
 // Rebuilt hourly: a new /brief edition is published every morning.
 export const revalidate = 3600
@@ -177,6 +176,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     },
     {
+      url: `${baseUrl}/about`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
       url: `${baseUrl}/how-it-works`,
       changeFrequency: 'monthly',
       priority: 0.8,
@@ -217,22 +221,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/blog/category/comparisons`, changeFrequency: 'weekly' as const, priority: 0.8 },
     { url: `${baseUrl}/blog/category/guides`, changeFrequency: 'weekly' as const, priority: 0.8 },
     { url: `${baseUrl}/blog/category/ai-tools`, changeFrequency: 'weekly' as const, priority: 0.8 },
-    { url: `${baseUrl}/blog/category/research`, changeFrequency: 'weekly' as const, priority: 0.8 },
+    // research: every post in it is noindexed, so the archive is too.
   ];
 
   const blogPages: MetadataRoute.Sitemap = [
-    ...blogPosts.map((post) => {
+    // Noindexed posts (lib/indexing.ts) stay out; a post with no parseable date gets no lastmod
+    // rather than "now", which would tell Google every page changed on every build.
+    ...blogPosts.filter((post) => !post.noindex).map((post) => {
       const changed = Date.parse(post.updated || post.date)
       const isRecent = Number.isFinite(changed) && changed > Date.now() - 45 * 24 * 60 * 60 * 1000
       return {
         url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: Number.isFinite(changed) ? new Date(changed) : new Date(),
+        ...(Number.isFinite(changed) ? { lastModified: new Date(changed) } : {}),
         changeFrequency: (isRecent ? 'weekly' : 'monthly') as 'weekly' | 'monthly',
         priority: isRecent ? 0.85 : 0.7,
       }
     }),
     ...standaloneBlogPosts
-      .filter((post) => !blogPosts.some((candidate) => candidate.slug === post.slug))
+      .filter((post) => !post.noindex && !blogPosts.some((candidate) => candidate.slug === post.slug))
       .map((post) => ({
         url: `${baseUrl}/blog/${post.slug}`,
         lastModified: new Date(post.updated || post.date),
@@ -242,23 +248,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...blogCategoryArchives,
   ];
 
-  const compareDetailPages: MetadataRoute.Sitemap = comparePages.map((page) => ({
+  const compareDetailPages: MetadataRoute.Sitemap = comparePages.filter((page) => INDEXED_COMPARE_SLUGS.has(page.slug)).map((page) => ({
     url: `${baseUrl}/compare/${page.slug}`,
     changeFrequency: 'weekly' as const,
     priority: 0.72,
   }));
 
-  const solutionsDetailPages: MetadataRoute.Sitemap = solutionsContent.map((page) => ({
-    url: `${baseUrl}/solutions/${page.slug}`,
-    changeFrequency: 'weekly' as const,
-    priority: 0.72,
-  }));
 
-  const useCasesDetailPages: MetadataRoute.Sitemap = useCasesContent.map((page) => ({
-    url: `${baseUrl}/use-cases/${page.slug}`,
-    changeFrequency: 'weekly' as const,
-    priority: 0.72,
-  }));
 
   const newslettersDetailPages: MetadataRoute.Sitemap = newslettersContent.map((page) => ({
     url: `${baseUrl}/newsletters/${page.slug}`,
@@ -273,8 +269,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...dailyPages,
     ...blogPages,
     ...compareDetailPages,
-    ...solutionsDetailPages,
-    ...useCasesDetailPages,
+    // /solutions/x and /use-cases/x detail pages are noindexed templates (lib/indexing.ts).
     ...newslettersDetailPages,
     ...articlePages,
   ];

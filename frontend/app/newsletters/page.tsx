@@ -12,13 +12,13 @@ import { HOME_FONT_VARS } from "@/lib/home-fonts";
 export const metadata: Metadata = {
   title: "Tech Newsletter Reviews & Comparisons | Trace",
   description:
-    "Honest reviews of the most popular tech newsletters. See ratings, pros, cons, and whether each one is worth your inbox space.",
+    "Notes on popular tech newsletters: what each covers, how often it arrives, and its pros and cons, so you can decide if it fits your inbox.",
   alternates: { canonical: "https://www.yourtrace.online/newsletters" },
   openGraph: {
     ...DEFAULT_OPEN_GRAPH,
     title: "Tech Newsletter Reviews & Comparisons | Trace",
     description:
-      "Honest reviews of popular tech newsletters. Ratings, pros, and cons help you see which are worth your inbox space.",
+      "Notes on popular tech newsletters: what each covers, how often it arrives, and its pros and cons.",
     url: "https://www.yourtrace.online/newsletters",
     siteName: "Trace",
     type: "website",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Tech Newsletter Reviews & Comparisons | Trace",
     description:
-      "Honest reviews of popular tech newsletters. See which are worth your time.",
+      "Notes on popular tech newsletters: coverage, frequency, pros and cons.",
     images: [DEFAULT_TWITTER_IMAGE],
   },
 };
@@ -44,11 +44,11 @@ export default function NewslettersHubPage() {
             <p className="hp-kicker">Newsletter reviews</p>
             <h1 className="hp-h1">
               Tech newsletters,{" "}<br className="hidden sm:block" />
-              actually reviewed
+              with pros and cons
             </h1>
             <p className="hp-hero-p">
-              Most &ldquo;best newsletters&rdquo; lists are just links. These are real reviews with ratings,
-              pros, cons, and honest takes on whether each one earns its inbox real estate.
+              These pages say what each popular tech newsletter covers, how often it
+              arrives, and its pros and cons, so you can decide whether it fits your inbox.
             </p>
             <div className="hp-btns">
               <Link href="/compare" className="hp-btn hp-btn-line">
@@ -71,12 +71,6 @@ export default function NewslettersHubPage() {
               >
                 <div className="nl-card-top">
                   <span className="nl-tag">Review</span>
-                  <span className="nl-rate">
-                    <span className="nl-stars" role="img" aria-label={`${item.rating} out of 5 stars`}>
-                      {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
-                    </span>
-                    <span aria-hidden="true">{item.rating}/5</span>
-                  </span>
                 </div>
                 <h2 className="nl-card-title">
                   {item.name}

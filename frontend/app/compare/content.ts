@@ -97,7 +97,7 @@ export const comparePages: ComparePage[] = [
     comparisonRows: [
       {
         label: "Signal extraction",
-        trace: "Grouped topics with source counts, summaries, and timelines",
+        trace: "One story per event, with a short summary and links to each report",
         alternative: "More headlines and more links",
       },
       {
@@ -132,27 +132,27 @@ export const comparePages: ComparePage[] = [
       {
         question: "Is Trace free?",
         answer:
-          "Yes. Trace is free for everyone and open source. Every story, Pulse, the archive, agent access, a personalized feed, and the optional daily email brief are all included.",
+          "Yes. Trace is free for everyone and open source, with no paid tiers. Every story, Pulse, the archive, read-only agent access, your topics, and the optional daily email are all included.",
       },
     ],
   },
   {
     slug: "hacker-news-digest",
-    relatedRoundup: { href: "/blog/hacker-news-alternatives", label: "Beyond Hacker News: 6 better ways to follow developer news" },
+    relatedRoundup: { href: "/blog/developer-news-aggregator-guide", label: "What is a developer news aggregator?" },
     related: ["best-tech-news-app", "ai-news-aggregator", "trace-vs-manual-reading"],
     title: "Hacker News Digest Without The Noise | Trace",
     description:
-      "Trace surfaces the best Hacker News discussions alongside related coverage so you get the signal without refreshing the front page all day.",
-    heroTitle: "A Hacker News digest that gives you context, not just links",
+      "Trace's Top articles tab picks the day's best links from Hacker News and Lobsters, next to a short brief of tech news from 100+ sources.",
+    heroTitle: "A daily pick of Hacker News links, next to the day's tech news",
     heroDescription:
-      "HN is great for discovery. Trace is better when you want the top threads grouped with the stories they reference — without spending an hour on the front page.",
+      "HN is great for discovery. Trace is for the days you want the best links once a day, alongside a short brief of what happened in tech, without checking the front page all day.",
     intro:
-      "Hacker News rewards curiosity, but it also rewards constant checking. Trace pulls the highest-signal discussions and groups them with the original coverage so you see the full picture in minutes.",
+      "Hacker News rewards curiosity, but it also rewards constant checking. Trace's Top articles tab collects the day's best links from Hacker News and Lobsters in one list, and its brief groups tech coverage from 100+ sources into short stories. It links the articles themselves, not the comment threads.",
     comparisonTitle: "Trace vs browsing Hacker News directly",
     comparisonRows: [
       {
         label: "How you catch up",
-        trace: "Grouped stories with community reactions attached",
+        trace: "One daily list of top links, plus a short brief of grouped stories",
         alternative: "Scroll the front page and click into each thread",
       },
       {
@@ -162,7 +162,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Best for",
-        trace: "Busy people who still want HN signal",
+        trace: "Busy people who want the best links once a day",
         alternative: "People who enjoy the browsing ritual",
       },
     ],
@@ -170,24 +170,24 @@ export const comparePages: ComparePage[] = [
       {
         title: "What Trace adds to HN",
         body:
-          "Trace does not replace Hacker News. It layers HN discussions on top of coverage from other sources so you see what people are saying and what actually happened in one view.",
+          "Trace does not replace Hacker News. The Top articles tab saves you from checking the front page through the day, and the brief adds what tech media reported, grouped so each event appears once with links to each original report.",
       },
       {
         title: "When HN alone is enough",
         body:
-          "If you love reading deep comment threads and discovering links organically, HN is still unmatched. Trace is for the days when you just want the digest.",
+          "If you come to HN for the comment threads, read HN. Trace does not show or summarize comments. It is for the days when you just want the links and the news.",
       },
     ],
     faq: [
       {
-        question: "Does Trace pull all HN threads?",
+        question: "Does Trace show every HN post?",
         answer:
-          "No. Trace focuses on high-signal discussions — threads with meaningful debate, not every Show HN or Ask HN post.",
+          "No. Top articles is a short daily list picked from Hacker News, Show HN and Lobsters, with a cap per source. Text-only posts such as Ask HN are left out because they have no article to link.",
       },
       {
-        question: "Can I still click through to HN?",
+        question: "Does Trace link to HN comment threads?",
         answer:
-          "Yes. Trace links back to the original thread so you can dive into comments when you want to.",
+          "No. Trace links the article itself. If you want the discussion, look the story up on Hacker News.",
       },
     ],
   },
@@ -197,10 +197,10 @@ export const comparePages: ComparePage[] = [
     related: ["trace-vs-substack-reader", "trace-vs-meco", "trace-vs-email-filters"],
     title: "Morning Brew For Tech People | Trace",
     description:
-      "Trace is a tech-focused alternative to Morning Brew — deeper coverage, community signal, and product launches instead of general business headlines.",
+      "Trace is a tech-focused alternative to Morning Brew: a free daily brief of tech and AI news from 100+ sources instead of general business headlines.",
     heroTitle: "A Morning Brew alternative built specifically for people in tech",
     heroDescription:
-      "Morning Brew is great for general business. Trace is built for the person who cares about AI, developer tools, product launches, and what the tech community is actually debating.",
+      "Morning Brew is great for general business. Trace is built for the person who cares about AI, developer tools, startups and product launches.",
     intro:
       "Morning Brew helped normalize the idea of a daily brief. But if your world is tech — AI, infrastructure, developer tools, startups — you need signal from different sources. Trace is that brief.",
     comparisonTitle: "Trace vs Morning Brew",
@@ -212,7 +212,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Sources",
-        trace: "100+ tech sources including HN, Reddit, Product Hunt, GitHub",
+        trace: "100+ tech sources, from tech media to company and developer blogs",
         alternative: "Mainstream business publications",
       },
       {
@@ -225,7 +225,7 @@ export const comparePages: ComparePage[] = [
       {
         title: "Why tech people need a different brief",
         body:
-          "In tech, the important story might break on a GitHub repo, a Show HN post, or a Reddit thread before any publication covers it. Trace watches those sources so you do not have to.",
+          "In tech, the important story often starts on a company blog, a release page or a developer site before business media pick it up. Trace reads 100+ tech sources and groups each event into one story, so you do not have to check them yourself.",
       },
       {
         title: "When Morning Brew is still the right fit",
@@ -237,38 +237,38 @@ export const comparePages: ComparePage[] = [
       {
         question: "Is Trace an email newsletter?",
         answer:
-          "Trace has a daily email, but the core product is a web and mobile app with grouped topics, community signal, and product launches — more than a newsletter can carry.",
+          "Partly. Trace sends an optional daily email at 08:30 UK time, and the same stories are on the web feed, with an archive of past briefs.",
       },
       {
         question: "Can I use both Trace and Morning Brew?",
         answer:
-          "Absolutely. Many readers use Morning Brew for business context and Trace for deeper tech signal. They complement each other.",
+          "Yes. Morning Brew covers business and markets; Trace covers tech and AI. They overlap little.",
       },
     ],
   },
   {
     slug: "ai-news-aggregator",
-    relatedRoundup: { href: "/blog/best-ai-news-apps-2026", label: "Best AI news apps in 2026: 6 apps compared" },
+    relatedRoundup: { href: "/blog/best-ai-news-apps-2026", label: "AI news apps: 6 compared on price and platforms" },
     related: ["best-tech-news-app", "hacker-news-digest", "trace-vs-google-news"],
     title: "AI News Aggregator With Real Context | Trace",
     description:
-      "Trace aggregates AI news from research papers, product launches, and community discussions into grouped daily topics instead of an endless link feed.",
-    heroTitle: "An AI news aggregator that groups the chaos into context",
+      "Trace groups AI and tech news from 100+ sources into one story per event, with a short summary and links to each original report.",
+    heroTitle: "An AI news aggregator that groups each story once",
     heroDescription:
-      "AI moves fast. Trace groups coverage from research, product, and community sources into one daily view so you can follow the important shifts without drowning.",
+      "AI moves fast. Trace groups coverage of the same event from 100+ tech sources into one story, so you can follow what changed without reading it five times.",
     intro:
-      "The AI space generates more content than any single person can follow. New models, new benchmarks, new tools, new debates — every day. Trace is built to compress that into signal you can actually use.",
+      "The AI space generates more content than any single person can follow. New models, new benchmarks, new tools — every day. Trace is built to compress that into one short daily brief.",
     comparisonTitle: "Trace vs other AI news sources",
     comparisonRows: [
       {
         label: "Coverage model",
-        trace: "Grouped topics across papers, products, threads, and launches",
+        trace: "One story per event, grouped across outlets",
         alternative: "Individual articles or feeds",
       },
       {
-        label: "Community signal",
-        trace: "HN, Reddit, and X discussions layered into stories",
-        alternative: "Usually absent or separate",
+        label: "Sources",
+        trace: "Links to each original report under the summary",
+        alternative: "One article at a time",
       },
       {
         label: "Best for",
@@ -280,7 +280,7 @@ export const comparePages: ComparePage[] = [
       {
         title: "Why AI needs better aggregation",
         body:
-          "A single model release might generate a paper, three blog posts, five Reddit threads, a Product Hunt launch, and a Twitter discourse cycle — all in 24 hours. Trace groups all of that into one topic page.",
+          "A single model release might produce a company post, a paper and a dozen news articles in a day. Trace groups that coverage into one story with a short summary and a link to each report.",
       },
       {
         title: "What Trace does not cover",
@@ -292,18 +292,18 @@ export const comparePages: ComparePage[] = [
       {
         question: "Does Trace cover AI research papers?",
         answer:
-          "Trace surfaces research when it becomes part of the broader tech conversation — papers that get discussed on HN, Reddit, or that ship as products. It is not an arxiv mirror.",
+          "Papers show up when the sources Trace reads cover them, for example a model release with a paper behind it. It is not an arXiv mirror.",
       },
       {
         question: "How often is AI content updated?",
         answer:
-          "Daily. Trace generates a fresh pulse every day with the latest AI stories, discussions, and launches grouped by topic.",
+          "Daily. The brief is rebuilt every morning, and the optional email goes out at 08:30 UK time.",
       },
     ],
   },
   {
     slug: "trace-vs-readwise-reader",
-    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 5 read-it-later apps" },
     related: ["trace-vs-matter", "trace-vs-pocket", "trace-vs-substack-reader"],
     title: "Trace vs Readwise Reader | Comparison & Alternative | Trace",
     description:
@@ -357,18 +357,18 @@ export const comparePages: ComparePage[] = [
       {
         question: "Can I use both Trace and Readwise Reader?",
         answer:
-          "Yes — many readers use Trace for their morning catch-up and Reader for articles they want to go deep on later. They serve different moments in the day.",
+          "Yes. Trace fits a morning catch-up and Reader fits articles you want to go deep on later. They serve different moments in the day.",
       },
       {
         question: "Does Trace have highlighting or notes?",
         answer:
-          "No. Trace provides AI summaries and timelines. You read the brief and move on. If you want to annotate full articles, Readwise Reader is better suited.",
+          "No. Trace gives you short summaries with links to the original reports. You read the brief and move on. If you want to annotate full articles, Readwise Reader is better suited.",
       },
     ],
   },
   {
     slug: "trace-vs-inoreader",
-    relatedRoundup: { href: "/blog/inoreader-alternatives", label: "Inoreader alternatives: 8 options compared" },
+    relatedRoundup: { href: "/blog/inoreader-alternatives", label: "Inoreader alternatives: 7 readers and their free plans" },
     related: ["rss-reader-alternative", "trace-vs-readwise-reader", "trace-vs-google-news"],
     title: "Trace vs Inoreader | Comparison & Alternative | Trace",
     description:
@@ -387,7 +387,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "What you see each day",
-        trace: "Grouped stories with summaries and community context",
+        trace: "Grouped stories with summaries and links to each report",
         alternative: "Individual articles sorted by feed or time",
       },
       {
@@ -422,7 +422,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Does Trace replace an RSS reader?",
         answer:
-          "For most people — yes. Trace covers the 80% use case: knowing what happened today across tech. If you have niche, must-track feeds, an RSS tool like Inoreader is still valuable.",
+          "Only if what you want is knowing what happened today in tech. Trace does not follow your own feeds or import OPML. If you have niche, must-track feeds, an RSS reader like Inoreader is still the right tool.",
       },
       {
         question: "Can I add specific feeds to Trace?",
@@ -440,14 +440,14 @@ export const comparePages: ComparePage[] = [
       "Trace vs Substack's reader — a newsletter-first reading app vs a daily tech briefing. See which keeps you better informed with less time.",
     heroTitle: "Trace vs Substack Reader: inbox deep-dive or daily signal?",
     heroDescription:
-      "Substack's reader is great for following writers you love. Trace compresses the broader tech conversation — newsletters, communities, and launches — into one brief.",
+      "Substack's reader is great for following writers you love. Trace compresses the day's tech news from 100+ sources into one brief.",
     intro:
-      "Substack Reader is built for the newsletter era — follow writers, read in a clean interface, discover new voices. Trace covers a wider lens: newsletters plus HN, Reddit, X, Product Hunt, GitHub, and tech media — all in one view.",
+      "Substack Reader is built for the newsletter era — follow writers, read in a clean interface, discover new voices. Trace covers a wider lens: 100+ tech sources, from tech media to company and developer blogs, in one brief.",
     comparisonTitle: "Trace vs Substack Reader",
     comparisonRows: [
       {
         label: "Content scope",
-        trace: "Newsletters + communities + launches + media",
+        trace: "100+ tech sources across media and blogs",
         alternative: "Substack newsletters only",
       },
       {
@@ -457,7 +457,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Discovery",
-        trace: "AI and community signal rank what matters",
+        trace: "Stories ranked for you, around the topics you pick",
         alternative: "Writer recommendations and Substack's algorithm",
       },
       {
@@ -475,12 +475,12 @@ export const comparePages: ComparePage[] = [
       {
         title: "Different content universes",
         body:
-          "Substack Reader only shows Substack newsletters. If all your trusted sources are on Substack, it works great. Trace pulls from many more surfaces — including the community discussions and launches that newsletters often cite.",
+          "Substack Reader only shows Substack newsletters. If all your trusted sources are on Substack, it works great. Trace reads a wider set of tech sources, including many of the reports newsletters cite.",
       },
       {
         title: "The aggregation advantage",
         body:
-          "When five Substack writers cover the same launch, you read it five times. Trace groups those into one story with links to each writer's take. You get the range of perspectives without the redundant reading.",
+          "When five outlets cover the same launch, you read it five times. Trace groups those into one story with links to each report, so you read it once and open the originals you care about.",
       },
     ],
     faq: [
@@ -490,15 +490,15 @@ export const comparePages: ComparePage[] = [
           "Not necessarily. Trace covers the daily catch-up — what happened today. If you enjoy specific writers' deep dives, keep those subscriptions. Trace reduces the number you need for awareness.",
       },
       {
-        question: "Does Trace include Substack content?",
+        question: "Can I add my Substack subscriptions to Trace?",
         answer:
-          "Trace's sources include many Substack writers that are part of the tech conversation. Their takes appear alongside coverage from other platforms.",
+          "No. Trace reads its own set of sources and you pick topics, not writers. Keep Substack for the writers you read for their voice.",
       },
     ],
   },
   {
     slug: "trace-vs-matter",
-    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 5 read-it-later apps" },
     related: ["trace-vs-readwise-reader", "trace-vs-pocket", "trace-vs-substack-reader"],
     title: "Trace vs Matter | Comparison & Alternative | Trace",
     description:
@@ -517,7 +517,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Social layer",
-        trace: "Community signal informs what's surfaced",
+        trace: "None — one brief, no social features",
         alternative: "See what your friends are reading and highlighting",
       },
       {
@@ -570,7 +570,7 @@ export const comparePages: ComparePage[] = [
       "Trace vs Meco — a newsletter aggregator vs a daily tech briefing. See which fits your morning reading habit better.",
     heroTitle: "Trace vs Meco: newsletter inbox or daily aggregator?",
     heroDescription:
-      "Meco moves newsletters out of your email into a dedicated reading app. Trace moves the best of newsletters — plus communities and launches — into a daily brief.",
+      "Meco moves newsletters out of your email into a dedicated reading app. Trace reads 100+ tech sources and gives you one daily brief instead.",
     intro:
       "Meco solves a real problem: newsletters are great, but they clutter your inbox. Meco gives them a dedicated space. Trace solves the next problem: even in a dedicated app, you're still reading multiple newsletters covering the same stories.",
     comparisonTitle: "Trace vs Meco",
@@ -587,7 +587,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Content sources",
-        trace: "Newsletters + communities + launches + media",
+        trace: "100+ tech sources across media and blogs",
         alternative: "Newsletters only",
       },
       {
@@ -622,7 +622,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Will Trace replace my need for newsletters?",
         answer:
-          "For daily awareness — yes. Many Trace readers reduce their newsletter subscriptions after a few weeks. Keep the ones you read for voice or analysis, not for news.",
+          "For daily news, it can. Keep the newsletters you read for voice or analysis, not for news.",
       },
     ],
   },
@@ -637,7 +637,7 @@ export const comparePages: ComparePage[] = [
     heroDescription:
       "The most common tech reading workflow is also the worst: open 10 tabs, scan headlines, read partial articles, close half. Trace replaces that with a 10-minute daily brief.",
     intro:
-      "Most tech professionals don't use any tool for news. They have a morning routine: open HN, Reddit, Twitter, a few newsletters, maybe Product Hunt. The time adds up, the signal is inconsistent, and nobody feels caught up. Trace is built to replace this manual workflow.",
+      "Many people in tech don't use any tool for news. They have a morning routine: open a few sites, social feeds and newsletters. The time adds up, the coverage is uneven, and it is hard to feel caught up. Trace is built to replace this manual workflow.",
     comparisonTitle: "Trace vs Manual Reading",
     comparisonRows: [
       {
@@ -647,7 +647,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Consistency",
-        trace: "Every story gets the same treatment — summary, timeline, sources",
+        trace: "Every story gets the same treatment — a short summary and its sources",
         alternative: "Depends on your energy and free time that day",
       },
       {
@@ -670,7 +670,7 @@ export const comparePages: ComparePage[] = [
       {
         title: "The hidden cost of manual reading",
         body:
-          "Opening tabs is free in the moment but expensive over time. Context switching between platforms, re-reading duplicates, and deciding what to click costs 30-60 minutes a day. Over a year, that's 180-360 hours spent on a habit that often leaves you feeling less informed, not more.",
+          "Opening tabs is free in the moment but expensive over time. Switching between sites, re-reading duplicates, and deciding what to click adds up. At 30 minutes a day, that is more than 180 hours a year.",
       },
       {
         title: "What you actually keep",
@@ -682,12 +682,12 @@ export const comparePages: ComparePage[] = [
       {
         question: "Does Trace cover everything I manually check?",
         answer:
-          "Trace covers the major tech news surfaces: HN, Reddit, Twitter/X, Product Hunt, GitHub, and major tech media. If you follow very niche Discord servers or small forums, those won't be covered.",
+          "Trace reads 100+ tech sources, from major tech media to company and developer blogs, and its Top articles tab picks the best links from Hacker News and Lobsters. It does not cover social feeds, Discord servers or small forums.",
       },
       {
         question: "Is it worth switching from my manual routine?",
         answer:
-          "Try Trace for a week alongside your manual routine. Compare how much you actually learned from each. Most people find the brief gives them 90% of the signal in 20% of the time.",
+          "Try Trace for a week alongside your manual routine and compare how much you got from each, and how long each took.",
       },
     ],
   },
@@ -697,12 +697,12 @@ export const comparePages: ComparePage[] = [
     related: ["trace-vs-meco", "trace-vs-substack-reader", "trace-vs-manual-reading"],
     title: "Trace vs Email Filters | Automated Briefing | Trace",
     description:
-      "Trace vs setting up email filters and alerts for tech news. Which gives you better signal with less maintenance?",
+      "Trace vs setting up email filters and Google Alerts for tech news: a daily brief with no rules to maintain, or keyword rules you control.",
     heroTitle: "Trace vs email filters and Google Alerts for tech news",
     heroDescription:
-      "Some people hack together email filters, Google Alerts, and IFTTT rules. Trace replaces that Rube Goldberg machine with a clean daily brief.",
+      "Some people hack together email filters, Google Alerts, and IFTTT rules. Trace replaces that setup with one daily brief for tech news.",
     intro:
-      "The DIY approach to staying informed: Google Alerts for keywords, email filters for newsletters, IFTTT to pipe RSS into email, and a complex folder system to manage it all. It works — until it doesn't. Trace gives you the same outcome with zero maintenance.",
+      "The DIY approach to staying informed: Google Alerts for keywords, email filters for newsletters, IFTTT to pipe RSS into email, and a complex folder system to manage it all. It works — until it doesn't. Trace gives you a daily brief of tech news with nothing to maintain. It does not watch keywords or send alerts.",
     comparisonTitle: "Trace vs Email Filters and Alerts",
     comparisonRows: [
       {
@@ -717,12 +717,12 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Noise control",
-        trace: "AI ranks stories by signal automatically",
+        trace: "Stories grouped and ranked for you; you pick topics and length",
         alternative: "You write rules, but false positives are common",
       },
       {
         label: "Context",
-        trace: "Stories include summaries, timelines, and community takes",
+        trace: "Each story has a short summary and links to each report",
         alternative: "Raw links or article excerpts — you provide the context",
       },
       {
@@ -740,25 +740,25 @@ export const comparePages: ComparePage[] = [
       {
         title: "The maintenance tax",
         body:
-          "Every hour spent configuring filters is an hour not spent on actual work. Trace is designed so you never configure anything — it learns from usage and community signal. Zero maintenance, always current.",
+          "Every hour spent configuring filters is an hour not spent on actual work. With Trace you pick a few topics and a length of 5, 10 or 15 stories once, and there is nothing else to maintain.",
       },
     ],
     faq: [
       {
         question: "Can I customize what topics Trace covers?",
         answer:
-          "Yes. After signing up, you choose topics and interests during onboarding. Trace personalizes your feed based on those choices.",
+          "Yes. You choose topics and a length of 5, 10 or 15 stories, and the feed and email are ordered around those choices.",
       },
       {
-        question: "Does Trace replace Google Alerts completely?",
+        question: "Does Trace replace Google Alerts?",
         answer:
-          "For tech and startup news — yes. For very specific non-tech topics like regulatory filings or legal cases, Google Alerts may still be useful as a supplement.",
+          "Not for keyword tracking. Trace has no alerts or keyword watches; it is one daily brief of tech news. If you need to know every time a name or term is mentioned, keep Google Alerts.",
       },
     ],
   },
   {
     slug: "trace-vs-pocket",
-    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 6 read-it-later apps" },
+    relatedRoundup: { href: "/blog/pocket-alternatives", label: "Pocket alternatives: 5 read-it-later apps" },
     related: ["trace-vs-readwise-reader", "trace-vs-matter", "rss-reader-alternative"],
     title: "Trace vs Pocket | Comparison & Alternative | Trace",
     description:
@@ -837,23 +837,23 @@ export const comparePages: ComparePage[] = [
     comparisonRows: [
       {
         label: "Focus",
-        trace: "Tech only — stories, community, launches",
+        trace: "Tech and AI only",
         alternative: "Everything — politics, sports, entertainment, tech",
       },
       {
         label: "Presentation",
-        trace: "Structured daily brief with summaries and timelines",
+        trace: "A daily brief of 5, 10 or 15 stories with short summaries",
         alternative: "Algorithmic feed of article headlines",
       },
       {
-        label: "Community layer",
-        trace: "HN, Reddit, and X discussions integrated",
-        alternative: "Not included — articles only",
+        label: "Sources",
+        trace: "Links to each original report under the summary",
+        alternative: "Full Coverage lists every outlet's article",
       },
       {
         label: "Duplicate handling",
-        trace: "Same story from multiple sources is grouped",
-        alternative: "You see each publisher's version separately",
+        trace: "Same story from multiple sources is grouped under one summary",
+        alternative: "Grouped under Full Coverage, but you read each version yourself",
       },
       {
         label: "Best for",
@@ -865,24 +865,24 @@ export const comparePages: ComparePage[] = [
       {
         title: "General vs specialized",
         body:
-          "Google News is a general tool. It works for everyone. Trace works specifically for tech readers — it understands which stories are signal, which conversations matter, and which launches are worth noting. Specialization creates better signal density.",
+          "Google News is a general tool. It works for everyone. Trace reads only tech sources, so a tech reader sees fewer unrelated stories, and each event appears once with a short summary.",
       },
       {
         title: "The personalization difference",
         body:
-          "Google News personalizes by your reading history. Trace personalizes by your explicit choices — the topics and interests you pick. The result is more intentional and less algorithmic.",
+          "Google News personalizes by your reading history. Trace orders stories around the topics you pick and the length you choose.",
       },
     ],
     faq: [
       {
         question: "Can Trace replace Google News for tech?",
         answer:
-          "For daily tech awareness — yes. If you currently use Google News for tech, Trace will give you a more focused and time-efficient experience. Keep Google News for non-tech news.",
+          "For daily tech news, it can. Trace is narrower and ends after the number of stories you pick. Keep Google News for non-tech news.",
       },
       {
         question: "Does Trace cover international tech news?",
         answer:
-          "Trace covers global tech news with an emphasis on the English-language tech conversation. Major international stories are included when they enter the global discussion.",
+          "Trace reads English-language tech sources, so international stories appear when those sources cover them.",
       },
     ],
   },

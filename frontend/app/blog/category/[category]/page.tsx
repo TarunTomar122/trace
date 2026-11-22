@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../../content";
 import { standaloneBlogPosts } from "../../standalone-content";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 import {
   DEFAULT_OPEN_GRAPH,
   DEFAULT_TWITTER_IMAGE,
@@ -27,7 +28,7 @@ type PageProps = {
 const CATEGORY_META: Record<string, { label: string; description: string }> = {
   comparisons: {
     label: "Tools & Comparisons",
-    description: "Side-by-side comparisons of tech news tools, RSS readers, AI digests, and productivity apps. Honest pros, cons, and pricing to help you choose.",
+    description: "Side-by-side comparisons of tech news tools, RSS readers, AI digests, and productivity apps. Pros, cons and pricing to help you choose.",
   },
   guides: {
     label: "Guides",
@@ -35,7 +36,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   },
   "ai-tools": {
     label: "AI & Tech",
-    description: "Deep dives into AI-powered news tools, AI summarization accuracy, and how to use AI for smarter information consumption.",
+    description: "AI-powered news tools, agent access to the news, and how to use AI to keep up without reading everything.",
   },
   research: {
     label: "Research",
@@ -59,10 +60,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = meta.description;
   const url = `${SITE_BASE_URL}/blog/category/${category}`;
 
+  // An archive whose posts are all noindexed (lib/indexing.ts) has nothing for Google either.
+  const indexable = [...blogPosts, ...standaloneBlogPosts].some((post) => post.category === category && !post.noindex);
+
   return {
     title,
     description,
     alternates: { canonical: url },
+    ...(indexable ? {} : { robots: NOINDEX_ROBOTS }),
     openGraph: {
       ...DEFAULT_OPEN_GRAPH,
       title,

@@ -17,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Best AI News Apps in 2026: 6 Apps Compared | Trace",
+  title: "AI news apps: 6 compared on price and platforms | Trace",
   description:
-    "6 AI news apps compared for 2026: Trace, Feedly, Ground News, Inshorts, Particle and NewsX. What each costs, where it runs, and who it suits.",
+    "Trace, Feedly, Ground News, Inshorts, Particle and NewsX side by side: what each costs, where it runs, and how it summarizes. We make Trace.",
   keywords: [
     "best AI news app",
     "AI news app",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Best AI News Apps in 2026: 6 Apps Compared",
+    title: "AI news apps: 6 compared on price and platforms",
     description:
-      "6 AI news apps compared for 2026: Trace, Feedly, Ground News, Inshorts, Particle and NewsX. What each costs and who it suits.",
+      "Trace, Feedly, Ground News, Inshorts, Particle and NewsX side by side: what each costs, where it runs, and how it summarizes. We make Trace.",
     url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026`,
     siteName: "Trace",
     locale: "en_US",
@@ -53,15 +53,15 @@ export const metadata: Metadata = {
         url: `${SITE_BASE_URL}/opengraph-image`,
         width: 1200,
         height: 630,
-        alt: "Best AI News Apps in 2026 — Trace",
+        alt: "AI news apps: 6 compared on price and platforms — Trace",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Best AI News Apps in 2026: 6 Apps Compared",
+    title: "AI news apps: 6 compared on price and platforms",
     description:
-      "6 AI news apps compared for 2026, with what each costs and who it suits.",
+      "Trace, Feedly, Ground News, Inshorts, Particle and NewsX side by side: what each costs, where it runs, and how it summarizes. We make Trace.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -70,27 +70,27 @@ export const metadata: Metadata = {
 export default function BlogPost() {
   // ─── Structured Data ───
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Best AI News Apps in 2026: 6 Apps Compared",
+    headline: "AI news apps: 6 compared on price and platforms",
     description:
-      "A comparison of six AI news apps for 2026: Trace, Feedly, Ground News, Inshorts, Particle, and NewsX, with prices, platforms, and who each one suits.",
+      "Trace, Feedly, Ground News, Inshorts, Particle and NewsX side by side: what each costs, where it runs, and how it summarizes. We make Trace.",
     url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026`,
     datePublished: "2026-05-04T00:00:00Z",
     dateModified: "2026-10-28T00:00:00Z",
     authorName: "Tarun Tomar",
-    authorUrl: "https://x.com/tarat_211",
+    authorUrl: `${SITE_BASE_URL}/about`,
   });
 
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Trace", url: SITE_BASE_URL },
     { name: "Blog", url: `${SITE_BASE_URL}/blog` },
-    { name: "Best AI News Apps in 2026", url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026` },
+    { name: "AI News Apps Compared", url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026` },
   ]);
 
   const faqSchema = generateFAQSchema([
     {
-      question: "What is the best AI news app in 2026?",
+      question: "Which AI news app should I use?",
       answer:
-        "It depends on what you read. For tech and AI news, Trace is a free, open-source brief that groups each story once across 100+ sources and summarizes it. For general news, Particle and Inshorts give short summaries. For bias-aware reading, Ground News. For full control over your sources, Feedly.",
+        "It depends on what you read. For general news, Particle and Inshorts give short summaries. For bias-aware reading, Ground News. For full control over your sources, Feedly. For tech and AI news only, Trace, which we make, is a free, open-source brief that groups each story once across 100+ sources and summarizes it.",
     },
     {
       question: "Are there any free AI news apps?",
@@ -103,9 +103,9 @@ export default function BlogPost() {
         "They use language models to condense news coverage. Some, like NewsX, summarize one article at a time. Others, like Trace and Particle, combine coverage from several outlets into one summary of the story. Inshorts condenses each story to about 60 words. Feedly's AI assistant, Leo, is on its Pro+ plan.",
     },
     {
-      question: "Is Trace better than Feedly for AI news?",
+      question: "Trace or Feedly for AI news?",
       answer:
-        "For a ready-made, summarized brief with no setup, Trace is the better fit: it is free and groups each story across 100+ sources. Feedly is the better fit if you want to choose every source yourself; its AI features need a Pro+ subscription.",
+        "We make Trace, so take this with that in mind. Trace is a ready-made, summarized brief with no setup: it is free and groups each story across 100+ sources. Feedly suits you if you want to choose every source yourself; its AI features need a Pro+ subscription.",
     },
     {
       question: "What is the NewsX AI app?",
@@ -135,7 +135,7 @@ export default function BlogPost() {
             </li>
             <li aria-hidden="true">/</li>
             <li className="text-gray-900 dark:text-white font-medium" aria-current="page">
-              Best AI News Apps in 2026
+              AI News Apps Compared
             </li>
           </ol>
         </nav>
@@ -155,7 +155,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Best AI News Apps in 2026: 6 Apps Compared
+            AI News Apps: 6 Compared on Price and Platforms
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span>Updated <time dateTime="2026-10-28">October 28, 2026</time></span>
@@ -166,20 +166,19 @@ export default function BlogPost() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            The best AI news app depends on what you read. For tech and AI news,
-            Trace is a free, open-source brief that groups each story once
-            across 100+ sources and summarizes it; for general news, Particle
-            and Inshorts give short summaries; Ground News compares coverage
-            across the political spectrum; and Feedly adds AI to an RSS reader
-            on its Pro+ plan. NewsX summarizes general news one article at a
-            time. Below is what each costs, where it runs, and who it suits.
+            Which AI news app suits you depends on what you read. For general
+            news, Particle and Inshorts give short summaries; Ground News
+            compares coverage across the political spectrum; Feedly adds AI to
+            an RSS reader on its Pro+ plan; and NewsX summarizes general news one
+            article at a time. For tech and AI news only, there is Trace, which
+            we make. Below is what each costs, where it runs, and who it suits.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>How we picked:</strong> we compared each app on what it
             covers, how it summarizes (one article at a time, or the whole story
             across outlets), price, and how quickly you can finish. Prices and
-            store listings were rechecked in October 2026. We build Trace, so
-            weigh our view of it accordingly.
+            store listings were rechecked in October 2026. We make Trace, so
+            it&apos;s listed separately below.
           </p>
 
           <BlogEmailCard slug="best-ai-news-apps-2026" placement="intro" />
@@ -198,12 +197,6 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech &amp; AI News</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ One per story, across outlets</td>
-                </tr>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / paid plans</td>
@@ -234,6 +227,12 @@ export default function BlogPost() {
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">General News</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ One per article</td>
                 </tr>
+                <tr>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace (ours)</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech &amp; AI News</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ One per story, across outlets</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -255,38 +254,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            1. Trace — Best AI News App for Tech and AI News
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free. Web and an optional daily email, plus a Chrome extension and an Android app.
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            Trace is built for developers and founders who follow tech and AI
-            news. It reads 100+ sources, groups each story once however many
-            outlets cover it, and gives each one a short summary with links to
-            every source.
-          </p>
-          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li><strong>One entry per story</strong>, with every outlet&apos;s coverage grouped together</li>
-            <li><strong>Summaries and timelines</strong> for each story</li>
-            <li><strong>Your topics:</strong> pick a few and the feed is ordered around them</li>
-            <li><strong>Optional daily email</strong> around 8:30am UK time</li>
-            <li><strong>Free for everyone</strong> and open source</li>
-          </ul>
-          <p className="text-gray-600 dark:text-gray-400">
-            <strong>Why we put it first:</strong> we build it, and it is designed
-            to end. The brief takes about five minutes, with no infinite scroll.
-            It covers tech and AI only, so pair it with something else for
-            general news.
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              Read today&apos;s Trace brief →
-            </Link>
-          </p>
-
-          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            2. Feedly — Best RSS Alternative for Power Users
+            1. Feedly — Best RSS Alternative for Power Users
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free plan | paid Pro and Pro+ plans (AI on Pro+)
@@ -311,7 +279,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            3. Ground News — Best for Bias-Aware Reading
+            2. Ground News — Best for Bias-Aware Reading
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free plan | paid Pro, Premium and Vantage plans
@@ -334,7 +302,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            4. Inshorts — Best Free News App in India
+            3. Inshorts — Best Free News App in India
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free
@@ -354,7 +322,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            5. Particle — Best for Fast Catch-Up
+            4. Particle — Best for Fast Catch-Up
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free | Particle+ $2.99/month or $29.99/year
@@ -375,7 +343,7 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            6. NewsX — AI Summaries of General News
+            5. NewsX — AI Summaries of General News
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             <strong>Price:</strong> Free (the Android app shows ads)
@@ -403,30 +371,41 @@ export default function BlogPost() {
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            The Verdict: Which AI News App Should You Use?
+            The one we make: Trace
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            If you&apos;re a developer, founder, or PM who follows tech and AI
-            news, start with <strong>Trace</strong>: it&apos;s free, groups each
-            story once, and takes about five minutes.
+            <strong>Price:</strong> Free and open source. Web and an optional daily email, plus a Chrome extension and an Android app.
           </p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Trace is for people who follow tech and AI news. It reads 100+
+            sources, groups each story once however many outlets cover it, and
+            gives each one a short summary with links to every original report.
+            It covers tech and AI only, so pair it with something else for
+            general news.
+          </p>
+          <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
+            <li><strong>One entry per story</strong>, with every outlet&apos;s coverage grouped together</li>
+            <li><strong>A short summary</strong> for each story, with links to the original reports</li>
+            <li><strong>Your topics and length:</strong> pick a few topics and 5, 10 or 15 stories</li>
+            <li><strong>Optional daily email</strong> at 08:30 UK time</li>
+            <li><strong>Free for everyone</strong> and open source</li>
+          </ul>
+          <p className="text-gray-600 dark:text-gray-400">
+            <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+              Read today&apos;s Trace brief →
+            </Link>
+          </p>
+
+          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            Which AI News App Should You Use?
+          </h2>
           <p className="text-gray-600 dark:text-gray-400">
             For general news, Particle or Inshorts. For bias-aware reading,
             Ground News. If you want to choose every source yourself, Feedly.
           </p>
-
-          <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            Try Trace Free
-          </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Trace is free for everyone, with no infinite scroll. Read
-            today&apos;s brief on the web, or get it by email around 8:30am UK
-            time.
-          </p>
-          <p className="text-gray-600 dark:text-gray-400">
-            <Link href="/feed?utm_source=blog&utm_medium=cta&utm_campaign=best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              Read today&apos;s brief →
-            </Link>
+            If you only follow tech and AI news, Trace (ours) is free, groups
+            each story once, and ends after the number of stories you pick.
           </p>
 
           <BlogEmailCard slug="best-ai-news-apps-2026" placement="end" />

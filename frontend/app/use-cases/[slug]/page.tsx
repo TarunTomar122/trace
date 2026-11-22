@@ -5,6 +5,7 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { useCasesContent } from "../content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
+import { NOINDEX_ROBOTS } from "@/lib/indexing";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -24,6 +25,7 @@ export async function generateMetadata({
   return {
     title: `${page.title} | Trace Use Cases`,
     description: page.shortDescription,
+    robots: NOINDEX_ROBOTS,
     alternates: { canonical: url },
     openGraph: {
       ...DEFAULT_OPEN_GRAPH,
@@ -129,7 +131,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
           <section className="mt-10 max-w-3xl">
             <h2 className="text-xl font-semibold text-[#111827]">What changes day to day</h2>
             <p className="mt-3 text-sm leading-relaxed text-[#6b7280]">
-              Instead of checking the same publications and community feeds separately,
+              Instead of checking the same publications and newsletters separately,
               you start with one ordered brief. Related coverage stays grouped, source links
               remain available, and the topics you pick move to the front.
             </p>
@@ -177,18 +179,6 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
               </Link>
               {slug === "for-founders" && (
                 <>
-                  <Link
-                    href="/blog/ai-news-for-non-technical-founders"
-                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
-                  >
-                    AI news if you don't code
-                  </Link>
-                  <Link
-                    href="/blog/daily-ai-briefing-for-founders"
-                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
-                  >
-                    Daily AI briefing
-                  </Link>
                   <Link
                     href="/blog/stay-on-top-of-ai-news-without-twitter"
                     className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"

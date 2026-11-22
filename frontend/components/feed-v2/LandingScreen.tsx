@@ -55,7 +55,7 @@ export const LANDING_FAQ = [
   },
   {
     q: 'Where does Trace get its news?',
-    a: 'Trace scans over a hundred sources each morning: established tech publications, company announcements, research teams, Hacker News, Reddit, Product Hunt, GitHub, and X. When several outlets cover the same event, the story shows every source, so you can verify anything in one tap.',
+    a: 'Trace scans over a hundred sources each morning: established tech publications, company announcements, research teams, Hacker News, Reddit, Product Hunt and GitHub. When several outlets cover the same event, the story shows every source, so you can verify anything in one tap.',
   },
   {
     q: 'How is this different from a news aggregator?',
@@ -297,6 +297,9 @@ export default function LandingScreen({ edition = null }: { edition?: DailyEditi
         <p className="hp-faq-more">
           Comparing options? Read <Link href="/blog/best-way-to-keep-up-with-ai-news-daily">the best way to keep up with AI news daily</Link>{' '}
           or see <Link href="/blog/daily-tech-news-summary-with-sources">what one Trace story looks like, with its sources</Link>.
+          Side by side: <Link href="/blog/best-tech-news-aggregator-apps">tech news aggregators</Link>,{' '}
+          <Link href="/blog/ai-news-digest-tools">AI news digest tools</Link> and{' '}
+          <Link href="/blog/best-rss-reader-apps">free RSS readers</Link>.
         </p>
       </section>
 

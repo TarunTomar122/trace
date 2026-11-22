@@ -66,6 +66,23 @@ const nextConfig: NextConfig = {
       { source: '/compare/daily-dev-alternative', destination: '/blog/daily-dev-alternatives', permanent: true },
       { source: '/compare/tldr-newsletter-alternative', destination: '/blog/tldr-newsletter-alternatives', permanent: true },
       { source: '/compare/ground-news-alternative-for-tech', destination: '/blog/ground-news-alternatives-for-tech', permanent: true },
+      // One page per topic (2026-11-22 recovery after Google's September 2026 spam update): near-
+      // duplicate posts fold into the strongest page on the subject.
+      { source: '/blog/best-tech-news-apps-for-developers', destination: '/blog/best-tech-news-aggregator-apps', permanent: true },
+      { source: '/blog/daily-tech-news-app', destination: '/blog/best-tech-news-aggregator-apps', permanent: true },
+      { source: '/blog/free-news-aggregators-for-developers', destination: '/blog/best-tech-news-aggregator-apps', permanent: true },
+      { source: '/blog/ai-summary-tools-for-news', destination: '/blog/ai-news-digest-tools', permanent: true },
+      { source: '/blog/news-aggregator-vs-rss-reader', destination: '/blog/best-rss-reader-apps', permanent: true },
+      { source: '/blog/daily-tech-briefing-routine', destination: '/blog/daily-tech-briefing-guide', permanent: true },
+      { source: '/blog/daily-ai-briefing-for-founders', destination: '/blog/stay-on-top-of-ai-news-without-twitter', permanent: true },
+      { source: '/blog/ai-news-for-non-technical-founders', destination: '/blog/stay-on-top-of-ai-news-without-twitter', permanent: true },
+      { source: '/blog/how-to-follow-ai-model-releases', destination: '/blog/best-way-to-keep-up-with-ai-news-daily', permanent: true },
+      { source: '/blog/tech-news-fatigue-solutions', destination: '/blog/information-overload-solutions', permanent: true },
+      { source: '/blog/anti-brain-rot-attention-moat', destination: '/blog/information-overload-solutions', permanent: true },
+      { source: '/blog/hacker-news-alternatives', destination: '/blog/daily-dev-alternatives', permanent: true },
+      { source: '/blog/developer-news-consumption-habits', destination: '/blog/developer-news-aggregator-guide', permanent: true },
+      { source: '/blog/personalized-developer-news-feed', destination: '/blog/developer-news-aggregator-guide', permanent: true },
+      { source: '/blog/how-to-stay-updated-on-tech-without-doomscrolling', destination: '/blog/how-to-stay-updated-with-tech-news', permanent: true },
       // Old URLs Search Console still reports as 404s.
       { source: '/use-cases/trace-for-:who(founders|pms|developers|designers|marketers|investors|students|remote-teams|researchers|creators)', destination: '/use-cases/for-:who', permanent: true },
       { source: '/solutions/stop-info-overload', destination: '/solutions/info-overload', permanent: true },

@@ -33,11 +33,7 @@ const RESOURCE_SECTIONS = [
     description: "Practical walkthroughs for building better tech news habits.",
     links: [
       { label: "What Is a Developer News Aggregator?", href: "/blog/developer-news-aggregator-guide" },
-      { label: "Build a Personalized Developer News Feed", href: "/blog/personalized-developer-news-feed" },
       { label: "How to Stay Updated with Tech News", href: "/blog/how-to-stay-updated-with-tech-news" },
-      { label: "AI news for non-technical founders", href: "/blog/ai-news-for-non-technical-founders" },
-      { label: "A daily AI briefing for founders", href: "/blog/daily-ai-briefing-for-founders" },
-      { label: "How to follow AI model releases", href: "/blog/how-to-follow-ai-model-releases" },
       { label: "Daily Tech Briefing Guide", href: "/blog/daily-tech-briefing-guide" },
       { label: "Information Overload Solutions", href: "/blog/information-overload-solutions" },
       { label: "AI News Digest Tools Compared", href: "/blog/ai-news-digest-tools" },
@@ -84,7 +80,7 @@ const RESOURCE_SECTIONS = [
   },
   {
     title: "Newsletter Reviews",
-    description: "Honest reviews of popular tech newsletters.",
+    description: "What popular tech newsletters cover, how often they arrive and what they cost.",
     links: [
       { label: "TLDR Review", href: "/newsletters/tldr-tech" },
       { label: "Morning Brew Review", href: "/newsletters/morning-brew-tech" },
