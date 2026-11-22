@@ -1,3 +1,4 @@
+import { publicRequestOrigin } from '@/lib/public-request-origin';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/lib/firebase-admin';
 import {
@@ -27,7 +28,7 @@ const REQUEST_FIELDS = ['client_id', 'redirect_uri', 'response_type', 'code_chal
 
 function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
-  if (origin && origin !== request.nextUrl.origin) return false;
+  if (origin && origin !== publicRequestOrigin(request)) return false;
   const site = request.headers.get('sec-fetch-site');
   return !site || site === 'same-origin';
 }
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const issuer = oauthOrigin(request.nextUrl.origin);
+    const issuer = oauthOrigin(publicRequestOrigin(request));
     const validation = await validateAuthorizationRequest(db, params, issuer);
     if (validation.status === 'invalid') return NextResponse.json({ error: validation.message }, { status: 400, headers: NO_STORE });
     if (validation.status === 'redirect') return NextResponse.json({ redirect: validation.redirectTo }, { headers: NO_STORE });

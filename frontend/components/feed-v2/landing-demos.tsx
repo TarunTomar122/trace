@@ -20,7 +20,7 @@ export function FavStack({ sources }: { sources: string[] }) {
     <span className="yg-faves" aria-hidden="true">
       {shown.map((domain) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img key={domain} src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" />
+        <img loading="lazy" decoding="async" key={domain} src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" />
       ))}
     </span>
   );
@@ -46,7 +46,7 @@ export function FeedDemo({ stories }: { stories: LandingDemoStory[] }) {
         <p className="yg-hero-kicker">★ Latest in AI</p>
         <div className="yg-shot">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={featured.image} alt="" />
+          <img loading="lazy" decoding="async" src={featured.image} alt="" />
           {featured.mark && <span>{featured.mark}</span>}
         </div>
         <h4 className="yg-hero-title">{featured.title}</h4>
@@ -62,7 +62,7 @@ export function FeedDemo({ stories }: { stories: LandingDemoStory[] }) {
       {rest.filter(Boolean).map((story, i) => (
         <article key={story.id} className="yg-feed-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="yg-feed-thumb" src={story.image} alt="" />
+          <img loading="lazy" decoding="async" className="yg-feed-thumb" src={story.image} alt="" />
           <div className="yg-feed-main">
             <h4 className="yg-feed-row-title">{story.title}</h4>
             <p className="yg-why">{story.why}</p>
@@ -178,7 +178,7 @@ export function NewTabDemo({
         {cards.map((story, i) => (
           <article key={`${story.id}-${i}`} className="yg-nt-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="yg-nt-shot" src={story.image} alt="" />
+            <img loading="lazy" decoding="async" className="yg-nt-shot" src={story.image} alt="" />
             <div className="yg-nt-body">
               <p className="yg-nt-title">{story.title}</p>
             </div>
@@ -222,7 +222,7 @@ export function DiscordDemo({ stories }: { stories: LandingDemoStory[] }) {
               {lead ? (
                 <div className="yg-dc-embed">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={lead.image} alt="" />
+                  <img loading="lazy" decoding="async" src={lead.image} alt="" />
                   <div>
                     <p className="yg-dc-embed-k">{lead.sourceName} · {sourceCount(lead.sources.length)}</p>
                     <p className="yg-dc-embed-t">{lead.title}</p>

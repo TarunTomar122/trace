@@ -1,3 +1,4 @@
+import { publicRequestOrigin } from '@/lib/public-request-origin';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
@@ -240,7 +241,7 @@ export async function GET(request: NextRequest) {
         tag: sectionTag(section),
         headline: title,
         caption: buildCaption(title, subtitle, body),
-        imageUrl: imageUrl || `${new URL(request.url).origin}/feed.webp`,
+        imageUrl: imageUrl || `${publicRequestOrigin(request)}/feed.webp`,
         sourceName: String(item.source_name || item.source || 'Unknown source'),
         sourceUrl,
         section,

@@ -1,0 +1,13 @@
+[Unit]
+Description=Export aggregate Trace newsletter counts and shared VPS health
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/usr/bin/python3 /usr/local/lib/trace-analytics-snapshot.py
+StateDirectory=trace-analytics-snapshot
+MemoryMax=64M
+CPUQuota=15%
+Nice=15
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true

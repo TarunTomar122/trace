@@ -1,0 +1,42 @@
+[Unit]
+Description=Trace Next.js origin
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+User=trace-web
+Group=trace-web
+LoadCredential=runtime.env:/etc/trace/web-runtime.env
+LoadCredential=firebase.json:/etc/trace/web-firebase.json
+Environment=FIREBASE_SERVICE_ACCOUNT_PATH=%d/firebase.json
+Environment=TRACE_PUBLIC_ORIGINS=https://trace-web.tarat211.workers.dev,https://www.yourtrace.online,https://yourtrace.online
+WorkingDirectory=/srv/trace-web/current
+Environment=NODE_ENV=production HOSTNAME=127.0.0.1 PORT=3817 NEXT_TELEMETRY_DISABLED=1 SHARP_CONCURRENCY=1 MALLOC_ARENA_MAX=2
+ExecStart=/usr/local/bin/node --max-old-space-size=256 --env-file=%d/runtime.env server.js
+Restart=on-failure
+RestartSec=10
+CPUQuota=60%
+MemoryHigh=384M
+MemoryMax=512M
+MemorySwapMax=64M
+TasksMax=72
+Nice=10
+IOWeight=20
+OOMScoreAdjust=600
+NoNewPrivileges=true
+StateDirectory=trace-web-analytics
+StateDirectoryMode=0700
+Environment=TRACE_ANALYTICS_DIR=/var/lib/trace-web-analytics
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+CapabilityBoundingSet=
+InaccessiblePaths=-/run/docker.sock
+ReadWritePaths=/srv/trace-web/current/.next
+LogRateLimitIntervalSec=60
+LogRateLimitBurst=100
+
+[Install]
+WantedBy=multi-user.target

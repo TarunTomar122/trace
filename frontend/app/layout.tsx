@@ -1,3 +1,5 @@
+import { PublicOnly } from "@/components/admin-analytics/public-only";
+import { TraceBeacon } from "@/components/admin-analytics/beacon";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Space_Grotesk, Geist_Mono, Newsreader } from "next/font/google";
@@ -157,23 +159,24 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
           suppressHydrationWarning
         />
+        <TraceBeacon />
         <ThemeProvider>
           <PostHogProvider>
             <Suspense fallback={null}>
-              <AffiliateTracker />
-              <EmailVisitTracker />
+              <PublicOnly><AffiliateTracker />
+              <EmailVisitTracker /></PublicOnly>
             </Suspense>
             {children}
           </PostHogProvider>
         </ThemeProvider>
-        <Analytics />
+        <PublicOnly>{process.env.VERCEL === "1" && <Analytics />}
         <Script
           strategy="lazyOnload"
           async
           data-website-id="dfid_m3LeCX0KgJACmcFPThB33"
           data-domain="www.yourtrace.online"
           src="https://datafa.st/js/script.js"
-        />
+        /></PublicOnly>
       </body>
     </html>
   );

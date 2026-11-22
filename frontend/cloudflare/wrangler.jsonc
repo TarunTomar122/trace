@@ -1,0 +1,12 @@
+{
+  "name": "trace-web",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "yourtrace.online/*", "zone_name": "yourtrace.online" },
+    { "pattern": "www.yourtrace.online/*", "zone_name": "yourtrace.online" }
+  ],
+  "assets": { "directory": ".assets", "html_handling": "none" },
+  "preview_urls": false
+}

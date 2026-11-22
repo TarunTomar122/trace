@@ -40,7 +40,7 @@ function normalizeSecret(value?: string | null): string {
 
 function isAuthorized(request: NextRequest): boolean {
   const configured = normalizeSecret(process.env.OPENCLAW_CAROUSEL_API_KEY || process.env.CAROUSEL_API_KEY || '');
-  if (!configured) return true;
+  if (!configured) return process.env.NODE_ENV !== 'production';
 
   const headerKey = normalizeSecret(request.headers.get('x-api-key'));
   if (headerKey && headerKey === configured) return true;

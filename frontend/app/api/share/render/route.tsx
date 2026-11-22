@@ -2,18 +2,14 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
+import { shareImages } from '@/lib/share-image';
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const headline = (searchParams.get('headline') || 'Top story today').slice(0, 120);
   const rawImageUrl = searchParams.get('imageUrl') || '';
   const articleUrl = searchParams.get('url') || 'yourtrace.online';
-  const logoUrl = `${origin}/tc.png`;
-
-  // Use fallback if no valid image URL
-  const hasValidImage = rawImageUrl && rawImageUrl.startsWith('http');
-  const imageUrl = hasValidImage ? rawImageUrl : `${origin}/feed.webp`;
+  const { logoUrl, imageUrl } = await shareImages(rawImageUrl);
 
   // Fixed 1080x1080 square format
   const width = 1080;

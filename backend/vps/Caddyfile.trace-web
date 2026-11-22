@@ -1,0 +1,25 @@
+# Import inside db.yourtrace.online. The deployment replaces the key placeholder
+# in a private copy before Caddy loads it.
+handle_path /_trace_web/* {
+    @worker header X-Trace-Origin-Key TRACE_ORIGIN_KEY_PLACEHOLDER
+    handle @worker {
+        reverse_proxy 127.0.0.1:3817 {
+            fail_duration 2s
+            max_fails 3
+            unhealthy_request_count 12
+            header_up X-Forwarded-For {http.request.header.X-Trace-Client-IP}
+            header_up -X-Trace-Client-IP
+            header_down +Server-Timing "trace-origin;dur={http.reverse_proxy.upstream.latency_ms}"
+            header_up Host {http.request.header.X-Trace-Public-Host}
+            header_up X-Forwarded-Host {http.request.header.X-Trace-Public-Host}
+            header_up X-Forwarded-Proto https
+            header_up -X-Trace-Origin-Key
+            header_up -X-Trace-Public-Host
+            transport http {
+                max_conns_per_host 12
+                response_header_timeout 25s
+            }
+        }
+    }
+    respond 403
+}

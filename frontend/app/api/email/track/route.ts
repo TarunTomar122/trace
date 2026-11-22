@@ -1,3 +1,4 @@
+import { publicRequestOrigin } from '@/lib/public-request-origin';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { EMAIL_VISIT_PARAM } from '@/lib/email-visit';
@@ -47,14 +48,14 @@ export async function GET(request: NextRequest) {
 
   if (event === 'c') {
     const target = params.get('u') || '';
-    let destination = new URL('/feed?from=email', request.nextUrl.origin).toString();
+    let destination = new URL('/feed?from=email', publicRequestOrigin(request)).toString();
     try {
       const url = new URL(target);
       // Only ever redirect to our own surface: this endpoint must not become
       // an open redirect. Exact host or a real subdomain ("evilyourtrace.online"
       // must not pass), for the hosted site and for a self-hosted APP_URL.
       if (url.protocol === 'https:' || url.protocol === 'http:') {
-        const own = [request.nextUrl.hostname, appHost(), 'yourtrace.online'].filter(Boolean);
+        const own = [new URL(publicRequestOrigin(request)).hostname, appHost(), 'yourtrace.online'].filter(Boolean);
         if (own.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
           destination = url.toString();
         }

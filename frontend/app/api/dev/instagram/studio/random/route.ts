@@ -1,3 +1,4 @@
+import { publicRequestOrigin } from '@/lib/public-request-origin';
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
@@ -277,7 +278,7 @@ export async function GET(request: NextRequest) {
     const sourceName = String(item.source_name || item.source || 'Unknown source');
     const sourceUrl = String(item.url || '');
     const imageUrl = String(item.thumbnail || item.image_url || item.image || '').trim();
-    const fallbackImageUrl = `${new URL(request.url).origin}/feed.webp`;
+    const fallbackImageUrl = `${publicRequestOrigin(request)}/feed.webp`;
 
     return NextResponse.json({
       ok: true,

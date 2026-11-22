@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Trace admin aggregates
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

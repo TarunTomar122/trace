@@ -6,12 +6,14 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   reactStrictMode: false,
   trailingSlash: false,
   turbopack: {
     root: projectRoot,
   },
   images: {
+    maximumDiskCacheSize: 128 * 1024 * 1024,
     remotePatterns: [
       {
         protocol: 'https',
