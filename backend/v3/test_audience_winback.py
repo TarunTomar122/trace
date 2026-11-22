@@ -224,7 +224,7 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(N.newsletter_prefs({"interests": ["robotics"]})["interests"], ["robotics"])
 
     def test_come_read_links_carry_the_send_id_but_share_and_unsubscribe_do_not(self):
-        with patch.dict(os.environ, {"EMAIL_TRACKING": "0"}):
+        with patch.dict(os.environ, {"EMAIL_TRACKING": "0", "REFERRAL_SECRET": ""}):  # share link without a reader code
             _, html, text = self.render("winback")
         self.assertIn("/feed?from=email&story=https%3A%2F%2Fe.com%2Fa&et=tid", html)
         self.assertIn("/feed?from=email&et=tid", html)
