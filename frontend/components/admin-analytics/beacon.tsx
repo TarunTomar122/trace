@@ -3,12 +3,15 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { routeOf, sourceOf } from '@/lib/analytics/normalize';
 import { startVitals, finishVitals } from '@/lib/analytics/vitals-client';
+import { captureFirstTouch } from '@/lib/first-touch';
 function post(value: object) {
   void fetch('/api/a',{method:'POST',body:JSON.stringify(value),keepalive:true,credentials:'omit',referrerPolicy:'origin'}).catch(()=>{});
 }
 export function TraceBeacon() {
   const path=usePathname();
   const previous=useRef<string | null>(null);
+  // Before the bot check: a signup's channel is kept whoever loads the page.
+  useEffect(()=>{ captureFirstTouch(); },[]);
   useEffect(()=>{
     if (previous.current === path || navigator.webdriver) return;
     const first=previous.current===null;

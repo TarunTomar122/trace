@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { trackBlogCtaClicked, trackNewsletterSignup } from "@/lib/posthog";
 import { isNewsletterSubscribed, markNewsletterSubscribed, onNewsletterSubscribed } from "@/lib/newsletter-local";
+import { firstTouch } from "@/lib/first-touch";
 
 const SIGNUP_ERROR = "Couldn't subscribe right now. Try again in a moment.";
 
@@ -88,7 +89,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       const res = await fetch("/api/newsletter-subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "blog" }),
+        body: JSON.stringify({ email, source: "blog", ...firstTouch() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === "string" && data.error ? data.error : SIGNUP_ERROR);

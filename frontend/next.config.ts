@@ -38,6 +38,13 @@ const nextConfig: NextConfig = {
         destination: 'https://www.yourtrace.online/:path*',
         permanent: true,
       },
+      // A reader's share link from the daily email (backend v3/lib/referral.py): the code rides
+      // along as ?via= for lib/first-touch.ts. Temporary, so a code never gets cached as permanent.
+      { source: '/r/:code([a-z2-7]{8})', destination: '/?via=:code', permanent: false },
+      // Bio links on our social profiles, so signups from them are credited (lib/first-touch.ts).
+      { source: '/yt', destination: '/?utm_source=youtube', permanent: false },
+      { source: '/tt', destination: '/?utm_source=tiktok', permanent: false },
+      { source: '/ig', destination: '/?utm_source=instagram', permanent: false },
       // retired legacy surfaces (redesigned experience lives in /feed)
       { source: '/trending', destination: '/feed', permanent: true },
       { source: '/trending/:topic', destination: '/feed', permanent: true },

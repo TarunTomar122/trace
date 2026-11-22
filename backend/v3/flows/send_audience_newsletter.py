@@ -57,6 +57,7 @@ from v3.lib.send_worthy import (  # noqa: E402
 from v3.lib import indexnow  # noqa: E402
 from v3.lib.repeats import judge_repeats  # noqa: E402
 from v3.lib import newsletter_editor  # noqa: E402
+from v3.lib import referral  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
@@ -1897,6 +1898,10 @@ def _instrument_tracking(html: str, track_id: str) -> str:
         url = match.group(1)
         if "/api/unsubscribe" in url or "tab=profile" in url:
             return match.group(0)
+        # Links meant to be passed on (the reader's /r/ link, the share link) stay plain: a friend
+        # given a copied link would otherwise carry the reader's track id.
+        if url.startswith(f"{APP_URL}/r/") or "from=email-share" in url:
+            return match.group(0)
         tracked = (
             f"{APP_URL}/api/email/track?e=c&t={track_id}&u={quote(url, safe='')}"
         )
@@ -1921,8 +1926,10 @@ def _render(
     story_format: str = "summaries",
     sponsors: list[dict] | None = None,
     issue: dict | None = None,
+    referred: int = 0,
 ) -> tuple[str, str, str]:
-    """Subject, HTML and text. `issue` is the editor's subject and preheader
+    """Subject, HTML and text. `referred` is how many people signed up through this
+    reader's share link (referral.counts). `issue` is the editor's subject and preheader
     for this selection (newsletter_editor.write_issue): the email then opens
     straight on the lead story, set large, with nothing restating it above.
     Without it the email falls back to the counted headline and the bucket's
@@ -1979,8 +1986,9 @@ def _render(
     html = _replace_block(html, "FEEDBACK", "")
 
     dot = "<span style=\"color: #b5b5b5;\">&nbsp;&middot;&nbsp;</span>"
+    code = referral.code_for(email)
     share = (
-        f'<a href="{_share_url(date)}" style="color: {_BLUE}; font-weight: 600; '
+        f'<a href="{_share_url(date, code)}" style="color: {_BLUE}; font-weight: 600; '
         'text-decoration: none;">Share today&rsquo;s Trace Daily</a>'
         + dot
     )
@@ -2008,6 +2016,7 @@ def _render(
             "Email settings</a>"
         ) + dot + unsubscribe
     html = html.replace("{{FOOTER_LINKS}}", footer)
+    html = _replace_block(html, "REFER", _refer_html(code, referred))
     html = _tag_visit_links(html, track_id)
     html = _instrument_tracking(html, track_id)
     text = _text_version(
@@ -2015,6 +2024,7 @@ def _render(
         intro=intro if issue else [],
         bucket=bucket, fold=bool(issue),
         unsubscribe_url=f"{APP_URL}/api/unsubscribe?email={quote(email, safe='')}" if email else "",
+        ref_code=code, referred=referred,
     )
     if sponsors:
         text += "\n\nSponsored:\n" + "\n".join(
@@ -2023,9 +2033,38 @@ def _render(
     return subject, html, text
 
 
-def _share_url(date: str) -> str:
-    """Public web copy of the day's brief: the thing readers forward."""
-    return f"{APP_URL}/brief/{date}?from=email-share"
+def _share_url(date: str, code: str = "") -> str:
+    """Public web copy of the day's brief: the thing readers forward, credited to the
+    reader who shared it when they have a referral code."""
+    return f"{APP_URL}/brief/{date}?from=email-share" + (f"&via={code}" if code else "")
+
+
+def _refer_link(code: str) -> str:
+    return f"{APP_URL}/r/{code}"
+
+
+def _refer_line(referred: int) -> str:
+    """The thanks under the share link, once someone has signed up through it."""
+    if referred <= 0:
+        return ""
+    return f"{referred} {'person has' if referred == 1 else 'people have'} joined through your link. Thank you."
+
+
+def _refer_html(code: str, referred: int) -> str:
+    """Know someone who'd like Trace? The reader's own link, so a friend who signs up through
+    it is credited to them (referral.py). Nothing without a code."""
+    if not code:
+        return ""
+    link = _refer_link(code)
+    shown = link.split("://", 1)[-1]
+    thanks = _refer_line(referred)
+    return (
+        f'<p style="margin: 0 0 8px 0; font-family: {_FONT}; font-size: 13.5px; line-height: 20px; color: {_TEXT};">'
+        "Know someone who&rsquo;d like Trace? Send them your link: "
+        f'<a href="{link}" style="color: {_BLUE}; font-weight: 600; text-decoration: none;">{escape(shown)}</a>'
+        + (f"<br>{escape(thanks)}" if thanks else "")
+        + "</p>"
+    )
 
 
 def _text_version(
@@ -2038,6 +2077,8 @@ def _text_version(
     bucket: str = "member",
     fold: bool = False,
     unsubscribe_url: str = "",
+    ref_code: str = "",
+    referred: int = 0,
 ) -> str:
     masthead = f"Trace Daily · {_masthead_date(date) if fold else _display_date(date)}" if date else "Trace Daily"
     lines = [masthead] + ([headline] if headline else []) + [""]
@@ -2068,8 +2109,12 @@ def _text_version(
             )
             lines.append(f"   {story['url']}")
             lines.append("")
+    if ref_code:
+        lines.append(f"Know someone who'd like Trace? Send them your link: {_refer_link(ref_code)}")
+        if _refer_line(referred):
+            lines.append(_refer_line(referred))
     if date:
-        lines.append(f"Share today's Trace Daily: {_share_url(date)}")
+        lines.append(f"Share today's Trace Daily: {_share_url(date, ref_code)}")
     lines.append(
         f"Customize your Trace Daily: {_visit_url(f'{APP_URL}/brief/customize?from=email', track_id)}"
     )
@@ -2378,11 +2423,14 @@ def _compose(
             cache[key] = [(first_lane, [{**first_group[0], "title": issue["subject"]}, *first_group[1:]]),
                           *cache[key][1:]]
         issue["_lead_set"] = True
+    if "referrals" not in cache:  # once per run
+        cache["referrals"] = referral.counts(store)
     return _render(
         bucket, cache[key], date, recipient["email"], track_id,
         story_format=recipient.get("format") or "summaries",
         sponsors=cache["sponsors"],
         issue=cache[issue_key],
+        referred=cache["referrals"].get(referral.code_for(recipient["email"]), 0),
     )
 
 

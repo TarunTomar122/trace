@@ -5,6 +5,7 @@ import { CircleCheck } from 'lucide-react';
 import SignupCelebration from '@/components/feed-v2/SignupCelebration';
 import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
+import { firstTouch } from '@/lib/first-touch';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -53,7 +54,7 @@ export default function LandingHeroSignup({
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: SOURCES[source] }),
+        body: JSON.stringify({ email, source: SOURCES[source], ...firstTouch() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");

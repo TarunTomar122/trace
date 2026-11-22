@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
+import { signupAttribution } from '@/lib/first-touch';
 import {
   createTraceSession,
   TRACE_SESSION_COOKIE_NAME,
@@ -34,6 +35,7 @@ function computeHasAccess(): boolean {
 async function ensureUserProfile(
   uid: string,
   identity: { email: string; displayName: string; photoURL: string | null },
+  attribution: { channel?: string; referredBy?: string } = {},
 ): Promise<'created' | 'exists' | 'unavailable'> {
   if (!adminFirestore) return 'unavailable';
   try {
@@ -47,6 +49,8 @@ async function ensureUserProfile(
         displayName: identity.displayName,
         photoURL: identity.photoURL,
         signupPlatform: 'web',
+        ...(attribution.channel ? { signupChannel: attribution.channel } : {}),
+        ...(attribution.referredBy ? { referredBy: attribution.referredBy } : {}),
         onboarded: false,
         name: identity.displayName || '',
         role: '',
@@ -124,6 +128,8 @@ export async function POST(request: NextRequest) {
       email?: string;
       displayName?: string;
       photoURL?: string | null;
+      channel?: string;
+      ref?: string;
     } | null;
     const idToken = typeof body?.idToken === 'string' ? body.idToken : '';
     if (!idToken) {
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
         photoURL: body.photoURL === null || typeof body.photoURL === 'string'
           ? body.photoURL
           : ((decodedToken as { picture?: string }).picture || null),
-      });
+      }, signupAttribution(body));
     }
     const existingCookie = request.cookies.get(TRACE_SESSION_COOKIE_NAME)?.value;
     const existingSession = existingCookie ? verifyTraceSession(existingCookie) : null;

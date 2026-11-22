@@ -15,6 +15,7 @@ import type { UserProfile } from '@/lib/firestore';
 import { getLocalLocale, getLocalTimezone } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut, trackSignUp } from '@/lib/posthog';
+import { firstTouch } from '@/lib/first-touch';
 import {
   clearAuthSessionCache,
   optimisticProfileFromCache,
@@ -103,7 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ idToken, forceProfileRefresh, ...identity }),
+      // A new account's channel and share code (lib/first-touch.ts) ride along with its identity.
+      body: JSON.stringify({ idToken, forceProfileRefresh, ...identity, ...(identity ? firstTouch() : {}) }),
     });
     if (!response.ok) {
       throw new Error(`Server session sync failed (${response.status})`);

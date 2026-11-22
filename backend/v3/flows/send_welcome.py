@@ -50,6 +50,7 @@ if str(BACKEND_ROOT) not in sys.path:
 load_dotenv(BACKEND_ROOT.parent / ".env")
 
 from v1.storage import FirestoreStore  # noqa: E402
+from v3.lib import referral  # noqa: E402
 from v3.flows.send_audience_newsletter import (  # noqa: E402  (the daily's own opt-in rule, picks and links)
     _app_link,
     _email_enabled,
@@ -263,6 +264,12 @@ def _para(text: str, *paths: str) -> tuple[str, str]:
     return text.format(*(f"{APP_URL}{path}" for path in paths)), _p(html.escape(text).format(*map(_link, paths)))
 
 
+def _share_para(reader: dict[str, Any]) -> list[tuple[str, str]]:
+    """The reader's own share link (v3/lib/referral.py): new readers are the likeliest to pass it on."""
+    code = referral.code_for(reader.get("email", ""))
+    return [_para("Know someone who'd like Trace? Send them your link: {}", f"/r/{code}")] if code else []
+
+
 def _top_stories(lead: str, stories: list[dict[str, str]]) -> tuple[str, str]:
     """(plain, html) for a lead-in line with today's top stories under it."""
     plain = "\n\n".join([lead, *("\n".join(filter(None, (s["title"], s["line"], s["url"]))) for s in stories)])
@@ -359,6 +366,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
             else _para("Can't wait? The latest brief is already up: {}", "/brief"),
             _para("Want it your way? Sign in at {} to " + customize + ".", "/brief/customize"),
             free,
+            *_share_para(reader),
             reply,
         ]
         button = ("Read the latest brief", "/brief")
@@ -392,6 +400,7 @@ def render(reader: dict[str, Any], now: datetime, stories: list[dict[str, str]] 
             *([_top_stories("Today's top stories:", stories)] if stories else []),
             inbox,
             free,
+            *_share_para(reader),
             reply,
         ]
         button = ("Open your feed", "/feed")

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
+import { firstTouch } from '@/lib/first-touch';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 type Source = 'daily_page' | 'featured_page';
@@ -32,7 +33,7 @@ export default function DailySignup({
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source }),
+        body: JSON.stringify({ email, source, ...firstTouch() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");

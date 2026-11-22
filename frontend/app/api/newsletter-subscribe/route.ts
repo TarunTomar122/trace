@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { signupAttribution } from '@/lib/first-touch';
 
 /**
  * POST /api/newsletter-subscribe
- * Body: { email: string, source?: 'landing_page' | 'daily_page' | 'featured_page' | 'blog' | 'feed_prompt' }
+ * Body: { email: string, source?: 'landing_page' | 'daily_page' | 'featured_page' | 'blog' | 'feed_prompt',
+ *         channel?: string, ref?: string } (channel and ref: lib/first-touch.ts)
  *
  * Adds an email to the free_newsletter_subscribers collection.
  * No auth required — this is for anonymous visitors.
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email, source: rawSource } = await request.json();
+    const body = await request.json();
+    const { email, source: rawSource } = body;
     // Where the signup came from, so the dashboard can credit the public
     // /brief and /featured pages, the blog and the feed's corner card. Allowlisted: this is an anonymous endpoint.
     const SOURCES = ['daily_page', 'featured_page', 'blog', 'feed_prompt'];
@@ -76,6 +79,9 @@ export async function POST(request: NextRequest) {
       email: trimmed,
       subscribedAt: new Date().toISOString(),
       source,
+      // Where they came from (channel) and whose share link brought them (referredBy):
+      // lib/first-touch.ts, counted by the admin snapshot and the daily email's thank-you.
+      ...signupAttribution(body),
       active: true,
     });
 

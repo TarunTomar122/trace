@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
+import { firstTouch } from '@/lib/first-touch';
 
 const FALLBACK_ERROR = "Couldn't subscribe right now. Try again in a moment.";
 
@@ -56,7 +57,7 @@ export default function NewsletterPromptToast({
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'feed_prompt' }),
+        body: JSON.stringify({ email, source: 'feed_prompt', ...firstTouch() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : FALLBACK_ERROR);
