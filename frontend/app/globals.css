@@ -57,6 +57,18 @@
   --color-selected-indicator: var(--selected-indicator);
   --font-serif: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
+  /* The admin analytics kit (app/admin/analytics/style.css defines the values under .traceAdmin). */
+  --color-oa-bg: var(--oa-bg);
+  --color-oa-card: var(--oa-card);
+  --color-oa-fg: var(--oa-fg);
+  --color-oa-border: var(--oa-border);
+  --color-oa-accent: var(--oa-accent);
+  --color-oa-muted-fg: var(--oa-muted-fg);
+  --color-oa-primary: var(--oa-primary);
+  --color-oa-label: var(--oa-label);
+  --color-signal-bullish: var(--signal-bullish);
+  --color-signal-bearish: var(--signal-bearish);
+  --color-signal-neutral: var(--signal-neutral);
 }
 
 body {

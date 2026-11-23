@@ -14,7 +14,8 @@ import { auth, googleProvider } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/firestore';
 import { getLocalLocale, getLocalTimezone } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
-import { identifyUser, resetUser, trackSignIn, trackSignOut, trackSignUp } from '@/lib/posthog';
+import { identifyUser, resetUser, trackSignIn, trackSignInStarted, trackSignOut, trackSignUp } from '@/lib/posthog';
+import { beaconSignedIn } from '@/lib/analytics/beacon';
 import { firstTouch } from '@/lib/first-touch';
 import {
   clearAuthSessionCache,
@@ -293,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the trusted (possibly pro) verdict — never downgrade on error.
         void loadProfileInBackground();
       } else {
+        beaconSignedIn(false);
         clearAuthSessionCache();
         setProfile(null);
         setProfileResolved(true);
@@ -327,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     options?: { rememberIntent?: boolean }
   ): Promise<SignInResult> => {
     const rememberIntent = options?.rememberIntent ?? true;
+    trackSignInStarted();
     try {
       setPendingPostAuthIntent(rememberIntent ? intent : null);
       const result = await signInWithPopup(auth, googleProvider);

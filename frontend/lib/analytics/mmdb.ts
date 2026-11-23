@@ -40,7 +40,14 @@ function findMetadataStart(buf: Uint8Array): number {
 
 /** Decodes values from one section of the file; pointers are offsets from `base`. */
 class Decoder {
-  constructor(private readonly buf: Uint8Array, private readonly base: number) {}
+  // Plain fields, not parameter properties: node --test loads this file with type stripping only.
+  private readonly buf: Uint8Array;
+  private readonly base: number;
+
+  constructor(buf: Uint8Array, base: number) {
+    this.buf = buf;
+    this.base = base;
+  }
 
   /** The value at `offset` (relative to `base`) and the offset just after it. */
   decode(offset: number): [unknown, number] {
@@ -216,7 +223,10 @@ export class MmdbReader {
   private readonly ipv4Start: number;
   private readonly countries = new Map<number, string | null>();
 
-  constructor(private readonly buf: Uint8Array) {
+  private readonly buf: Uint8Array;
+
+  constructor(buf: Uint8Array) {
+    this.buf = buf;
     const metaStart = findMetadataStart(buf);
     const [meta] = new Decoder(buf, metaStart).decode(0);
     if (!meta || typeof meta !== "object") throw new MmdbError("metadata is not a map");

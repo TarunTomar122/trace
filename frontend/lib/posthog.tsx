@@ -5,6 +5,7 @@ import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, Suspense } from "react";
 import { EMAIL_VISIT_PARAM } from "@/lib/email-visit";
+import { beaconSignedIn, beaconTrack } from "@/lib/analytics/beacon";
 import {
   FEED_EVENTS,
   dailyBriefPreferenceProperties,
@@ -73,17 +74,28 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 // Export posthog instance for manual event tracking
 export { posthog };
 
+/**
+ * Every tracked event goes to PostHog and to the first-party beacon (lib/analytics/beacon.ts), which keeps only
+ * the key events /admin/analytics counts. Pageviews reach the beacon from components/admin-analytics/beacon.tsx.
+ */
+export function capture(event: string, properties?: Record<string, unknown>) {
+  beaconTrack(event, properties);
+  posthog.capture(event, properties);
+}
+
 // ============================================================================
 // TRACKING HELPER FUNCTIONS
 // ============================================================================
 
 // Identify user after sign in (links anonymous events to user)
 export function identifyUser(userId: string, properties?: Record<string, unknown>) {
+  beaconSignedIn(true);
   posthog.identify(userId, properties);
 }
 
 // Reset user on sign out
 export function resetUser() {
+  beaconSignedIn(false);
   posthog.reset();
 }
 
@@ -92,25 +104,30 @@ export function resetUser() {
 // ============================================================================
 
 // Auth events
+/** The Google sign-in popup (or redirect) was opened. */
+export function trackSignInStarted() {
+  capture("signin_started", { surface: "web" });
+}
+
 export function trackSignIn(method: "google" | "email" = "google") {
-  posthog.capture("user_signed_in", { method, surface: "web" });
+  capture("user_signed_in", { method, surface: "web" });
 }
 
 export function trackSignUp(method: "google" | "email" = "google") {
-  posthog.capture("user_signed_up", { method, surface: "web" });
+  capture("user_signed_up", { method, surface: "web" });
 }
 
 export function trackSignOut() {
-  posthog.capture("user_signed_out", { surface: "web" });
+  capture("user_signed_out", { surface: "web" });
 }
 
 // Onboarding events
 export function trackOnboardingStarted() {
-  posthog.capture("onboarding_started", { surface: "web" });
+  capture("onboarding_started", { surface: "web" });
 }
 
 export function trackOnboardingStepCompleted(step: number, stepName: string) {
-  posthog.capture("onboarding_step_completed", { step, step_name: stepName, surface: "web" });
+  capture("onboarding_step_completed", { step, step_name: stepName, surface: "web" });
 }
 
 export function trackOnboardingCompleted(data: {
@@ -119,7 +136,7 @@ export function trackOnboardingCompleted(data: {
   role?: string;
   daily_brief_enabled?: boolean;
 }) {
-  posthog.capture("onboarding_completed", { ...data, surface: "web" });
+  capture("onboarding_completed", { ...data, surface: "web" });
 }
 
 // Feed events
@@ -130,7 +147,7 @@ export function trackFeedViewed(
   tier: FeedTier = isPreview ? "free" : "pro",
   audience: "guest" | "authenticated" = "authenticated",
 ) {
-  posthog.capture(
+  capture(
     FEED_EVENTS.viewed,
     feedViewedProperties({ itemCount, isPreview, view, tier, audience }),
   );
@@ -144,7 +161,7 @@ export function trackFeedStoryExpanded(input: {
   section: string;
   tier: FeedTier;
 }) {
-  posthog.capture(FEED_EVENTS.storyExpanded, storyInteractionProperties(input));
+  capture(FEED_EVENTS.storyExpanded, storyInteractionProperties(input));
 }
 
 export function trackFeedSourceClicked(input: {
@@ -155,7 +172,7 @@ export function trackFeedSourceClicked(input: {
   section: string;
   tier: FeedTier;
 }) {
-  posthog.capture(FEED_EVENTS.sourceClicked, storyInteractionProperties(input));
+  capture(FEED_EVENTS.sourceClicked, storyInteractionProperties(input));
 }
 
 export function trackFeedFilterChanged(
@@ -163,7 +180,7 @@ export function trackFeedFilterChanged(
   previousFilter: string,
   props?: Record<string, unknown>,
 ) {
-  posthog.capture(FEED_EVENTS.filterChanged, {
+  capture(FEED_EVENTS.filterChanged, {
     surface: "web",
     filter,
     previous_filter: previousFilter,
@@ -175,14 +192,14 @@ export function trackDailyBriefPreferenceChanged(
   enabled: boolean,
   location: "onboarding" | "feed" | "profile",
 ) {
-  posthog.capture(
+  capture(
     FEED_EVENTS.dailyBriefPreferenceChanged,
     dailyBriefPreferenceProperties({ enabled, location }),
   );
 }
 
 export function trackFeedOlderLoaded(addedCount: number, totalCount: number) {
-  posthog.capture(FEED_EVENTS.olderLoaded, {
+  capture(FEED_EVENTS.olderLoaded, {
     surface: "web",
     added_count: Math.max(0, addedCount),
     total_count: Math.max(0, totalCount),
@@ -190,7 +207,7 @@ export function trackFeedOlderLoaded(addedCount: number, totalCount: number) {
 }
 
 export function trackFeedItemClicked(itemId: string, itemType: string, source: string) {
-  posthog.capture("feed_item_clicked", {
+  capture("feed_item_clicked", {
     item_id: itemId,
     item_type: itemType,
     source,
@@ -213,7 +230,7 @@ export function trackSponsoredToolClicked({
   position: number;
   feedDate?: string;
 }) {
-  posthog.capture("sponsored_tool_clicked", {
+  capture("sponsored_tool_clicked", {
     sponsor_id: sponsorId,
     sponsor_title: title,
     sponsor_domain: domain,
@@ -225,11 +242,11 @@ export function trackSponsoredToolClicked({
 }
 
 export function trackFeedItemUpvoted(itemId: string, itemType: string) {
-  posthog.capture("feed_item_upvoted", { item_id: itemId, item_type: itemType });
+  capture("feed_item_upvoted", { item_id: itemId, item_type: itemType });
 }
 
 export function trackFeedItemDownvoted(itemId: string, itemType: string) {
-  posthog.capture("feed_item_downvoted", { item_id: itemId, item_type: itemType });
+  capture("feed_item_downvoted", { item_id: itemId, item_type: itemType });
 }
 
 export function trackFeedItemBookmarked(
@@ -237,7 +254,7 @@ export function trackFeedItemBookmarked(
   itemType: string,
   props?: Record<string, unknown>,
 ) {
-  posthog.capture("feed_item_bookmarked", {
+  capture("feed_item_bookmarked", {
     item_id: itemId,
     item_type: itemType,
     surface: "web",
@@ -246,53 +263,53 @@ export function trackFeedItemBookmarked(
 }
 
 export function trackShareInitiated(itemId: string, props?: Record<string, unknown>) {
-  posthog.capture("share_initiated", { item_id: itemId, surface: "web", ...props });
+  capture("share_initiated", { item_id: itemId, surface: "web", ...props });
 }
 
 export function trackPromoModalOpened(props?: Record<string, unknown>) {
-  posthog.capture("promo_modal_opened", { surface: "web", ...props });
+  capture("promo_modal_opened", { surface: "web", ...props });
 }
 
 export function trackPromoCtaClicked(props?: Record<string, unknown>) {
-  posthog.capture("promo_cta_clicked", { surface: "web", ...props });
+  capture("promo_cta_clicked", { surface: "web", ...props });
 }
 
 export function trackPromoIntent(props?: Record<string, unknown>) {
-  posthog.capture("promo_intent", { surface: "web", ...props });
+  capture("promo_intent", { surface: "web", ...props });
 }
 
 export function trackPromoSubmitted(props?: Record<string, unknown>) {
-  posthog.capture("promo_submitted", { surface: "web", ...props });
+  capture("promo_submitted", { surface: "web", ...props });
 }
 
 export function trackPurchaseCompleted(product: "tool_promo") {
-  posthog.capture("purchase_completed", { surface: "web", product });
+  capture("purchase_completed", { surface: "web", product });
 }
 
 // Profile events
 export function trackProfileViewed() {
-  posthog.capture("profile_viewed");
+  capture("profile_viewed");
 }
 
 export function trackProfileUpdated(fields: string[]) {
-  posthog.capture("profile_updated", { fields_updated: fields });
+  capture("profile_updated", { fields_updated: fields });
 }
 
 export function trackSubscriptionCancelled(plan: string) {
-  posthog.capture("subscription_cancelled", { plan });
+  capture("subscription_cancelled", { plan });
 }
 
 // Conversion funnel events
 // The feed's corner email card: shown, then dismissed or a signup (newsletter_signup, source feed_prompt).
 export function trackNewsletterPrompt(action: "shown" | "dismissed") {
-  posthog.capture("newsletter_prompt", { surface: "web", action });
+  capture("newsletter_prompt", { surface: "web", action });
 }
 
 export function trackNewsletterSignup(
   source: "landing" | "feed_prompt" | "daily_page" | "blog_inline" | "featured_page",
   props?: Record<string, unknown>,
 ) {
-  posthog.capture("newsletter_signup", { ...props, surface: "web", source });
+  capture("newsletter_signup", { ...props, surface: "web", source });
 }
 
 export function trackSummaryOpened(
@@ -300,7 +317,7 @@ export function trackSummaryOpened(
   isPaidUser: boolean,
   props?: Record<string, unknown>,
 ) {
-  posthog.capture("summary_opened", {
+  capture("summary_opened", {
     item_id: itemId,
     is_paid_user: isPaidUser,
     surface: "web",
@@ -309,7 +326,7 @@ export function trackSummaryOpened(
 }
 
 export function trackCheckoutClicked(source: string, props?: Record<string, unknown>) {
-  posthog.capture("checkout_clicked", {
+  capture("checkout_clicked", {
     source,
     ...props,
   });
@@ -345,7 +362,7 @@ export function trackLandingCtaExposure(assignment: LandingCtaAssignment) {
     if (window.localStorage.getItem(exposureKey) === "1") return;
     window.localStorage.setItem(exposureKey, "1");
   }
-  posthog.capture("landing_cta_exposure", {
+  capture("landing_cta_exposure", {
     surface: "landing",
     experiment_id: LANDING_CTA_EXPERIMENT_ID,
     experiment_variant: assignment,
@@ -353,11 +370,11 @@ export function trackLandingCtaExposure(assignment: LandingCtaAssignment) {
 }
 
 export function trackBlogFeedWelcomeShown(props?: Record<string, unknown>) {
-  posthog.capture("blog_feed_welcome_shown", { surface: "feed_v2", ...props });
+  capture("blog_feed_welcome_shown", { surface: "feed_v2", ...props });
 }
 
 export function trackBlogFeedWelcomeCta(source: string, campaign?: string) {
-  posthog.capture("blog_feed_welcome_cta_clicked", {
+  capture("blog_feed_welcome_cta_clicked", {
     surface: "feed_v2",
     utm_source: source,
     utm_campaign: campaign || "",
@@ -365,11 +382,11 @@ export function trackBlogFeedWelcomeCta(source: string, campaign?: string) {
 }
 
 export function trackLandingCTAClicked(variant: string, location: string, props?: Record<string, unknown>) {
-  posthog.capture("landing_cta_clicked", { variant, location, ...props });
+  capture("landing_cta_clicked", { variant, location, ...props });
 }
 
 export function trackBlogCtaClicked(postSlug: string, location: string, destination: string) {
-  posthog.capture("blog_cta_clicked", {
+  capture("blog_cta_clicked", {
     post_slug: postSlug,
     location,
     destination,
@@ -378,15 +395,15 @@ export function trackBlogCtaClicked(postSlug: string, location: string, destinat
 }
 
 export function trackRetentionMilestoneShown(days: number) {
-  posthog.capture("retention_milestone_shown", { days, surface: "web" });
+  capture("retention_milestone_shown", { days, surface: "web" });
 }
 
 export function trackRetentionCaughtUpShare(streak: number, storiesRead: number) {
-  posthog.capture("retention_caught_up_shared", { streak, stories_read: storiesRead, surface: "web" });
+  capture("retention_caught_up_shared", { streak, stories_read: storiesRead, surface: "web" });
 }
 
 export function trackRetentionExtensionClicked(placement: string) {
-  posthog.capture("retention_extension_clicked", { placement, surface: "web" });
+  capture("retention_extension_clicked", { placement, surface: "web" });
 }
 
 export function trackRetentionThreadFollowed(input: {
@@ -397,7 +414,7 @@ export function trackRetentionThreadFollowed(input: {
   cat?: string;
   tab?: string;
 }) {
-  posthog.capture("retention_thread_followed", {
+  capture("retention_thread_followed", {
     thread_id: input.threadId,
     following: input.following,
     story_id: input.storyId || '',

@@ -14,6 +14,7 @@
     "seo:audit-live": "node scripts/audit-live-seo.mjs",
     "seo:indexnow": "node scripts/submit-indexnow.mjs",
     "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
+    "test:analytics": "node --test lib/analytics/*.test.mjs",
     "test:app-icons": "node --test lib/app-icons.test.mjs",
     "remotion:studio": "remotion studio",
     "remotion:render": "remotion render"

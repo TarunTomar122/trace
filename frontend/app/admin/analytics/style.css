@@ -1,8 +1,63 @@
-.traceAdmin{--edge:#dcded8;--muted:#5c635b;color:#1b261f;background:#f8f9f5;min-height:100vh;padding:clamp(18px,5vw,72px) max(5vw,calc((100vw - 1080px)/2));font:15px/1.45 system-ui,sans-serif;font-variant-numeric:tabular-nums}
-.traceAdmin header,.traceAdmin .sub,.traceAdmin footer,.traceAdmin .dataRow,.traceAdmin .dataRow span{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.traceAdmin h1{font-size:clamp(32px,5vw,54px);letter-spacing:-.055em;line-height:1.1;font-weight:650;margin:4px 0 18px}.traceAdmin h2{font-weight:650;font-size:18px;letter-spacing:-.025em;margin:0 0 12px}
-.traceAdmin small,.traceAdmin footer,.traceAdmin p{color:var(--muted);font-size:13px}.traceAdmin nav{display:flex;gap:24px;border-bottom:1px solid var(--edge)}.traceAdmin nav a{padding:12px 0;color:var(--muted)}.traceAdmin nav [aria-current]{color:#145339;border-bottom:3px solid #236642;font-weight:650}
-.traceAdmin .sub{margin:24px 0 14px}.traceAdmin .sub h2{margin:0}.traceAdmin .ranges{display:flex;gap:2px}.traceAdmin .ranges a,.traceAdmin button{padding:5px 10px;border-radius:5px;cursor:pointer}.traceAdmin .ranges [aria-current],.traceAdmin button{background:#e2e9df;color:#224831}
-.traceAdmin .stats,.traceAdmin .grid{display:grid;gap:12px;margin-bottom:14px}.traceAdmin .stats{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}.traceAdmin .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.traceAdmin section,.traceAdmin .stat,.traceAdmin form{background:white;border:1px solid var(--edge);border-radius:10px;padding:19px;margin-bottom:12px}.traceAdmin .stat,.traceAdmin .grid section{margin:0}.traceAdmin .stat div{font-size:clamp(25px,3vw,39px);font-weight:600;letter-spacing:-.045em}.traceAdmin .dataRow{padding:10px 0;border-top:1px solid #edf0eb}.traceAdmin .dataRow span{justify-content:flex-start}.traceAdmin .chart{height:120px;display:flex;align-items:flex-end;gap:4px;margin:26px 0 5px;border-bottom:1px solid var(--edge)}.traceAdmin .chart div{background:#428468;flex:1;max-width:90px;min-height:1px;position:relative}.traceAdmin .chart span{position:absolute;top:-19px;left:0;font-size:11px}.traceAdmin .gate,.traceAdmin form{max-width:390px;margin:12vh auto}.traceAdmin input{border:1px solid var(--edge);border-radius:4px;padding:8px}.traceAdmin p{margin:8px 0 15px}
-@media(max-width:600px){.traceAdmin .grid{grid-template-columns:1fr}.traceAdmin nav{justify-content:space-between;gap:4px}.traceAdmin .stats{grid-template-columns:1fr 1fr}.traceAdmin .chart span{display:none}.traceAdmin .ranges a{padding:5px 7px}}
+/*
+ * The admin analytics page: the StocksBrew analytics kit's tokens, in Trace's colours. Every value is scoped to
+ * .traceAdmin, so nothing here reaches the public site; app/globals.css maps the oa-* utilities to these variables.
+ */
+.traceAdmin {
+  --oa-bg: #f1efe8;
+  --oa-card: #ffffff;
+  --oa-fg: #181815;
+  --oa-border: color-mix(in srgb, #181815 12%, transparent);
+  --oa-accent: color-mix(in srgb, #181815 5%, transparent);
+  --oa-muted-fg: #5f5d55;
+  --oa-primary: #285ddd;
+  --oa-label: #8a5a12;
+  --oa-shadow: 0 1px 2px rgb(24 24 21 / 0.05);
+  --signal-bullish: #1f7a4d;
+  --signal-bearish: #b3261e;
+  --signal-neutral: #6d6b62;
+  min-height: 100vh;
+  background: var(--oa-bg);
+  color: var(--oa-fg);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.dark .traceAdmin,
+.traceAdmin.dark {
+  --oa-bg: #0d0d0c;
+  --oa-card: #171715;
+  --oa-fg: #f3f1ea;
+  --oa-border: color-mix(in srgb, #f3f1ea 14%, transparent);
+  --oa-accent: color-mix(in srgb, #f3f1ea 7%, transparent);
+  --oa-muted-fg: #b4b1a6;
+  --oa-primary: #7c9ef5;
+  --oa-label: #e0b062;
+  --oa-shadow: none;
+  --signal-bullish: #4fbf86;
+  --signal-bearish: #f07a72;
+  --signal-neutral: #a3a097;
+}
+.traceAdmin .oa-mono {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.traceAdmin .oa-surface { border-radius: 12px; }
+.traceAdmin .oa-surface .oa-surface { border-radius: 8px; }
+.traceAdmin .oa-surface .oa-surface .oa-surface { border-radius: 6px; }
+.traceAdmin :where(.oa-surface.bg-oa-card) { box-shadow: var(--oa-shadow); }
+.traceAdmin :where(.oa-surface .oa-surface) { box-shadow: none; }
+.traceAdmin .oa-label { font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -0.003em; color: var(--oa-fg); }
+.traceAdmin .oa-caption { font-size: 13px; line-height: 16px; font-weight: 500; color: var(--oa-muted-fg); }
+.traceAdmin .oa-tag {
+  display: inline-flex; height: 22px; flex-shrink: 0; align-items: center; white-space: nowrap;
+  border-radius: 4px; border: 1px solid var(--oa-border); padding: 0 8px; font-weight: 500; font-size: 13px;
+}
+.traceAdmin .oa-tag-caps { text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
+.traceAdmin .oa-tag-neutral { color: var(--oa-muted-fg); }
+.traceAdmin .oa-tag-up { border-color: color-mix(in srgb, var(--signal-bullish) 40%, transparent); background: color-mix(in srgb, var(--signal-bullish) 9%, transparent); color: var(--signal-bullish); }
+.traceAdmin .oa-tag-down { border-color: color-mix(in srgb, var(--signal-bearish) 40%, transparent); background: color-mix(in srgb, var(--signal-bearish) 9%, transparent); color: var(--signal-bearish); }
+.traceAdmin .oa-tag-primary { border-color: color-mix(in srgb, var(--oa-primary) 45%, transparent); background: color-mix(in srgb, var(--oa-primary) 7%, transparent); color: var(--oa-primary); }
+.traceAdmin .oa-tag-warn { border-color: color-mix(in srgb, var(--oa-label) 45%, transparent); color: var(--oa-label); }
+.traceAdmin .oa-ghost { border-radius: 4px; background: color-mix(in srgb, var(--oa-fg) 8%, transparent); animation: oa-ghost 1.4s ease-in-out infinite; }
+@keyframes oa-ghost { 50% { opacity: 0.55; } }
+.traceAdmin a { color: inherit; text-decoration: none; }

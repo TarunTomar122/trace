@@ -1,13 +1,23 @@
 [Unit]
-Description=Export aggregate Trace newsletter counts and shared VPS health
+Description=Export Trace admin analytics: signups and system health
 [Service]
 Type=oneshot
-User=ubuntu
-ExecStart=/usr/bin/python3 /usr/local/lib/trace-analytics-snapshot.py
+# Root: it lists Firebase Auth with /etc/trace/web-firebase.json, reads every journal and the trace user's
+# units, and hands latest.json to the web service as root:trace-web 0640 (it carries full emails).
+# Root runs only root-owned code: this script and /usr/local/lib/trace-analytics/sb_health.py, a copy of
+# StocksBrew's backend/ops/health.py (never /opt/tikrr, which ubuntu can write). Reinstalling refreshes the copy;
+# see docs/trace-admin-analytics.md. The script keeps to a 90 s budget, under TimeoutStartSec.
+ExecStart=/usr/bin/python3 -I /usr/local/lib/trace-analytics-snapshot.py
 StateDirectory=trace-analytics-snapshot
-MemoryMax=64M
+StateDirectoryMode=0755
+TimeoutStartSec=120
+# ~70 MB of its own; the rest of a peak is page cache from the SQLite files and the journal.
+MemoryMax=384M
+MemorySwapMax=0
 CPUQuota=15%
 Nice=15
 NoNewPrivileges=true
+PrivateTmp=true
 ProtectSystem=full
-ProtectHome=true
+# read-only, not true: the referral secret is in /home/ubuntu/trace/.env.
+ProtectHome=read-only

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
+import { beaconTrack } from '@/lib/analytics/beacon';
 import { Check, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
@@ -115,6 +116,7 @@ export default function NewsletterBuilder() {
       setPrefs(data.prefs);
       setSavedPrefs(data.prefs);
       setSave('saved');
+      beaconTrack('newsletter_preferences_saved');
       posthog.capture('newsletter_preferences_saved', {
         count: next.count, format: next.format, topics: next.topics, enabled: next.enabled,
       });

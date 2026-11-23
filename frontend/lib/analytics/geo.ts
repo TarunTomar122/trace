@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 
-import { MmdbReader } from "@/lib/analytics/mmdb";
+import { MmdbReader } from "./mmdb.ts";
 
 /**
  * Country lookup for the first-party analytics, from db-ip.com's "IP to

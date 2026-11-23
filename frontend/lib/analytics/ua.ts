@@ -22,6 +22,20 @@ const BOT_RE = new RegExp(
   "i",
 );
 
+/**
+ * A scripted browser dressed as a real one: Lightpanda, or Chromium client hints (Sec-CH-UA) whose major version
+ * the User-Agent does not carry (a scraper rotating "Chrome/119" while the engine says 146). Firefox and Safari
+ * send no hints, so they pass.
+ */
+export function isForgedBrowser(ua: string | null | undefined, secChUa: string | null | undefined): boolean {
+  const agent = ua ?? "";
+  if (/Lightpanda/i.test(agent)) return true;
+  const chromium = /"Chromium";\s*v="(\d+)"/i.exec(secChUa ?? "");
+  if (!chromium) return false;
+  const chrome = /\bChrome\/(\d+)/.exec(agent);
+  return !chrome || chrome[1] !== chromium[1];
+}
+
 export function isBot(ua: string | null | undefined): boolean {
   const value = (ua ?? "").trim();
   if (value.length < 20 || value.length > 1000) return true;

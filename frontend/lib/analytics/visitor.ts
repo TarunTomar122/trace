@@ -8,12 +8,9 @@ import { createHash, randomBytes } from "crypto";
  * can never be tied to today's, or recomputed from an address. The address
  * itself is never stored.
  *
- * Both web instances must agree on the day's salt (or one person would count
- * twice), so it lives in the store as one document per day, created by
- * whichever instance needs it first; the other reads it back.
+ * The salt lives in the analytics database (the salt table, one row per day),
+ * so a restart keeps the day's ids; it is created by whoever needs it first.
  */
-
-export const SALT_COLLECTION_SUFFIX = "salt";
 
 export function utcDay(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -40,8 +37,14 @@ export class SaltKeeper {
   private day: string | null = null;
   private salt: string | null = null;
   private pending: Promise<string> | null = null;
+  // Plain fields, not constructor parameter properties: node --test runs this file with type stripping only.
+  private readonly store: SaltStore;
+  private readonly make: () => string;
 
-  constructor(private readonly store: SaltStore, private readonly make: () => string = newSalt) {}
+  constructor(store: SaltStore, make: () => string = newSalt) {
+    this.store = store;
+    this.make = make;
+  }
 
   /** The salt for the UTC day `now` falls in. */
   async saltFor(now: number): Promise<string> {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import posthog from 'posthog-js';
+import { beaconTrack } from '@/lib/analytics/beacon';
 
 type Channel = 'x' | 'linkedin' | 'copy' | 'native';
 
@@ -19,6 +20,7 @@ export default function ShareBar({
   const shareUrl = `${url}?from=share`;
 
   function track(channel: Channel) {
+    beaconTrack(event, { channel });
     posthog.capture(event, { channel, url });
   }
 
