@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { SPONSOR_PLACEMENTS, sponsorHref, type SponsorPlacement } from '@/lib/sponsor-link';
 import { captureServerEvent } from '@/lib/posthog-server';
 
-// A sponsor link in the daily email: count the click in sponsor_clicks (like
+// A sponsor link in the daily email or the Chrome extension (p=extension): count the click in sponsor_clicks (like
 // /api/tools/click does for the site's beacon), then send the reader to the
 // sponsor with Trace's UTM tags. Email has no JavaScript, hence a redirect.
 // `t` is the email send's id (email_sends.track_id): the PostHog event
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         },
         { merge: true },
       );
-      await captureServerEvent(trackId ? `email:${trackId}` : `email-sponsor:${id}`, 'sponsored_tool_clicked', {
+      await captureServerEvent(trackId ? `email:${trackId}` : `${placement === 'extension' ? 'extension' : 'email'}-sponsor:${id}`, 'sponsored_tool_clicked', {
         sponsor_id: id,
         sponsor_title: String(data.title || ''),
         placement,

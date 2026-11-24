@@ -20,6 +20,7 @@ const PLACES: Record<SponsorPlacement, string> = {
   home_feed_end: 'Feed, end of Home',
   brief_rail: 'Trace Daily pages',
   email: 'Daily email',
+  extension: 'Chrome new tab',
 };
 
 type Doc = Record<string, unknown>;

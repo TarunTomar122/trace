@@ -1,113 +1,118 @@
 import {
-  addSummaryRead,
-  canOpenSummary,
-  filterArticlesByTag,
+  agoLabel,
+  bookmarkPayload,
+  filterStories,
+  insertAt,
   isCacheFresh,
-  normalizeArticlePool,
   normalizeBookmarks,
   normalizeRemoteBookmarks,
-  normalizeSummaryReads,
-  selectRandomArticles,
-} from './lib/brief.js';
+  normalizeStoryPool,
+  storyTopics,
+} from './lib/stories.js';
 
-const CACHE_KEY = 'trace.extension.article-pool.v5';
-const READS_KEY = 'trace.extension.summary-reads.v1';
-const BOOKMARKS_KEY = 'trace.extension.bookmarks.v2';
+const CACHE_KEY = 'trace.extension.stories.v6';
+const BOOKMARKS_KEY = 'trace.extension.bookmarks.v3';
 const SESSION_KEY = 'trace.extension.session.v1';
 const ACCOUNT_KEY = 'trace.extension.account.v1';
-const BOOKMARK_MIGRATION_KEY = 'trace.extension.bookmark-migration.v1';
 const BOOKMARK_OWNER_KEY = 'trace.extension.bookmark-owner.v1';
 const BOOKMARKS_SYNCED_AT_KEY = 'trace.extension.bookmarks-synced-at.v1';
-const CHECKOUT_PENDING_KEY = 'trace.extension.checkout-pending.v1';
-const SITE_ORIGIN = chrome.runtime.getManifest().homepage_url;
-const API_URL = new URL('/api/extension/brief', SITE_ORIGIN).toString();
+// Keys from versions before 0.3 (article pool, the old five-a-day read count, checkout flag).
+const OLD_KEYS = [
+  'trace.extension.article-pool.v5',
+  'trace.extension.summary-reads.v1',
+  'trace.extension.checkout-pending.v1',
+  'trace.extension.bookmarks.v2',
+  'trace.extension.bookmark-migration.v1',
+];
+const SITE_ORIGIN = new URL(chrome.runtime.getManifest().homepage_url).origin;
+const API_URL = new URL('/api/extension/stories', SITE_ORIGIN).toString();
 const ACCOUNT_CACHE_TTL_MS = 5 * 60 * 1000;
-const STORIES_PER_TAB = 31;
-const SAVED_FILTER = '__saved__';
+const SAVED = '__saved__';
 
+const $ = (selector) => document.querySelector(selector);
 const elements = {
-  filters: document.querySelector('#filters'),
-  accountLink: document.querySelector('#account-link'),
-  feedbackCard: document.querySelector('#feedback-card'),
-  loading: document.querySelector('#loading'),
-  articles: document.querySelector('#articles'),
-  error: document.querySelector('#error'),
-  errorMessage: document.querySelector('#error-message'),
-  retry: document.querySelector('#retry'),
-  reader: document.querySelector('#reader'),
-  readerBookmark: document.querySelector('#reader-bookmark'),
-  readerClose: document.querySelector('#reader-close'),
-  readerImage: document.querySelector('#reader-image'),
-  readerSource: document.querySelector('#reader-source'),
-  readerTitle: document.querySelector('#reader-title'),
-  readerBody: document.querySelector('#reader-body'),
-  readerLink: document.querySelector('#reader-link'),
-  readerShare: document.querySelector('#reader-share'),
+  topics: $('#topics'),
+  accountLink: $('#account-link'),
+  loading: $('#loading'),
+  stories: $('#stories'),
+  error: $('#error'),
+  errorMessage: $('#error-message'),
+  retry: $('#retry'),
+  reader: $('#reader'),
+  readerKicker: $('#reader-kicker'),
+  readerBookmark: $('#reader-bookmark'),
+  readerShare: $('#reader-share'),
+  readerClose: $('#reader-close'),
+  readerImage: $('#reader-image'),
+  readerTitle: $('#reader-title'),
+  readerMeta: $('#reader-meta'),
+  readerText: $('#reader-text'),
+  readerMore: $('#reader-more'),
+  readerCoverage: $('#reader-coverage'),
+  readerTrace: $('#reader-trace'),
+  readerSource: $('#reader-source'),
 };
 
-let currentPool = null;
-let currentArticles = [];
-let activeTag = '';
-let summaryReads = normalizeSummaryReads(null);
-let summaryReadQueue = Promise.resolve();
-let bookmarkedArticles = new Map();
-let bookmarkWriteQueue = Promise.resolve();
-let readerArticle = null;
-let extensionSession = null;
+let pool = null;
+let activeCat = '';
+let bookmarks = new Map();
+let bookmarkQueue = Promise.resolve();
+let readerStory = null;
+let session = null;
 let account = null;
 
-function connectUrl(intent = '') {
+function el(tag, className, textContent) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (textContent) node.textContent = textContent;
+  return node;
+}
+
+function connectUrl() {
   const url = new URL('/extension/connect', SITE_ORIGIN);
   url.searchParams.set('extension_id', chrome.runtime.id);
-  if (intent) url.searchParams.set('intent', intent);
   return url.toString();
 }
 
-function sessionIsValid(session) {
-  return Boolean(session?.token?.startsWith('trace_ext_') && Date.parse(session.expiresAt) > Date.now());
-}
-
-function accountCacheIsFresh(value) {
-  const timestamp = Date.parse(value?.cachedAt || '');
-  return Number.isFinite(timestamp) && Date.now() - timestamp < ACCOUNT_CACHE_TTL_MS;
+function sessionIsValid(value) {
+  return Boolean(value?.token?.startsWith('trace_ext_') && Date.parse(value.expiresAt) > Date.now());
 }
 
 function renderAccount() {
-  elements.accountLink.href = account ? new URL('/profile', SITE_ORIGIN).toString() : connectUrl();
-  elements.accountLink.textContent = account?.hasAccess ? 'Pro' : account?.name?.split(' ')[0] || 'Sign in';
-  elements.accountLink.classList.toggle('is-pro', Boolean(account?.hasAccess));
+  elements.accountLink.href = account ? new URL('/feed', SITE_ORIGIN).toString() : connectUrl();
+  elements.accountLink.textContent = account?.name?.split(' ')[0] || (account ? 'Account' : 'Sign in');
 }
 
 async function authorizedFetch(path, options = {}) {
-  if (!sessionIsValid(extensionSession)) throw new Error('Trace sign-in is required');
+  if (!sessionIsValid(session)) throw new Error('Trace sign-in is required');
   return fetch(new URL(path, SITE_ORIGIN), {
     ...options,
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${extensionSession.token}`,
+      Authorization: `Bearer ${session.token}`,
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options.headers,
     },
   });
 }
 
 async function loadAccount(force = false) {
   const stored = await chrome.storage.local.get([SESSION_KEY, ACCOUNT_KEY]);
-  extensionSession = sessionIsValid(stored[SESSION_KEY]) ? stored[SESSION_KEY] : null;
-  if (!extensionSession) {
+  session = sessionIsValid(stored[SESSION_KEY]) ? stored[SESSION_KEY] : null;
+  if (!session) {
     account = null;
     await chrome.storage.local.remove([SESSION_KEY, ACCOUNT_KEY]);
     renderAccount();
     return;
   }
-  if (!force && accountCacheIsFresh(stored[ACCOUNT_KEY])) {
+  const cachedAt = Date.parse(stored[ACCOUNT_KEY]?.cachedAt || '');
+  if (!force && Number.isFinite(cachedAt) && Date.now() - cachedAt < ACCOUNT_CACHE_TTL_MS) {
     account = stored[ACCOUNT_KEY].payload;
     renderAccount();
     return;
   }
   const response = await authorizedFetch('/api/extension/account');
   if (response.status === 401) {
-    extensionSession = null;
+    session = null;
     account = null;
     await chrome.storage.local.remove([SESSION_KEY, ACCOUNT_KEY]);
     renderAccount();
@@ -119,372 +124,344 @@ async function loadAccount(force = false) {
   renderAccount();
 }
 
-function formatDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+// ---------- bookmarks ----------
+
+async function syncBookmarks(force = false) {
+  if (!account || !session) return;
+  const stored = await chrome.storage.local.get([BOOKMARK_OWNER_KEY, BOOKMARKS_SYNCED_AT_KEY]);
+  const fresh = Date.now() - Date.parse(stored[BOOKMARKS_SYNCED_AT_KEY] || '') < ACCOUNT_CACHE_TTL_MS;
+  if (!force && stored[BOOKMARK_OWNER_KEY] === account.uid && fresh) return;
+  const response = await authorizedFetch('/api/bookmarks?limit=100');
+  if (!response.ok) throw new Error('Bookmark sync failed');
+  const payload = await response.json();
+  bookmarks = new Map(normalizeRemoteBookmarks(payload.bookmarks, SITE_ORIGIN).map((story) => [story.id, story]));
+  await chrome.storage.local.set({
+    [BOOKMARKS_KEY]: [...bookmarks.values()],
+    [BOOKMARK_OWNER_KEY]: account.uid,
+    [BOOKMARKS_SYNCED_AT_KEY]: new Date().toISOString(),
+  });
+  refreshBookmarks();
 }
 
-function showLoading() {
-  elements.loading.replaceChildren();
-  for (let index = 0; index < STORIES_PER_TAB; index += 1) {
-    const skeleton = document.createElement('div');
-    skeleton.className = 'skeleton';
-    elements.loading.append(skeleton);
+async function toggleBookmark(story) {
+  if (!account) {
+    window.open(connectUrl(), '_blank', 'noopener,noreferrer');
+    return;
   }
-  elements.loading.hidden = false;
-  elements.articles.hidden = true;
+  bookmarkQueue = bookmarkQueue.catch(() => undefined).then(async () => {
+    const removing = bookmarks.has(story.id);
+    const response = await authorizedFetch(
+      removing ? `/api/bookmarks?item_id=${encodeURIComponent(story.id)}` : '/api/bookmarks',
+      { method: removing ? 'DELETE' : 'POST', body: removing ? undefined : JSON.stringify(bookmarkPayload(story)) },
+    );
+    if (!response.ok) throw new Error(`Bookmark request returned ${response.status}`);
+    const next = new Map(bookmarks);
+    if (removing) next.delete(story.id);
+    else next.set(story.id, story);
+    await chrome.storage.local.set({ [BOOKMARKS_KEY]: [...next.values()], [BOOKMARK_OWNER_KEY]: account.uid });
+    bookmarks = next;
+  });
+  try {
+    await bookmarkQueue;
+  } catch (error) {
+    console.error('Trace could not update the bookmark', error);
+  }
+  refreshBookmarks();
+}
+
+function setBookmarkState(button, story) {
+  const saved = bookmarks.has(story.id);
+  button.setAttribute('aria-pressed', String(saved));
+  button.setAttribute('aria-label', !account ? `Sign in to save ${story.title}` : saved ? `Remove ${story.title} from Saved` : `Save ${story.title}`);
+}
+
+/** After a save or a sync: the Saved tab re-renders; elsewhere only the buttons change, so focus stays put. */
+function refreshBookmarks() {
+  if (activeCat === SAVED) render();
+  else {
+    const byId = new Map([...(pool?.stories || []), ...bookmarks.values()].map((story) => [story.id, story]));
+    elements.stories.querySelectorAll('.save[data-id]').forEach((button) => {
+      const story = byId.get(button.dataset.id);
+      if (story) setBookmarkState(button, story);
+    });
+    renderTopics();
+  }
+  updateReaderBookmark();
+}
+
+function bookmarkButton(story) {
+  const button = el('button', 'save');
+  button.type = 'button';
+  button.dataset.id = story.id;
+  setBookmarkState(button, story);
+  button.append(elements.readerBookmark.querySelector('svg').cloneNode(true));
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    void toggleBookmark(story);
+  });
+  return button;
+}
+
+// ---------- rendering ----------
+
+function meta(story) {
+  const parts = [story.source, story.sourceCount > 1 ? `${story.sourceCount} sources` : '', agoLabel(story.ts)].filter(Boolean);
+  return parts.join(' · ');
+}
+
+function image(src, className, eager = false) {
+  const img = el('img', className);
+  img.src = src;
+  img.alt = '';
+  img.loading = eager ? 'eager' : 'lazy';
+  img.decoding = 'async';
+  img.addEventListener('error', () => img.remove());
+  return img;
+}
+
+function link(href, className, text, rel = 'noopener noreferrer') {
+  const a = el('a', className, text);
+  a.href = href;
+  a.target = '_blank';
+  a.rel = rel;
+  return a;
+}
+
+function storyCard(story, lead = '') {
+  const card = el('article', lead ? 'card is-lead' : 'card');
+  const open = el('button', 'card-open');
+  open.type = 'button';
+  open.setAttribute('aria-label', `Open ${story.title}`);
+  open.addEventListener('click', () => openReader(story));
+  card.append(open);
+
+  const top = el('div', 'card-top');
+  if (lead) {
+    const kicker = el('span', 'kicker');
+    kicker.append(el('span', 'kicker-star', '★'), el('mark', '', lead));
+    top.append(kicker);
+  } else {
+    top.append(el('span', `tag tag-${story.cat}`, story.catLabel));
+  }
+  top.append(bookmarkButton(story));
+  card.append(top);
+
+  const text = el('div', 'card-text');
+  text.append(el('h2', 'card-title', story.title));
+  if (lead && story.body) text.append(el('p', 'card-body', story.body));
+  text.append(el('p', 'meta', meta(story)));
+  if (lead && story.coverage.length) {
+    const more = el('ul', 'card-more');
+    story.coverage.slice(0, 2).forEach((item) => {
+      const li = el('li');
+      li.append(link(item.url, '', item.title));
+      if (item.source) li.append(el('span', 'more-source', ` · ${item.source}`));
+      more.append(li);
+    });
+    text.append(more);
+  }
+  card.append(text);
+  if (story.img) card.append(image(story.img, 'card-image', Boolean(lead)));
+  return card;
+}
+
+function sponsorCard(sponsor, slotUrl) {
+  const card = el('article', 'card is-ad');
+  const top = el('div', 'card-top');
+  top.append(el('span', 'ad-label', 'Sponsored'));
+  card.append(top);
+  const text = el('div', 'card-text');
+  text.append(el('h2', 'card-title', sponsor.title));
+  if (sponsor.sub) text.append(el('p', 'card-body', sponsor.sub));
+  card.append(text);
+  const go = link(sponsor.href, 'ad-button', 'Visit website ', 'noopener sponsored');
+  go.append(el('span', '', '↗'));
+  card.append(go);
+  if (slotUrl) card.append(link(slotUrl, 'ad-slot', 'Your tool here · $19/mo'));
+  return card;
+}
+
+function openSlotCard(slotUrl) {
+  const card = el('article', 'card is-ad is-slot');
+  const top = el('div', 'card-top');
+  top.append(el('span', 'ad-label', 'Sponsor spot open'));
+  card.append(top);
+  const text = el('div', 'card-text');
+  text.append(el('h2', 'card-title', 'Put your tool in front of people who follow tech news'));
+  text.append(el('p', 'card-body', 'One card here, on the Trace site and in the daily email. $19 a month, cancel any time.'));
+  card.append(text);
+  card.append(link(slotUrl, 'ad-button', 'Sponsor Trace'));
+  return card;
+}
+
+function houseCard() {
+  const card = el('article', 'card is-ad is-house');
+  const top = el('div', 'card-top');
+  top.append(el('span', 'ad-label', 'From the maker of Trace'));
+  card.append(top);
+  const text = el('div', 'card-text');
+  text.append(el('h2', 'card-title', 'StocksBrew'));
+  text.append(el('p', 'card-body', 'Look up any US stock: financials, valuation, earnings, analyst targets and news. Follow up to five stocks free.'));
+  card.append(text);
+  const go = link('https://stocksbrew.online/?utm_source=trace&utm_medium=extension_card', 'ad-button', 'Visit website ', 'noopener');
+  go.append(el('span', '', '↗'));
+  card.append(go);
+  return card;
+}
+
+/** Story cards with the sponsor cards placed among them (3rd, 11th, 19th spot; StocksBrew 9th). */
+function withSponsorCards(cards) {
+  const sponsors = pool?.sponsors || [];
+  const slotUrl = pool?.sponsorUrl || '';
+  const inserts = sponsors.length
+    ? sponsors.map((sponsor, i) => [2 + i * 8, sponsorCard(sponsor, i === 0 ? slotUrl : '')])
+    : slotUrl ? [[2, openSlotCard(slotUrl)]] : [];
+  inserts.push([8, houseCard()]);
+  return insertAt(cards, inserts);
+}
+
+function renderTopics() {
+  const topics = pool ? storyTopics(pool.stories) : [];
+  const tabs = [{ cat: '', label: 'All' }, ...topics, ...(account ? [{ cat: SAVED, label: 'Saved' }] : [])];
+  elements.topics.replaceChildren(...tabs.map(({ cat, label }) => {
+    const button = el('button', 'topic', label);
+    button.type = 'button';
+    button.dataset.cat = cat;
+    button.setAttribute('aria-pressed', String(cat === activeCat));
+    return button;
+  }));
+}
+
+function render() {
+  renderTopics();
+  if (!pool) return;
+  if (activeCat === SAVED) {
+    const saved = [...bookmarks.values()];
+    elements.stories.replaceChildren(
+      ...(saved.length ? saved.map((story) => storyCard(story)) : [el('p', 'empty', 'Nothing saved yet. Use the bookmark on any story.')]),
+    );
+    return;
+  }
+  const stories = filterStories(pool.stories, activeCat);
+  const label = pool.stories.find((s) => s.cat === activeCat)?.catLabel || '';
+  if (!stories.length) {
+    elements.stories.replaceChildren(el('p', 'empty', 'No stories in this topic today.'));
+    return;
+  }
+  const cards = stories.map((story, i) => storyCard(story, i === 0 ? (activeCat ? `Top in ${label}` : 'Story of the day') : ''));
+  elements.stories.replaceChildren(...withSponsorCards(cards));
+}
+
+function showPool(next) {
+  pool = next;
+  if (activeCat && activeCat !== SAVED && !pool.stories.some((s) => s.cat === activeCat)) activeCat = '';
+  render();
+  elements.loading.hidden = true;
   elements.error.hidden = true;
   elements.error.classList.remove('is-overlay');
+  elements.stories.hidden = false;
 }
 
-function renderReaderContent(article) {
-  elements.readerBody.replaceChildren();
-  let list = null;
-
-  article.content.forEach((block) => {
-    if (block.type === 'list_item') {
-      if (!list) {
-        list = document.createElement('ul');
-        elements.readerBody.append(list);
-      }
-      const item = document.createElement('li');
-      item.textContent = block.text;
-      list.append(item);
-      return;
-    }
-
-    list = null;
-    const node = document.createElement(block.type === 'heading' ? 'h2' : 'p');
-    node.textContent = block.text;
-    elements.readerBody.append(node);
-  });
-
-  if (!article.content.length && article.summary) {
-    const summary = document.createElement('p');
-    summary.textContent = article.summary;
-    elements.readerBody.append(summary);
-  }
-}
-
-function renderReadLimit() {
-  elements.readerBody.replaceChildren();
-  const panel = document.createElement('div');
-  panel.className = 'reader-paywall';
-  const title = document.createElement('h2');
-  title.textContent = 'You have used today’s five free summaries.';
-  const description = document.createElement('p');
-  description.textContent = account
-    ? 'Try Trace Pro free for 3 days to keep reading. Original publisher links always stay open.'
-    : 'Sign in with Google to sync your access and saved stories. Original publisher links always stay open.';
-  const action = document.createElement('a');
-  action.href = account
-    ? new URL('/profile?tab=subscription&intent=checkout', SITE_ORIGIN).toString()
-    : connectUrl('checkout');
-  action.target = '_blank';
-  action.rel = 'noopener noreferrer';
-  action.textContent = account ? 'Try Pro free for 3 days' : 'Continue with Google';
-  action.addEventListener('click', () => void chrome.storage.local.set({ [CHECKOUT_PENDING_KEY]: true }));
-  panel.append(title, description, action);
-  elements.readerBody.append(panel);
-}
-
-function renderStorageError() {
-  elements.readerBody.replaceChildren();
-  const panel = document.createElement('div');
-  panel.className = 'reader-paywall';
-  const title = document.createElement('h2');
-  title.textContent = 'Trace could not save your reading progress.';
-  const description = document.createElement('p');
-  description.textContent = 'Check Chrome storage access, then reopen this story.';
-  panel.append(title, description);
-  elements.readerBody.append(panel);
-}
+// ---------- reader ----------
 
 function updateReaderBookmark() {
-  const active = Boolean(readerArticle && bookmarkedArticles.has(readerArticle.id));
-  elements.readerBookmark.setAttribute('aria-pressed', String(active));
-  elements.readerBookmark.setAttribute('aria-label', active ? 'Remove bookmark' : 'Bookmark story');
+  const saved = Boolean(readerStory && bookmarks.has(readerStory.id));
+  elements.readerBookmark.setAttribute('aria-pressed', String(saved));
+  elements.readerBookmark.setAttribute('aria-label', saved ? 'Remove from Saved' : 'Save story');
 }
 
-async function openReader(article) {
-  elements.readerSource.textContent = [article.source, formatDate(article.publishedAt)].filter(Boolean).join(' · ');
-  elements.readerTitle.textContent = article.title;
-  elements.readerLink.href = article.sourceUrl;
-  readerArticle = article;
+function openReader(story) {
+  readerStory = story;
+  elements.readerKicker.textContent = story.catLabel;
+  elements.readerTitle.textContent = story.title;
+  elements.readerMeta.textContent = meta(story);
+  elements.readerText.replaceChildren(...story.detail.map((part) => el('p', '', part)));
+  elements.readerCoverage.replaceChildren(...story.coverage.map((item) => {
+    const li = el('li');
+    const a = el('a', '', item.title);
+    a.href = item.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    li.append(a);
+    if (item.source) li.append(el('span', 'more-source', ` · ${item.source}`));
+    return li;
+  }));
+  elements.readerMore.hidden = story.coverage.length === 0;
+  elements.readerTrace.href = story.traceUrl || story.url;
+  elements.readerTrace.hidden = !story.traceUrl;
+  elements.readerSource.href = story.url;
+  elements.readerSource.textContent = story.source ? `Read ${story.source} ` : 'Read the source ';
+  elements.readerSource.append(el('span', '', '↗'));
   elements.readerShare.setAttribute('aria-label', 'Copy story link');
-  updateReaderBookmark();
-
-  if (article.thumbnail) {
-    elements.readerImage.src = article.thumbnail;
+  if (story.img) {
+    elements.readerImage.src = story.img;
     elements.readerImage.hidden = false;
   } else {
     elements.readerImage.removeAttribute('src');
     elements.readerImage.hidden = true;
   }
-
-  let access = 'denied';
-  summaryReadQueue = summaryReadQueue.catch(() => undefined).then(async () => {
-    if (!canOpenSummary(summaryReads, article.id, Boolean(account?.hasAccess))) return 'denied';
-    if (account?.hasAccess) return 'allowed';
-    const nextSummaryReads = addSummaryRead(summaryReads, article.id);
-    await chrome.storage.local.set({ [READS_KEY]: nextSummaryReads });
-    summaryReads = nextSummaryReads;
-    return 'allowed';
-  });
-  try {
-    access = await summaryReadQueue;
-  } catch (error) {
-      console.error('Trace could not save reading progress', error);
-      renderStorageError();
-      elements.reader.showModal();
-      return;
-  }
-
-  if (access === 'allowed') {
-    renderReaderContent(article);
-  } else {
-    renderReadLimit();
-  }
+  updateReaderBookmark();
   elements.reader.showModal();
 }
 
-function bookmarkIcon() {
-  return elements.readerBookmark.querySelector('svg').cloneNode(true);
-}
-
-function bookmarkPayload(article) {
-  return {
-    item_id: article.id,
-    item_metadata: {
-      type: 'article',
-      title: article.title,
-      description: article.content.map(({ text }) => text).join('\n\n'),
-      url: article.sourceUrl,
-      thumbnail: article.thumbnail || null,
-      tags: [article.tag],
-      source: article.source,
-      timestamp: article.publishedAt,
-    },
-  };
-}
-
-async function syncBookmarks(force = false) {
-  if (!account || !extensionSession) return;
-  const migration = await chrome.storage.local.get([BOOKMARK_MIGRATION_KEY, BOOKMARK_OWNER_KEY, BOOKMARKS_SYNCED_AT_KEY]);
-  if (
-    !force
-    && migration[BOOKMARK_OWNER_KEY] === account.uid
-    && Date.now() - Date.parse(migration[BOOKMARKS_SYNCED_AT_KEY] || '') < ACCOUNT_CACHE_TTL_MS
-  ) return;
-  if (migration[BOOKMARK_OWNER_KEY] && migration[BOOKMARK_OWNER_KEY] !== account.uid) {
-    bookmarkedArticles = new Map();
-    await chrome.storage.local.remove(BOOKMARKS_KEY);
-  }
-  if (migration[BOOKMARK_MIGRATION_KEY] !== account.uid && bookmarkedArticles.size) {
-    await Promise.all([...bookmarkedArticles.values()].map((article) => authorizedFetch('/api/bookmarks', {
-      method: 'POST',
-      body: JSON.stringify(bookmarkPayload(article)),
-    }).then((response) => {
-      if (!response.ok) throw new Error('Bookmark migration failed');
-    })));
-    await chrome.storage.local.set({ [BOOKMARK_MIGRATION_KEY]: account.uid });
-  }
-  const response = await authorizedFetch('/api/bookmarks?limit=100');
-  if (!response.ok) throw new Error('Bookmark sync failed');
-  const payload = await response.json();
-  bookmarkedArticles = new Map(normalizeRemoteBookmarks(payload.bookmarks).map((article) => [article.id, article]));
-  await chrome.storage.local.set({
-    [BOOKMARKS_KEY]: [...bookmarkedArticles.values()],
-    [BOOKMARK_OWNER_KEY]: account.uid,
-    [BOOKMARK_MIGRATION_KEY]: account.uid,
-    [BOOKMARKS_SYNCED_AT_KEY]: new Date().toISOString(),
-  });
-  renderFilters();
-  renderArticles();
-  updateReaderBookmark();
-}
-
-async function toggleBookmark(article) {
-  if (!account) {
-    window.open(connectUrl(), '_blank', 'noopener,noreferrer');
-    return;
-  }
-  bookmarkWriteQueue = bookmarkWriteQueue.catch(() => undefined).then(async () => {
-    const removing = bookmarkedArticles.has(article.id);
-    const response = await authorizedFetch(removing ? `/api/bookmarks?item_id=${encodeURIComponent(article.id)}` : '/api/bookmarks', {
-      method: removing ? 'DELETE' : 'POST',
-      body: removing ? undefined : JSON.stringify(bookmarkPayload(article)),
-    });
-    if (!response.ok) throw new Error(`Bookmark request returned ${response.status}`);
-    const next = new Map(bookmarkedArticles);
-    if (next.has(article.id)) next.delete(article.id);
-    else next.set(article.id, article);
-    await chrome.storage.local.set({
-      [BOOKMARKS_KEY]: [...next.values()],
-      [BOOKMARK_OWNER_KEY]: account.uid,
-      [BOOKMARKS_SYNCED_AT_KEY]: new Date().toISOString(),
-    });
-    bookmarkedArticles = next;
-  });
-  try {
-    await bookmarkWriteQueue;
-  } catch (error) {
-    console.error('Trace could not update the bookmark', error);
-  }
-  renderFilters();
-  renderArticles();
-  updateReaderBookmark();
-}
-
-function createArticleCard(article) {
-  const card = document.createElement('article');
-  card.className = 'article-card';
-
-  const bookmark = document.createElement('button');
-  bookmark.className = 'card-bookmark';
-  bookmark.type = 'button';
-  bookmark.setAttribute('aria-label', !account ? `Sign in to bookmark ${article.title}` : bookmarkedArticles.has(article.id) ? `Remove bookmark for ${article.title}` : `Bookmark ${article.title}`);
-  bookmark.setAttribute('aria-pressed', String(bookmarkedArticles.has(article.id)));
-  bookmark.append(bookmarkIcon());
-  bookmark.addEventListener('click', () => void toggleBookmark(article));
-  card.append(bookmark);
-
-  const open = document.createElement('button');
-  open.className = 'article-open';
-  open.type = 'button';
-  open.addEventListener('click', () => openReader(article));
-
-  if (article.thumbnail) {
-    const image = document.createElement('img');
-    image.src = article.thumbnail;
-    image.alt = '';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    image.addEventListener('error', () => image.remove());
-    open.append(image);
-  }
-
-  const content = document.createElement('span');
-  content.className = 'article-content';
-
-  const tag = document.createElement('span');
-  tag.className = 'story-tag';
-  tag.textContent = article.tag;
-  content.append(tag);
-
-  const title = document.createElement('span');
-  title.className = 'article-title';
-  title.textContent = article.title;
-  content.append(title);
-  open.append(content);
-  card.append(open);
-  return card;
-}
-
-function renderArticles() {
-  const selected = activeTag === SAVED_FILTER
-    ? [...bookmarkedArticles.values()]
-    : filterArticlesByTag(currentArticles, activeTag).slice(0, STORIES_PER_TAB);
-  elements.articles.replaceChildren(
-    ...selected.map(createArticleCard),
-    elements.feedbackCard.content.cloneNode(true),
-  );
-}
-
-function renderFilters() {
-  const tags = [...new Set(currentArticles.map(({ tag }) => tag))].sort();
-  elements.filters.replaceChildren(...['', ...tags, ...(account ? [SAVED_FILTER] : [])].map((tag) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.tag = tag;
-    button.textContent = tag === SAVED_FILTER ? 'Saved' : tag ? tag.replace(/\b(ai|ux)\b|^\w/g, (word) => word.toUpperCase()) : 'All';
-    button.setAttribute('aria-pressed', String(tag === activeTag));
-    return button;
-  }));
-}
-
-function renderPool(pool) {
-  currentPool = pool;
-  currentArticles = selectRandomArticles(pool.articles, pool.articles.length);
-  activeTag = '';
-  renderFilters();
-  renderArticles();
-  elements.loading.hidden = true;
-  elements.error.hidden = true;
-  elements.error.classList.remove('is-overlay');
-  elements.articles.hidden = false;
-}
+// ---------- loading ----------
 
 async function fetchPool() {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch(API_URL, {
-      cache: 'default',
-      headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    });
+    const response = await fetch(API_URL, { headers: { Accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) throw new Error(`Trace returned ${response.status}`);
-    return {
-      payload: await response.json(),
-      cachedAt: new Date().toISOString(),
-    };
+    return await response.json();
   } finally {
     window.clearTimeout(timeout);
   }
 }
 
-async function loadArticles() {
+async function loadStories() {
   elements.error.hidden = true;
-
   try {
-    const fresh = await fetchPool();
-    const pool = normalizeArticlePool(fresh.payload);
+    const payload = await fetchPool();
+    const next = normalizeStoryPool(payload);
     try {
-      await chrome.storage.local.set({ [CACHE_KEY]: fresh });
+      await chrome.storage.local.set({ [CACHE_KEY]: { payload, cachedAt: new Date().toISOString() } });
     } catch (error) {
-      console.warn('Trace could not cache the article pool', error);
+      console.warn('Trace could not cache the stories', error);
     }
-    renderPool(pool);
+    showPool(next);
   } catch (error) {
-    if (!currentPool) {
+    if (!pool) {
       elements.loading.hidden = true;
-      elements.articles.hidden = true;
+      elements.stories.hidden = true;
     }
-    elements.errorMessage.textContent = currentPool ? 'Could not refresh.' : 'Could not load articles.';
-    elements.error.classList.toggle('is-overlay', Boolean(currentPool));
+    elements.errorMessage.textContent = pool ? 'Could not refresh.' : 'Could not load stories.';
+    elements.error.classList.toggle('is-overlay', Boolean(pool));
     elements.error.hidden = false;
     console.error('Trace extension refresh failed', error);
   }
 }
 
 async function start() {
-  showLoading();
   renderAccount();
-  const stored = await chrome.storage.local.get([CACHE_KEY, READS_KEY, BOOKMARKS_KEY, BOOKMARK_OWNER_KEY]);
-  const cached = stored[CACHE_KEY];
-  summaryReads = normalizeSummaryReads(stored[READS_KEY]);
-  try {
-    bookmarkedArticles = new Map(normalizeBookmarks(stored[BOOKMARKS_KEY]).map((article) => [article.id, article]));
-  } catch (error) {
-    bookmarkedArticles = new Map();
-    console.error('Trace ignored invalid bookmark data', error);
-  }
+  void chrome.storage.local.remove(OLD_KEYS).catch(() => undefined);
+  const stored = await chrome.storage.local.get([CACHE_KEY, BOOKMARKS_KEY]);
+  bookmarks = new Map(normalizeBookmarks(stored[BOOKMARKS_KEY]).map((story) => [story.id, story]));
+  // Coming from 0.2 the bookmark key is new: forget the last sync time so Saved fills now.
+  if (!stored[BOOKMARKS_KEY]) await chrome.storage.local.remove(BOOKMARKS_SYNCED_AT_KEY).catch(() => undefined);
   try {
     await loadAccount();
-    if (!account && stored[BOOKMARK_OWNER_KEY]) {
-      bookmarkedArticles = new Map();
+    if (!account && bookmarks.size) {
+      bookmarks = new Map();
       await chrome.storage.local.remove([BOOKMARKS_KEY, BOOKMARK_OWNER_KEY]);
     }
   } catch (error) {
     console.warn('Trace account refresh failed', error);
   }
 
+  const cached = stored[CACHE_KEY];
   if (cached?.payload) {
     try {
-      renderPool(normalizeArticlePool(cached.payload));
+      showPool(normalizeStoryPool(cached.payload));
       if (isCacheFresh(cached.cachedAt) || !navigator.onLine) {
         try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
         return;
@@ -493,30 +470,29 @@ async function start() {
       await chrome.storage.local.remove(CACHE_KEY);
     }
   }
-
-  await loadArticles();
+  await loadStories();
   try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
 }
 
-elements.retry.addEventListener('click', loadArticles);
-elements.filters.addEventListener('click', (event) => {
+elements.retry.addEventListener('click', loadStories);
+elements.topics.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
-  activeTag = button.dataset.tag;
-  elements.filters.querySelectorAll('button').forEach((option) => {
-    option.setAttribute('aria-pressed', String(option === button));
-  });
-  renderArticles();
+  activeCat = button.dataset.cat;
+  render();
+  window.scrollTo({ top: 0 });
 });
 elements.readerClose.addEventListener('click', () => elements.reader.close());
 elements.readerBookmark.addEventListener('click', () => {
-  if (readerArticle) void toggleBookmark(readerArticle);
+  if (readerStory) void toggleBookmark(readerStory);
 });
 elements.readerShare.addEventListener('click', async () => {
-  if (!readerArticle) return;
+  if (!readerStory) return;
   try {
-    await navigator.clipboard.writeText(readerArticle.shareUrl || readerArticle.sourceUrl);
+    await navigator.clipboard.writeText(readerStory.traceUrl || readerStory.url);
     elements.readerShare.setAttribute('aria-label', 'Link copied');
+    elements.readerShare.classList.add('is-done');
+    window.setTimeout(() => elements.readerShare.classList.remove('is-done'), 1400);
   } catch (error) {
     console.error('Trace could not copy the story link', error);
   }
@@ -530,26 +506,15 @@ elements.reader.addEventListener('click', (event) => {
 });
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== 'TRACE_SESSION_UPDATED') return;
-  void loadAccount(true).then(() => syncBookmarks(true)).catch((error) => {
+  void loadAccount(true).then(() => syncBookmarks(true)).then(render).catch((error) => {
     console.error('Trace could not finish account connection', error);
   });
-});
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
-  void chrome.storage.local.get(CHECKOUT_PENDING_KEY).then(async (stored) => {
-    if (!stored[CHECKOUT_PENDING_KEY]) return;
-    await loadAccount(true);
-    if (account?.hasAccess) {
-      await chrome.storage.local.remove(CHECKOUT_PENDING_KEY);
-      if (readerArticle) void openReader(readerArticle);
-    }
-  }).catch((error) => console.warn('Trace entitlement refresh failed', error));
 });
 
 start().catch((error) => {
   elements.loading.hidden = true;
-  elements.articles.hidden = true;
-  elements.errorMessage.textContent = 'Could not load articles.';
+  elements.stories.hidden = true;
+  elements.errorMessage.textContent = 'Could not load stories.';
   elements.error.hidden = false;
   console.error('Trace extension startup failed', error);
 });

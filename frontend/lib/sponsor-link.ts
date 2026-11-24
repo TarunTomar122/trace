@@ -4,9 +4,9 @@
 // traffic: the link carries UTM tags for the sponsor's own analytics, and a
 // beacon to /api/tools/click adds it to our first-party count (the numbers on
 // the sponsor's stats page), next to the PostHog event the caller sends. The
-// daily email has no JavaScript, so its links count through /api/tools/go.
+// daily email and the Chrome new-tab extension count through /api/tools/go.
 
-export const SPONSOR_PLACEMENTS = ['desktop_tools', 'home_feed_end', 'pulse_mobile', 'brief_rail', 'email'] as const;
+export const SPONSOR_PLACEMENTS = ['desktop_tools', 'home_feed_end', 'pulse_mobile', 'brief_rail', 'email', 'extension'] as const;
 export type SponsorPlacement = (typeof SPONSOR_PLACEMENTS)[number];
 
 /** How many sponsors show at once (feed, brief and email); a sale beyond this is refused. */

@@ -17,7 +17,10 @@ zip -q -r "$archive" \
   newtab.js \
   background.js \
   styles.css \
-  lib/brief.js \
+  lib/stories.js \
+  fonts/roboto-serif-display-500.woff2 \
+  fonts/roboto-serif-display-700.woff2 \
+  fonts/OFL.txt \
   assets/icon16.png \
   assets/icon32.png \
   assets/icon48.png \

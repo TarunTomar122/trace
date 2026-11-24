@@ -480,7 +480,7 @@ export function creditCitedOutlet(story: FeedStory): FeedStory {
 
 /** Fold same-event singletons and split clusters into one coverage card. */
 export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
-  const out: FeedStory[] = [];
+  let out: FeedStory[] = [];
   for (const story of stories) {
     const match = out.find((existing) => sameEventStory(existing, story));
     if (match) {
@@ -494,6 +494,19 @@ export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
       sourceNames: [...story.sourceNames],
       mergedIds: story.mergedIds ? [...story.mergedIds] : undefined,
     });
+  }
+  // A merge can change a card's headline and coverage (the richer write-up's wins), so two
+  // cards that didn't match when they met can match afterwards: two "Jensen Huang is back
+  // as Nvidia's CEO" cards on 2026-11-24. Fold again until nothing changes.
+  for (let pass = 0; pass < 5; pass += 1) {
+    const next: FeedStory[] = [];
+    for (const story of out) {
+      const match = next.find((existing) => sameEventStory(existing, story));
+      if (match) mergeStoryCoverage(match, story);
+      else next.push(story);
+    }
+    if (next.length === out.length) break;
+    out = next;
   }
   return out.map((story, i) => ({ ...creditCitedOutlet(story), rank: i + 1 }));
 }

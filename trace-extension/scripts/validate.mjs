@@ -27,7 +27,10 @@ const requiredFiles = [
   'styles.css',
   'newtab.js',
   'background.js',
-  'lib/brief.js',
+  'lib/stories.js',
+  'fonts/roboto-serif-display-500.woff2',
+  'fonts/roboto-serif-display-700.woff2',
+  'fonts/OFL.txt',
   ...Object.values(manifest.icons),
 ];
 
@@ -40,7 +43,7 @@ assert.doesNotMatch(html, /<script(?![^>]+src=)/i, 'inline scripts are not allow
 assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'inline event handlers are not allowed');
 assert.match(html, /<script type="module" src="newtab\.js"><\/script>/);
 
-const javascript = `${await read('newtab.js')}\n${await read('background.js')}\n${await read('lib/brief.js')}`;
+const javascript = `${await read('newtab.js')}\n${await read('background.js')}\n${await read('lib/stories.js')}`;
 assert.doesNotMatch(javascript, /\beval\s*\(|\bnew\s+Function\b/);
 assert.doesNotMatch(javascript, /import\s+[^;]*https?:\/\//);
 
@@ -50,7 +53,7 @@ const textFiles = [
   'styles.css',
   'newtab.js',
   'background.js',
-  'lib/brief.js',
+  'lib/stories.js',
   'README.md',
   'PRIVACY.md',
   'store/listing.md',
@@ -59,5 +62,7 @@ const textFiles = [
 for (const path of textFiles) {
   assert.doesNotMatch(await read(path), /\u2014/, `${path} contains an em dash`);
 }
+
+assert.doesNotMatch(javascript, /Try Pro|free summaries|hasAccess|intent=checkout/i, 'no paywall code');
 
 console.log(`Trace extension validation passed with ${requiredFiles.length} runtime files.`);
