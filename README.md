@@ -10,6 +10,8 @@ yourself, on your phone, in every new Chrome tab, or through your AI assistant.
 
 **Live:** [yourtrace.online](https://www.yourtrace.online) · **Daily archive:** [yourtrace.online/brief](https://www.yourtrace.online/brief) · **Build your brief:** [yourtrace.online/brief/customize](https://www.yourtrace.online/brief/customize)
 
+[![Trace MCP connector on Glama](https://glama.ai/mcp/connectors/io.github.TarunTomar122/trace/badges/score.svg)](https://glama.ai/mcp/connectors/io.github.TarunTomar122/trace)
+
 <p align="center">
   <img src="docs/screenshot-homepage.png" alt="The homepage: tech and AI news in five minutes a day" width="49%" />
   <img src="docs/screenshot-brief.png" alt="A daily brief on the web, with a contents list to jump between stories" width="49%" />
