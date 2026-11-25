@@ -823,6 +823,19 @@ export default function FeedApp({
   function base(): string {
     return pathname || '/feed';
   }
+  // Feed URL that keeps the reader's lane (?tab=, or the older ?q= alias), so
+  // opening a story and coming back never drops it. Read from the URL rather
+  // than `tab`: the Escape handler calls goBack() from a mount-time closure.
+  function feedUrl(open: { story?: string; pulse?: string } = {}): string {
+    const cur = new URLSearchParams(window.location.search);
+    const q = new URLSearchParams();
+    const lane = cur.get('tab') ?? cur.get('q');
+    if (lane) q.set('tab', lane);
+    if (open.story) q.set('story', open.story);
+    if (open.pulse) q.set('pulse', open.pulse);
+    const qs = q.toString();
+    return qs ? `${base()}?${qs}` : base();
+  }
   function openStory(s: FeedStory, opts: { fromDetail?: boolean } = {}) {
     // From another story's "Keep reading": keep the feed's saved position for Back.
     if (mainRef.current && !opts.fromDetail) savedScroll.current = mainRef.current.scrollTop;
@@ -835,7 +848,7 @@ export default function FeedApp({
       return next;
     });
     // Story to story replaces the entry, so the browser's Back still lands on the feed.
-    const url = `${base()}?story=${encodeURIComponent(s.id)}`;
+    const url = feedUrl({ story: s.id });
     if (opts.fromDetail) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
     trackFeedItemClicked(s.id, 'story', s.source || '');
@@ -848,7 +861,7 @@ export default function FeedApp({
   function openPulseItem(t: PulseItem) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: null, pulse: t.id });
-    window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
+    window.history.pushState(null, '', feedUrl({ pulse: t.id }));
     trackFeedItemClicked(t.id, 'pulse', t.source || '');
     trackSummaryOpened(t.id, false, {
       surface: 'feed_v2', item_type: 'pulse', source: t.source,
@@ -857,7 +870,7 @@ export default function FeedApp({
   function goBack() {
     setView({ story: null, pulse: null });
     setNlEngaged(true); // back on the list after a story: a good moment for the email ask
-    window.history.replaceState(null, '', base());
+    window.history.replaceState(null, '', feedUrl());
   }
   function go(t: string) {
     if (t !== tab) {
