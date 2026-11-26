@@ -2,6 +2,7 @@ import { CONTACT_EMAIL } from '@/lib/site-links';
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/LegalPageShell';
 import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
+import { NOINDEX_ROBOTS } from '@/lib/indexing';
 
 const SUPPORT_EMAIL = CONTACT_EMAIL;
 
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://www.yourtrace.online/delete-account',
   },
+  // A support page for the app stores, not something to find in search.
+  robots: NOINDEX_ROBOTS,
   openGraph: {
     ...DEFAULT_OPEN_GRAPH,
     title: 'Delete Account — Trace',

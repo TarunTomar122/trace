@@ -127,12 +127,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ])
 
   // One public page per daily brief, plus the archive. lastModified is the
-  // publish time, a real content date.
+  // publish time, or the edition's own date for today's live, not-yet-published
+  // brief: both are real content dates.
   const dailyPages: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/brief`, changeFrequency: 'daily', priority: 0.85 },
+    { url: `${baseUrl}/brief`, ...(editions[0] ? { lastModified: editions[0].published_at || editions[0].date } : {}), changeFrequency: 'daily', priority: 0.85 },
     ...editions.map((edition) => ({
       url: `${baseUrl}/brief/${edition.date}`,
-      ...(edition.published_at ? { lastModified: edition.published_at } : {}),
+      lastModified: edition.published_at || edition.date,
       changeFrequency: 'never' as const,
       priority: 0.6,
     })),
@@ -200,11 +201,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
-    {
-      url: `${baseUrl}/delete-account`,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
+    // /delete-account stays live for the app stores but is noindexed and out of here.
     {
       url: `${baseUrl}/blog`,
       changeFrequency: 'weekly',

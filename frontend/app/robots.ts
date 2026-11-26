@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next';
 
 /**
- * Public marketing + SEO pages (/, /daily, /trending, /articles, /topics, /blog, /compare, /tools, /contact, etc.)
- * are allowed. Only app-authenticated, API, and internal routes are disallowed.
+ * Public pages (/, /brief, /blog, /compare, /newsletters, /tools, /contact, etc.) are allowed.
+ * Disallowed: the app feed, signed-in and OAuth routes, the API, dev pages and private
+ * sponsor stats (/sponsor/<id>). Served as /robots.txt; don't add a public/robots.txt, it would win.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
