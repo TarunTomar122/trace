@@ -54,6 +54,9 @@ const textFiles = [
   'newtab.js',
   'background.js',
   'lib/stories.js',
+  'board.js',
+  'board.css',
+  'lib/board.js',
   'README.md',
   'PRIVACY.md',
   'store/listing.md',
@@ -62,6 +65,13 @@ const textFiles = [
 for (const path of textFiles) {
   assert.doesNotMatch(await read(path), /\u2014/, `${path} contains an em dash`);
 }
+
+// The day board is the owner's own: it never goes into the store package.
+assert.doesNotMatch(await read('scripts/package.sh'), /board/, 'the store package must not include the day board');
+assert.match(await read('newtab.js'), /if \(!UNPACKED\) return;[\s\S]*fetch\('board\.on'[\s\S]*import\('\.\/board\.js'\)/, 'the board loads only in unpacked installs with board.on');
+assert.match(await read('.gitignore'), /^board\.on$/m, 'board.on stays out of git');
+const boardJs = `${await read('board.js')}\n${await read('lib/board.js')}`;
+assert.doesNotMatch(boardJs, /\beval\s*\(|\bnew\s+Function\b|innerHTML/);
 
 assert.doesNotMatch(javascript, /Try Pro|free summaries|hasAccess|intent=checkout/i, 'no paywall code');
 

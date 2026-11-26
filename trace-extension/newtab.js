@@ -28,6 +28,14 @@ const SITE_ORIGIN = new URL(chrome.runtime.getManifest().homepage_url).origin;
 const API_URL = new URL('/api/extension/stories', SITE_ORIGIN).toString();
 const ACCOUNT_CACHE_TTL_MS = 5 * 60 * 1000;
 const SAVED = '__saved__';
+// The owner's day board: only in an unpacked copy (store installs carry an update_url)
+// that also has a local `board.on` file (git-ignored). The store package leaves
+// board.js, board.css and lib/board.js out.
+const UNPACKED = !chrome.runtime.getManifest().update_url;
+const BOARD_SEEN_KEY = 'trace.board.enabled';
+const BOARD_VIEW_KEY = 'trace.board.view';
+let board = null;
+let storiesFailed = false; // first load failed with nothing cached (the board may mount later)
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -354,8 +362,10 @@ function render() {
 
 function showPool(next) {
   pool = next;
+  storiesFailed = false;
   if (activeCat && activeCat !== SAVED && !pool.stories.some((s) => s.cat === activeCat)) activeCat = '';
   render();
+  board?.setStories(pool.stories);
   elements.loading.hidden = true;
   elements.error.hidden = true;
   elements.error.classList.remove('is-overlay');
@@ -434,6 +444,10 @@ async function loadStories() {
       elements.loading.hidden = true;
       elements.stories.hidden = true;
     }
+    if (!pool) {
+      storiesFailed = true;
+      board?.storiesFailed();
+    }
     elements.errorMessage.textContent = pool ? 'Could not refresh.' : 'Could not load stories.';
     elements.error.classList.toggle('is-overlay', Boolean(pool));
     elements.error.hidden = false;
@@ -510,6 +524,57 @@ chrome.runtime.onMessage.addListener((message) => {
     console.error('Trace could not finish account connection', error);
   });
 });
+
+function localGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function localSet(key, value) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch { /* private window */ }
+}
+
+/** Show the board's view at once if it was on last time, so the news grid doesn't flash first. */
+function prepareBoard() {
+  if (document.querySelector('link[href="board.css"]')) return;
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'board.css';
+  document.head.append(css);
+  document.documentElement.dataset.view = localGet(BOARD_VIEW_KEY) === 'news' ? 'news' : 'today';
+}
+
+function dropBoard() {
+  document.querySelector('link[href="board.css"]')?.remove();
+  delete document.documentElement.dataset.view;
+}
+
+async function startBoard() {
+  if (!UNPACKED) return;
+  if (localGet(BOARD_SEEN_KEY) === '1') prepareBoard();
+  const enabled = await fetch('board.on', { cache: 'no-store' }).then((r) => r.ok, () => false);
+  localSet(BOARD_SEEN_KEY, enabled ? '1' : null);
+  if (!enabled) { dropBoard(); return; }
+  prepareBoard();
+  try {
+    const { mountBoard } = await import('./board.js');
+    board = mountBoard({
+      openReader,
+      agoLabel,
+      retry: loadStories,
+      view: document.documentElement.dataset.view,
+      saveView: (view) => localSet(BOARD_VIEW_KEY, view),
+    });
+    if (pool) board.setStories(pool.stories);
+    else if (storiesFailed) board.storiesFailed();
+  } catch (error) {
+    dropBoard(); // never leave a blank page behind
+    console.error('Trace board failed to load', error);
+  }
+}
+
+void startBoard();
 
 start().catch((error) => {
   elements.loading.hidden = true;

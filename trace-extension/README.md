@@ -22,6 +22,10 @@ The extension requests only Chrome's `storage` permission. It does not request b
 4. Choose this `trace-extension` directory.
 5. Open a new tab.
 
+## Day board (owner only)
+
+An unpacked copy with a `board.on` file in this directory (git-ignored; `touch board.on`) opens on a day board instead of the grid: a big Today checklist, Ideas, Later and Done, and today's Trace stories in a rail (+ adds one to Today). Ticked items move to Done at midnight. A Today / News switch in the top bar returns to the grid. Everything stays in `chrome.storage.local`. Store installs never load it: `board.js`, `board.css` and `lib/board.js` are not in the package, and `update_url` marks a store install.
+
 ## Verify and package
 
 ```sh
