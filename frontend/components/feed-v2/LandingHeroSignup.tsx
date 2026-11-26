@@ -6,6 +6,7 @@ import SignupCelebration from '@/components/feed-v2/SignupCelebration';
 import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
 import { firstTouch } from '@/lib/first-touch';
+import { SignupTrap, trapValue } from '@/components/SignupTrap';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -47,6 +48,7 @@ export default function LandingHeroSignup({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const trap = trapValue(e.currentTarget);
     if (status === 'loading') return;
     setStatus('loading');
     setMessage('');
@@ -54,7 +56,7 @@ export default function LandingHeroSignup({
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: SOURCES[source], ...firstTouch() }),
+        body: JSON.stringify({ email, source: SOURCES[source], ...firstTouch(), ...trap }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : "Couldn't subscribe right now. Try again in a moment.");
@@ -76,6 +78,7 @@ export default function LandingHeroSignup({
   return (
     <div className={`hp-signup hp-signup-${placement}`}>
       <form className="hp-form" onSubmit={handleSubmit}>
+        <SignupTrap />
         <input
           id={inputId}
           type="email"

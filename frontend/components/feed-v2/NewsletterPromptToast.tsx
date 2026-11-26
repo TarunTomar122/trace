@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { trackNewsletterSignup } from '@/lib/posthog';
 import { markNewsletterSubscribed } from '@/lib/newsletter-local';
 import { firstTouch } from '@/lib/first-touch';
+import { SignupTrap, trapValue } from '@/components/SignupTrap';
 
 const FALLBACK_ERROR = "Couldn't subscribe right now. Try again in a moment.";
 
@@ -48,6 +49,7 @@ export default function NewsletterPromptToast({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const trap = trapValue(event.currentTarget);
     if (status === 'loading') return;
     // read this before the button disables: a disabled button drops focus to the page
     const hadFocus = !!rootRef.current?.contains(document.activeElement);
@@ -57,7 +59,7 @@ export default function NewsletterPromptToast({
       const res = await fetch('/api/newsletter-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'feed_prompt', ...firstTouch() }),
+        body: JSON.stringify({ email, source: 'feed_prompt', ...firstTouch(), ...trap }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === 'string' && data.error ? data.error : FALLBACK_ERROR);
@@ -114,6 +116,7 @@ export default function NewsletterPromptToast({
             onSubmit={submit}
             className="mt-3.5 flex h-11 overflow-hidden rounded-[8px] border border-[#c7c7c7] bg-white transition-shadow focus-within:border-[#1634cc] focus-within:ring-[3px] focus-within:ring-[#1634cc]/15"
           >
+            <SignupTrap />
             <input
               ref={inputRef}
               type="email"

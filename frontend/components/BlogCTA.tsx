@@ -6,6 +6,7 @@ import { ArrowRight, X } from "lucide-react";
 import { trackBlogCtaClicked, trackNewsletterSignup } from "@/lib/posthog";
 import { isNewsletterSubscribed, markNewsletterSubscribed, onNewsletterSubscribed } from "@/lib/newsletter-local";
 import { firstTouch } from "@/lib/first-touch";
+import { SignupTrap, trapValue } from "@/components/SignupTrap";
 
 const SIGNUP_ERROR = "Couldn't subscribe right now. Try again in a moment.";
 
@@ -80,6 +81,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const trap = trapValue(event.currentTarget);
     if (status === "loading") return;
     // read this before the button disables: a disabled button drops focus to the page
     const hadFocus = !!rootRef.current?.contains(document.activeElement);
@@ -89,7 +91,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       const res = await fetch("/api/newsletter-subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "blog", ...firstTouch() }),
+        body: JSON.stringify({ email, source: "blog", ...firstTouch(), ...trap }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data.error === "string" && data.error ? data.error : SIGNUP_ERROR);
@@ -169,6 +171,7 @@ export function BlogEmailCard({ slug, placement }: { slug: string; placement: "i
       ) : (
         <div className="hp-signup hp-signup-box">
           <form onSubmit={submit} className="hp-form">
+            <SignupTrap />
             <input
               ref={inputRef}
               type="email"

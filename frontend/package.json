@@ -16,6 +16,7 @@
     "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
     "test:analytics": "node --test lib/analytics/*.test.mjs",
     "test:app-icons": "node --test lib/app-icons.test.mjs",
+    "test:signup-guard": "node --test lib/signup-guard.test.mjs",
     "remotion:studio": "remotion studio",
     "remotion:render": "remotion render"
   },
