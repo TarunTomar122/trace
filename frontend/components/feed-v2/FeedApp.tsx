@@ -81,6 +81,7 @@ import {
 } from 'lucide-react';
 import { BriefArt } from '@/components/feed-v2/home-art';
 import { recordSponsorClick, sponsorBlurb, sponsorHref, SPONSOR_SLOTS } from '@/lib/sponsor-link';
+import { useSponsorView } from '@/lib/use-sponsor-view';
 
 export interface CoverageLink {
   title: string;
@@ -2203,8 +2204,11 @@ function SponsoredToolLink({
   /** Off where a group label covers it; on wherever the row sits among stories. */
   showLabel?: boolean;
 }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  useSponsorView(ref, sponsor.id, placement);
   return (
     <a
+      ref={ref}
       className={`sponsored-tool-row sponsored-tool-row--${variant}`}
       href={sponsorHref(sponsor.url, placement)}
       target="_blank"

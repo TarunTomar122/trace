@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import LandingHeroSignup from '@/components/feed-v2/LandingHeroSignup';
 import { isNewsletterSubscribed, onNewsletterSubscribed } from '@/lib/newsletter-local';
 import { trackFeedItemClicked, trackSponsoredToolClicked } from '@/lib/posthog';
 import { recordSponsorClick, sponsorBlurb, sponsorHref } from '@/lib/sponsor-link';
 import { faviconUrl } from '@/lib/topic-icons';
+import { useSponsorView } from '@/lib/use-sponsor-view';
 
 // The edition page's right rail (wide screens): the sponsor cards, then the
 // subscribe card. Client components only for the click tracking and for
@@ -25,8 +26,11 @@ function domainOf(url: string): string {
 /** An active sponsor, as the feed's sponsor row shows it, in the rail's card style. */
 export function RailSponsorCard({ sponsor, editionDate, position }: { sponsor: RailSponsor; editionDate: string; position: number }) {
   const domain = domainOf(sponsor.url);
+  const ref = useRef<HTMLAnchorElement>(null);
+  useSponsorView(ref, sponsor.id, 'brief_rail');
   return (
     <a
+      ref={ref}
       className="br-sponsor"
       href={sponsorHref(sponsor.url, 'brief_rail')}
       target="_blank"

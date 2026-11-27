@@ -11,6 +11,8 @@ const BOT = /bot|crawl|spider|slurp|preview|fetch|curl|wget|python|headless/i;
 
 export async function POST(request: NextRequest) {
   try {
+    // A dev server reads the live database: only production counts.
+    if (process.env.NODE_ENV !== 'production') return new NextResponse(null, { status: 204 });
     if (BOT.test(request.headers.get('user-agent') || '')) return new NextResponse(null, { status: 204 });
     const body = JSON.parse((await request.text()).slice(0, 500) || '{}');
     const id = String(body.id || '');

@@ -120,6 +120,7 @@ export class MemoryFirestore {
     const base = options?.merge ? { ...(this.docs.get(path) || {}) } : {};
     for (const [key, value] of Object.entries(data)) {
       if (isDeleteTransform(value)) delete base[key];
+      else if (value?.constructor?.name === 'NumericIncrementTransform') base[key] = (Number(base[key]) || 0) + value.operand;
       else base[key] = stored(value);
     }
     this.docs.set(path, base);

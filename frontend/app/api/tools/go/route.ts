@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
     // Nor do HEAD requests (link scanners; Next answers HEAD with this handler) or known bots.
     const expires = data.expires_at?.toDate?.() ?? (data.expires_at ? new Date(data.expires_at) : null);
     const live = data.status === 'active' && !(expires && expires.getTime() <= Date.now());
-    if (live && request.method === 'GET' && !BOT.test(request.headers.get('user-agent') || '')) {
+    // A dev server reads the live database: only production counts.
+    const counts = process.env.NODE_ENV === 'production';
+    if (counts && live && request.method === 'GET' && !BOT.test(request.headers.get('user-agent') || '')) {
       const day = new Date().toISOString().slice(0, 10);
       await adminDb.collection('sponsor_clicks').doc(`${id}_${day}`).set(
         {

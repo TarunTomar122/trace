@@ -1690,6 +1690,25 @@ SPONSOR_SLOTS = 3  # same as the feed (frontend/lib/sponsor-link.ts)
 SPONSOR_SLOT_URL = f"{APP_URL}/feed?from=email&sponsor=open"
 
 
+def _record_sponsor_emails(store: FirestoreStore, sponsors: list[dict], sent: int) -> None:
+    """Adds this run's sends to each sponsor's daily count (sponsor_views.emails).
+
+    Every email in a run carries the same sponsors (resolved once per run), so
+    each sponsor was in `sent` emails. The sponsor's stats page shows it.
+    Best effort: the count must never cost the send.
+    """
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    for sponsor in sponsors:
+        try:
+            store.db.collection("sponsor_views").document(f"{sponsor['id']}_{day}").set(
+                {"sponsor_id": sponsor["id"], "day": day, "emails": firestore.Increment(sent),
+                 "updated_at": datetime.now(timezone.utc)},
+                merge=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log(f"sponsor email count skipped for {sponsor.get('id')}: {exc}")
+
+
 def _sponsor_go_url(sponsor_id: str, track_id: str = "") -> str:
     """The counted sponsor link; `t` is the send's id, so a click is tied to the reader's email."""
     url = f"{APP_URL}/api/tools/go?id={quote(sponsor_id, safe='')}&p=email"
@@ -2646,6 +2665,7 @@ def send_audience_newsletter(
         if sent and not dry_run:
             # Only the selections: the cache also holds the sponsors and the issue copy.
             _record_sent(store, target_date, groups, _selections(cache))
+            _record_sponsor_emails(store, cache.get("sponsors") or [], sent)
     return {
         "success": failed == 0 and sent > 0,
         "mode": "full",

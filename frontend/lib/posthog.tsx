@@ -19,7 +19,8 @@ import {
 if (typeof window !== "undefined") {
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const shouldInitPosthog =
-    !window.location.pathname.startsWith("/admin") && Boolean(posthogKey) &&
+    // /sponsor/<id>?k=<token> is a sponsor's private page: its key must not reach analytics.
+    !window.location.pathname.startsWith("/admin") && !window.location.pathname.startsWith("/sponsor/") && Boolean(posthogKey) &&
     posthogKey!.startsWith("phc_") &&
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1";
@@ -43,7 +44,7 @@ function PostHogPageView() {
   const lastUrl = useRef("");
 
   useEffect(() => {
-    if (pathname && !pathname.startsWith("/admin")) {
+    if (pathname && !pathname.startsWith("/admin") && !pathname.startsWith("/sponsor/")) {
       // The email visit id is the send's own id: never send it to analytics.
       // Dropping it from the address bar then repeats the same URL, which
       // is not a second page view.
