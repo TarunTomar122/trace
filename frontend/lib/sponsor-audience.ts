@@ -103,8 +103,14 @@ export function rank(pairs: [string, number][], min = 1): Breakdown {
 }
 
 const text = (v: unknown, fallback: string) => (typeof v === 'string' && v.trim() ? v.trim() : fallback);
-const DEVICE: Record<string, string> = { Desktop: 'Desktop', Mobile: 'Phone', Tablet: 'Tablet' };
-const device = (v: unknown) => DEVICE[text(v, '')] || text(v, 'Unknown');
+/** Countries are ISO codes ("GB"; "??" unknown), devices desktop / mobile / tablet / unknown: the page adds flags and icons. */
+const country = (v: unknown) => (typeof v === 'string' && /^[A-Z]{2}$/.test(v) ? v : '??');
+const device = (v: unknown) => {
+  const key = text(v, '').toLowerCase();
+  return ['desktop', 'mobile', 'tablet'].includes(key) ? key : 'unknown';
+};
+/** Email and new-tab clicks are counted on our server: no browser, so no country or device. */
+export const SERVER_CLICK = 'server';
 // The session's first URL reduced to its query string, so rows group by what decides the source.
 const ENTRY_QUERY = "concat('https://x/?', splitByChar('?', coalesce(properties.$session_entry_url, ''))[2])";
 
@@ -113,7 +119,7 @@ async function clickAudience(id: string, from: Date, to: Date): Promise<ClickAud
         AND timestamp >= ${at(from)} AND timestamp < ${at(to)}`;
   const [rows, people] = await Promise.all([
     hogql(
-      `SELECT properties.placement, properties.$geoip_country_name, properties.$device_type,
+      `SELECT properties.placement, properties.$geoip_country_code, properties.$device_type,
               properties.$session_entry_referring_domain, ${ENTRY_QUERY}, count()
          FROM events WHERE ${where}
         GROUP BY 1, 2, 3, 4, 5
@@ -121,14 +127,12 @@ async function clickAudience(id: string, from: Date, to: Date): Promise<ClickAud
     ),
     hogql(`SELECT count(DISTINCT person_id) FROM events WHERE ${where}`),
   ]);
-  // Email and new-tab clicks are server events: no browser, so no country or device.
   const server = (p: unknown) => (p === 'email' ? 'Daily email' : p === 'extension' ? 'Chrome new tab' : '');
-  const unknown = 'Not known (email or new tab)';
   return {
     clicks: rows.reduce((t, r) => t + Number(r[5] || 0), 0),
     people: Number(people[0]?.[0] || 0),
-    countries: rank(rows.map((r) => [server(r[0]) ? unknown : text(r[1], 'Unknown'), Number(r[5] || 0)])),
-    devices: rank(rows.map((r) => [server(r[0]) ? unknown : device(r[2]), Number(r[5] || 0)])),
+    countries: rank(rows.map((r) => [server(r[0]) ? SERVER_CLICK : country(r[1]), Number(r[5] || 0)])),
+    devices: rank(rows.map((r) => [server(r[0]) ? SERVER_CLICK : device(r[2]), Number(r[5] || 0)])),
     sources: rank(rows.map((r) => [server(r[0]) || sourceOf(r[4], r[3]), Number(r[5] || 0)]), MIN_SOURCE),
   };
 }
@@ -140,7 +144,7 @@ async function siteAudience(from: Date, to: Date): Promise<SiteAudience> {
     `SELECT country, device, referrer, query, count(), sum(views), countIf(spots > 0)
        FROM (
          SELECT person_id,
-                argMin(properties.$geoip_country_name, timestamp) AS country,
+                argMin(properties.$geoip_country_code, timestamp) AS country,
                 argMin(properties.$device_type, timestamp) AS device,
                 argMin(properties.$session_entry_referring_domain, timestamp) AS referrer,
                 argMin(${ENTRY_QUERY}, timestamp) AS query,
@@ -158,7 +162,7 @@ async function siteAudience(from: Date, to: Date): Promise<SiteAudience> {
     visitors: rows.reduce((t, r) => t + Number(r[4] || 0), 0),
     pageviews: rows.reduce((t, r) => t + Number(r[5] || 0), 0),
     sawSpots: rows.reduce((t, r) => t + Number(r[6] || 0), 0),
-    countries: rank(rows.map((r) => [text(r[0], 'Unknown'), Number(r[4] || 0)])),
+    countries: rank(rows.map((r) => [country(r[0]), Number(r[4] || 0)])),
     devices: rank(rows.map((r) => [device(r[1]), Number(r[4] || 0)])),
     sources: rank(rows.map((r) => [sourceOf(r[3], r[2]), Number(r[4] || 0)]), MIN_SOURCE),
   };
@@ -180,6 +184,6 @@ export const sponsorAudience = unstable_cache(
     const [clicks, site] = await Promise.all([clickAudience(id, from, to), siteAudience(from, to)]);
     return { clicks, site };
   },
-  ['sponsor-audience-v2'],
+  ['sponsor-audience-v3'],
   { revalidate: 600 },
 );

@@ -21,13 +21,24 @@ export function AdminPage({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function PageHead({ title, meta, actions }: { title: React.ReactNode; meta?: React.ReactNode; actions?: React.ReactNode }) {
+export function PageHead({
+  title,
+  meta,
+  actions,
+  crumb = "Trace / Admin",
+}: {
+  title: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  /** The small line above the title (the sponsor stats page reuses this head). */
+  crumb?: string;
+}) {
   return (
     <header className="mb-3 px-2 sm:mb-4 sm:px-0">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:flex-nowrap">
         <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <Link href="/" prefetch={false} className="text-[12.5px] text-oa-muted-fg hover:text-oa-fg">
-            Trace / Admin
+            {crumb}
           </Link>
           <h1 className="min-w-0 text-balance text-[19px] font-semibold leading-6 tracking-[-0.01em] text-oa-fg sm:text-[22px] sm:leading-7">{title}</h1>
         </div>

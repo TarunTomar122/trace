@@ -17,9 +17,10 @@ function niceMax(n: number): number {
 
 /**
  * Visitors (blue) and pageviews (grey) over the range on one count axis, with
- * a crosshair and the exact numbers for the point under the pointer.
+ * a crosshair and the exact numbers for the point under the pointer. `names`
+ * relabels the two lines (the sponsor stats page draws times shown and clicks).
  */
-export function VisitorsChart({ points }: { points: Point[] }) {
+export function VisitorsChart({ points, names = { visitors: "Visitors", pageviews: "Pageviews" } }: { points: Point[]; names?: { visitors: string; pageviews: string } }) {
   const [hover, setHover] = React.useState<number | null>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
   const boxRef = React.useRef<HTMLDivElement>(null);
@@ -61,7 +62,7 @@ export function VisitorsChart({ points }: { points: Point[] }) {
         viewBox={`0 0 ${W} ${H}`}
         className="block h-auto w-full touch-pan-y"
         role="img"
-        aria-label={`Visitors and pageviews, ${points.length} points`}
+        aria-label={`${names.visitors} and ${names.pageviews.toLowerCase()}, ${points.length} points`}
         onPointerMove={onMove}
         onPointerDown={onMove}
         onPointerLeave={() => setHover(null)}
@@ -84,6 +85,7 @@ export function VisitorsChart({ points }: { points: Point[] }) {
         {area ? <path d={area} fill="var(--oa-primary)" opacity="0.08" /> : null}
         <path d={line("pageviews")} fill="none" stroke="var(--oa-muted-fg)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
         <path d={line("visitors")} fill="none" stroke="var(--oa-primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {points.length === 1 ? <circle cx={x(0)} cy={y(points[0]!.pageviews)} r="3.5" fill="var(--oa-muted-fg)" /> : null}
         {points.length === 1 ? <circle cx={x(0)} cy={y(points[0]!.visitors)} r="4" fill="var(--oa-primary)" /> : null}
         {active && hover != null ? (
           <g>
@@ -102,14 +104,14 @@ export function VisitorsChart({ points }: { points: Point[] }) {
           <div className="mt-0.5 flex justify-between gap-3 text-oa-fg">
             <span className="flex items-center gap-1.5">
               <span className="h-0.5 w-3 rounded bg-oa-primary" />
-              Visitors
+              {names.visitors}
             </span>
             <span className="oa-mono tabular-nums">{fmtCount(active.visitors)}</span>
           </div>
           <div className="flex justify-between gap-3 text-oa-fg">
             <span className="flex items-center gap-1.5">
               <span className="h-0.5 w-3 rounded bg-oa-muted-fg" />
-              Pageviews
+              {names.pageviews}
             </span>
             <span className="oa-mono tabular-nums">{fmtCount(active.pageviews)}</span>
           </div>

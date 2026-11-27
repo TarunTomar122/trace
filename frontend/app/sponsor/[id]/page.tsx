@@ -1,26 +1,33 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { NUM, Sparkline, Tag } from '@/components/admin-analytics/kit/cells';
+import { AdminPage, PageHead } from '@/components/admin-analytics/kit/shell';
+import { countryName, flagOf, fmtCount } from '@/components/admin-analytics/format';
+import { Box, DeviceIcon, GroupHead, RankList, type RankRow } from '@/components/admin-analytics/parts';
+import { VisitorsChart } from '@/components/admin-analytics/visitors-chart';
 import { adminDb } from '@/lib/firebase-admin';
 import { CONTACT_EMAIL } from '@/lib/site-links';
 import { SPONSOR_PLACEMENTS, type SponsorPlacement } from '@/lib/sponsor-link';
-import { audienceConfigured, sponsorAudience, type Breakdown } from '@/lib/sponsor-audience';
+import { audienceConfigured, SERVER_CLICK, sponsorAudience, type Breakdown } from '@/lib/sponsor-audience';
+import { faviconUrl } from '@/lib/topic-icons';
+import '../../admin/analytics/style.css';
 
-// A sponsor's private stats page: /sponsor/{id}?k={stats_token}. The link is
-// in their welcome email (backend/v3/flows/send_sponsor_welcome.py writes the
-// token). Trace's own counts, by day and by spot:
+// A sponsor's private stats page: /sponsor/{id}?k={stats_token}, in the look of
+// /admin/analytics (its kit and tokens, scoped to .traceAdmin). The link is in
+// the sponsor's welcome email (backend/v3/flows/send_sponsor_welcome.py writes
+// the token). Trace's own counts, by day and by spot:
 // - clicks: sponsor_clicks (app/api/tools/click and /api/tools/go)
 // - times shown on the site: sponsor_views.views (app/api/tools/seen)
 // - daily emails it went out in: sponsor_views.emails (the daily send)
 // PostHog adds who clicked and who visited Trace during the run (lib/sponsor-audience).
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Sponsor stats — Trace', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Sponsor stats · Trace', robots: { index: false, follow: false } };
 
-// Times shown (site views and emails) were first counted from this moment;
-// earlier days show clicks only, and that day is partly counted.
+// Times shown (site views and emails) were first counted from this moment (the
+// release that added them); earlier days show clicks only, and that day is partial.
 const VIEWS_SINCE_AT = new Date('2026-11-27T17:52:00Z');
 const VIEWS_SINCE = VIEWS_SINCE_AT.toISOString().slice(0, 10);
 
@@ -31,6 +38,16 @@ const PLACES: Record<SponsorPlacement, string> = {
   brief_rail: 'Trace Daily pages',
   email: 'Daily email',
   extension: 'Chrome new tab',
+};
+const SITE_SPOTS = SPONSOR_PLACEMENTS.filter((p) => p !== 'email' && p !== 'extension');
+
+// A favicon for the sources people know by name.
+const SOURCE_HOSTS: Record<string, string> = {
+  Google: 'google.com', Gmail: 'mail.google.com', 'Google News': 'news.google.com', Gemini: 'gemini.google.com', Bing: 'bing.com',
+  DuckDuckGo: 'duckduckgo.com', ChatGPT: 'chatgpt.com', Perplexity: 'perplexity.ai', Claude: 'claude.ai', X: 'x.com',
+  'Hacker News': 'news.ycombinator.com', Reddit: 'reddit.com', YouTube: 'youtube.com', TikTok: 'tiktok.com',
+  Instagram: 'instagram.com', Facebook: 'facebook.com', LinkedIn: 'linkedin.com', Threads: 'threads.net', Bluesky: 'bsky.app',
+  GitHub: 'github.com', 'Product Hunt': 'producthunt.com', Substack: 'substack.com', 'Daily email': 'yourtrace.online',
 };
 
 type Doc = Record<string, unknown>;
@@ -54,12 +71,13 @@ function sameToken(given: string, stored: unknown): boolean {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SITE_SPOTS = SPONSOR_PLACEMENTS.filter((p) => p !== 'email' && p !== 'extension');
 const n = (v: unknown) => Number(v || 0);
-const fmt = (v: number) => v.toLocaleString('en-US');
-const longDay = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-const shortDay = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const sum = (rows: Doc[], field: string) => rows.reduce((total, r) => total + n(r[field]), 0);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "2026-11-27" -> "Nov 27". */
+const dayLabel = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`;
+const dateLabel = (d: Date) => `${dayLabel(d.toISOString().slice(0, 10))}, ${d.getUTCFullYear()}`;
+const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 
 /** "2.4%", or a dash when nothing was shown to divide by. */
 function rate(clicks: number, shown: number): string {
@@ -67,13 +85,6 @@ function rate(clicks: number, shown: number): string {
   const pct = (clicks / shown) * 100;
   return `${pct >= 10 || pct === 0 ? pct.toFixed(0) : pct.toFixed(1)}%`;
 }
-
-function rateNote(clicks: number, shown: number, what: string, fromNextDay: boolean): string {
-  const base = `${fmt(clicks)} clicks / ${fmt(shown)} ${what}`;
-  return fromNextDay ? `${base}, from ${shortDay(nextDay(VIEWS_SINCE))}` : base;
-}
-
-const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 
 /** Every UTC day from start to end, inclusive, as YYYY-MM-DD. */
 function daysBetween(start: Date, end: Date): string[] {
@@ -86,7 +97,44 @@ function daysBetween(start: Date, end: Date): string[] {
   return days;
 }
 
-const sum = (rows: Doc[], field: string) => rows.reduce((total, r) => total + n(r[field]), 0);
+/** A breakdown as the kit's ranked-list rows. */
+function rankRows(list: Breakdown, label: (key: string) => ReactNode, icon?: (key: string) => ReactNode): RankRow[] {
+  const total = list.reduce((t, r) => t + r.count, 0) || 1;
+  return list.map((r) => ({ key: r.label, label: label(r.label), icon: icon?.(r.label), value: r.count, share: r.count / total }));
+}
+
+const countryLabel = (code: string) => (code === SERVER_CLICK ? 'Email or new tab' : code === 'Other' ? 'Other' : countryName(code));
+const countryIcon = (code: string) =>
+  code === SERVER_CLICK || code === 'Other' ? null : <span aria-hidden className="text-[15px] leading-none">{flagOf(code)}</span>;
+const DEVICE_WORDS: Record<string, string> = { desktop: 'Desktop', mobile: 'Phone', tablet: 'Tablet', unknown: 'Unknown', [SERVER_CLICK]: 'Email or new tab' };
+const deviceLabel = (key: string) => DEVICE_WORDS[key] ?? key;
+const deviceIcon = (key: string) => (['desktop', 'mobile', 'tablet'].includes(key) ? <DeviceIcon kind={key} /> : null);
+function sourceIcon(label: string) {
+  const host = SOURCE_HOSTS[label];
+  if (!host) return null;
+  // eslint-disable-next-line @next/next/no-img-element -- a source's favicon
+  return <img src={faviconUrl(host, 32)} alt="" width={16} height={16} loading="lazy" className="size-4 rounded-[3px]" />;
+}
+
+/** A headline tile, as /admin/analytics draws them, with a note where that page shows the change. */
+function Stat({ label, value, note, spark }: { label: string; value: string; note: string; spark?: Array<number | null> }) {
+  return (
+    <div className="-mb-px -mr-px flex min-w-0 flex-col gap-1 border-b border-r border-oa-border px-3 py-2.5 sm:px-4">
+      <dt className="oa-caption truncate">{label}</dt>
+      <dd className="flex items-end justify-between gap-2">
+        <span className={`${NUM} text-[22px] font-semibold leading-7 tracking-[-0.01em] text-oa-fg`}>{value}</span>
+        {spark ? <Sparkline values={spark} width={56} height={22} tone="flat" className="mb-1 hidden sm:block" /> : null}
+      </dd>
+      <dd className={`${NUM} truncate text-[12.5px] leading-4 text-oa-muted-fg`} title={note}>
+        {note || ' '}
+      </dd>
+    </div>
+  );
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="px-3 py-6 text-center text-[13.5px] text-oa-muted-fg sm:px-4">{children}</p>;
+}
 
 export default async function SponsorStatsPage({
   params,
@@ -117,11 +165,18 @@ export default async function SponsorStatsPage({
   const clickRows = clickDocs.docs.map((d) => d.data() as Doc);
   const viewRows = viewDocs.docs.map((d) => d.data() as Doc);
 
-  // created before views were counted: that sponsor's first counted day is partial,
-  // and click rates use only the days counted in full.
+  // A sponsor that started before views were counted: its first counted day is
+  // partial, and click rates use only the days counted in full.
   const viewsStartedLate = Boolean(started && started < VIEWS_SINCE_AT);
   const fullDay = (day: unknown) => !viewsStartedLate || String(day) > VIEWS_SINCE;
   const rated = (rows: Doc[]) => rows.filter((r) => fullDay(r.day));
+  const ratesFrom = dayLabel(nextDay(VIEWS_SINCE));
+  const rateNote = (c: number, shownCount: number, what: string) =>
+    shownCount > 0
+      ? `${fmtCount(c)} clicks / ${fmtCount(shownCount)} ${what}`
+      : viewsStartedLate && now.toISOString().slice(0, 10) <= VIEWS_SINCE
+        ? `starts ${ratesFrom}`
+        : `no ${what} yet`;
 
   const clicks = sum(clickRows, 'clicks');
   const siteViews = sum(viewRows, 'views');
@@ -132,27 +187,29 @@ export default async function SponsorStatsPage({
   const emailClicksRated = sum(rated(clickRows), 'clicks_email');
   const emailsRated = sum(rated(viewRows), 'emails');
 
-  // Days of the run so far (or the whole run once it ended), newest first.
-  type DayRow = { views: number; emails: number; clicks: number; ratedClicks: number };
-  const blank = (): DayRow => ({ views: 0, emails: 0, clicks: 0, ratedClicks: 0 });
-  const lastDay = ends && ends < now ? ends : now;
+  // Every day of the run so far (or the whole run once it ended), oldest first.
+  type DayRow = { day: string; views: number; emails: number; clicks: number; ratedClicks: number };
+  // A run ending at 00:10 doesn't add an empty day.
+  const lastDay = ends && ends < now ? new Date(ends.getTime() - 1) : now;
   const byDay = new Map<string, DayRow>();
-  for (const day of started ? daysBetween(started, lastDay) : []) byDay.set(day, blank());
+  const dayRow = (day: string) => byDay.get(day) ?? byDay.set(day, { day, views: 0, emails: 0, clicks: 0, ratedClicks: 0 }).get(day)!;
+  for (const day of started ? daysBetween(started, lastDay) : []) dayRow(day);
   for (const r of viewRows) {
-    const row = byDay.get(String(r.day)) ?? blank();
+    const row = dayRow(String(r.day));
     row.views += n(r.views);
     row.emails += n(r.emails);
-    byDay.set(String(r.day), row);
   }
   for (const r of clickRows) {
-    const row = byDay.get(String(r.day)) ?? blank();
+    const row = dayRow(String(r.day));
     row.clicks += n(r.clicks);
     // New-tab views aren't counted, so their clicks stay out of the rate.
     row.ratedClicks += n(r.clicks) - n(r.clicks_extension);
-    byDay.set(String(r.day), row);
   }
-  const days = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  const maxShown = Math.max(1, ...days.map(([, d]) => d.views + d.emails));
+  const days = [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+  // Days before views were counted have no "shown" number: the chart starts where counting did.
+  const counted = (d: DayRow) => !viewsStartedLate || d.day >= VIEWS_SINCE;
+  const shownSpark = (pick: (d: DayRow) => number) => days.map((d) => (counted(d) ? pick(d) : null));
+  const maxShown = Math.max(1, ...days.map((d) => d.views + d.emails));
 
   const spots = SPONSOR_PLACEMENTS.map((p) => {
     const views = (rows: Doc[]) => (p === 'email' ? sum(rows, 'emails') : sum(rows, `views_${p}`));
@@ -160,257 +217,257 @@ export default async function SponsorStatsPage({
       key: p,
       place: PLACES[p],
       clicks: sum(clickRows, `clicks_${p}`),
-      shown: views(viewRows),
-      rate: rate(sum(rated(clickRows), `clicks_${p}`), views(rated(viewRows))),
-      counted: p !== 'extension',
+      shown: p === 'extension' ? null : views(viewRows),
+      rate: p === 'extension' ? '—' : rate(sum(rated(clickRows), `clicks_${p}`), views(rated(viewRows))),
     };
   });
+  const clickSpots: RankRow[] = spots
+    .filter((s) => s.clicks > 0)
+    .sort((a, b) => b.clicks - a.clicks)
+    .map((s) => ({ key: s.key, label: s.place, value: s.clicks, share: clicks ? s.clicks / clicks : 0 }));
 
   const runDays = started && ends ? Math.max(1, Math.round((ends.getTime() - started.getTime()) / DAY_MS)) : null;
   const dayOfRun = started ? Math.min(runDays ?? Infinity, Math.floor((now.getTime() - started.getTime()) / DAY_MS) + 1) : null;
   const daysLeft = live && ends ? Math.max(0, Math.ceil((ends.getTime() - now.getTime()) / DAY_MS)) : null;
-  const host = String(sponsor.host || '').trim() || (() => {
-    try {
-      return new URL(String(sponsor.url || '')).hostname.replace(/^www\./, '');
-    } catch {
-      return '';
-    }
-  })();
-  const clickAudience = audience?.clicks;
+  const host =
+    String(sponsor.host || '').trim() ||
+    (() => {
+      try {
+        return new URL(String(sponsor.url || '')).hostname.replace(/^www\./, '');
+      } catch {
+        return '';
+      }
+    })();
+  const who = audience?.clicks;
   const site = audience?.site;
-  const unavailable = audienceConfigured() ? 'Not available right now. Try again in a few minutes.' : 'Not available for this page.';
+  const unavailable = audienceConfigured() ? 'Not available right now. Reload in a few minutes.' : 'Not available for this page.';
+  const clickNote = (body: ReactNode) =>
+    clicks === 0 && (!who || who.clicks === 0) ? (
+      <Note>No clicks yet.</Note>
+    ) : !who ? (
+      <Note>{unavailable}</Note>
+    ) : who.clicks === 0 ? (
+      <Note>Not picked up by our analytics yet.</Note>
+    ) : (
+      body
+    );
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-[#0f1419]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
-      <main className="mx-auto max-w-[880px] px-4 py-10 sm:px-8 sm:py-14">
-        <Link href="/" className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo */}
-          <img src="/trace.webp" alt="" className="h-6 w-auto" />
-          <span className="text-[17px] font-extrabold tracking-[-0.02em]">Trace</span>
-        </Link>
+    <AdminPage>
+      <PageHead
+        crumb="Trace / Sponsor stats"
+        title={String(sponsor.title || host || 'Your sponsor spot')}
+        meta={
+          <span>
+            {host ? (
+              <a href={String(sponsor.url || '')} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {/* .traceAdmin a { color: inherit } wins over a class on the link itself. */}
+                <span className="text-oa-fg">{host}</span>
+              </a>
+            ) : null}
+            {[started ? `${dateLabel(started)} to ${ends ? dateLabel(ends) : 'open-ended'}` : '', 'Days in UTC']
+              .filter(Boolean)
+              .map((part, i) => `${host || i > 0 ? ' · ' : ''}${part}`)
+              .join('')}
+          </span>
+        }
+        actions={
+          <>
+            <Tag tone={live ? 'up' : 'neutral'}>{live ? 'Live' : 'Ended'}</Tag>
+            {live && dayOfRun && runDays ? <Tag caps={false}>{`Day ${dayOfRun} of ${runDays}`}</Tag> : null}
+          </>
+        }
+      />
 
-        <header className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#1634cc]">Sponsor stats</p>
-            <h1 className="mt-2 text-[30px] font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[34px]">{String(sponsor.title || '')}</h1>
-            <p className="mt-2 text-[14px] leading-[1.6] text-[#536471]">
-              {host && (
+      <div className="flex flex-col gap-3">
+        <dl className="oa-surface grid grid-cols-2 overflow-hidden border border-oa-border bg-oa-card md:grid-cols-4 2xl:grid-cols-8">
+          <Stat label="Times shown" value={fmtCount(shown)} note="site views + emails" spark={shownSpark((d) => d.views + d.emails)} />
+          <Stat label="Seen on the site" value={fmtCount(siteViews)} note="half on screen for 1s" spark={shownSpark((d) => d.views)} />
+          <Stat label="In daily emails" value={fmtCount(emails)} note="emails sent with it" spark={shownSpark((d) => d.emails)} />
+          <Stat label="Clicks" value={fmtCount(clicks)} note={`to ${host || 'your site'}`} spark={days.map((d) => d.clicks)} />
+          <Stat label="Click rate, site" value={rate(siteClicksRated, siteViewsRated)} note={rateNote(siteClicksRated, siteViewsRated, 'views')} />
+          <Stat label="Click rate, email" value={rate(emailClicksRated, emailsRated)} note={rateNote(emailClicksRated, emailsRated, 'emails')} />
+          <Stat label="People who clicked" value={who ? fmtCount(who.people) : '—'} note={who ? 'at least, from analytics' : 'analytics unavailable'} />
+          <Stat label="Days left" value={daysLeft == null ? '—' : String(daysLeft)} note={ends ? `${live ? 'until' : 'ended'} ${dateLabel(ends)}` : ''} />
+        </dl>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <Box
+              label="Shown and clicks"
+              right={
+                <span className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-0.5 w-3 rounded bg-oa-primary" />
+                    Shown
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-0.5 w-3 rounded bg-oa-muted-fg" />
+                    Clicks
+                  </span>
+                </span>
+              }
+            >
+              <VisitorsChart
+                points={days.filter(counted).map((d) => ({ label: d.day, visitors: d.views + d.emails, pageviews: d.clicks }))}
+                names={{ visitors: 'Shown', pageviews: 'Clicks' }}
+              />
+            </Box>
+          </div>
+          <div className="lg:col-span-4">
+            <Box label="Clicks by spot" right={`${fmtCount(clicks)} clicks`} flush>
+              <RankList rows={clickSpots} empty="No clicks yet." rowsInView={6} />
+            </Box>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Box label="Clickers came from" right={who && who.clicks > 0 ? `${fmtCount(who.clicks)} seen by analytics` : undefined} flush>
+            {clickNote(<RankList rows={rankRows(who?.sources ?? [], (key) => key, sourceIcon)} empty="No clicks yet." rowsInView={7} />)}
+          </Box>
+          <Box label="Clickers by country" flush>
+            {clickNote(<RankList rows={rankRows(who?.countries ?? [], countryLabel, countryIcon)} empty="No clicks yet." rowsInView={7} />)}
+          </Box>
+          <Box label="Clickers by device" flush>
+            {clickNote(<RankList rows={rankRows(who?.devices ?? [], deviceLabel, deviceIcon)} empty="No clicks yet." rowsInView={4} />)}
+          </Box>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <Box label="By day" right="newest first" flush>
+              <div className="max-h-[22.5rem] min-h-0 overflow-auto">
+                <table className="w-full table-fixed text-[13.5px]">
+                  <thead className="sticky top-0 z-10 bg-oa-card">
+                    <tr className="h-9 border-b border-oa-border text-left text-[12.5px] text-oa-muted-fg">
+                      <th className="px-3 font-normal sm:px-4">Day</th>
+                      <th className="w-[3.25rem] sm:w-[4.5rem] px-2 text-right font-normal">Site</th>
+                      <th className="w-[3.25rem] sm:w-[4.5rem] px-2 text-right font-normal">Emails</th>
+                      <th className="w-[3.25rem] sm:w-[4.5rem] px-2 text-right font-normal">Clicks</th>
+                      <th className="w-[3.25rem] sm:w-[4.5rem] px-3 text-right font-normal sm:px-4">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...days].reverse().map((d) => {
+                      const before = viewsStartedLate && d.day < VIEWS_SINCE;
+                      const partial = viewsStartedLate && d.day === VIEWS_SINCE;
+                      return (
+                        <tr key={d.day} className="h-9 border-b border-oa-border/60 last:border-b-0">
+                          <td className="relative truncate px-3 sm:px-4">
+                            <span
+                              aria-hidden
+                              className="absolute inset-y-1 left-1.5 rounded-sm bg-oa-primary/10"
+                              style={{ width: `calc(${((d.views + d.emails) / maxShown) * 100}% - 0.75rem)` }}
+                            />
+                            <span className="relative text-oa-fg">{dayLabel(d.day)}</span>
+                            {partial ? <span className="relative text-[12px] text-oa-muted-fg">{' · partial'}</span> : null}
+                          </td>
+                          <td className={`${NUM} px-2 text-right text-oa-fg`}>{before ? '—' : fmtCount(d.views)}</td>
+                          <td className={`${NUM} px-2 text-right text-oa-fg`}>{before ? '—' : fmtCount(d.emails)}</td>
+                          <td className={`${NUM} px-2 text-right text-oa-fg`}>{fmtCount(d.clicks)}</td>
+                          <td className={`${NUM} px-3 text-right text-oa-muted-fg sm:px-4`}>{fullDay(d.day) ? rate(d.ratedClicks, d.views + d.emails) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {days.length === 0 ? <Note>Nothing yet.</Note> : null}
+              </div>
+            </Box>
+          </div>
+          <div className="lg:col-span-4">
+            <Box label="Trace during your run" right="each visitor once" flush>
+              {!site ? (
+                <Note>{unavailable}</Note>
+              ) : (
                 <>
-                  <a className="font-semibold text-[#0f1419] underline-offset-2 hover:underline" href={String(sponsor.url || '')} target="_blank" rel="noopener noreferrer">
-                    {host}
-                  </a>
-                  {' · '}
+                  <ul>
+                    {(
+                      [
+                        ['Visitors to yourtrace.online', site.visitors],
+                        ['Opened the feed, a story or a Daily page', site.sawSpots],
+                        ['Pages viewed', site.pageviews],
+                      ] as const
+                    ).map(([label, value]) => (
+                      <li key={label} className="flex h-9 items-center gap-2 border-b border-oa-border/60 px-3 text-[13.5px] sm:px-4">
+                        <span className="min-w-0 flex-1 truncate text-oa-fg">{label}</span>
+                        <span className={`${NUM} text-oa-fg`}>{fmtCount(value)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <GroupHead>Came from</GroupHead>
+                  <RankList rows={rankRows(site.sources, (key) => key, sourceIcon)} empty="No visits yet." rowsInView={5} />
+                  <GroupHead>Countries</GroupHead>
+                  <RankList rows={rankRows(site.countries, countryLabel, countryIcon)} empty="No visits yet." rowsInView={5} />
+                  <GroupHead>Devices</GroupHead>
+                  <RankList rows={rankRows(site.devices, deviceLabel, deviceIcon)} empty="No visits yet." rowsInView={3} />
                 </>
               )}
-              {started ? `${longDay(started)} to ${ends ? longDay(ends) : 'open-ended'}` : ''}
-            </p>
+            </Box>
           </div>
-          <div className="flex flex-wrap gap-2 text-[13px] font-semibold">
-            <span className={`rounded-full px-3 py-1 ${live ? 'bg-[#e7f6ec] text-[#137333]' : 'bg-[#f1f1f1] text-[#536471]'}`}>{live ? 'Live' : 'Ended'}</span>
-            {live && dayOfRun && runDays && <span className="rounded-full bg-white px-3 py-1 ring-1 ring-[#e5e5e5]">Day {dayOfRun} of {runDays}</span>}
-            {daysLeft !== null && <span className="rounded-full bg-white px-3 py-1 ring-1 ring-[#e5e5e5]">{daysLeft === 1 ? '1 day left' : `${daysLeft} days left`}</span>}
-          </div>
-        </header>
+        </div>
 
-        <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Times shown" value={fmt(shown)} note={`${fmt(siteViews)} on the site · ${fmt(emails)} in emails`} />
-          <Stat
-            label="Clicks"
-            value={fmt(clicks)}
-            note={clickAudience && clickAudience.people > 0 ? `from at least ${fmt(clickAudience.people)} ${clickAudience.people === 1 ? 'person' : 'people'}` : `to ${host || 'your site'}`}
-          />
-          <Stat label="Click rate, site" value={rate(siteClicksRated, siteViewsRated)} note={rateNote(siteClicksRated, siteViewsRated, 'views', viewsStartedLate)} />
-          <Stat label="Click rate, email" value={rate(emailClicksRated, emailsRated)} note={rateNote(emailClicksRated, emailsRated, 'emails', viewsStartedLate)} />
-        </section>
-
-        <Card title="By day" subtitle="UTC. Site is your card seen on the site; emails is daily emails sent with it.">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[14px] tabular-nums">
-              <thead>
-                <tr className="text-left text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8b98a5]">
-                  <th className="py-2 pr-3 font-semibold">Day</th>
-                  <th className="hidden w-[34%] py-2 pr-3 font-semibold sm:table-cell" aria-label="Times shown, bar" />
-                  <th className="py-2 pr-3 text-right font-semibold">Site</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Emails</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Clicks</th>
-                  <th className="py-2 text-right font-semibold">Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {days.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-3 text-[#536471]">Nothing yet.</td>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <Box label="By spot" right="code = utm_content" flush>
+              <table className="w-full table-fixed text-[13.5px]">
+                <thead>
+                  <tr className="h-9 border-b border-oa-border text-left text-[12.5px] text-oa-muted-fg">
+                    <th className="px-3 font-normal sm:px-4">Spot</th>
+                    <th className="w-[3.25rem] sm:w-[4.5rem] px-2 text-right font-normal">Shown</th>
+                    <th className="w-[3.25rem] sm:w-[4.5rem] px-2 text-right font-normal">Clicks</th>
+                    <th className="w-[3.25rem] sm:w-[4.5rem] px-3 text-right font-normal sm:px-4">Rate</th>
                   </tr>
-                )}
-                {days.map(([day, d]) => (
-                  <tr key={day} className="border-t border-[#eff3f4]">
-                    <td className="whitespace-nowrap py-2 pr-3">
-                      {shortDay(day)}
-                      {viewsStartedLate && day === VIEWS_SINCE && <span className="ml-1.5 rounded bg-[#fff4d6] px-1 text-[11px] font-semibold text-[#8a6100]">partial</span>}
-                    </td>
-                    <td className="hidden py-2 pr-3 sm:table-cell">
-                      <div className="flex h-2 overflow-hidden rounded-full bg-[#f1f3f5]">
-                        <div className="bg-[#1634cc]" style={{ width: `${(d.views / maxShown) * 100}%` }} />
-                        <div className="bg-[#8fa2f0]" style={{ width: `${(d.emails / maxShown) * 100}%` }} />
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3 text-right">{day < VIEWS_SINCE ? '—' : fmt(d.views)}</td>
-                    <td className="py-2 pr-3 text-right">{day < VIEWS_SINCE ? '—' : fmt(d.emails)}</td>
-                    <td className="py-2 pr-3 text-right font-semibold">{fmt(d.clicks)}</td>
-                    <td className="py-2 text-right text-[#536471]">{fullDay(day) ? rate(d.ratedClicks, d.views + d.emails) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {spots.map((s) => (
+                    <tr key={s.key} className="border-b border-oa-border/60 last:border-b-0">
+                      <td className="px-3 py-2 sm:px-4">
+                        <span className="block truncate text-oa-fg">{s.place}</span>
+                        <code className="oa-mono block truncate text-[12px] text-oa-muted-fg">{s.key}</code>
+                      </td>
+                      <td className={`${NUM} px-2 text-right text-oa-fg`} title={s.shown == null ? 'New-tab views are not counted yet' : undefined}>
+                        {s.shown == null ? '—' : fmtCount(s.shown)}
+                      </td>
+                      <td className={`${NUM} px-2 text-right text-oa-fg`}>{fmtCount(s.clicks)}</td>
+                      <td className={`${NUM} px-3 text-right text-oa-muted-fg sm:px-4`}>{s.rate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
           </div>
-          <p className="mt-3 hidden flex-wrap gap-x-4 gap-y-1 text-[12px] text-[#536471] sm:flex">
-            <span className="flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-full bg-[#1634cc]" />Seen on the site</span>
-            <span className="flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-full bg-[#8fa2f0]" />Daily emails sent</span>
-          </p>
-        </Card>
-
-        <Card title="By spot" subtitle="Where your card appears. The code is the utm_content tag on visits from that spot.">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[14px] tabular-nums">
-              <thead>
-                <tr className="text-left text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8b98a5]">
-                  <th className="py-2 pr-3 font-semibold">Spot</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Shown</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Clicks</th>
-                  <th className="py-2 text-right font-semibold">Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {spots.map((s) => (
-                  <tr key={s.key} className="border-t border-[#eff3f4]">
-                    <td className="py-2 pr-3">
-                      {s.place} <code className="mt-0.5 block w-fit rounded bg-[#f4f4f5] px-1 text-[12px] text-[#536471] sm:ml-1 sm:mt-0 sm:inline">{s.key}</code>
-                    </td>
-                    <td className="py-2 pr-3 text-right">{s.counted ? fmt(s.shown) : 'not counted'}</td>
-                    <td className="py-2 pr-3 text-right font-semibold">{fmt(s.clicks)}</td>
-                    <td className="py-2 text-right text-[#536471]">{s.counted ? s.rate : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="lg:col-span-4">
+            <Box label="How we count">
+              <div className="space-y-2 text-[13px] leading-5 text-oa-muted-fg">
+                <p>
+                  A site view is your card at least half on screen for a second, once per visit. An email is one daily email sent with your card in it; opens
+                  aren&apos;t tracked.
+                </p>
+                <p>Clicks are counted by Trace, with known bots left out. New-tab cards count clicks, not views.</p>
+                {viewsStartedLate ? (
+                  <p>
+                    Views and emails are counted from {dateLabel(VIEWS_SINCE_AT)}, {VIEWS_SINCE_AT.toISOString().slice(11, 16)} UTC. Click rates start the day
+                    after.
+                  </p>
+                ) : null}
+                <p>
+                  Visits from Trace arrive tagged <code className="oa-mono text-oa-fg">utm_source=trace</code> and <code className="oa-mono text-oa-fg">utm_medium=sponsored</code>, with
+                  the spot in <code className="oa-mono text-oa-fg">utm_content</code>. Your own count can run a little lower: some visitors leave before your page loads, and some block
+                  analytics.
+                </p>
+                <p>Countries, devices and sources come from our analytics, refreshed about every 10 minutes.</p>
+                <p>
+                  Questions, or a new title, description or link?{' '}
+                  <a className="font-medium hover:underline" href={`mailto:${CONTACT_EMAIL}`}>
+                    <span className="text-oa-primary">{CONTACT_EMAIL}</span>
+                  </a>
+                </p>
+              </div>
+            </Box>
           </div>
-        </Card>
-
-        <Card title="Who clicked" subtitle={clickAudience ? `${fmt(clickAudience.clicks)} clicks our analytics saw. It misses people who block analytics, so it can be lower than the count above.` : undefined}>
-          {clicks === 0 && (!clickAudience || clickAudience.clicks === 0) ? (
-            <p className="text-[14px] text-[#536471]">No clicks yet.</p>
-          ) : !clickAudience ? (
-            <p className="text-[14px] text-[#536471]">{unavailable}</p>
-          ) : clickAudience.clicks === 0 ? (
-            <p className="text-[14px] text-[#536471]">Our analytics hasn&apos;t picked these clicks up yet. It can take about 10 minutes, and it misses people who block analytics.</p>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-3">
-              <Bars title="Country" rows={clickAudience.countries} />
-              <Bars title="Device" rows={clickAudience.devices} />
-              <Bars title="Came to Trace from" rows={clickAudience.sources} />
-            </div>
-          )}
-        </Card>
-
-        <Card
-          title="Trace's audience during your run"
-          subtitle={site ? `Everyone who visited yourtrace.online since ${started ? longDay(started) : 'your start'}, counted once each.` : undefined}
-        >
-          {!site ? (
-            <p className="text-[14px] text-[#536471]">{unavailable}</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <Mini label="Visitors" value={fmt(site.visitors)} />
-                <Mini label="Opened the feed, a story or a Trace Daily page" value={fmt(site.sawSpots)} />
-                <Mini label="Pages viewed" value={fmt(site.pageviews)} />
-              </div>
-              {site.visitors > 0 && (
-                <div className="mt-6 grid gap-6 sm:grid-cols-3">
-                  <Bars title="Country" rows={site.countries} />
-                  <Bars title="Device" rows={site.devices} />
-                  <Bars title="Came from" rows={site.sources} />
-                </div>
-              )}
-            </>
-          )}
-        </Card>
-
-        <section className="mt-8 space-y-3 text-[13px] leading-[1.7] text-[#536471]">
-          <p>
-            <strong className="text-[#0f1419]">How we count.</strong> A view on the site is your card at least half on screen for a second,
-            once per visit. An email is one daily email sent with your card in it; we don&apos;t track opens. Cards in the Chrome new tab
-            aren&apos;t counted as views yet, only their clicks. Clicks are counted by Trace from real visitors, with known bots left out.
-            {viewsStartedLate ? ` We started counting views and emails on ${longDay(VIEWS_SINCE_AT)} at ${VIEWS_SINCE_AT.toISOString().slice(11, 16)} UTC, so earlier days show clicks only and click rates start the day after.` : ''}
-            {' '}Country, device and source come from our analytics and refresh about every 10 minutes.
-          </p>
-          <p>
-            In your own analytics, visits from Trace arrive tagged <code className="rounded bg-[#f1f1f1] px-1">utm_source=trace</code> and{' '}
-            <code className="rounded bg-[#f1f1f1] px-1">utm_medium=sponsored</code>, with the spot in <code className="rounded bg-[#f1f1f1] px-1">utm_content</code>.
-            Your numbers can run a little lower than ours: some visitors leave before your page loads, and some block analytics.
-          </p>
-          <p>
-            Questions, or want to change your title, description or link?{' '}
-            <a className="font-semibold text-[#1634cc]" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-          </p>
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function Stat({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-[#e5e5e5] sm:p-5">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8b98a5]">{label}</p>
-      <p className="mt-2 text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums sm:text-[34px]">{value}</p>
-      <p className="mt-2 text-[12px] leading-[1.5] text-[#536471]">{note}</p>
-    </div>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-[#f7f8f9] p-3">
-      <p className="text-[22px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value}</p>
-      <p className="mt-1.5 text-[12px] leading-[1.4] text-[#536471]">{label}</p>
-    </div>
-  );
-}
-
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
-  return (
-    <section className="mt-4 rounded-xl bg-white p-4 ring-1 ring-[#e5e5e5] sm:p-6">
-      <h2 className="text-[16px] font-bold">{title}</h2>
-      {subtitle && <p className="mt-1 text-[13px] leading-[1.5] text-[#536471]">{subtitle}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-function Bars({ title, rows }: { title: string; rows: Breakdown }) {
-  const total = rows.reduce((t, r) => t + r.count, 0);
-  return (
-    <div>
-      <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8b98a5]">{title}</h3>
-      <ul className="mt-2 space-y-2">
-        {rows.map((r) => {
-          const share = total ? Math.round((r.count / total) * 100) : 0;
-          return (
-            <li key={r.label} className="text-[13px]">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 truncate" title={r.label}>{r.label}</span>
-                <span className="shrink-0 tabular-nums text-[#536471]">
-                  {fmt(r.count)} <span className="text-[#8b98a5]">· {share}%</span>
-                </span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#f1f3f5]">
-                <div className="h-full rounded-full bg-[#1634cc]" style={{ width: `${share}%` }} />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+        </div>
+      </div>
+    </AdminPage>
   );
 }
