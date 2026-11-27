@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: 'Sponsor stats — Trace', robots: { 
 
 // Times shown (site views and emails) were first counted from this moment;
 // earlier days show clicks only, and that day is partly counted.
-const VIEWS_SINCE_AT = new Date('2026-11-27T18:30:00Z');
+const VIEWS_SINCE_AT = new Date('2026-11-27T17:52:00Z');
 const VIEWS_SINCE = VIEWS_SINCE_AT.toISOString().slice(0, 10);
 
 const PLACES: Record<SponsorPlacement, string> = {
