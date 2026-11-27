@@ -42,7 +42,7 @@ const ALTERNATIVES = [
   { label: "Inoreader alternatives", href: "/blog/inoreader-alternatives" },
   { label: "Techmeme alternatives", href: "/blog/techmeme-alternatives" },
   { label: "daily.dev alternatives", href: "/blog/daily-dev-alternatives" },
-  { label: "TLDR alternatives", href: "/blog/tldr-newsletter-alternatives" },
+  { label: "TLDR and The Rundown AI alternatives", href: "/blog/tldr-newsletter-alternatives" },
   { label: "Ground News alternatives", href: "/blog/ground-news-alternatives-for-tech" },
 ];
 

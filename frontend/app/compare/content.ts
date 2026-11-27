@@ -193,7 +193,7 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "morning-brew-tech-alternative",
-    relatedRoundup: { href: "/blog/tldr-newsletter-alternatives", label: "The best TLDR newsletter alternatives" },
+    relatedRoundup: { href: "/blog/tldr-newsletter-alternatives", label: "TLDR and The Rundown AI alternatives" },
     related: ["trace-vs-substack-reader", "trace-vs-meco", "trace-vs-email-filters"],
     title: "Morning Brew For Tech People | Trace",
     description:

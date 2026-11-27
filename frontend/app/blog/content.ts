@@ -88,7 +88,7 @@ export const blogPosts: BlogPost[] = [
         heading: "How It Compares",
         bullets: [
           "Techmeme: a strong front page of the day's tech headlines, each with a one-line excerpt and related links rather than a written summary. See [Techmeme alternatives](/blog/techmeme-alternatives).",
-          "TLDR: a free weekday email of short summaries, usually one linked article per item. Good for a broad list. See [TLDR alternatives](/blog/tldr-newsletter-alternatives).",
+          "TLDR: a free weekday email of short summaries, usually one linked article per item. Good for a broad list. See [TLDR and The Rundown AI alternatives](/blog/tldr-newsletter-alternatives).",
           "Google News: broad and personalized across world, business and tech news, with Full Coverage pages for big stories. Useful when tech is only part of what you follow.",
           "Feedly and Inoreader: you choose every source yourself. Best for monitoring specific companies or blogs; the same event arrives once per outlet unless you add your own filtering.",
           "Trace: a finite daily edition of tech and AI news, grouped by event, summarized, with its sources linked.",
@@ -191,7 +191,7 @@ export const blogPosts: BlogPost[] = [
         heading: "If You're Replacing TLDR or The Rundown",
         paragraphs: [
           "Try Trace for a week next to your current newsletter, then keep the one you actually finish. The [Trace daily email](/brief) arrives every morning around 8:30am UK time, and you can choose your topics and whether you get 5, 10 or 15 stories.",
-          "For more on what a source-linked daily summary looks like, see [a daily tech news summary app with source links](/blog/daily-tech-news-summary-with-sources), or compare more tools in our [AI news digest tools guide](/blog/ai-news-digest-tools)."
+          "For more on what a source-linked daily summary looks like, see [a daily tech news summary app with source links](/blog/daily-tech-news-summary-with-sources). For more options, see our [TLDR and The Rundown AI alternatives](/blog/tldr-newsletter-alternatives) and the [AI news digest tools guide](/blog/ai-news-digest-tools)."
         ]
       }
     ],
@@ -1797,22 +1797,27 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "tldr-newsletter-alternatives",
-    title: "TLDR Newsletter Alternatives for Developers",
-    subtitle: "Choose between a fixed daily email, a personalized developer feed, focused engineering newsletters, and a source-backed daily edition.",
+    title: "Free Alternatives to TLDR and The Rundown AI",
+    subtitle: "What TLDR and The Rundown AI each do well, and the free alternatives to compare: a grouped daily brief with source links, a personalized developer feed, and focused newsletters for depth.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Compare TLDR alternatives by format, topic depth, personalization, source transparency, and the reading habit each option creates.",
+      "Compare free alternatives to TLDR and The Rundown AI by format, reading time, source links, topic choice and the reading habit each one creates.",
     author: "Tarun Tomar",
-    readTime: "11 min read",
+    readTime: "9 min read",
     date: "July 23, 2026",
-    updated: "November 22, 2026",
+    updated: "November 27, 2026",
     image: "https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=1200&h=630&fit=crop&auto=format",
-    relatedSlugs: ["replace-tech-newsletters-with-a-5-minute-briefing", "techmeme-alternatives", "best-tech-news-aggregator-apps"],
+    relatedSlugs: ["best-way-to-keep-up-with-ai-news-daily", "daily-tech-news-summary-with-sources", "techmeme-alternatives"],
     sources: [
       { title: "TLDR Tech", url: "https://tldr.tech/tech", publisher: "TLDR" },
-      { title: "daily.dev Digest", url: "https://daily.dev/", publisher: "daily.dev" },
+      { title: "TLDR AI", url: "https://tldr.tech/ai", publisher: "TLDR" },
+      { title: "The Rundown AI", url: "https://www.therundown.ai/", publisher: "The Rundown AI" },
+      { title: "daily.dev", url: "https://daily.dev/", publisher: "daily.dev" },
       { title: "The Pragmatic Engineer", url: "https://newsletter.pragmaticengineer.com/", publisher: "The Pragmatic Engineer" },
+      { title: "Cooperpress newsletters", url: "https://cooperpress.com/", publisher: "Cooperpress" },
+      { title: "Techmeme", url: "https://www.techmeme.com/", publisher: "Techmeme" },
+      { title: "Hacker News", url: "https://news.ycombinator.com/", publisher: "Y Combinator" },
     ],
     sections: [
       {
@@ -1821,56 +1826,80 @@ export const blogPosts: BlogPost[] = [
           "We make Trace, so it's listed separately below."
         ],
         bullets: [
-          "Best for a fixed, broad email: TLDR.",
+          "Best for a fixed, broad tech email: TLDR.",
+          "Best for AI news with tool tips in a friendly voice: The Rundown AI.",
           "Best for a personalized developer feed: daily.dev.",
-          "Best for engineering leadership depth: The Pragmatic Engineer.",
-          "Best for stack-specific weekly coverage: Cooperpress newsletters."
+          "Best for engineering depth: The Pragmatic Engineer.",
+          "Best for one stack, such as JavaScript or Postgres: Cooperpress newsletters."
         ]
       },
       {
-        heading: "Why Look Beyond TLDR?",
+        heading: "What TLDR and The Rundown AI Do Well",
         paragraphs: [
-          "TLDR is effective when you want a broad list delivered by email. The limitation is structural: every reader gets a similar editorial package, individual items are intentionally short, and your inbox remains the reading interface.",
-          "Look for an alternative when you need explicit topic controls, deeper engineering context, fewer but more connected stories, or a format outside email. If TLDR already gives you the right topics and cadence, switching tools will not automatically improve the habit."
+          "TLDR is a free email of short summaries, one linked article per item, with separate editions for tech, AI, web development and other topics. It is quick to scan and arrives every weekday, which is why so many people use it as their daily catch-up.",
+          "The Rundown AI is a free daily email about AI news and tools, written in a friendly newsletter voice, with practical tips on using new tools. The same company also runs tech and robotics newsletters.",
+          "Both are good at what they are: a fixed package that lands in your inbox. If the topics and the length already suit you, switching will not improve the habit by itself."
         ]
       },
       {
-        heading: "daily.dev: Best for Personalized Discovery",
-        paragraphs: [
-          "daily.dev works well when you want developer writing ranked around your stack and interests. The browser extension puts discovery in a place developers already open frequently. It is less like a fixed newsletter and more like a continuously refreshed developer homepage.",
-          "Choose it over TLDR when personalization and community discovery matter more than a short, finite email."
+        heading: "Why Look for an Alternative?",
+        bullets: [
+          "You read the same story more than once, because several newsletters and sites cover the same AI launch.",
+          "Each item links one article, and you want to see how different outlets reported it.",
+          "You want AI news next to the rest of tech, not in a separate email.",
+          "You want to choose your topics and how many stories you get.",
+          "You want the brief outside the inbox: on the web, in a browser tab or through an AI assistant."
         ]
       },
       {
-        heading: "The Pragmatic Engineer: Best for Depth",
-        paragraphs: [
-          "The Pragmatic Engineer focuses on software-industry analysis, engineering organizations, careers, and leadership. It is not a direct replacement for broad daily headlines. It is a replacement for the part of a news habit that should create durable understanding.",
-          "Choose it when one deeply reported piece is more valuable to your work than a dozen short updates."
-        ]
-      },
-      {
-        heading: "Cooperpress: Best for One Ecosystem",
-        paragraphs: [
-          "Cooperpress publishes focused newsletters for ecosystems such as JavaScript, React, Node, and database technology. The narrow scope produces a cleaner signal when your work lives in one stack.",
-          "Choose a focused weekly over TLDR when missing a framework release matters more than following the broader technology conversation."
+        heading: "The Alternatives, Compared",
+        bullets: [
+          "Each other: if TLDR feels too broad, TLDR AI or The Rundown AI covers AI only; if The Rundown feels too long, TLDR AI is a quicker scan. All are free daily emails.",
+          "Techmeme: a free front page of the day's tech industry news, updated through the day, with related coverage listed under each headline. No email needed.",
+          "daily.dev: a feed of developer articles ranked around your stack, available as a browser extension and a web app. Free. More personal than a newsletter, but a continuous feed has no natural end.",
+          "The Pragmatic Engineer: deeply reported pieces on software engineering, teams and careers. Some posts are free; the full newsletter is paid. A replacement for depth, not for daily headlines.",
+          "Cooperpress: free weekly newsletters for one ecosystem each, such as JavaScript Weekly or Postgres Weekly. The narrow scope keeps the signal clean when your work lives in one stack.",
+          "Hacker News: community-ranked links and comment threads, with no summaries. Free. Useful for the discussion around one or two stories, not as a complete daily brief.",
+          "Trace (ours): a free daily brief and web feed for tech and AI. Each story groups the coverage from several outlets, with a short summary and links to every report. About five minutes."
         ]
       },
       {
         heading: "The one we make: Trace",
         paragraphs: [
-          "Trace reads 100+ tech sources, groups the coverage of each event into one story, and gives each story a short AI-written summary with links to every original report. It comes as a web feed and a daily email at 08:30 UK time, with your choice of topics and 5, 10 or 15 stories, and it is free and open source. Instead of receiving one link per outlet, you see the story, a short summary, and the source trail together.",
-          "Choose Trace when your main problem is reading the same story several times across publications. Read the [TLDR newsletter review](/newsletters/tldr-tech) or compare [Trace with a traditional morning newsletter](/compare/morning-brew-tech-alternative)."
+          "Trace reads 100+ tech sources, groups the coverage of each event into one story, and gives each story a short AI-written summary with links to every original report. The [daily brief](/brief) arrives by email at 08:30 UK time, with your choice of topics and 5, 10 or 15 stories, and the same stories are on the web feed. It is free and open source, and you don't need an account to read it.",
+          "Choose Trace over TLDR or The Rundown AI when your main problem is reading the same story several times, or when you want to check the original reporting quickly. If you want tool tips and a conversational newsletter voice, The Rundown AI is the better fit. Read the [TLDR newsletter review](/newsletters/tldr-tech), or see [what one Trace story looks like](/blog/daily-tech-news-summary-with-sources)."
         ]
       },
       {
         heading: "How to Choose",
         bullets: [
-          "Pick email when delivery consistency matters most.",
+          "Pick TLDR when a predictable email of short items is what you will actually read.",
+          "Pick The Rundown AI when you mainly follow AI and want practical tool tips.",
           "Pick a personalized feed when topic relevance matters most.",
-          "Pick a focused newsletter when domain depth matters most.",
-          "Pick a grouped daily edition when context and source reconciliation matter most.",
-          "Use one daily product and one weekly deep source; more usually creates duplicate reading."
+          "Pick a focused newsletter when depth in one area matters most.",
+          "Pick a grouped daily brief when one story per event and the source links matter most.",
+          "Use one daily product and one weekly deep source; more usually means reading the same news twice."
         ]
+      },
+      {
+        heading: "Try One Next to Your Current Newsletter",
+        paragraphs: [
+          "Run the alternative next to TLDR or The Rundown AI for a week, then keep the one you actually finish. For a simple daily routine built around one brief, see [the best way to keep up with AI news daily](/blog/best-way-to-keep-up-with-ai-news-daily)."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "What's a good free alternative to TLDR or The Rundown AI?",
+        answer: "It depends on what you want to change. For a daily brief that groups each story across outlets and links every report, Trace is free (we make it). For AI only, TLDR AI and The Rundown AI are free alternatives to each other. For the whole tech industry on one page, Techmeme is free. For a personalized developer feed, try daily.dev, and for one stack, a free Cooperpress weekly."
+      },
+      {
+        question: "Is TLDR or The Rundown AI better for AI news?",
+        answer: "TLDR AI is quicker to scan, with short items and one link each. The Rundown AI is more conversational and adds tips on using new AI tools. Both are free daily emails, so most people only need one of them."
+      },
+      {
+        question: "Is there a daily tech brief that links the original sources?",
+        answer: "Yes. Trace's daily brief gives each story a short summary and links every outlet that covered it, so you can check the details. It is free and comes by email or on the web."
       }
     ]
   },
@@ -1947,7 +1976,7 @@ export const blogPosts: BlogPost[] = [
         heading: "5. TLDR Tech: Best for Email",
         paragraphs: [
           "TLDR Tech turns the daily scan into a fixed email. That delivery model works when opening another app is the real barrier and you prefer a predictable package in the inbox.",
-          "The trade-off is limited personalization and less connection between related stories. Pick TLDR for consistency; pick a grouped aggregator when context across sources matters. We compare those models in our [TLDR newsletter alternatives guide](/blog/tldr-newsletter-alternatives)."
+          "The trade-off is limited personalization and less connection between related stories. Pick TLDR for consistency; pick a grouped aggregator when context across sources matters. We compare those models in our [TLDR and The Rundown AI alternatives guide](/blog/tldr-newsletter-alternatives)."
         ]
       },
       {

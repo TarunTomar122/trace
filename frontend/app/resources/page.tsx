@@ -50,7 +50,7 @@ const RESOURCE_SECTIONS = [
       { label: "Flipboard alternatives", href: "/blog/flipboard-alternatives" },
       { label: "Google News alternatives", href: "/blog/google-news-alternatives" },
       { label: "daily.dev alternatives", href: "/blog/daily-dev-alternatives" },
-      { label: "TLDR newsletter alternatives", href: "/blog/tldr-newsletter-alternatives" },
+      { label: "TLDR and The Rundown AI alternatives", href: "/blog/tldr-newsletter-alternatives" },
       { label: "Trace vs Inoreader", href: "/compare/trace-vs-inoreader" },
       { label: "Trace vs Manual Reading", href: "/compare/trace-vs-manual-reading" },
       { label: "Trace vs Readwise Reader", href: "/compare/trace-vs-readwise-reader" },
